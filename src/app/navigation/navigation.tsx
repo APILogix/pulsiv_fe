@@ -1,0 +1,189 @@
+import type { LucideIcon } from "lucide-react";
+import {
+  Activity,
+  AlertTriangle,
+  BadgeDollarSign,
+  BellRing,
+  BrainCircuit,
+  Building2,
+  Cable,
+  CreditCard,
+  Database,
+  FolderOpen,
+  Gauge,
+  KeyRound,
+  LayoutDashboard,
+  LineChart,
+  ListChecks,
+  ListTree,
+  Logs,
+  Radar,
+  Receipt,
+  ScrollText,
+  Shield,
+  ShieldAlert,
+  Sparkles,
+  Users,
+  Webhook,
+  Workflow,
+  Wrench,
+} from "lucide-react";
+
+export type NavStatus = "live" | "partial" | "coming-soon";
+
+export interface ModuleNavItem {
+  label: string;
+  path: string;
+  icon: LucideIcon;
+  status: NavStatus;
+  exact?: boolean;
+  description: string;
+}
+
+export interface MainNavItem extends ModuleNavItem {
+  children?: ModuleNavItem[];
+}
+
+export const navStatusLabel: Record<NavStatus, string> = {
+  live: "Live",
+  partial: "Partial",
+  "coming-soon": "Coming soon",
+};
+
+export const navStatusClassName: Record<NavStatus, string> = {
+  live: "bg-[var(--green-bg)] text-[var(--green)]",
+  partial: "bg-[var(--yellow-bg)] text-[var(--yellow)]",
+  "coming-soon": "bg-[var(--brand-bg)] text-[var(--brand)]",
+};
+
+export const mainNavigation: MainNavItem[] = [
+  {
+    label: "Overview",
+    path: "/dashboard",
+    icon: LayoutDashboard,
+    status: "live",
+    exact: true,
+    description: "Global landing page for product health, recent activity, and shortcuts.",
+  },
+  {
+    label: "Observability",
+    path: "/observability",
+    icon: Activity,
+    status: "live",
+    description: "Requests, events, errors, and service health across monitored projects.",
+    children: [
+      { label: "Executive dashboard", path: "/observability", icon: LayoutDashboard, status: "live", exact: true, description: "High-level service overview backed by analytics dashboard endpoints." },
+      { label: "Requests", path: "/observability/requests", icon: Gauge, status: "live", description: "Traffic and request-overview surfaces." },
+      { label: "Events explorer", path: "/observability/events", icon: Radar, status: "live", description: "Search and inspect ingested events." },
+      { label: "Error groups", path: "/observability/errors", icon: AlertTriangle, status: "live", description: "Triage grouped errors and resolution state." },
+      { label: "Service health", path: "/observability/service-health", icon: ShieldAlert, status: "live", description: "Project health plus platform readiness signals." },
+      { label: "Latency", path: "/observability/latency", icon: LineChart, status: "partial", description: "Latency view based on current aggregate analytics support." },
+      { label: "Traces", path: "/observability/traces", icon: ListTree, status: "coming-soon", description: "Reserved for future distributed tracing." },
+      { label: "Logs", path: "/observability/logs", icon: Logs, status: "coming-soon", description: "Reserved for first-class log search and tailing." },
+    ],
+  },
+  {
+    label: "Projects",
+    path: "/projects",
+    icon: FolderOpen,
+    status: "live",
+    description: "Project lifecycle, project API keys, and project-level usage.",
+    children: [
+      { label: "All projects", path: "/projects", icon: FolderOpen, status: "live", exact: true, description: "Organization-scoped project inventory." },
+      { label: "Project overview", path: "/projects/overview", icon: LayoutDashboard, status: "live", description: "Summary of project state and stats." },
+      { label: "API keys", path: "/projects/api-keys", icon: KeyRound, status: "live", description: "Manage project ingestion and SDK keys." },
+      { label: "Usage", path: "/projects/usage", icon: LineChart, status: "live", description: "Project usage, key activity, and consumption trends." },
+      { label: "Project settings", path: "/projects/settings", icon: Wrench, status: "partial", description: "Project controls backed by current project CRUD endpoints." },
+    ],
+  },
+  {
+    label: "Alerts",
+    path: "/alerts",
+    icon: BellRing,
+    status: "coming-soon",
+    description: "Incidents, alert rules, escalation policies, and notification channels.",
+    children: [
+      { label: "Incidents", path: "/alerts", icon: AlertTriangle, status: "coming-soon", exact: true, description: "Incident center for triggered alerts and investigations." },
+      { label: "Alert rules", path: "/alerts/rules", icon: BellRing, status: "coming-soon", description: "Rule authoring for thresholds, anomalies, and conditions." },
+      { label: "Escalations", path: "/alerts/escalations", icon: Workflow, status: "coming-soon", description: "On-call routing and escalation policies." },
+      { label: "Channels", path: "/alerts/channels", icon: Webhook, status: "coming-soon", description: "Email, webhook, and chat notification destinations." },
+    ],
+  },
+  {
+    label: "Ingestion",
+    path: "/ingestion",
+    icon: Database,
+    status: "live",
+    description: "Telemetry pipelines, endpoints, health, and ingestion operations.",
+    children: [
+      { label: "Overview", path: "/ingestion", icon: LayoutDashboard, status: "live", exact: true, description: "Platform ingestion summary and implementation notes." },
+      { label: "API endpoints", path: "/ingestion/endpoints", icon: Cable, status: "live", description: "Public ingestion endpoint references." },
+      { label: "Health", path: "/ingestion/health", icon: Shield, status: "live", description: "Ingestion health, readiness, and queue state views." },
+      { label: "Keys & tokens", path: "/ingestion/keys", icon: KeyRound, status: "partial", description: "Key management routed through current org and project APIs." },
+      { label: "Replay & pipeline", path: "/ingestion/replay", icon: ListChecks, status: "coming-soon", description: "Replay, dead-letter recovery, and pipeline controls." },
+      { label: "Rate limits", path: "/ingestion/rate-limits", icon: Gauge, status: "partial", description: "Operational rate-limit visibility for ingest traffic." },
+    ],
+  },
+  {
+    label: "AI Ops",
+    path: "/ai",
+    icon: BrainCircuit,
+    status: "coming-soon",
+    description: "AI-assisted triage, anomaly detection, and root cause analysis.",
+    children: [
+      { label: "AI overview", path: "/ai", icon: Sparkles, status: "coming-soon", exact: true, description: "AI feature landing page and readiness." },
+      { label: "Root cause analysis", path: "/ai/root-cause", icon: BrainCircuit, status: "coming-soon", description: "Planned automated incident explanation." },
+      { label: "Anomaly detection", path: "/ai/anomalies", icon: Radar, status: "coming-soon", description: "Planned AI-driven anomaly summaries." },
+      { label: "Release impact", path: "/ai/release-impact", icon: Activity, status: "coming-soon", description: "Planned release-aware regression insights." },
+      { label: "Cost & usage", path: "/ai/costs", icon: BadgeDollarSign, status: "coming-soon", description: "Model spend tracking and governance." },
+      { label: "Prompt & policy controls", path: "/ai/policies", icon: Shield, status: "coming-soon", description: "Prompt governance and approval controls." },
+    ],
+  },
+  {
+    label: "Administration",
+    path: "/admin",
+    icon: Building2,
+    status: "live",
+    description: "Organization access, security, auditability, and enterprise controls.",
+    children: [
+      { label: "Organization profile", path: "/admin", icon: Building2, status: "live", exact: true, description: "Organization identity, ownership, and base settings." },
+      { label: "Members", path: "/admin/members", icon: Users, status: "live", description: "Membership, role, suspend, and reactivate flows." },
+      { label: "Invitations", path: "/admin/invitations", icon: Users, status: "live", description: "Invite, resend, validate, decline, and revoke." },
+      { label: "SSO", path: "/admin/sso", icon: Shield, status: "live", description: "Single sign-on configuration and management." },
+      { label: "SCIM", path: "/admin/scim", icon: Workflow, status: "live", description: "Provisioning tokens and SCIM surfaces." },
+      { label: "Security events", path: "/admin/security-events", icon: ShieldAlert, status: "live", description: "Security event review for the org." },
+      { label: "Audit logs", path: "/admin/audit-logs", icon: ScrollText, status: "live", description: "Searchable audit trail and export controls." },
+      { label: "Quota requests", path: "/admin/quota-requests", icon: Gauge, status: "live", description: "Quota request review and approvals." },
+      { label: "Org API keys", path: "/admin/api-keys", icon: KeyRound, status: "live", description: "Organization-level API key administration." },
+      { label: "Environments", path: "/admin/environments", icon: Database, status: "live", description: "Environment management across org contexts." },
+      { label: "Compliance", path: "/admin/compliance", icon: Shield, status: "coming-soon", description: "Reserved for enterprise compliance reporting." },
+    ],
+  },
+  {
+    label: "Billing",
+    path: "/billing",
+    icon: CreditCard,
+    status: "live",
+    description: "Plans, invoices, usage, quotas, and payment operations.",
+    children: [
+      { label: "Plan & subscription", path: "/billing", icon: CreditCard, status: "live", exact: true, description: "Subscription state and plan changes." },
+      { label: "Usage", path: "/billing/usage", icon: LineChart, status: "live", description: "Consumption, history, export, and forecast." },
+      { label: "Invoices", path: "/billing/invoices", icon: Receipt, status: "live", description: "Invoice history and payment actions." },
+      { label: "Payment methods", path: "/billing/payment-methods", icon: CreditCard, status: "live", description: "Stored payment method management." },
+      { label: "Quotas", path: "/billing/quotas", icon: Gauge, status: "live", description: "Quota overview and increase requests." },
+      { label: "Promotions", path: "/billing/promotions", icon: BadgeDollarSign, status: "live", description: "Coupons and promotional offers." },
+      { label: "Admin ops", path: "/billing/admin", icon: Wrench, status: "partial", description: "Privileged billing sync, overrides, credits, and waive actions." },
+    ],
+  },
+  {
+    label: "Settings",
+    path: "/settings",
+    icon: Wrench,
+    status: "live",
+    description: "Configuration surfaces, integrations, and organization preferences.",
+  },
+];
+
+export function findMainNavItem(pathname: string): MainNavItem | undefined {
+  return mainNavigation.find((item) => pathname === item.path || pathname.startsWith(`${item.path}/`));
+}

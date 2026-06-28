@@ -1,8 +1,3 @@
-import { useListSessions } from '../../hooks/useListSessions';
-import { useRevokeSession, useRevokeOtherSessions } from '../../hooks/useRevokeSession';
-import type { SessionInfo } from '../../types/auth.types';
-import { Laptop, Globe, Clock, MonitorSmartphone } from 'lucide-react';
-
 export function ActiveSessionsPanel() {
   const sessions = [
     {

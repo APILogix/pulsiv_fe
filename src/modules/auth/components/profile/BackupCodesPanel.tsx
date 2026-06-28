@@ -1,10 +1,3 @@
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Copy, Check, AlertTriangle } from 'lucide-react';
-import { useCurrentUser } from '../../hooks/useCurrentUser';
-import { authApi } from '../../api/auth.api';
-import { toast } from 'sonner';
-
 export function BackupCodesPanel() {
   const codes = [
     'A8F2-B9K1-Z3', 'X7P4-L2M9-Q5',

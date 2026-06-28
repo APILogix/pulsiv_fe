@@ -1,0 +1,1 @@
+import{c as o,j as n}from"./index-D8J5SNEB.js";function m(r){const t=o.c(2),{message:s}=r;let e;return t[0]!==s?(e=n.jsx("div",{className:"p-8 text-center text-muted-foreground",children:s}),t[0]=s,t[1]=e):e=t[1],e}export{m as E};

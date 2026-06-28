@@ -1,8 +1,3 @@
-import { Activity } from 'lucide-react';
-import { useCurrentUser } from '../../hooks/useCurrentUser';
-import { useUserAuditEvents } from '../../hooks/useUserAuditEvents';
-import type { AuditEvent } from '../../types/auth.types';
-
 export function AuditLogsPanel() {
   const events = [
     { id: 1, event: 'Successful Login', date: '2026-06-28 10:24:23', ip: '192.168.1.1', client: 'Mac OS / Chrome', status: 'normal' },

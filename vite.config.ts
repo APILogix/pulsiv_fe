@@ -22,4 +22,19 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  optimizeDeps: {
+    include: [
+      "lucide-react",
+      "react",
+      "react-dom",
+      "react-router",
+      "clsx",
+      "sonner",
+      "cmdk",
+      "zustand",
+      "@tanstack/react-query",
+      "axios",
+      "zod",
+    ],
+  },
 })

@@ -32,16 +32,19 @@ export function AppDualSidebar() {
     if (current) {
       setActiveRailItem(current);
       // Auto expand all groups for the active item
-      const newGroups = { ...expandedGroups };
-      if (current.children) {
-        current.children.forEach(c => {
-          const g = c.group || current.label;
-          newGroups[g] = true;
-        });
-      } else {
-        newGroups[current.label] = true;
-      }
-      setExpandedGroups(newGroups);
+      setExpandedGroups((prev) => {
+        const newGroups = { ...prev };
+        let changed = false;
+        if (current.children) {
+          current.children.forEach(c => {
+            const g = c.group || current.label;
+            if (!newGroups[g]) { newGroups[g] = true; changed = true; }
+          });
+        } else {
+          if (!newGroups[current.label]) { newGroups[current.label] = true; changed = true; }
+        }
+        return changed ? newGroups : prev;
+      });
       
       if (!current.children || current.children.length === 0) {
         setIsFlyoutOpen(false);

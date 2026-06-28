@@ -1,0 +1,1 @@
+import{c as o,j as s,O as t}from"./index-D8J5SNEB.js";function c(){const l=o.c(1);let e;return l[0]===Symbol.for("react.memo_cache_sentinel")?(e=s.jsx("div",{className:"h-full w-full overflow-y-auto sidebar-scroll",children:s.jsx("div",{className:"w-full px-6 py-6",children:s.jsx(t,{})})}),l[0]=e):e=l[0],e}export{c as ModuleLayout};

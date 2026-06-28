@@ -179,13 +179,13 @@ export function MultiLineChart({ series, height = 200, logScale = false }: {
     <div>
       <svg width="100%" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" className="w-full">
         {[0.25, 0.5, 0.75].map((g) => (
-          <line key={g} x1={0} x2={width} y1={height * g} y2={height * g} stroke="var(--border)" strokeWidth={1} strokeDasharray="3 4" />
+          <line key={g} x1={0} x2={width} y1={height * g} y2={height * g} stroke="var(--border)" strokeWidth={1} strokeDasharray="3 4" vectorEffect="non-scaling-stroke" />
         ))}
         {series.map((s) => {
           const pts = s.data
             .map((d, i) => `${pad + i * step},${height - pad - ((transform(d) - min) / range) * (height - pad * 2)}`)
             .join(" ");
-          return <polyline key={s.label} points={pts} fill="none" stroke={s.color} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />;
+          return <polyline key={s.label} points={pts} fill="none" stroke={s.color} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />;
         })}
       </svg>
       <div className="mt-2 flex flex-wrap gap-3">
@@ -197,6 +197,40 @@ export function MultiLineChart({ series, height = 200, logScale = false }: {
         ))}
       </div>
     </div>
+  );
+}
+
+// ── Area chart (single series, gradient fill) — crisp at any width ──
+export function AreaChart({ data, color = "var(--brand)", height = 220, label }: {
+  data: number[];
+  color?: string;
+  height?: number;
+  label?: string;
+}) {
+  const width = 720;
+  const pad = 10;
+  const gradId = `area-grad-${label?.replace(/\W/g, "") ?? "x"}`;
+  const max = Math.max(...data, 1);
+  const min = Math.min(...data, 0);
+  const range = max - min || 1;
+  const step = (width - pad * 2) / (data.length - 1 || 1);
+  const pts = data.map((d, i) => [pad + i * step, height - pad - ((d - min) / range) * (height - pad * 2)] as const);
+  const line = pts.map(([x, y]) => `${x},${y}`).join(" ");
+  const area = `${pad},${height - pad} ${line} ${pad + (data.length - 1) * step},${height - pad}`;
+  return (
+    <svg width="100%" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" className="w-full">
+      <defs>
+        <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity={0.35} />
+          <stop offset="100%" stopColor={color} stopOpacity={0} />
+        </linearGradient>
+      </defs>
+      {[0.25, 0.5, 0.75].map((g) => (
+        <line key={g} x1={0} x2={width} y1={height * g} y2={height * g} stroke="var(--border)" strokeWidth={1} strokeDasharray="3 4" vectorEffect="non-scaling-stroke" />
+      ))}
+      <polygon points={area} fill={`url(#${gradId})`} />
+      <polyline points={line} fill="none" stroke={color} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+    </svg>
   );
 }
 
@@ -228,7 +262,7 @@ export function DualAxisChart({ bars, line, height = 220 }: { bars: number[]; li
           />
         );
       })}
-      <polyline points={linePts} fill="none" stroke="var(--red)" strokeWidth={2} strokeLinejoin="round" />
+      <polyline points={linePts} fill="none" stroke="var(--red)" strokeWidth={2} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
     </svg>
   );
 }

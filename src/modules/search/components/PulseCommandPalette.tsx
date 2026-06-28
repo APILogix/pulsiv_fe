@@ -20,7 +20,7 @@ export function PulseCommandPalette() {
   const { isOpen, setOpen, query, setQuery, isLoading, results } = useSearchStore();
 
   // Pre-compute the flattened navigation array once rather than on every keystroke
-  const allSearchItems = useMemo(() => {
+  const allSearchItems = useMemo<SearchResult[]>(() => {
     const groupMap: Record<string, SearchResult['group']> = {
       Overview: 'Navigation',
       Observability: 'Observability',

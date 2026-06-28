@@ -23,6 +23,10 @@ export const authApi = {
     const r = await apiClient.post('/auth/login/backup-code', data);
     storeSession(r.data.data); return r.data.data;
   },
+  async switchLoginMfaMethod(challenge_id: string, device_id: string): Promise<{ message: string }> {
+    const r = await apiClient.post('/auth/login/mfa/switch', { challenge_id, device_id });
+    return r.data.data;
+  },
   async register(data: s.RegisterFormData): Promise<{ message: string }> {
     const r = await apiClient.post('/auth/register', data);
     return { message: r.data.message };
@@ -59,8 +63,8 @@ export const authApi = {
   setPrimaryMFADevice: (id: string) => apiClient.patch(`/auth/mfa/devices/${id}/primary`),
   regenerateBackupCodes: (d: s.RegenerateBackupCodesFormData) => apiClient.post('/auth/mfa/backup-codes', d).then(r => r.data.data),
   toggleMFA: (d: s.MfaToggleFormData) => apiClient.patch('/auth/mfa/toggle', d).then(r => r.data.data),
-  requestDisableMFA: (d: s.MfaDisableRequestFormData) => apiClient.post('/auth/mfa/disable/request', d),
-  confirmDisableMFA: (d: s.MfaDisableConfirmFormData) => apiClient.post('/auth/mfa/disable/confirm', d),
+  disableMFA: (d: s.MfaDisableRequestFormData = {}) => apiClient.post('/auth/mfa/disable', d).then(r => r.data.data),
+  requestDisableMFA: (d: s.MfaDisableRequestFormData = {}) => apiClient.post('/auth/mfa/disable/request', d).then(r => r.data.data),
   listSessions: () => apiClient.get('/auth/sessions').then(r => r.data.data),
   revokeSession: (id: string) => apiClient.delete(`/auth/sessions/${id}`),
   revokeAllSessions: () => apiClient.delete('/auth/sessions').then(r => r.data.data),

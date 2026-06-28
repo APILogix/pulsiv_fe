@@ -1,36 +1,49 @@
 import { useState } from 'react';
-import { Navigate, useLocation, useNavigate, Link } from 'react-router';
+import { Navigate, useLocation, Link } from 'react-router';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { authApi } from '../api/auth.api';
 import { loginMfaSchema } from '../schemas/auth.schema';
 import type { LoginMfaFormData } from '../schemas/auth.schema';
-import { useAuthStore } from '../store/auth.store';
+import { useLoginMfa } from '../hooks/useLoginMfa';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { getErrorMessage } from '@/infrastructure/api-client/error.interceptor';
+import { authApi } from '../api/auth.api';
+import { toast } from 'sonner';
 
 export default function LoginMfaPage() {
   const location = useLocation();
-  const navigate = useNavigate();
-  const { challengeId } = location.state || {};
-  const setAuth = useAuthStore((s) => s.setAuth);
-  const [error, setError] = useState('');
+  const { challengeId, deviceType: initialDeviceType, availableMethods } = location.state || {};
+  const { mutate: loginMfa, isPending } = useLoginMfa();
+  
+  const [deviceType, setDeviceType] = useState<string>(initialDeviceType || 'totp');
+  const [isSwitching, setIsSwitching] = useState(false);
 
   const { register, handleSubmit, formState: { errors } } = useForm<LoginMfaFormData>({
     resolver: zodResolver(loginMfaSchema),
+    defaultValues: {
+      challenge_id: challengeId || '',
+      code: '',
+    }
   });
 
   const onSubmit = handleSubmit((data) => {
-    setError('');
-    authApi.loginMfa({ ...data, challenge_id: challengeId }).then(() => {
-      authApi.getCurrentUser().then((user) => {
-        setAuth(user);
-        navigate('/dashboard', { replace: true });
-      });
-    }).catch((err) => setError(getErrorMessage(err)));
+    loginMfa({ ...data, challenge_id: challengeId });
   });
+
+  const handleSwitchMethod = async (deviceId: string, type: string) => {
+    if (type === deviceType) return;
+    setIsSwitching(true);
+    try {
+      await authApi.switchLoginMfaMethod(challengeId, deviceId);
+      setDeviceType(type);
+      toast.success(type === 'email' ? 'Verification code sent to your email' : 'Switched to Authenticator App');
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error?.message || 'Failed to switch verification method');
+    } finally {
+      setIsSwitching(false);
+    }
+  };
 
   if (!challengeId) {
     return <Navigate to="/auth/login" replace />;
@@ -44,13 +57,16 @@ export default function LoginMfaPage() {
             Two-factor verification
           </h2>
           <p className="text-sm text-[#999999] mt-1">
-            Enter the 6-digit code from your authenticator app.
+            {deviceType === 'totp' 
+              ? 'Enter the 6-digit code from your authenticator app.'
+              : 'Enter the 6-digit code sent to your email.'}
           </p>
         </div>
       </div>
 
       <div className="rounded-xl border border-[#262626] bg-[#111111]/80 backdrop-blur-sm p-6 sm:p-8">
         <form onSubmit={onSubmit} className="space-y-5">
+          <input type="hidden" {...register('challenge_id')} />
           <div className="space-y-1.5">
             <Label htmlFor="code" className="text-xs text-[#999999]">Verification code</Label>
             <Input
@@ -63,20 +79,35 @@ export default function LoginMfaPage() {
             />
             {errors.code && <p className="text-[#ef4444] text-xs mt-1">{errors.code.message}</p>}
           </div>
-          {error && (
-            <div className="flex items-center gap-2 p-3 rounded-lg bg-[#ef4444]/5 border border-[#ef4444]/10 text-sm text-[#ef4444]">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
-              {error}
-            </div>
-          )}
-          <Button type="submit" className="w-full h-10 bg-[#34d399] text-[#04140d] font-semibold hover:bg-[#10b981] transition-colors">
-            Verify identity
+          <Button type="submit" disabled={isPending || isSwitching} className="w-full h-10 bg-[#34d399] text-[#04140d] font-semibold hover:bg-[#10b981] transition-colors">
+            {isPending ? 'Verifying...' : 'Verify identity'}
           </Button>
         </form>
       </div>
 
-      <div className="flex flex-col items-center gap-2 text-sm text-[#555555]">
-        <Link to="/auth/login/backup-code" className="hover:text-[#999999] transition-colors">
+      {availableMethods && availableMethods.length > 1 && (
+        <div className="space-y-2 pt-4">
+          <p className="text-xs text-center text-[#555555]">Or verify using another method:</p>
+          <div className="flex flex-col gap-2">
+            {availableMethods.map((method: any) => (
+              method.type !== deviceType && (
+                <Button
+                  key={method.id}
+                  variant="outline"
+                  disabled={isSwitching}
+                  onClick={() => handleSwitchMethod(method.id, method.type)}
+                  className="w-full h-10 border-[#333333] bg-[#161616] text-sm text-[#e8e8e8] hover:border-[#555555] hover:bg-[#1e1e1e] transition-colors"
+                >
+                  {isSwitching ? 'Switching...' : `Use ${method.name}`}
+                </Button>
+              )
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="flex flex-col items-center gap-2 text-sm text-[#555555] pt-4">
+        <Link to="/auth/login/backup-code" state={{ challengeId }} className="hover:text-[#999999] transition-colors">
           Use a backup code
         </Link>
         <Link to="/auth/login" className="hover:text-[#999999] transition-colors">

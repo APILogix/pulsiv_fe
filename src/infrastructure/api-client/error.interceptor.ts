@@ -95,7 +95,29 @@ export function getErrorCode(error: unknown): string | null {
  * Error interceptor — surfaces readable error messages for non-401 failures
  * (401 is handled by the refresh interceptor). Re-throws so callers can
  * map error codes to user-friendly text via getErrorMessage().
+ * 
+ * Also intercepts 403 STEP_UP_REQUIRED to trigger the global MFA modal and retry.
  */
 export async function errorInterceptor(error: AxiosError) {
+  if (error.response?.status === 403) {
+    const code = getErrorCode(error);
+    if (code === 'STEP_UP_REQUIRED' && error.config) {
+      try {
+        const { useAuthStore } = await import('@/modules/auth/store/auth.store');
+        const { triggerStepUp } = useAuthStore.getState();
+        
+        // Wait for the user to complete the step-up challenge
+        await triggerStepUp();
+        
+        // Retry the original request
+        const { apiClient } = await import('./axios');
+        return apiClient.request(error.config);
+      } catch {
+        // Step-up failed or was cancelled, reject the original request
+        return Promise.reject(error);
+      }
+    }
+  }
+
   return Promise.reject(error);
 }

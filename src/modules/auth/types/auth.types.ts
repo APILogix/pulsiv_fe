@@ -64,6 +64,7 @@ export interface LoginMfaChallenge {
   challenge_id: string;
   expires_at: string;
   device_type: MFAType;
+  available_methods?: Array<{ id: string; type: MFAType; name: string }>;
 }
 
 export interface TOTPSetupDto {

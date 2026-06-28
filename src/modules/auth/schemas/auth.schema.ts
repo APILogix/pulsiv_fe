@@ -124,7 +124,7 @@ export const mfaToggleSchema = z.object({
 export type MfaToggleFormData = z.infer<typeof mfaToggleSchema>;
 
 export const mfaDisableRequestSchema = z.object({
-  mfa_code: z.string().length(6).regex(/^\d{6}$/),
+  mfa_code: z.string().length(6).regex(/^\d{6}$/).optional(),
 });
 export type MfaDisableRequestFormData = z.infer<typeof mfaDisableRequestSchema>;
 

@@ -2,6 +2,7 @@ import { useMutation } from '@tanstack/react-query';
 import { useNavigate } from 'react-router';
 import { authApi } from '../api/auth.api';
 import { useAuthStore } from '../store/auth.store';
+import { toast } from 'sonner';
 
 export function useLogin() {
   const navigate = useNavigate();
@@ -11,11 +12,12 @@ export function useLogin() {
     mutationFn: authApi.login,
     onSuccess: (data) => {
       if ('mfa_required' in data) {
-        navigate('/auth/login-mfa', {
+        navigate('/auth/login/mfa', {
           state: {
             challengeId: data.challenge_id,
             deviceType: data.device_type,
             expiresAt: data.expires_at,
+            availableMethods: data.available_methods,
           },
         });
         return;
@@ -24,6 +26,10 @@ export function useLogin() {
         setAuth(user);
         navigate('/dashboard', { replace: true });
       });
+    },
+    onError: (error: any) => {
+      const message = error?.response?.data?.message || error.message || 'Login failed';
+      toast.error(message);
     },
   });
 }

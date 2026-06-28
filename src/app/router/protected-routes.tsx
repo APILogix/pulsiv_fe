@@ -5,10 +5,6 @@ import { AppLayout } from "../layouts/AppLayout";
 
 const DashboardPage = lazy(() => import("@/modules/dashboard/index").then((m) => ({ default: m.DashboardPage ?? (() => null) })));
 const SecurityCenterPage = lazy(() => import("@/modules/auth/pages/SecurityCenterPage").then((m) => ({ default: m.default })));
-const ProfilePage = lazy(() => import("@/modules/auth/pages/ProfilePage").then((m) => ({ default: m.default })));
-const ChangePasswordPage = lazy(() => import("@/modules/auth/pages/ChangePasswordPage").then((m) => ({ default: m.default })));
-const MfaSetupPage = lazy(() => import("@/modules/auth/pages/MfaSetupPage").then((m) => ({ default: m.default })));
-const MfaDevicesPage = lazy(() => import("@/modules/auth/pages/MfaDevicesPage").then((m) => ({ default: m.default })));
 const SessionsPage = lazy(() => import("@/modules/auth/pages/SessionsPage").then((m) => ({ default: m.default })));
 const StepUpPage = lazy(() => import("@/modules/auth/pages/StepUpPage").then((m) => ({ default: m.default })));
 const AdminUsersPage = lazy(() => import("@/modules/auth/pages/AdminUsersPage").then((m) => ({ default: m.default })));
@@ -20,6 +16,13 @@ const SettingsBillingPage = lazy(() => import("@/modules/settings/pages/Settings
 const SettingsUsagePage = lazy(() => import("@/modules/settings/pages/SettingsUsagePage"));
 const SettingsPlaceholderPage = lazy(() => import("@/modules/settings/pages/SettingsPlaceholderPage"));
 const ModulePlaceholderPage = lazy(() => import("@/modules/platform/pages/ModulePlaceholderPage"));
+
+const PersonalDetailsPanel = lazy(() => import("@/modules/auth/components/profile/PersonalDetailsPanel").then(m => ({ default: m.PersonalDetailsPanel })));
+const ChangePasswordPanel = lazy(() => import("@/modules/auth/components/profile/ChangePasswordPanel").then(m => ({ default: m.ChangePasswordPanel })));
+const MfaSecurityPanel = lazy(() => import("@/modules/auth/components/profile/MfaSecurityPanel").then(m => ({ default: m.MfaSecurityPanel })));
+const ActiveSessionsPanel = lazy(() => import("@/modules/auth/components/profile/ActiveSessionsPanel").then(m => ({ default: m.ActiveSessionsPanel })));
+const BackupCodesPanel = lazy(() => import("@/modules/auth/components/profile/BackupCodesPanel").then(m => ({ default: m.BackupCodesPanel })));
+const AuditLogsPanel = lazy(() => import("@/modules/auth/components/profile/AuditLogsPanel").then(m => ({ default: m.AuditLogsPanel })));
 
 export const protectedRoutes: RouteObject[] = [
   {
@@ -126,6 +129,12 @@ export const protectedRoutes: RouteObject[] = [
             element: <SettingsLayout />,
             children: [
               { index: true, element: <SettingsGeneralPage /> },
+              { path: "profile", element: <PersonalDetailsPanel /> },
+              { path: "password", element: <ChangePasswordPanel /> },
+              { path: "mfa", element: <MfaSecurityPanel /> },
+              { path: "sessions", element: <ActiveSessionsPanel /> },
+              { path: "backup-codes", element: <BackupCodesPanel /> },
+              { path: "personal-logs", element: <AuditLogsPanel /> },
               { path: "security", element: <SecurityCenterPage /> },
               { path: "billing", element: <SettingsBillingPage /> },
               { path: "usage", element: <SettingsUsagePage /> },
@@ -145,11 +154,7 @@ export const protectedRoutes: RouteObject[] = [
             ],
           },
 
-          { path: "auth/profile", element: <ProfilePage /> },
           { path: "auth/security", element: <SecurityCenterPage /> },
-          { path: "auth/change-password", element: <ChangePasswordPage /> },
-          { path: "auth/mfa-setup", element: <MfaSetupPage /> },
-          { path: "auth/mfa-devices", element: <MfaDevicesPage /> },
           { path: "auth/sessions", element: <SessionsPage /> },
           { path: "auth/step-up", element: <StepUpPage /> },
         ],

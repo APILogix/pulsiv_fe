@@ -13,18 +13,21 @@ export function AppProviders({ children }: { children: ReactNode }) {
         </TooltipProvider>
         <Toaster
           position="top-right"
+          richColors
+          closeButton
+          expand
           toastOptions={{
-            style: {
-              background: 'rgba(17, 17, 17, 0.8)',
-              backdropFilter: 'blur(8px)',
-              border: '1px solid #262626',
-              color: '#e8e8e8',
-              borderRadius: '12px',
-              padding: '16px',
-              fontSize: '14px',
-              boxShadow: '0 4px 24px -4px rgba(0, 0, 0, 0.5)',
+            classNames: {
+              toast: 'group rounded-lg border border-border bg-popover text-popover-foreground shadow-lg',
+              title: 'text-sm font-medium text-foreground',
+              description: 'text-sm text-muted-foreground',
+              actionButton: 'bg-primary text-primary-foreground',
+              cancelButton: 'bg-muted text-muted-foreground',
+              success: 'border-[var(--green)]/30 bg-[var(--green-bg)] text-foreground',
+              error: 'border-[var(--red)]/30 bg-[var(--red-bg)] text-foreground',
+              warning: 'border-[var(--amber)]/30 bg-[var(--amber-bg)] text-foreground',
+              info: 'border-[var(--blue)]/30 bg-[var(--blue-bg)] text-foreground',
             },
-            className: 'my-custom-toast',
           }}
         />
       </QueryProvider>

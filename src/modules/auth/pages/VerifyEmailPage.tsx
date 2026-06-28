@@ -1,9 +1,23 @@
+import { useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { Button } from '@/components/ui/button';
+import { useVerifyEmail } from '../hooks/useVerifyEmail';
+import { useResendVerification } from '../hooks/useResendVerification';
 
 export default function VerifyEmailPage() {
   const [params] = useSearchParams();
   const status = params.get('status');
+  const token = params.get('token');
+  const email = params.get('email');
+
+  const { mutate: verifyEmail, isPending: isVerifying } = useVerifyEmail();
+  const { mutate: resendEmail, isPending: isResending } = useResendVerification();
+
+  useEffect(() => {
+    if (token && status !== 'success') {
+      verifyEmail({ token });
+    }
+  }, [token, status, verifyEmail]);
 
   return (
     <div className="w-full space-y-6">
@@ -36,15 +50,37 @@ export default function VerifyEmailPage() {
         ) : (
           <div className="space-y-4">
             <div className="flex items-center gap-3 p-3 rounded-lg bg-[#6366f1]/5 border border-[#6366f1]/10 text-sm text-[#818cf8]">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 7l-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
-              Check your inbox and click the verification link.
+              {isVerifying ? (
+                 <span className="flex items-center gap-2">
+                   <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeDasharray="31.4" strokeLinecap="round" /></svg>
+                   Verifying your email...
+                 </span>
+              ) : (
+                <>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 7l-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+                  Check your inbox and click the verification link.
+                </>
+              )}
             </div>
-            <p className="text-xs text-[#555555] text-center">
-              Didn&apos;t receive the email? Check your spam folder or request a new link.
-            </p>
-            <Button variant="outline" className="w-full h-10 border-[#262626] bg-transparent text-[#e8e8e8] hover:bg-[#262626]/50 transition-colors">
-              Resend Email
-            </Button>
+            {!isVerifying && (
+              <>
+                <p className="text-xs text-[#555555] text-center">
+                  Didn&apos;t receive the email? Check your spam folder or request a new link.
+                </p>
+                <Button 
+                  variant="outline" 
+                  onClick={() => {
+                    if (email) {
+                      resendEmail({ email });
+                    }
+                  }}
+                  disabled={isResending || !email}
+                  className="w-full h-10 border-[#262626] bg-transparent text-[#e8e8e8] hover:bg-[#262626]/50 transition-colors"
+                >
+                  {isResending ? 'Sending...' : email ? 'Resend Email' : 'Resend Email (Email required)'}
+                </Button>
+              </>
+            )}
           </div>
         )}
       </div>

@@ -21,7 +21,7 @@ export default function SsoLoginPage() {
     setLoading(true);
     authApi.ssoLogin(data)
       .then((result) => {
-        window.location.href = result.authorization_url;
+        window.location.assign(result.authorization_url);
       })
       .catch((err) => { setError(getErrorMessage(err)); setLoading(false); });
   });

@@ -3,6 +3,8 @@ import {
   Activity,
   AlertTriangle,
   BadgeDollarSign,
+  BarChart3,
+  Bell,
   BellRing,
   BrainCircuit,
   Building2,
@@ -11,18 +13,27 @@ import {
   Database,
   FolderOpen,
   Gauge,
+  Globe,
+  Key,
   KeyRound,
+  Laptop,
   LayoutDashboard,
+  LayoutGrid,
   LineChart,
   ListChecks,
   ListTree,
   Logs,
+  Package,
+  Plug,
   Radar,
   Receipt,
   ScrollText,
+  Settings,
   Shield,
   ShieldAlert,
+  ShieldCheck,
   Sparkles,
+  User,
   Users,
   Webhook,
   Workflow,
@@ -38,6 +49,7 @@ export interface ModuleNavItem {
   status: NavStatus;
   exact?: boolean;
   description: string;
+  group?: string; // Added for flyout grouping
 }
 
 export interface MainNavItem extends ModuleNavItem {
@@ -58,15 +70,15 @@ export const navStatusClassName: Record<NavStatus, string> = {
 
 export const mainNavigation: MainNavItem[] = [
   {
-    label: "Overview",
+    label: "Home",
     path: "/dashboard",
-    icon: LayoutDashboard,
+    icon: LayoutGrid,
     status: "live",
     exact: true,
     description: "Global landing page for product health, recent activity, and shortcuts.",
   },
   {
-    label: "Observability",
+    label: "Observe",
     path: "/observability",
     icon: Activity,
     status: "live",
@@ -83,9 +95,9 @@ export const mainNavigation: MainNavItem[] = [
     ],
   },
   {
-    label: "Projects",
+    label: "Workspaces",
     path: "/projects",
-    icon: FolderOpen,
+    icon: Package,
     status: "live",
     description: "Project lifecycle, project API keys, and project-level usage.",
     children: [
@@ -97,9 +109,9 @@ export const mainNavigation: MainNavItem[] = [
     ],
   },
   {
-    label: "Alerts",
+    label: "Act",
     path: "/alerts",
-    icon: BellRing,
+    icon: Bell,
     status: "coming-soon",
     description: "Incidents, alert rules, escalation policies, and notification channels.",
     children: [
@@ -110,9 +122,9 @@ export const mainNavigation: MainNavItem[] = [
     ],
   },
   {
-    label: "Ingestion",
+    label: "Connections",
     path: "/ingestion",
-    icon: Database,
+    icon: Plug,
     status: "live",
     description: "Telemetry pipelines, endpoints, health, and ingestion operations.",
     children: [
@@ -125,9 +137,9 @@ export const mainNavigation: MainNavItem[] = [
     ],
   },
   {
-    label: "AI Ops",
+    label: "Insights",
     path: "/ai",
-    icon: BrainCircuit,
+    icon: Sparkles,
     status: "coming-soon",
     description: "AI-assisted triage, anomaly detection, and root cause analysis.",
     children: [
@@ -140,9 +152,9 @@ export const mainNavigation: MainNavItem[] = [
     ],
   },
   {
-    label: "Administration",
+    label: "Team",
     path: "/admin",
-    icon: Building2,
+    icon: Users,
     status: "live",
     description: "Organization access, security, auditability, and enterprise controls.",
     children: [
@@ -160,7 +172,7 @@ export const mainNavigation: MainNavItem[] = [
     ],
   },
   {
-    label: "Billing",
+    label: "Usage",
     path: "/billing",
     icon: CreditCard,
     status: "live",
@@ -178,9 +190,33 @@ export const mainNavigation: MainNavItem[] = [
   {
     label: "Settings",
     path: "/settings",
-    icon: Wrench,
+    icon: Settings,
     status: "live",
     description: "Configuration surfaces, integrations, and organization preferences.",
+    children: [
+      // Personal
+      { label: 'Personal details', path: '/settings/profile', icon: User, exact: true, status: "live", description: "", group: "Personal" },
+      { label: 'Change password', path: '/settings/password', icon: Key, status: "live", description: "", group: "Personal" },
+      { label: 'Security & MFA', path: '/settings/mfa', icon: ShieldCheck, status: "live", description: "", group: "Personal" },
+      { label: 'Active sessions', path: '/settings/sessions', icon: Laptop, status: "live", description: "", group: "Personal" },
+      { label: 'Backup codes', path: '/settings/backup-codes', icon: KeyRound, status: "live", description: "", group: "Personal" },
+      { label: 'My audit logs', path: '/settings/personal-logs', icon: Activity, status: "live", description: "", group: "Personal" },
+      // General
+      { label: 'General', path: '/settings', icon: Settings, exact: true, status: "live", description: "", group: "General" },
+      { label: 'Billing', path: '/settings/billing', icon: CreditCard, status: "live", description: "", group: "General" },
+      { label: 'Usage & limits', path: '/settings/usage', icon: BarChart3 , status: "live", description: "", group: "General" },
+      // Configuration
+      { label: 'API keys', path: '/settings/api-keys', icon: KeyRound, status: "live", description: "", group: "Configuration" },
+      { label: 'Webhooks', path: '/settings/webhooks', icon: Webhook, status: "live", description: "", group: "Configuration" },
+      { label: 'Integrations', path: '/settings/integrations', icon: Globe, status: "live", description: "", group: "Configuration" },
+      { label: 'Data retention', path: '/settings/data-retention', icon: Database, status: "live", description: "", group: "Configuration" },
+      { label: 'Alert rules', path: '/settings/alert-rules', icon: BellRing, status: "live", description: "", group: "Configuration" },
+      { label: 'Audit log', path: '/settings/audit-log', icon: ScrollText, status: "live", description: "", group: "Configuration" },
+      // Admin
+      { label: 'Members', path: '/settings/members', icon: Users, status: "live", description: "", group: "Admin" },
+      { label: 'SSO & security', path: '/settings/security', icon: Shield, status: "live", description: "", group: "Admin" },
+      { label: 'SCIM provisioning', path: '/settings/scim', icon: Workflow, status: "live", description: "", group: "Admin" }
+    ],
   },
 ];
 

@@ -8,7 +8,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
-import { ChevronsUpDown, Check, Plus } from 'lucide-react';
+import { ChevronDown, Check, Plus } from 'lucide-react';
 
 
 // Mock data for now
@@ -28,12 +28,15 @@ export function OrgSwitcher() {
       <DropdownMenuTrigger asChild>
         <Button
           variant="ghost"
-          className="flex items-center gap-2 px-2 hover:bg-accent text-foreground focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:bg-accent"
+          className="flex items-center gap-2 px-2 hover:bg-accent text-foreground focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:bg-accent h-9"
         >
-          <span className="font-semibold text-sm truncate max-w-[120px] md:max-w-[200px]">
+          <div className="flex h-5 w-5 items-center justify-center rounded-[4px] border border-border bg-transparent text-[11px] font-bold text-foreground">
+            {activeOrg?.name?.charAt(0).toUpperCase()}
+          </div>
+          <span className="font-semibold text-[14px] truncate max-w-[120px] md:max-w-[200px]">
             {activeOrg?.name}
           </span>
-          <ChevronsUpDown className="h-4 w-4 text-muted-foreground" />
+          <ChevronDown className="h-3.5 w-3.5 text-muted-foreground opacity-70" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-[240px] bg-popover border-border text-popover-foreground">

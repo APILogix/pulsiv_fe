@@ -7,8 +7,8 @@ export function useRegister() {
 
   return useMutation({
     mutationFn: authApi.register,
-    onSuccess: () => {
-      navigate('/auth/login', {
+    onSuccess: (_, variables) => {
+      navigate(`/auth/verify-email?email=${encodeURIComponent(variables.email)}`, {
         state: { message: 'Account created. Please check your email to verify.' },
       });
     },

@@ -1,4 +1,6 @@
 import type { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from 'axios';
+import { toast } from 'sonner';
+import { useAuthStore } from '@/modules/auth/store/auth.store';
 import { tokenService } from '@/modules/auth/services/token.service';
 
 /**
@@ -17,6 +19,7 @@ const REFRESH_ENDPOINT = '/auth/sessions/refresh';
 const LOGIN_ENDPOINTS = ['/auth/login', '/auth/login/mfa', '/auth/login/backup-code'];
 
 let isRefreshing = false;
+let signedOutToastShown = false;
 let queuedRequests: Array<{
   resolve: (config: InternalAxiosRequestConfig) => void;
   reject: (error: unknown) => void;
@@ -46,6 +49,25 @@ function flushQueue(error: unknown | null): void {
   queuedRequests = [];
 }
 
+function handleRefreshSessionExpired(): void {
+  tokenService.clearTokens();
+  useAuthStore.getState().clearAuth();
+
+  if (!signedOutToastShown) {
+    signedOutToastShown = true;
+    toast.error('Signed off', {
+      description: 'Your session expired. Please sign in again.',
+    });
+    window.setTimeout(() => {
+      signedOutToastShown = false;
+    }, 5000);
+  }
+
+  if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/auth/')) {
+    window.location.href = '/auth/login';
+  }
+}
+
 export function attachRefreshInterceptor(client: AxiosInstance): void {
   client.interceptors.response.use(
     (response) => response,
@@ -53,6 +75,14 @@ export function attachRefreshInterceptor(client: AxiosInstance): void {
       const originalRequest = error.config as
         | (InternalAxiosRequestConfig & { _retry?: boolean })
         | undefined;
+      const originalUrl = originalRequest?.url ?? '';
+
+      if (error.response?.status === 401 && originalUrl.includes(REFRESH_ENDPOINT)) {
+        isRefreshing = false;
+        flushQueue(error);
+        handleRefreshSessionExpired();
+        return Promise.reject(error);
+      }
 
       if (
         error.response?.status !== 401 ||
@@ -93,11 +123,7 @@ export function attachRefreshInterceptor(client: AxiosInstance): void {
       } catch (refreshError) {
         isRefreshing = false;
         flushQueue(refreshError);
-        tokenService.clearTokens();
-
-        if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/auth/')) {
-          window.location.href = '/auth/login';
-        }
+        handleRefreshSessionExpired();
         return Promise.reject(refreshError);
       }
     },

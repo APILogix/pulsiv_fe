@@ -1,39 +1,23 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { authApi } from '../api/auth.api';
+import { useListSessions } from '../hooks/useListSessions';
+import { useRevokeSession, useRevokeAllSessions, useRevokeOtherSessions } from '../hooks/useRevokeSession';
 import type { SessionInfo } from '../types/auth.types';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { getErrorMessage } from '@/infrastructure/api-client/error.interceptor';
 
 export default function SessionsPage() {
-  const qc = useQueryClient();
-  const { data: sessions, isLoading } = useQuery({ queryKey: ['sessions'], queryFn: authApi.listSessions });
+  const { data: sessions, isLoading } = useListSessions();
 
-  const revokeMutation = useMutation({
-    mutationFn: authApi.revokeSession,
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['sessions'] }),
-    onError: (err) => alert(getErrorMessage(err)),
-  });
-
-  const revokeAllMutation = useMutation({
-    mutationFn: authApi.revokeAllSessions,
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['sessions'] }),
-    onError: (err) => alert(getErrorMessage(err)),
-  });
-
-  const revokeOthersMutation = useMutation({
-    mutationFn: authApi.revokeOtherSessions,
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['sessions'] }),
-    onError: (err) => alert(getErrorMessage(err)),
-  });
+  const { mutate: revokeSession } = useRevokeSession();
+  const { mutate: revokeAllSessions } = useRevokeAllSessions();
+  const { mutate: revokeOtherSessions } = useRevokeOtherSessions();
 
   return (
     <div className="max-w-2xl space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Sessions</h1>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => revokeOthersMutation.mutate()}>Revoke Others</Button>
-          <Button variant="destructive" size="sm" onClick={() => revokeAllMutation.mutate()}>Revoke All</Button>
+          <Button variant="outline" size="sm" onClick={() => revokeOtherSessions()}>Revoke Others</Button>
+          <Button variant="destructive" size="sm" onClick={() => revokeAllSessions()}>Revoke All</Button>
         </div>
       </div>
       {isLoading && <p className="text-muted-foreground">Loading...</p>}
@@ -49,7 +33,7 @@ export default function SessionsPage() {
               {s.is_current ? (
                 <span className="text-xs text-green-500 font-medium">Current</span>
               ) : (
-                <Button variant="destructive" size="sm" onClick={() => revokeMutation.mutate(s.id)}>Revoke</Button>
+                <Button variant="destructive" size="sm" onClick={() => revokeSession(s.id)}>Revoke</Button>
               )}
             </CardContent>
           </Card>

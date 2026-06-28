@@ -1,6 +1,6 @@
 @import "tailwindcss";
 @import "tw-animate-css";
-@import "@fontsource-variable/inter";
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 @import "@fontsource/jetbrains-mono/400.css";
 @import "@fontsource/jetbrains-mono/500.css";
 @import "@fontsource/jetbrains-mono/600.css";
@@ -104,8 +104,13 @@
   --sidebar-ring: #059669;
 
   --mono: 'JetBrains Mono', monospace;
-  --sans: 'Inter Variable', sans-serif;
+  --sans: 'Inter', sans-serif;
   --radius-lg: 10px;
+
+  /* sidebar sizes */
+  --rail-width: 56px;
+  --flyout-width: 260px;
+  --header-height: 56px;
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -183,6 +188,11 @@
   --sidebar-accent-foreground: #e8e8e8;
   --sidebar-border: #262626;
   --sidebar-ring: #34d399;
+
+  /* sidebar sizes */
+  --rail-width: 56px;
+  --flyout-width: 260px;
+  --header-height: 56px;
 }
 
 @layer base {
@@ -198,11 +208,14 @@
   html {
     @apply font-sans;
   }
+  button {
+    cursor: pointer;
+  }
 }
 
 @theme inline {
-  --font-heading: "Inter Variable", sans-serif;
-  --font-sans: "Inter Variable", sans-serif;
+  --font-heading: "Inter", sans-serif;
+  --font-sans: "Inter", sans-serif;
   --font-mono: "JetBrains Mono", monospace;
 
   --color-sidebar-ring: var(--sidebar-ring);
@@ -263,3 +276,41 @@
 .sidebar-scroll::-webkit-scrollbar {
   display: none;
 }
+
+/* Tooltip for rail icons */
+.rail-item::after {
+  content: attr(data-title);
+  position: absolute;
+  left: 56px;
+  background: var(--bg1);
+  border: 1px solid var(--border);
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
+  z-index: 110;
+}
+.rail-item:hover::after {
+  opacity: 1;
+}
+
+/* Flyout Accordion logic */
+.nav-group-children {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease;
+}
+.nav-group-children.open {
+  max-height: 400px;
+}
+
+/* Dim main content when flyout is unpinned and open */
+body.flyout-overlay-active #main-content {
+  opacity: 0.4;
+  pointer-events: none;
+}
+

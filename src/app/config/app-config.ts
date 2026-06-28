@@ -1,4 +1,4 @@
 export const appConfig = {
-  name: 'Pulse App',
+  name: 'Pulsiv',
   version: '1.0.0',
 };

@@ -301,3 +301,10 @@ DB=amber, ERR=red, RES=indigo). Time axis 0→1200ms. Error span gets red bar + 
 --green:#34d399; --green-d:#10b981; --green-bg:rgba(52,211,153,0.08);
 --brand:#6366f1; --brand-d:#4f46e5; --brand-fg:#ffffff; --brand-bg:rgba(99,102,241,0.12);
 ```
+
+The UI Best Practice: "Dual-Width" Strategy
+In enterprise dashboards, you should apply a Dual-Width Strategy:
+
+Forms & Settings: Constrain to ~600px - 800px (Centered or Left-aligned).
+
+Data Tables & Logs: Expand to ~1100px - 1400px (or take up 100% of the container with some padding).

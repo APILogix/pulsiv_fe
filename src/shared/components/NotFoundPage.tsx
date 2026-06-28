@@ -44,7 +44,7 @@ export default function NotFoundPage() {
         </div>
 
         {/* Status badge */}
-        <div className="flex items-center gap-2 mb-4">
+        {/* <div className="flex items-center gap-2 mb-4">
           <span className="w-2 h-2 rounded-full bg-[var(--amber)] animate-pulse" />
           <span className="font-[family-name:var(--mono)] text-xs uppercase tracking-wider text-[var(--amber)]">
             Signal lost
@@ -57,7 +57,7 @@ export default function NotFoundPage() {
         <p className="text-sm text-[var(--text2)] leading-relaxed mb-8">
           The requested endpoint does not exist or has been deprecated. 
           Verify the URL path and try again.
-        </p>
+        </p> */}
 
         {/* Actions */}
         <div className="flex items-center gap-3">

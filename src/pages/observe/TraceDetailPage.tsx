@@ -1,9 +1,7 @@
 import { useParams, useNavigate } from "react-router";
 import { ArrowLeft } from "lucide-react";
 import { useTraceEvent } from "@/hooks/useDummyData";
-import {
-  PageHeader, SectionCard, KpiCard, Tabs, JsonViewer, Button, CopyButton, formatLatency,
-} from "@/shared/observe";
+import { PageHeader, SectionCard, KpiCard, Tabs, JsonViewer, Button, CopyButton, formatLatency, DetailSkeleton } from "@/shared/observe";
 import type { AggregatedSpanEvent } from "@/types/events";
 
 const KIND_TONE: Record<string, string> = {
@@ -16,7 +14,7 @@ export default function TraceDetailPage() {
   const navigate = useNavigate();
   const { data: trace, isLoading } = useTraceEvent(traceId);
 
-  if (isLoading) return <div className="p-8 text-[var(--text3)]">Loading trace…</div>;
+  if (isLoading) return <DetailSkeleton />;
   if (!trace) return <div className="p-8 text-[var(--text2)]">Trace <code>{traceId}</code> not found.</div>;
 
   const flat = flatten(trace.rootSpan, 0);

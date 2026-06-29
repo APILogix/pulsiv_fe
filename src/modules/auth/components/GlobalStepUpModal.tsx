@@ -9,8 +9,9 @@ import { useAuthStore } from '@/modules/auth/store/auth.store';
 import { authApi } from '@/modules/auth/api/auth.api';
 import { mfaVerifyStepUpSchema, type MfaVerifyStepUpFormData } from '@/modules/auth/schemas/auth.schema';
 import type { MFAChallenge } from '@/modules/auth/types/auth.types';
+import { stepUpWithPasskey, WebAuthnCeremonyError } from '@/modules/auth/services/webauthn.client';
 import { useMutation } from '@tanstack/react-query';
-import { Loader2, Mail } from 'lucide-react';
+import { Loader2, Mail, KeyRound } from 'lucide-react';
 import { toast } from 'sonner';
 
 export function GlobalStepUpModal() {
@@ -19,6 +20,9 @@ export function GlobalStepUpModal() {
   
   const [challenge, setChallenge] = useState<MFAChallenge | null>(null);
   const [isResending, setIsResending] = useState(false);
+  const [passkeyBusy, setPasskeyBusy] = useState(false);
+
+  const isPasskey = challenge?.device_type === 'hardware_key';
   
   const { register, handleSubmit, formState: { errors }, reset, setValue } = useForm<MfaVerifyStepUpFormData>({
     resolver: zodResolver(mfaVerifyStepUpSchema),
@@ -71,6 +75,21 @@ export function GlobalStepUpModal() {
     }
   });
 
+  async function handlePasskeyStepUp() {
+    if (!challenge) return;
+    setPasskeyBusy(true);
+    try {
+      await stepUpWithPasskey(challenge.challenge_id);
+      resolveStepUp();
+      toast.success('Identity verified');
+    } catch (err) {
+      const msg = err instanceof WebAuthnCeremonyError ? err.message : 'Security key verification failed';
+      toast.error(msg);
+    } finally {
+      setPasskeyBusy(false);
+    }
+  }
+
   const handleOpenChange = (open: boolean) => {
     if (!open) {
       rejectStepUp(new Error('MFA verification cancelled'));
@@ -87,7 +106,9 @@ export function GlobalStepUpModal() {
         <DialogHeader>
           <DialogTitle>Security Verification</DialogTitle>
           <DialogDescription className="text-[var(--text3)]">
-            {challenge?.device_type === 'email'
+            {isPasskey
+              ? 'Use your security key or passkey to verify your identity.'
+              : challenge?.device_type === 'email'
               ? 'Enter the 6-digit code sent to your email.'
               : 'Enter your 6-digit authenticator code to continue.'}
           </DialogDescription>
@@ -96,6 +117,27 @@ export function GlobalStepUpModal() {
         {!challenge ? (
           <div className="flex justify-center py-8">
             <Loader2 className="animate-spin text-[var(--brand)]" size={24} />
+          </div>
+        ) : isPasskey ? (
+          <div className="space-y-4 pt-4">
+            <Button
+              type="button"
+              onClick={handlePasskeyStepUp}
+              disabled={passkeyBusy}
+              className="w-full h-11 bg-[var(--brand)] text-[var(--brand-fg)] hover:bg-[var(--brand-hover)] hover:text-[var(--brand-fg)] flex items-center justify-center gap-2"
+            >
+              {passkeyBusy ? <><Loader2 className="h-4 w-4 animate-spin" /> Waiting for security key…</> : <><KeyRound size={16} /> Use security key</>}
+            </Button>
+            <div className="flex justify-end">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => handleOpenChange(false)}
+                className="border-[var(--border)] text-[var(--text2)] hover:bg-[var(--bg2)] hover:text-[var(--text)]"
+              >
+                Cancel
+              </Button>
+            </div>
           </div>
         ) : (
           <form onSubmit={onSubmit} className="space-y-4 pt-4">

@@ -3,12 +3,13 @@ import { useNavigate } from 'react-router';
 import { authApi } from '../api/auth.api';
 import { useAuthStore } from '../store/auth.store';
 import type { MFAChallenge } from '../types/auth.types';
+import { stepUpWithPasskey, WebAuthnCeremonyError } from '../services/webauthn.client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { getErrorMessage } from '@/infrastructure/api-client/error.interceptor';
-import { Loader2, Mail } from 'lucide-react';
+import { Loader2, Mail, KeyRound } from 'lucide-react';
 
 export default function StepUpPage() {
   const navigate = useNavigate();
@@ -19,6 +20,12 @@ export default function StepUpPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isVerifying, setIsVerifying] = useState(false);
   const [isResending, setIsResending] = useState(false);
+  const isPasskey = challenge?.device_type === 'hardware_key';
+
+  const goBack = () => {
+    const from = new URLSearchParams(window.location.search).get('from') || '/dashboard';
+    navigate(from, { replace: true });
+  };
 
   const createChallenge = async () => {
     setError('');
@@ -44,10 +51,24 @@ export default function StepUpPage() {
     try {
       await authApi.verifyMFAChallenge({ challenge_id: challenge.challenge_id, code });
       setStepUpFresh(true);
-      const from = new URLSearchParams(window.location.search).get('from') || '/dashboard';
-      navigate(from, { replace: true });
+      goBack();
     } catch (err) {
       setError(getErrorMessage(err));
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+
+  const handlePasskeyVerify = async () => {
+    if (!challenge) return;
+    setError('');
+    setIsVerifying(true);
+    try {
+      await stepUpWithPasskey(challenge.challenge_id);
+      setStepUpFresh(true);
+      goBack();
+    } catch (err) {
+      setError(err instanceof WebAuthnCeremonyError ? err.message : getErrorMessage(err));
     } finally {
       setIsVerifying(false);
     }
@@ -71,7 +92,9 @@ export default function StepUpPage() {
       <CardHeader className="text-center">
         <CardTitle>Identity Verification</CardTitle>
         <CardDescription>
-          {challenge?.device_type === 'email'
+          {isPasskey
+            ? 'Use your security key or passkey to continue.'
+            : challenge?.device_type === 'email'
             ? 'Enter the code sent to your email to continue.'
             : 'Enter a code from your authenticator app to continue.'}
         </CardDescription>
@@ -81,6 +104,13 @@ export default function StepUpPage() {
           <div className="flex justify-center py-6">
             <Loader2 className="animate-spin" size={24} />
           </div>
+        ) : isPasskey ? (
+          <>
+            {error && <p className="text-destructive text-sm">{error}</p>}
+            <Button className="w-full flex items-center justify-center gap-2" onClick={handlePasskeyVerify} disabled={isVerifying}>
+              {isVerifying ? <><Loader2 className="h-4 w-4 animate-spin" /> Waiting for security key…</> : <><KeyRound size={16} /> Use security key</>}
+            </Button>
+          </>
         ) : (
           <>
             {challenge?.device_type === 'email' && (
@@ -97,12 +127,12 @@ export default function StepUpPage() {
               <Label htmlFor="code">6-Digit Code</Label>
               <Input id="code" maxLength={6} value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))} />
             </div>
+            {error && <p className="text-destructive text-sm">{error}</p>}
+            <Button className="w-full hover:text-primary-foreground" onClick={handleVerify} disabled={!challenge || isVerifying || code.length < 6}>
+              {isVerifying ? 'Verifying...' : 'Verify'}
+            </Button>
           </>
         )}
-        {error && <p className="text-destructive text-sm">{error}</p>}
-        <Button className="w-full hover:text-primary-foreground" onClick={handleVerify} disabled={!challenge || isVerifying || code.length < 6}>
-          {isVerifying ? 'Verifying...' : 'Verify'}
-        </Button>
       </CardContent>
     </Card>
   );

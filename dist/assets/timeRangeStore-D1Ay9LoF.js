@@ -1,0 +1,1 @@
+import{a9 as s}from"./index-DIm0DGyz.js";const t=s(i=>({timeRange:"1h",isLive:!1,setTimeRange:e=>i({timeRange:e}),toggleLive:()=>i(e=>({isLive:!e.isLive}))})),o=["15m","1h","6h","24h","7d","30d"];export{o as T,t as u};

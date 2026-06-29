@@ -46,6 +46,7 @@ export interface MFADeviceDto {
   id: string;
   type: MFAType;
   name: string;
+  display_hint?: string | null;
   verified: boolean;
   is_primary: boolean;
   last_used_at: string | null;
@@ -59,12 +60,21 @@ export interface MFAChallenge {
   expires_at: string;
 }
 
+export interface LoginMfaMethod {
+  id: string;
+  type: MFAType;
+  name: string;
+  display_hint?: string | null;
+  is_primary?: boolean;
+  last_used_at?: string | null;
+}
+
 export interface LoginMfaChallenge {
   mfa_required: true;
   challenge_id: string;
   expires_at: string;
   device_type: MFAType;
-  available_methods?: Array<{ id: string; type: MFAType; name: string }>;
+  available_methods?: LoginMfaMethod[];
 }
 
 export interface TOTPSetupDto {

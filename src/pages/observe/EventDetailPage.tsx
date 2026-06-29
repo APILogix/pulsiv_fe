@@ -1,10 +1,8 @@
 import { useParams, useNavigate } from "react-router";
 import { ArrowLeft } from "lucide-react";
 import { useErrorEvents } from "@/hooks/useDummyData";
-import {
-  PageHeader, SectionCard, SeverityBadge, EventTypeBadge, Tabs, JsonViewer,
-  Button, CopyButton, formatAbsoluteTime,
-} from "@/shared/observe";
+import { PageHeader, SectionCard, SeverityBadge, EventTypeBadge, Tabs, JsonViewer,
+  Button, CopyButton, formatAbsoluteTime, DetailSkeleton } from "@/shared/observe";
 
 export default function EventDetailPage() {
   const { eventId = "" } = useParams();
@@ -12,7 +10,7 @@ export default function EventDetailPage() {
   const { data, isLoading } = useErrorEvents();
   const event = (data ?? []).find((e) => e.eventId === eventId);
 
-  if (isLoading) return <div className="p-8 text-[var(--text3)]">Loading event…</div>;
+  if (isLoading) return <DetailSkeleton />;
   if (!event) return <div className="p-8 text-[var(--text2)]">Event <code>{eventId}</code> not found.</div>;
 
   return (

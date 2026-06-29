@@ -2,9 +2,7 @@ import { useActionState } from "react";
 import { useParams, useNavigate } from "react-router";
 import { ArrowLeft } from "lucide-react";
 import { useIntegration } from "@/hooks/useDummyData";
-import {
-  PageHeader, SectionCard, StatusBadge, Field, SubmitButton, inputClass, Table, Tr, Td, Timestamp, demoSuccess,
-} from "@/shared/observe";
+import { PageHeader, SectionCard, StatusBadge, Field, SubmitButton, inputClass, Table, Tr, Td, Timestamp, demoSuccess, DetailSkeleton } from "@/shared/observe";
 
 export default function IntegrationDetailPage() {
   const { integrationId = "" } = useParams();
@@ -17,7 +15,7 @@ export default function IntegrationDetailPage() {
     return { ok: true };
   }, { ok: false });
 
-  if (isLoading) return <div className="p-8 text-[var(--text3)]">Loading integration…</div>;
+  if (isLoading) return <DetailSkeleton />;
   if (!i) return <div className="p-8 text-[var(--text2)]">Integration not found.</div>;
 
   return (

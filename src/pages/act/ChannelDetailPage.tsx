@@ -2,9 +2,7 @@ import { useActionState } from "react";
 import { useParams, useNavigate } from "react-router";
 import { ArrowLeft, Send } from "lucide-react";
 import { useChannel } from "@/hooks/useDummyData";
-import {
-  PageHeader, SectionCard, StatusBadge, Field, SubmitButton, Button, inputClass, Table, Tr, Td, StatusCodeBadge, Timestamp, demoSuccess,
-} from "@/shared/observe";
+import { PageHeader, SectionCard, StatusBadge, Field, SubmitButton, Button, inputClass, Table, Tr, Td, StatusCodeBadge, Timestamp, demoSuccess, DetailSkeleton } from "@/shared/observe";
 
 export default function ChannelDetailPage() {
   const { channelId = "" } = useParams();
@@ -17,7 +15,7 @@ export default function ChannelDetailPage() {
     return { ok: true };
   }, { ok: false });
 
-  if (isLoading) return <div className="p-8 text-[var(--text3)]">Loading channel…</div>;
+  if (isLoading) return <DetailSkeleton />;
   if (!c) return <div className="p-8 text-[var(--text2)]">Channel not found.</div>;
 
   const deliveries = Array.from({ length: 8 }, (_, i) => ({

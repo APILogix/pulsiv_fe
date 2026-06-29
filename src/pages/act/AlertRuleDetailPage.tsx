@@ -5,9 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { ArrowLeft } from "lucide-react";
 import { useAlertRule } from "@/hooks/useDummyData";
-import {
-  PageHeader, SectionCard, Field, SubmitButton, Button, inputClass, MetricSparkline, SeverityBadge, demoSuccess,
-} from "@/shared/observe";
+import { PageHeader, SectionCard, Field, SubmitButton, Button, inputClass, MetricSparkline, SeverityBadge, demoSuccess, DetailSkeleton } from "@/shared/observe";
 
 const schema = z.object({
   name: z.string().min(1, "Required"),
@@ -33,7 +31,7 @@ export default function AlertRuleDetailPage() {
     return { ok: true };
   }, { ok: false });
 
-  if (isLoading) return <div className="p-8 text-[var(--text3)]">Loading rule…</div>;
+  if (isLoading) return <DetailSkeleton />;
   if (!rule) return <div className="p-8 text-[var(--text2)]">Rule not found.</div>;
 
   return (

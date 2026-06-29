@@ -1,10 +1,8 @@
 import { useParams, useNavigate } from "react-router";
 import { ArrowLeft, CheckCircle2, UserX } from "lucide-react";
 import { useErrorGroup } from "@/hooks/useDummyData";
-import {
-  PageHeader, SectionCard, SeverityBadge, Tabs, JsonViewer, Button, Timestamp,
-  MetricSparkline, demoSuccess, demoAction,
-} from "@/shared/observe";
+import { PageHeader, SectionCard, SeverityBadge, Tabs, JsonViewer, Button, Timestamp,
+  MetricSparkline, demoSuccess, demoAction, DetailSkeleton } from "@/shared/observe";
 import type { StackFrame, Breadcrumb } from "@/types/events";
 
 export default function ErrorDetailPage() {
@@ -12,7 +10,7 @@ export default function ErrorDetailPage() {
   const navigate = useNavigate();
   const { data: group, isLoading } = useErrorGroup(decodeURIComponent(fingerprint));
 
-  if (isLoading) return <div className="p-8 text-[var(--text3)]">Loading error…</div>;
+  if (isLoading) return <DetailSkeleton />;
   if (!group) return <div className="p-8 text-[var(--text2)]">Error group not found.</div>;
 
   const sample = group.occurrences[0];

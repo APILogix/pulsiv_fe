@@ -6,7 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import * as dummy from "@/lib/dummy-data";
 import type { ErrorFilters, RequestFilters, LogFilters } from "@/types/events";
 
-const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
+const delay = (ms: number) => new Promise((r) => setTimeout(r, ms + 1200));
 
 const STALE_FAST = 15 * 1000;
 const STALE = 30 * 1000;

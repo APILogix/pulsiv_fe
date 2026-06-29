@@ -1,15 +1,30 @@
 import { useState } from "react";
+import { MultiLineChart, CHART_COLORS } from "@/pages/dashboards/widgets";
+import { seededSeries, percentile } from "@/pages/dashboards/lib";
 import { useRequestEvents } from "@/hooks/useDummyData";
+import { useTimeRangeStore, TIME_RANGES } from "@/stores/timeRangeStore";
 import {
-  PageHeader, KpiCard, SectionCard, Table, Tr, Td, LatencyBar, StatusCodeBadge, formatLatency,
+  PageHeader, KpiCard, SectionCard, Table, Tr, Td, LatencyBar, StatusCodeBadge, formatLatency, FilterSelect
 } from "@/shared/observe";
 import { cn } from "@/lib/utils";
 
 const DIMENSIONS = ["route", "service", "method"] as const;
+const METHOD_OPTIONS = [
+  { value: "all", label: "All methods" },
+  { value: "GET", label: "GET" },
+  { value: "POST", label: "POST" },
+  { value: "PUT", label: "PUT" },
+  { value: "DELETE", label: "DELETE" },
+];
+const TIME_OPTIONS = TIME_RANGES.map((r) => ({ value: r, label: r }));
 
 export default function LatencyPage() {
   const [dimension, setDimension] = useState<(typeof DIMENSIONS)[number]>("route");
-  const { data } = useRequestEvents();
+  const [methodFilter, setMethodFilter] = useState("all");
+  const timeRange = useTimeRangeStore((s) => s.timeRange);
+  const setTimeRange = useTimeRangeStore((s) => s.setTimeRange);
+
+  const { data } = useRequestEvents(methodFilter !== "all" ? { method: methodFilter } : undefined);
   const reqs = data ?? [];
 
   const lat = reqs.map((r) => r.latency);
@@ -29,7 +44,16 @@ export default function LatencyPage() {
 
   return (
     <div className="flex flex-col gap-5">
-      <PageHeader title="Latency" description="Percentile breakdown and slow-request analysis." />
+      <PageHeader
+        title="Latency"
+        description="Percentile breakdown and slow-request analysis."
+        actions={
+          <div className="flex items-center gap-2">
+            <FilterSelect label="Method" value={methodFilter} onChange={setMethodFilter} options={METHOD_OPTIONS} />
+            <FilterSelect label="Range" value={timeRange} onChange={setTimeRange} options={TIME_OPTIONS} />
+          </div>
+        }
+      />
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <KpiCard label="p50" value={formatLatency(p50)} />
@@ -38,15 +62,14 @@ export default function LatencyPage() {
         <KpiCard label="p99" value={formatLatency(p99)} trend="down" delta="+58ms" />
       </div>
 
-      <SectionCard title="Latency heatmap">
-        <div className="grid grid-cols-12 gap-1">
-          {Array.from({ length: 72 }, (_, i) => {
-            const v = Math.random();
-            const tone = v > 0.8 ? "var(--red)" : v > 0.5 ? "var(--amber)" : "var(--green)";
-            return <div key={i} className="h-6 rounded-[3px]" style={{ background: tone, opacity: 0.3 + v * 0.7 }} title={`${Math.round(v * 1000)}ms`} />;
-          })}
-        </div>
-        <div className="mt-2 flex justify-between text-[11px] text-[var(--text3)]"><span>24h ago</span><span>now</span></div>
+      <SectionCard title="Latency trends (24h)">
+        <MultiLineChart
+          series={[
+            { label: "p50", color: CHART_COLORS[2], data: seededSeries("lat-p50", 24, p50, p50 * 0.2) },
+            { label: "p90", color: CHART_COLORS[3], data: seededSeries("lat-p90", 24, p90, p90 * 0.2) },
+            { label: "p95", color: CHART_COLORS[4], data: seededSeries("lat-p95", 24, p95, p95 * 0.2) },
+          ]}
+        />
       </SectionCard>
 
       <SectionCard
@@ -90,8 +113,4 @@ export default function LatencyPage() {
   );
 }
 
-function percentile(values: number[], p: number) {
-  if (values.length === 0) return 0;
-  const sorted = [...values].sort((a, b) => a - b);
-  return sorted[Math.max(0, Math.ceil((p / 100) * sorted.length) - 1)];
-}
+

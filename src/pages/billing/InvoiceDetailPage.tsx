@@ -1,14 +1,14 @@
 import { useParams, useNavigate } from "react-router";
 import { ArrowLeft, Download } from "lucide-react";
 import { useInvoice } from "@/hooks/useDummyData";
-import { PageHeader, SectionCard, StatusBadge, Table, Tr, Td, Button, formatDate, demoSuccess } from "@/shared/observe";
+import { PageHeader, SectionCard, StatusBadge, Table, Tr, Td, Button, formatDate, demoSuccess, DetailSkeleton } from "@/shared/observe";
 
 export default function InvoiceDetailPage() {
   const { invoiceId = "" } = useParams();
   const navigate = useNavigate();
   const { data: inv, isLoading } = useInvoice(invoiceId);
 
-  if (isLoading) return <div className="p-8 text-[var(--text3)]">Loading invoice…</div>;
+  if (isLoading) return <DetailSkeleton />;
   if (!inv) return <div className="p-8 text-[var(--text2)]">Invoice not found.</div>;
 
   return (

@@ -1,7 +1,7 @@
 import { useParams, useNavigate } from "react-router";
 import { ArrowLeft } from "lucide-react";
 import { useEnvironment } from "@/hooks/useDummyData";
-import { PageHeader, SectionCard, KpiCard, Button, formatCompact, demoSuccess } from "@/shared/observe";
+import { PageHeader, SectionCard, KpiCard, Button, formatCompact, demoSuccess, DetailSkeleton } from "@/shared/observe";
 import { cn } from "@/lib/utils";
 
 export default function EnvironmentDetailPage() {
@@ -9,7 +9,7 @@ export default function EnvironmentDetailPage() {
   const navigate = useNavigate();
   const { data: e, isLoading } = useEnvironment(envId);
 
-  if (isLoading) return <div className="p-8 text-[var(--text3)]">Loading environment…</div>;
+  if (isLoading) return <DetailSkeleton />;
   if (!e) return <div className="p-8 text-[var(--text2)]">Environment not found.</div>;
 
   const settings = [

@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { CardSkeleton } from "./Skeletons";
 
 interface InfiniteCardsProps<T> {
   items: T[];
@@ -65,7 +66,11 @@ export function InfiniteCards<T>({
   return (
     <div ref={scrollRef} className={cn("sidebar-scroll min-h-0 flex-1 overflow-y-auto", className)}>
       {query.isLoading || loading ? (
-        <div className="flex h-40 items-center justify-center gap-2 text-[var(--text3)]"><Loader2 className="size-4 animate-spin" /> Loading…</div>
+        <div className={gridClassName}>
+          {Array.from({ length: 6 }).map((_, i) => (
+            <CardSkeleton key={i} />
+          ))}
+        </div>
       ) : (
         <>
           <div className={gridClassName}>

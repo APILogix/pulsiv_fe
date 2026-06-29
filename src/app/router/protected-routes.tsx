@@ -113,6 +113,7 @@ const DataRetentionPage = lazy(() => import("@/pages/settings/DataRetentionPage"
 const SettingsAlertRulesPage = lazy(() => import("@/pages/settings/SettingsAlertRulesPage"));
 const SettingsAuditLogPage = lazy(() => import("@/pages/settings/SettingsAuditLogPage"));
 const SettingsScimPage = lazy(() => import("@/pages/settings/SettingsScimPage"));
+const RemoteConfigPage = lazy(() => import("@/pages/developer/RemoteConfigPage"));
 
 export const protectedRoutes: RouteObject[] = [
   {
@@ -253,6 +254,26 @@ export const protectedRoutes: RouteObject[] = [
           },
 
           {
+            path: "connectors",
+            element: <ModuleLayout />,
+            children: [
+              { path: "webhooks", element: <WebhooksPage /> },
+              { path: "webhooks/:webhookId", element: <WebhookDetailPage /> },
+              { path: "integrations", element: <IntegrationsPage /> },
+              { path: "integrations/:integrationId", element: <IntegrationDetailPage /> },
+            ],
+          },
+          {
+            path: "developer",
+            element: <ModuleLayout />,
+            children: [
+              { path: "api-keys", element: <SettingsApiKeysPage /> },
+              { path: "data-retention", element: <DataRetentionPage /> },
+              { path: "remote-config", element: <RemoteConfigPage /> },
+              { path: "custom-settings", element: <div className="p-8 text-[var(--text2)] text-center text-lg">Custom settings coming soon</div> },
+            ],
+          },
+          {
             path: "settings",
             element: <SettingsLayout />,
             children: [
@@ -266,12 +287,6 @@ export const protectedRoutes: RouteObject[] = [
               { path: "security", element: <SecurityCenterPage /> },
               { path: "billing", element: <SettingsBillingPage /> },
               { path: "usage", element: <SettingsUsagePage /> },
-              { path: "api-keys", element: <SettingsApiKeysPage /> },
-              { path: "webhooks", element: <WebhooksPage /> },
-              { path: "webhooks/:webhookId", element: <WebhookDetailPage /> },
-              { path: "integrations", element: <IntegrationsPage /> },
-              { path: "integrations/:integrationId", element: <IntegrationDetailPage /> },
-              { path: "data-retention", element: <DataRetentionPage /> },
               { path: "alert-rules", element: <SettingsAlertRulesPage /> },
               { path: "audit-log", element: <SettingsAuditLogPage /> },
               {

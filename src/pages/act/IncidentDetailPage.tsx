@@ -2,10 +2,8 @@ import { useActionState } from "react";
 import { useParams, useNavigate } from "react-router";
 import { ArrowLeft, CheckCircle2 } from "lucide-react";
 import { useIncident } from "@/hooks/useDummyData";
-import {
-  PageHeader, SectionCard, KpiCard, SeverityBadge, StatusBadge, Button, Timestamp,
-  Tabs, JsonViewer, SubmitButton, textareaClass, formatDuration, demoSuccess,
-} from "@/shared/observe";
+import { PageHeader, SectionCard, KpiCard, SeverityBadge, StatusBadge, Button, Timestamp,
+  Tabs, JsonViewer, SubmitButton, textareaClass, formatDuration, demoSuccess, DetailSkeleton } from "@/shared/observe";
 
 export default function IncidentDetailPage() {
   const { incidentId = "" } = useParams();
@@ -18,7 +16,7 @@ export default function IncidentDetailPage() {
     return { ok: true };
   }, { ok: false });
 
-  if (isLoading) return <div className="p-8 text-[var(--text3)]">Loading incident…</div>;
+  if (isLoading) return <DetailSkeleton />;
   if (!inc) return <div className="p-8 text-[var(--text2)]">Incident not found.</div>;
 
   return (

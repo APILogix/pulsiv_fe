@@ -1,14 +1,14 @@
 import { useParams, useNavigate } from "react-router";
 import { ArrowLeft } from "lucide-react";
 import { useProject } from "@/hooks/useDummyData";
-import { PageHeader, KpiCard, SectionCard, StatusBadge, Tabs, Button, Timestamp, Table, Tr, Td, formatCompact } from "@/shared/observe";
+import { PageHeader, KpiCard, SectionCard, StatusBadge, Tabs, Button, Timestamp, Table, Tr, Td, formatCompact, DetailSkeleton } from "@/shared/observe";
 
 export default function ProjectDetailPage() {
   const { projectId = "" } = useParams();
   const navigate = useNavigate();
   const { data: p, isLoading } = useProject(projectId);
 
-  if (isLoading) return <div className="p-8 text-[var(--text3)]">Loading project…</div>;
+  if (isLoading) return <DetailSkeleton />;
   if (!p) return <div className="p-8 text-[var(--text2)]">Project not found.</div>;
 
   return (

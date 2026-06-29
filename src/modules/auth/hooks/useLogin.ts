@@ -2,6 +2,7 @@ import { useMutation } from '@tanstack/react-query';
 import { useNavigate } from 'react-router';
 import { authApi } from '../api/auth.api';
 import { useAuthStore } from '../store/auth.store';
+import { getErrorMessage } from '@/infrastructure/api-client/error.interceptor';
 import { toast } from 'sonner';
 
 export function useLogin() {
@@ -28,8 +29,7 @@ export function useLogin() {
       });
     },
     onError: (error: any) => {
-      const message = error?.response?.data?.message || error.message || 'Login failed';
-      toast.error(message);
+      toast.error(getErrorMessage(error));
     },
   });
 }

@@ -1,16 +1,14 @@
 import { useParams, useNavigate } from "react-router";
 import { ArrowLeft } from "lucide-react";
 import { useMember } from "@/hooks/useDummyData";
-import {
-  PageHeader, SectionCard, KpiCard, StatusBadge, Tabs, Table, Tr, Td, Timestamp, Button, demoSuccess,
-} from "@/shared/observe";
+import { PageHeader, SectionCard, KpiCard, StatusBadge, Tabs, Table, Tr, Td, Timestamp, Button, demoSuccess, DetailSkeleton } from "@/shared/observe";
 
 export default function MemberDetailPage() {
   const { userId = "" } = useParams();
   const navigate = useNavigate();
   const { data: m, isLoading } = useMember(userId);
 
-  if (isLoading) return <div className="p-8 text-[var(--text3)]">Loading member…</div>;
+  if (isLoading) return <DetailSkeleton />;
   if (!m) return <div className="p-8 text-[var(--text2)]">Member not found.</div>;
 
   return (

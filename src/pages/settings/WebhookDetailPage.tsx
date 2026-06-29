@@ -1,16 +1,14 @@
 import { useParams, useNavigate } from "react-router";
 import { ArrowLeft, RotateCw } from "lucide-react";
 import { useWebhook } from "@/hooks/useDummyData";
-import {
-  PageHeader, SectionCard, StatusBadge, StatusCodeBadge, Tabs, Table, Tr, Td, CopyButton, Button, Timestamp, demoSuccess,
-} from "@/shared/observe";
+import { PageHeader, SectionCard, StatusBadge, StatusCodeBadge, Tabs, Table, Tr, Td, CopyButton, Button, Timestamp, demoSuccess, DetailSkeleton } from "@/shared/observe";
 
 export default function WebhookDetailPage() {
   const { webhookId = "" } = useParams();
   const navigate = useNavigate();
   const { data: w, isLoading } = useWebhook(webhookId);
 
-  if (isLoading) return <div className="p-8 text-[var(--text3)]">Loading webhook…</div>;
+  if (isLoading) return <DetailSkeleton />;
   if (!w) return <div className="p-8 text-[var(--text2)]">Webhook not found.</div>;
 
   return (

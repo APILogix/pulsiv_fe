@@ -10,3 +10,4 @@ export { JsonViewer } from "./JsonViewer";
 export { Tabs } from "./Tabs";
 export * from "./form";
 export * from "./infinite";
+export * from "./Skeletons";

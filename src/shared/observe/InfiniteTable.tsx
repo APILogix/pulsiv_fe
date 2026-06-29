@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export interface Column<T> {
   key: string;
@@ -93,8 +94,18 @@ export function InfiniteTable<T>({
 
       <div ref={scrollRef} className="sidebar-scroll min-h-0 flex-1 overflow-y-auto">
         {query.isLoading || loading ? (
-          <div className="flex h-40 items-center justify-center gap-2 text-[var(--text3)]">
-            <Loader2 className="size-4 animate-spin" /> Loading…
+          <div className="flex flex-col">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div
+                key={i}
+                className="grid items-center gap-3 border-b border-[var(--border)] px-4 py-3 last:border-0"
+                style={{ gridTemplateColumns: gridTemplate }}
+              >
+                {columns.map((c) => (
+                  <Skeleton key={c.key} className={cn("h-4", c.align === "right" ? "ml-auto w-1/2" : "w-3/4")} />
+                ))}
+              </div>
+            ))}
           </div>
         ) : rows.length === 0 ? (
           <div className="flex h-40 items-center justify-center text-[var(--text3)]">{emptyMessage}</div>

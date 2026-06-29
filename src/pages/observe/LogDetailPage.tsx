@@ -1,16 +1,14 @@
 import { useParams, useNavigate, Link } from "react-router";
 import { ArrowLeft } from "lucide-react";
 import { useLogEvent } from "@/hooks/useDummyData";
-import {
-  PageHeader, SectionCard, SeverityBadge, Tabs, JsonViewer, Button, CopyButton, formatAbsoluteTime,
-} from "@/shared/observe";
+import { PageHeader, SectionCard, SeverityBadge, Tabs, JsonViewer, Button, CopyButton, formatAbsoluteTime, DetailSkeleton } from "@/shared/observe";
 
 export default function LogDetailPage() {
   const { eventId = "" } = useParams();
   const navigate = useNavigate();
   const { data: log, isLoading } = useLogEvent(eventId);
 
-  if (isLoading) return <div className="p-8 text-[var(--text3)]">Loading log…</div>;
+  if (isLoading) return <DetailSkeleton />;
   if (!log) return <div className="p-8 text-[var(--text2)]">Log <code>{eventId}</code> not found.</div>;
 
   return (

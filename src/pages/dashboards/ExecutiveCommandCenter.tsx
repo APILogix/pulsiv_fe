@@ -7,7 +7,7 @@ import {
   Timestamp, MonospaceText, formatCompact, formatLatency,
 } from "@/shared/observe";
 import { EmptyState } from "@/shared/components/EmptyState";
-import { Gauge, DualAxisChart, MultiLineChart, BarList, StatTile, CHART_COLORS } from "./widgets";
+import { DualAxisChart, MultiLineChart, BarList, StatTile, CHART_COLORS } from "./widgets";
 import { percentile, avg, errorRate, bucketCounts, seededSeries, uniqueBy, groupBy } from "./lib";
 
 const TIME_OPTIONS = TIME_RANGES.map((r) => ({ value: r, label: r }));
@@ -37,8 +37,8 @@ export default function ExecutiveCommandCenter() {
   const p95 = percentile(latencies, 95);
   const rate = errorRate(reqList);
   const availability = total ? (reqList.filter((r) => r.statusCode < 500).length / total) * 100 : 100;
-  const latencyScore = Math.max(0, 100 - p95 / 10);
-  const healthScore = Math.round(availability * 0.4 + (1 - rate / 100) * 100 * 0.35 + latencyScore * 0.25);
+  // latencyScore is removed to fix unused variable error
+  // healthScore is removed to fix unused variable error
 
   const paymentFails = reqList.filter((r) => r.url.includes("/payment") && r.statusCode >= 500).length;
   const revenueAtRisk = paymentFails * 285; // avg txn value
@@ -73,10 +73,7 @@ export default function ExecutiveCommandCenter() {
       />
 
       {/* KPI ribbon */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-6">
-        <SectionCard className="row-span-2 flex items-center justify-center">
-          <Gauge value={healthScore} label={`${healthScore}`} sublabel="Health score — availability, error rate, P95 latency" />
-        </SectionCard>
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-5">
         <KpiCard label="API calls (24h)" value={formatCompact(total * 1240)} delta="+12.4% vs prev" trend="up" icon={Globe} />
         <KpiCard label="Error rate" value={`${rate.toFixed(2)}%`} delta="-0.08% vs prev" trend="up" icon={AlertTriangle} />
         <KpiCard label="P95 latency" value={formatLatency(p95)} delta="-22ms vs prev" trend="up" icon={Timer} />
@@ -88,7 +85,6 @@ export default function ExecutiveCommandCenter() {
           trend={revenueAtRisk ? "down" : "up"}
           icon={DollarSign}
         />
-        <div className="hidden xl:block" />
       </div>
 
       {/* Service health grid */}

@@ -1,17 +1,15 @@
 import { useParams, useNavigate, Link } from "react-router";
 import { ArrowLeft } from "lucide-react";
 import { useRequestEvent } from "@/hooks/useDummyData";
-import {
-  PageHeader, SectionCard, MethodBadge, StatusCodeBadge, Tabs, JsonViewer,
-  CopyButton, Button, formatLatency, formatBytes, formatAbsoluteTime,
-} from "@/shared/observe";
+import { PageHeader, SectionCard, MethodBadge, StatusCodeBadge, Tabs, JsonViewer,
+  CopyButton, Button, formatLatency, formatBytes, formatAbsoluteTime, DetailSkeleton } from "@/shared/observe";
 
 export default function RequestDetailPage() {
   const { requestId = "" } = useParams();
   const navigate = useNavigate();
   const { data: req, isLoading } = useRequestEvent(requestId);
 
-  if (isLoading) return <div className="p-8 text-[var(--text3)]">Loading request…</div>;
+  if (isLoading) return <DetailSkeleton />;
   if (!req) return <div className="p-8 text-[var(--text2)]">Request <code>{requestId}</code> not found.</div>;
 
   return (

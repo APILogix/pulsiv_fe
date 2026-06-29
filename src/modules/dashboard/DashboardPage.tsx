@@ -106,8 +106,8 @@ export default function DashboardPage() {
 
       {/* KPI ribbon */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-6">
-        <SectionCard className="row-span-2 flex items-center justify-center">
-          <Gauge value={healthScore} label={`${healthScore}`} sublabel="Health score — availability, error rate, P95 latency" />
+        <SectionCard className="flex items-center justify-center p-3">
+          <Gauge value={healthScore} label={`${healthScore}`} sublabel="Health score" size={100} />
         </SectionCard>
         <KpiCard label="API calls (24h)" value={formatCompact(total * 1240)} delta="+12.4% vs prev" trend="up" icon={Globe} />
         <KpiCard label="Error rate" value={`${rate.toFixed(2)}%`} delta="-0.08% vs prev" trend="up" icon={AlertTriangle} />
@@ -120,7 +120,6 @@ export default function DashboardPage() {
           trend={openIncidents ? "down" : "up"}
           icon={Siren}
         />
-        <div className="hidden xl:block" />
       </div>
 
       {/* Request volume + status distribution */}

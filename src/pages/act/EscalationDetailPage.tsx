@@ -1,14 +1,14 @@
 import { useParams, useNavigate } from "react-router";
 import { ArrowLeft, Send } from "lucide-react";
 import { useEscalation } from "@/hooks/useDummyData";
-import { PageHeader, SectionCard, StatusBadge, Button, demoSuccess } from "@/shared/observe";
+import { PageHeader, SectionCard, StatusBadge, Button, demoSuccess, DetailSkeleton } from "@/shared/observe";
 
 export default function EscalationDetailPage() {
   const { policyId = "" } = useParams();
   const navigate = useNavigate();
   const { data: p, isLoading } = useEscalation(policyId);
 
-  if (isLoading) return <div className="p-8 text-[var(--text3)]">Loading policy…</div>;
+  if (isLoading) return <DetailSkeleton />;
   if (!p) return <div className="p-8 text-[var(--text2)]">Policy not found.</div>;
 
   return (

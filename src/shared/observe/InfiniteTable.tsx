@@ -1,8 +1,9 @@
-import { useEffect, useRef } from "react";
+import { useRef } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
+import { VirtualList } from "./VirtualList";
 
 export interface Column<T> {
   key: string;
@@ -60,25 +61,6 @@ export function InfiniteTable<T>({
   const rows = query.data?.pages.flatMap((p) => p.rows) ?? [];
   const total = query.data?.pages[0]?.total ?? items.length;
 
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const sentinelRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const sentinel = sentinelRef.current;
-    const root = scrollRef.current;
-    if (!sentinel || !root) return;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && query.hasNextPage && !query.isFetchingNextPage) {
-          query.fetchNextPage();
-        }
-      },
-      { root, rootMargin: "200px" }
-    );
-    observer.observe(sentinel);
-    return () => observer.disconnect();
-  }, [query.hasNextPage, query.isFetchingNextPage, query.fetchNextPage, rows.length]);
-
   const gridTemplate = columns.map((c) => c.width ?? "1fr").join(" ");
 
   return (
@@ -92,13 +74,13 @@ export function InfiniteTable<T>({
         ))}
       </div>
 
-      <div ref={scrollRef} className="sidebar-scroll min-h-0 flex-1 overflow-y-auto">
-        {query.isLoading || loading ? (
+      {(query.isLoading || loading) && rows.length === 0 ? (
+        <div className="sidebar-scroll min-h-0 flex-1 overflow-y-auto">
           <div className="flex flex-col">
-            {Array.from({ length: 6 }).map((_, i) => (
+            {Array.from({ length: 10 }).map((_, i) => (
               <div
                 key={i}
-                className="grid items-center gap-3 border-b border-[var(--border)] px-4 py-3 last:border-0"
+                className="grid items-center gap-3 border-b border-[var(--border)] px-4 h-[44px] last:border-0"
                 style={{ gridTemplateColumns: gridTemplate }}
               >
                 {columns.map((c) => (
@@ -107,27 +89,39 @@ export function InfiniteTable<T>({
               </div>
             ))}
           </div>
-        ) : rows.length === 0 ? (
-          <div className="flex h-40 items-center justify-center text-[var(--text3)]">{emptyMessage}</div>
-        ) : (
-          <>
-            {rows.map((item) => (
-              <div
-                key={getKey(item)}
-                onClick={onRowClick ? () => onRowClick(item) : undefined}
-                className={cn(
-                  "grid items-center gap-3 border-b border-[var(--border)] px-4 py-2.5 text-[13px] text-[var(--text)] last:border-0",
-                  onRowClick && "cursor-pointer transition-colors hover:bg-[var(--bg2)]"
-                )}
-                style={{ gridTemplateColumns: gridTemplate }}
-              >
-                {columns.map((c) => (
-                  <div key={c.key} className={cn("min-w-0 truncate", c.align === "right" && "text-right")}>{c.cell(item)}</div>
-                ))}
-              </div>
-            ))}
-            <div ref={sentinelRef} />
-            <div className="flex h-12 items-center justify-center text-[12px] text-[var(--text3)]">
+        </div>
+      ) : rows.length === 0 ? (
+        <div className="sidebar-scroll min-h-0 flex-1 flex items-center justify-center text-[var(--text3)]">
+          {emptyMessage}
+        </div>
+      ) : (
+        <VirtualList
+          className="min-h-0 flex-1"
+          height="fill"
+          items={rows}
+          rowHeight={44}
+          getKey={getKey}
+          onEndReached={() => {
+            if (query.hasNextPage && !query.isFetchingNextPage) {
+              query.fetchNextPage();
+            }
+          }}
+          renderRow={(item) => (
+            <div
+              onClick={onRowClick ? () => onRowClick(item) : undefined}
+              className={cn(
+                "grid h-full w-full items-center gap-3 border-b border-[var(--border)] px-4 text-[13px] text-[var(--text)]",
+                onRowClick && "cursor-pointer transition-colors hover:bg-[var(--bg2)]"
+              )}
+              style={{ gridTemplateColumns: gridTemplate }}
+            >
+              {columns.map((c) => (
+                <div key={c.key} className={cn("min-w-0 truncate", c.align === "right" && "text-right")}>{c.cell(item)}</div>
+              ))}
+            </div>
+          )}
+          footer={
+            <div className="flex h-12 shrink-0 items-center justify-center text-[12px] text-[var(--text3)] border-t border-[var(--border)]">
               {query.isFetchingNextPage ? (
                 <span className="flex items-center gap-2"><Loader2 className="size-3.5 animate-spin" /> Loading more…</span>
               ) : query.hasNextPage ? (
@@ -136,9 +130,9 @@ export function InfiniteTable<T>({
                 <span>{total} total · end of results</span>
               )}
             </div>
-          </>
-        )}
-      </div>
+          }
+        />
+      )}
     </div>
   );
 }

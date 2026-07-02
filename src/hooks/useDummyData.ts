@@ -2,7 +2,7 @@
 // Dummy-data query hooks (rules.md §6 — TanStack Query only).
 // No useEffect-based fetching. staleTime/gcTime configured per hook.
 // ============================================================
-import { useQuery } from "@tanstack/react-query";
+import { useSuspenseQuery } from "@tanstack/react-query";
 import * as dummy from "@/lib/dummy-data";
 import type { ErrorFilters, RequestFilters, LogFilters } from "@/types/events";
 
@@ -15,7 +15,7 @@ const GC = 5 * 60 * 1000;
 
 // ---- Errors ----
 export const useErrorEvents = (filters?: ErrorFilters) =>
-  useQuery({
+  useSuspenseQuery({
     queryKey: ["errors", filters],
     queryFn: async () => {
       await delay(300);
@@ -30,7 +30,7 @@ export const useErrorEvents = (filters?: ErrorFilters) =>
   });
 
 export const useErrorGroups = () =>
-  useQuery({
+  useSuspenseQuery({
     queryKey: ["errorGroups"],
     queryFn: async () => {
       await delay(400);
@@ -41,19 +41,18 @@ export const useErrorGroups = () =>
   });
 
 export const useErrorGroup = (fingerprint: string) =>
-  useQuery({
+  useSuspenseQuery({
     queryKey: ["errorGroup", fingerprint],
     queryFn: async () => {
       await delay(300);
       return dummy.dummyErrorGroups[fingerprint] ?? null;
     },
-    enabled: !!fingerprint,
     staleTime: STALE,
   });
 
 // ---- Requests ----
 export const useRequestEvents = (filters?: RequestFilters) =>
-  useQuery({
+  useSuspenseQuery({
     queryKey: ["requests", filters],
     queryFn: async () => {
       await delay(300);
@@ -68,35 +67,33 @@ export const useRequestEvents = (filters?: RequestFilters) =>
   });
 
 export const useRequestEvent = (requestId: string) =>
-  useQuery({
+  useSuspenseQuery({
     queryKey: ["request", requestId],
     queryFn: async () => {
       await delay(200);
       return dummy.dummyRequestEvents.find((r) => r.requestId === requestId) ?? null;
     },
-    enabled: !!requestId,
   });
 
 // ---- Spans / Traces ----
 export const useSpanEvents = () =>
-  useQuery({ queryKey: ["spans"], queryFn: async () => { await delay(300); return dummy.dummySpanEvents; }, staleTime: STALE });
+  useSuspenseQuery({ queryKey: ["spans"], queryFn: async () => { await delay(300); return dummy.dummySpanEvents; }, staleTime: STALE });
 
 export const useTraceEvents = () =>
-  useQuery({ queryKey: ["traces"], queryFn: async () => { await delay(400); return dummy.dummyTraceEvents; }, staleTime: STALE });
+  useSuspenseQuery({ queryKey: ["traces"], queryFn: async () => { await delay(400); return dummy.dummyTraceEvents; }, staleTime: STALE });
 
 export const useTraceEvent = (traceId: string) =>
-  useQuery({
+  useSuspenseQuery({
     queryKey: ["trace", traceId],
     queryFn: async () => {
       await delay(300);
       return dummy.dummyTraceEvents.find((t) => t.traceId === traceId) ?? null;
     },
-    enabled: !!traceId,
   });
 
 // ---- Logs ----
 export const useLogEvents = (filters?: LogFilters) =>
-  useQuery({
+  useSuspenseQuery({
     queryKey: ["logs", filters],
     queryFn: async () => {
       await delay(300);
@@ -110,180 +107,168 @@ export const useLogEvents = (filters?: LogFilters) =>
   });
 
 export const useLogEvent = (eventId: string) =>
-  useQuery({
+  useSuspenseQuery({
     queryKey: ["log", eventId],
     queryFn: async () => {
       await delay(200);
       return dummy.dummyLogEvents.find((l) => l.eventId === eventId) ?? null;
     },
-    enabled: !!eventId,
   });
 
 // ---- Metrics ----
 export const useMetricEvents = () =>
-  useQuery({ queryKey: ["metrics"], queryFn: async () => { await delay(300); return dummy.dummyMetricEvents; }, staleTime: STALE });
+  useSuspenseQuery({ queryKey: ["metrics"], queryFn: async () => { await delay(300); return dummy.dummyMetricEvents; }, staleTime: STALE });
 
 // ---- Profiles / Replays / Cron ----
 export const useProfileEvents = () =>
-  useQuery({ queryKey: ["profiles"], queryFn: async () => { await delay(300); return dummy.dummyProfileEvents; }, staleTime: STALE_SLOW });
+  useSuspenseQuery({ queryKey: ["profiles"], queryFn: async () => { await delay(300); return dummy.dummyProfileEvents; }, staleTime: STALE_SLOW });
 
 export const useReplayEvents = () =>
-  useQuery({ queryKey: ["replays"], queryFn: async () => { await delay(300); return dummy.dummyReplayEvents; }, staleTime: STALE_SLOW });
+  useSuspenseQuery({ queryKey: ["replays"], queryFn: async () => { await delay(300); return dummy.dummyReplayEvents; }, staleTime: STALE_SLOW });
 
 export const useCronEvents = () =>
-  useQuery({ queryKey: ["cronEvents"], queryFn: async () => { await delay(300); return dummy.dummyCronEvents; }, staleTime: STALE });
+  useSuspenseQuery({ queryKey: ["cronEvents"], queryFn: async () => { await delay(300); return dummy.dummyCronEvents; }, staleTime: STALE });
 
 // ---- Projects ----
 export const useProjects = () =>
-  useQuery({ queryKey: ["projects"], queryFn: async () => { await delay(400); return dummy.dummyProjects; }, staleTime: STALE_SLOW });
+  useSuspenseQuery({ queryKey: ["projects"], queryFn: async () => { await delay(400); return dummy.dummyProjects; }, staleTime: STALE_SLOW });
 
 export const useProject = (projectId: string) =>
-  useQuery({
+  useSuspenseQuery({
     queryKey: ["project", projectId],
     queryFn: async () => { await delay(300); return dummy.dummyProjects.find((p) => p.id === projectId) ?? null; },
-    enabled: !!projectId,
   });
 
 // ---- Members ----
 export const useMembers = () =>
-  useQuery({ queryKey: ["members"], queryFn: async () => { await delay(300); return dummy.dummyMembers; }, staleTime: STALE_SLOW });
+  useSuspenseQuery({ queryKey: ["members"], queryFn: async () => { await delay(300); return dummy.dummyMembers; }, staleTime: STALE_SLOW });
 
 export const useMember = (userId: string) =>
-  useQuery({
+  useSuspenseQuery({
     queryKey: ["member", userId],
     queryFn: async () => { await delay(200); return dummy.dummyMembers.find((m) => m.id === userId) ?? null; },
-    enabled: !!userId,
   });
 
 // ---- Incidents ----
 export const useIncidents = () =>
-  useQuery({ queryKey: ["incidents"], queryFn: async () => { await delay(400); return dummy.dummyIncidents; }, staleTime: STALE_FAST });
+  useSuspenseQuery({ queryKey: ["incidents"], queryFn: async () => { await delay(400); return dummy.dummyIncidents; }, staleTime: STALE_FAST });
 
 export const useIncident = (incidentId: string) =>
-  useQuery({
+  useSuspenseQuery({
     queryKey: ["incident", incidentId],
     queryFn: async () => { await delay(300); return dummy.dummyIncidents.find((inc) => inc.id === incidentId) ?? null; },
-    enabled: !!incidentId,
   });
 
 // ---- Alert rules ----
 export const useAlertRules = () =>
-  useQuery({ queryKey: ["alertRules"], queryFn: async () => { await delay(300); return dummy.dummyAlertRules; }, staleTime: STALE_SLOW });
+  useSuspenseQuery({ queryKey: ["alertRules"], queryFn: async () => { await delay(300); return dummy.dummyAlertRules; }, staleTime: STALE_SLOW });
 
 export const useAlertRule = (ruleId: string) =>
-  useQuery({
+  useSuspenseQuery({
     queryKey: ["alertRule", ruleId],
     queryFn: async () => { await delay(200); return dummy.dummyAlertRules.find((r) => r.id === ruleId) ?? null; },
-    enabled: !!ruleId,
   });
 
 // ---- Escalations ----
 export const useEscalations = () =>
-  useQuery({ queryKey: ["escalations"], queryFn: async () => { await delay(300); return dummy.dummyEscalations; }, staleTime: STALE_SLOW });
+  useSuspenseQuery({ queryKey: ["escalations"], queryFn: async () => { await delay(300); return dummy.dummyEscalations; }, staleTime: STALE_SLOW });
 
 export const useEscalation = (policyId: string) =>
-  useQuery({
+  useSuspenseQuery({
     queryKey: ["escalation", policyId],
     queryFn: async () => { await delay(200); return dummy.dummyEscalations.find((e) => e.id === policyId) ?? null; },
-    enabled: !!policyId,
   });
 
 // ---- Channels ----
 export const useChannels = () =>
-  useQuery({ queryKey: ["channels"], queryFn: async () => { await delay(300); return dummy.dummyChannels; }, staleTime: STALE_SLOW });
+  useSuspenseQuery({ queryKey: ["channels"], queryFn: async () => { await delay(300); return dummy.dummyChannels; }, staleTime: STALE_SLOW });
 
 export const useChannel = (channelId: string) =>
-  useQuery({
+  useSuspenseQuery({
     queryKey: ["channel", channelId],
     queryFn: async () => { await delay(200); return dummy.dummyChannels.find((c) => c.id === channelId) ?? null; },
-    enabled: !!channelId,
   });
 
 // ---- API keys ----
 export const useApiKeys = () =>
-  useQuery({ queryKey: ["apiKeys"], queryFn: async () => { await delay(300); return dummy.dummyApiKeys; }, staleTime: STALE_SLOW });
+  useSuspenseQuery({ queryKey: ["apiKeys"], queryFn: async () => { await delay(300); return dummy.dummyApiKeys; }, staleTime: STALE_SLOW });
 
 export const useApiKey = (keyId: string) =>
-  useQuery({
+  useSuspenseQuery({
     queryKey: ["apiKey", keyId],
     queryFn: async () => { await delay(200); return dummy.dummyApiKeys.find((k) => k.id === keyId) ?? null; },
-    enabled: !!keyId,
   });
 
 // ---- Invoices ----
 export const useInvoices = () =>
-  useQuery({ queryKey: ["invoices"], queryFn: async () => { await delay(300); return dummy.dummyInvoices; }, staleTime: STALE_SLOW });
+  useSuspenseQuery({ queryKey: ["invoices"], queryFn: async () => { await delay(300); return dummy.dummyInvoices; }, staleTime: STALE_SLOW });
 
 export const useInvoice = (invoiceId: string) =>
-  useQuery({
+  useSuspenseQuery({
     queryKey: ["invoice", invoiceId],
     queryFn: async () => { await delay(200); return dummy.dummyInvoices.find((inv) => inv.id === invoiceId) ?? null; },
-    enabled: !!invoiceId,
   });
 
 // ---- Audit logs ----
 export const useAuditLogs = () =>
-  useQuery({ queryKey: ["auditLogs"], queryFn: async () => { await delay(400); return dummy.dummyAuditLogs; }, staleTime: STALE_SLOW });
+  useSuspenseQuery({ queryKey: ["auditLogs"], queryFn: async () => { await delay(400); return dummy.dummyAuditLogs; }, staleTime: STALE_SLOW });
 
 // ---- Webhooks ----
 export const useWebhooks = () =>
-  useQuery({ queryKey: ["webhooks"], queryFn: async () => { await delay(300); return dummy.dummyWebhooks; }, staleTime: STALE_SLOW });
+  useSuspenseQuery({ queryKey: ["webhooks"], queryFn: async () => { await delay(300); return dummy.dummyWebhooks; }, staleTime: STALE_SLOW });
 
 export const useWebhook = (webhookId: string) =>
-  useQuery({
+  useSuspenseQuery({
     queryKey: ["webhook", webhookId],
     queryFn: async () => { await delay(200); return dummy.dummyWebhooks.find((w) => w.id === webhookId) ?? null; },
-    enabled: !!webhookId,
   });
 
 // ---- Integrations ----
 export const useIntegrations = () =>
-  useQuery({ queryKey: ["integrations"], queryFn: async () => { await delay(300); return dummy.dummyIntegrations; }, staleTime: STALE_SLOW });
+  useSuspenseQuery({ queryKey: ["integrations"], queryFn: async () => { await delay(300); return dummy.dummyIntegrations; }, staleTime: STALE_SLOW });
 
 export const useIntegration = (integrationId: string) =>
-  useQuery({
+  useSuspenseQuery({
     queryKey: ["integration", integrationId],
     queryFn: async () => { await delay(200); return dummy.dummyIntegrations.find((int) => int.id === integrationId) ?? null; },
-    enabled: !!integrationId,
   });
 
 // ---- Environments ----
 export const useEnvironments = () =>
-  useQuery({ queryKey: ["environments"], queryFn: async () => { await delay(300); return dummy.dummyEnvironments; }, staleTime: STALE_SLOW });
+  useSuspenseQuery({ queryKey: ["environments"], queryFn: async () => { await delay(300); return dummy.dummyEnvironments; }, staleTime: STALE_SLOW });
 
 export const useEnvironment = (envId: string) =>
-  useQuery({
+  useSuspenseQuery({
     queryKey: ["environment", envId],
     queryFn: async () => { await delay(200); return dummy.dummyEnvironments.find((e) => e.id === envId) ?? null; },
-    enabled: !!envId,
   });
 
 // ---- Security / Invitations / Quotas ----
 export const useSecurityEvents = () =>
-  useQuery({ queryKey: ["securityEvents"], queryFn: async () => { await delay(400); return dummy.dummySecurityEvents; }, staleTime: STALE });
+  useSuspenseQuery({ queryKey: ["securityEvents"], queryFn: async () => { await delay(400); return dummy.dummySecurityEvents; }, staleTime: STALE });
 
 export const useInvitations = () =>
-  useQuery({ queryKey: ["invitations"], queryFn: async () => { await delay(300); return dummy.dummyInvitations; }, staleTime: STALE_SLOW });
+  useSuspenseQuery({ queryKey: ["invitations"], queryFn: async () => { await delay(300); return dummy.dummyInvitations; }, staleTime: STALE_SLOW });
 
 export const useQuotaRequests = () =>
-  useQuery({ queryKey: ["quotaRequests"], queryFn: async () => { await delay(300); return dummy.dummyQuotaRequests; }, staleTime: STALE_SLOW });
+  useSuspenseQuery({ queryKey: ["quotaRequests"], queryFn: async () => { await delay(300); return dummy.dummyQuotaRequests; }, staleTime: STALE_SLOW });
 
 // ---- Billing extras ----
 export const usePaymentMethods = () =>
-  useQuery({ queryKey: ["paymentMethods"], queryFn: async () => { await delay(300); return dummy.dummyPaymentMethods; }, staleTime: STALE_SLOW });
+  useSuspenseQuery({ queryKey: ["paymentMethods"], queryFn: async () => { await delay(300); return dummy.dummyPaymentMethods; }, staleTime: STALE_SLOW });
 
 export const usePromotions = () =>
-  useQuery({ queryKey: ["promotions"], queryFn: async () => { await delay(300); return dummy.dummyPromotions; }, staleTime: STALE_SLOW });
+  useSuspenseQuery({ queryKey: ["promotions"], queryFn: async () => { await delay(300); return dummy.dummyPromotions; }, staleTime: STALE_SLOW });
 
 // ---- Connections / Insights ----
 export const useEndpoints = () =>
-  useQuery({ queryKey: ["endpoints"], queryFn: async () => { await delay(300); return dummy.dummyEndpoints; }, staleTime: STALE_SLOW });
+  useSuspenseQuery({ queryKey: ["endpoints"], queryFn: async () => { await delay(300); return dummy.dummyEndpoints; }, staleTime: STALE_SLOW });
 
 export const useCompliance = () =>
-  useQuery({ queryKey: ["compliance"], queryFn: async () => { await delay(300); return dummy.dummyCompliance; }, staleTime: STALE_SLOW });
+  useSuspenseQuery({ queryKey: ["compliance"], queryFn: async () => { await delay(300); return dummy.dummyCompliance; }, staleTime: STALE_SLOW });
 
 export const useAnomalies = () =>
-  useQuery({ queryKey: ["anomalies"], queryFn: async () => { await delay(300); return dummy.dummyAnomalies; }, staleTime: STALE });
+  useSuspenseQuery({ queryKey: ["anomalies"], queryFn: async () => { await delay(300); return dummy.dummyAnomalies; }, staleTime: STALE });
 
 export const useReleases = () =>
-  useQuery({ queryKey: ["releases"], queryFn: async () => { await delay(300); return dummy.dummyReleases; }, staleTime: STALE_SLOW });
+  useSuspenseQuery({ queryKey: ["releases"], queryFn: async () => { await delay(300); return dummy.dummyReleases; }, staleTime: STALE_SLOW });

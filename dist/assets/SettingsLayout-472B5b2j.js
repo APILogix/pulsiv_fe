@@ -1,1 +1,0 @@
-import{c as l,j as s,O as o}from"./index-DIm0DGyz.js";function r(){const t=l.c(1);let e;return t[0]===Symbol.for("react.memo_cache_sentinel")?(e=s.jsx("div",{className:"flex-1 overflow-y-auto",children:s.jsx("div",{className:"w-full px-8 py-8",children:s.jsx(o,{})})}),t[0]=e):e=t[0],e}export{r as default};

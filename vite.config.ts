@@ -37,4 +37,15 @@ export default defineConfig({
       "zod",
     ],
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'react-vendor': ['react', 'react-dom', 'react-router'],
+          'ui-vendor': ['lucide-react', 'framer-motion', 'cmdk', 'sonner'],
+          'util-vendor': ['@tanstack/react-query', 'axios', 'zustand', 'zod', '@simplewebauthn/browser']
+        }
+      }
+    }
+  }
 })

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { loginSchema, type LoginFormData } from '../schemas/auth.schema';
@@ -66,9 +67,9 @@ export function LoginForm() {
           ) : (
             <div />
           )}
-          <a href="/auth/forgot-password" className="text-[13px] text-[#8A8F98] hover:text-white transition-colors">
+          <Link to="/auth/forgot-password" className="text-[13px] text-[#8A8F98] hover:text-white transition-colors">
             Forgot password?
-          </a>
+          </Link>
         </div>
       </div>
 

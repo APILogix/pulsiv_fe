@@ -1,1 +1,0 @@
-import{c as n,D as i,j as m}from"./index-DIm0DGyz.js";function c(a){const e=n.c(8);let s,t;e[0]!==a?({className:s,...t}=a,e[0]=a,e[1]=s,e[2]=t):(s=e[1],t=e[2]);let l;e[3]!==s?(l=i("animate-pulse rounded-md bg-muted",s),e[3]=s,e[4]=l):l=e[4];let o;return e[5]!==t||e[6]!==l?(o=m.jsx("div",{"data-slot":"skeleton",className:l,...t}),e[5]=t,e[6]=l,e[7]=o):o=e[7],o}export{c as S};

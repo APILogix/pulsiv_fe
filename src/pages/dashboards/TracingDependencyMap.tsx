@@ -110,6 +110,8 @@ export default function TracingDependencyMap() {
         <div className="mt-3 text-[11px] text-[var(--text3)]">Node size ∝ span volume · color = health (error rate + latency). Click a node to filter the trace list.</div>
       </SectionCard>
 
+      <ZoneLabel>Traces &amp; bottlenecks</ZoneLabel>
+
       <SectionCard title="Trace list">
         <Table headers={["Trace ID", "Root span", "Duration", "Spans", "Status", "Started", "Service"]} maxHeight="28rem">
           {traceList.map((t) => (
@@ -127,18 +129,22 @@ export default function TracingDependencyMap() {
       </SectionCard>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <SectionCard title="External API call latency (P95)">
+        <ChartCard title="External API call latency (P95)">
           {extByHost.length ? <BarList items={extByHost} valueFormat={formatLatency} /> : <p className="text-[13px] text-[var(--text3)]">No external client spans in range.</p>}
-        </SectionCard>
-        <SectionCard title="Trace error rate by service">
+        </ChartCard>
+        <ChartCard
+          title="Trace error rate by service"
+          legend={[
+            { label: "OK", color: "var(--green)" },
+            { label: "Error", color: "var(--red)" },
+            { label: "Unset", color: "var(--bg3)" },
+          ]}
+        >
           <StackedBars groups={errStacks} horizontal />
-          <div className="mt-3 flex gap-4 text-[11px] text-[var(--text2)]">
-            <span className="flex items-center gap-1.5"><span className="size-2.5 rounded-sm bg-[var(--green)]" /> OK</span>
-            <span className="flex items-center gap-1.5"><span className="size-2.5 rounded-sm bg-[var(--red)]" /> Error</span>
-            <span className="flex items-center gap-1.5"><span className="size-2.5 rounded-sm bg-[var(--bg3)]" /> Unset</span>
-          </div>
-        </SectionCard>
+        </ChartCard>
       </div>
+
+      <ZoneLabel>Data layer</ZoneLabel>
 
       <SectionCard title="Database query performance">
         {dbGroups.length ? (

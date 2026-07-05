@@ -1,11 +1,11 @@
-import { DollarSign, Cpu, Database, HardDrive } from "lucide-react";
+import { Cpu, Database, HardDrive } from "lucide-react";
 import { useMetricEvents, useRequestEvents } from "@/hooks/useDummyData";
 import { useTimeRangeStore } from "@/stores/timeRangeStore";
 import {
-  PageHeader, SectionCard, KpiCard, FilterSelect,
+  PageHeader, FilterSelect,
   Table, Tr, Td, formatCompact, formatBytes,
 } from "@/shared/observe";
-import { Gauge, Donut, MultiLineChart, BarList, MultiLineChart as Area, StatTile, CHART_COLORS } from "./widgets";
+import { Gauge, Donut, MultiLineChart, BarList, MultiLineChart as Area, StatTile, ChartCard, HeroBand, ZoneLabel, CHART_COLORS } from "./widgets";
 import { seededSeries } from "./lib";
 
 const TIME_OPTIONS = [
@@ -39,29 +39,38 @@ export default function InfrastructureCost() {
   const cacheMiss = 760;
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-5">
       <PageHeader
         title="Infrastructure & Cost Optimization"
         description="Optimize spend and infrastructure utilization · auto-refresh 5m."
         actions={<FilterSelect label="Range" value={timeRange} onChange={setTimeRange} options={TIME_OPTIONS} />}
       />
 
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <KpiCard label="Cost / 1M requests" value={`$${costPerMillion}`} delta="-$0.04 WoW" trend="up" icon={DollarSign} />
-        <KpiCard label="Total requests" value={formatCompact(reqCount)} delta="this period" trend="neutral" />
-        <KpiCard label="Infra spend" value={`$${infraCost}`} delta="+2.1% WoW" trend="down" />
-        <KpiCard label="Metric series" value={metrics.data?.length ?? 0} delta="ingested" trend="neutral" />
-      </div>
+      <HeroBand
+        metrics={[
+          { label: "Cost / 1M requests", value: `$${costPerMillion}`, delta: "-$0.04 WoW", trend: "up", spark: seededSeries("ic-cost", 20, 40, 12) },
+          { label: "Total requests", value: formatCompact(reqCount), delta: "this period", trend: "neutral", spark: seededSeries("ic-req", 20, 60, 20), sparkColor: "var(--blue)" },
+          { label: "Infra spend", value: `$${infraCost}`, delta: "+2.1% WoW", trend: "down", spark: seededSeries("ic-spend", 20, 30, 8), sparkColor: "var(--amber)" },
+          { label: "Metric series", value: metrics.data?.length ?? 0, delta: "ingested", trend: "neutral" },
+        ]}
+      />
 
-      <SectionCard title="Resource utilization by service" action={<Cpu className="size-4 text-[var(--text3)]" />}>
+      <ZoneLabel>Utilization</ZoneLabel>
+
+      <ChartCard
+        title="Resource utilization by service"
+        action={<Cpu className="size-4 text-[var(--text3)]" />}
+        legend={SERVICES.map((svc, i) => ({ label: svc, color: CHART_COLORS[i % CHART_COLORS.length] }))}
+        timeAxis="32 samples ago"
+      >
         <MultiLineChart
           series={SERVICES.map((svc, i) => ({ label: `${svc} CPU%`, color: CHART_COLORS[i % CHART_COLORS.length], data: seededSeries(svc + "cpu", 32, 45 + i * 8, 25) }))}
         />
         <div className="mt-2 text-[11px] text-[var(--text3)]">Threshold lines at 80% CPU / 85% memory. Color: emerald healthy · amber warning · rose critical.</div>
-      </SectionCard>
+      </ChartCard>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <SectionCard title="DB connection pool" action={<Database className="size-4 text-[var(--text3)]" />}>
+        <ChartCard title="DB connection pool" action={<Database className="size-4 text-[var(--text3)]" />}>
           <div className="flex items-center gap-4">
             <Gauge value={connPct} label={`${Math.round(connPct)}%`} sublabel={`${connActive}/${connMax} active`} size={130} color={connPct > 95 ? "var(--red)" : connPct > 80 ? "var(--amber)" : "var(--green)"} />
             <div className="flex flex-1 flex-col gap-2 text-[12px]">
@@ -69,9 +78,15 @@ export default function InfrastructureCost() {
               <StatTile label="Acquire failures/min" value={connPct > 80 ? "3" : "0"} />
             </div>
           </div>
-        </SectionCard>
+        </ChartCard>
 
-        <SectionCard title="Cache hit / miss ratio">
+        <ChartCard
+          title="Cache hit / miss ratio"
+          legend={[
+            { label: "Hits", color: "var(--green)" },
+            { label: "Misses", color: "var(--amber)" },
+          ]}
+        >
           <Donut
             segments={[{ label: "Hits", value: cacheHits, color: "var(--green)" }, { label: "Misses", value: cacheMiss, color: "var(--amber)" }]}
             centerLabel={`${Math.round((cacheHits / (cacheHits + cacheMiss)) * 100)}%`}
@@ -79,9 +94,9 @@ export default function InfrastructureCost() {
             size={140}
           />
           <div className="mt-2 text-[11px] text-[var(--text3)]">Target &gt; 90% · Redis / CDN / query cache layers.</div>
-        </SectionCard>
+        </ChartCard>
 
-        <SectionCard title="Serverless cold starts">
+        <ChartCard title="Serverless cold starts">
           <BarList
             items={[
               { label: "payment-handler", value: 42, sub: "12% billed", color: "var(--red)" },
@@ -92,11 +107,13 @@ export default function InfrastructureCost() {
             valueFormat={(v) => `${v}/min`}
           />
           <div className="mt-2 text-[11px] text-[var(--text3)]">Suggestion: increase provisioned concurrency for payment-handler.</div>
-        </SectionCard>
+        </ChartCard>
       </div>
 
+      <ZoneLabel>Pipelines &amp; storage</ZoneLabel>
+
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <SectionCard title="Queue depth & processing lag">
+        <ChartCard title="Queue depth & processing lag">
           <Table headers={["Queue", "Depth", "Rate/s", "Lag", "Status"]}>
             {QUEUES.map((q) => {
               const alert = q.depth > 1000 || q.lag > 60;
@@ -112,9 +129,18 @@ export default function InfrastructureCost() {
             })}
           </Table>
           <div className="mt-3"><Area series={[{ label: "Event ingestion depth", color: "var(--brand)", data: seededSeries("queue", 32, 240, 200) }]} height={120} /></div>
-        </SectionCard>
+        </ChartCard>
 
-        <SectionCard title="Storage growth projection" action={<HardDrive className="size-4 text-[var(--text3)]" />}>
+        <ChartCard
+          title="Storage growth projection"
+          action={<HardDrive className="size-4 text-[var(--text3)]" />}
+          legend={[
+            { label: "Events", color: CHART_COLORS[0] },
+            { label: "Logs", color: CHART_COLORS[1] },
+            { label: "Traces", color: CHART_COLORS[3] },
+          ]}
+          timeAxis="30 days ago"
+        >
           <Area
             series={[
               { label: "Events", color: CHART_COLORS[0], data: seededSeries("st-events", 32, 120, 60).map((v, i) => v + i * 4) },
@@ -127,7 +153,7 @@ export default function InfrastructureCost() {
             <StatTile label="30-day forecast" value={formatBytes(680 * 1024 * 1024 * 1024)} />
             <StatTile label="Projected cost" value="$1,240" />
           </div>
-        </SectionCard>
+        </ChartCard>
       </div>
     </div>
   );

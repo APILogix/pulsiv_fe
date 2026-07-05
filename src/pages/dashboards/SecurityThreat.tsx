@@ -1,11 +1,11 @@
-import { ShieldAlert, Lock, KeyRound } from "lucide-react";
+import { ShieldAlert } from "lucide-react";
 import { useRequestEvents, useErrorEvents } from "@/hooks/useDummyData";
 import { useTimeRangeStore, TIME_RANGES } from "@/stores/timeRangeStore";
 import {
-  PageHeader, SectionCard, KpiCard, FilterSelect,
+  PageHeader, SectionCard, FilterSelect,
   Table, Tr, Td, MonospaceText, Timestamp, SeverityBadge, formatCompact,
 } from "@/shared/observe";
-import { Gauge, MultiLineChart, Banner, StatTile } from "./widgets";
+import { Gauge, MultiLineChart, Banner, StatTile, ChartCard, HeroBand, ZoneLabel } from "./widgets";
 import { seededSeries, groupBy, countryForIp } from "./lib";
 
 const TIME_OPTIONS = TIME_RANGES.map((r) => ({ value: r, label: r }));
@@ -56,7 +56,7 @@ export default function SecurityThreat() {
   const jwtAnomalies = errList.filter((e) => /jwt|token|signature|expired/i.test(e.message + e.name)).slice(0, 10);
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-5">
       <PageHeader
         title="Security & Threat Detection"
         description="Detect, investigate, and respond to API security threats · auto-refresh 30s."
@@ -67,25 +67,43 @@ export default function SecurityThreat() {
         <Banner tone="red" icon={ShieldAlert} title={<>Brute force suspected — <strong>{byIp[0].count} failed auth attempts</strong> from <span className="font-[family-name:var(--mono)]">{byIp[0].ip}</span>.</>} action={<button className="rounded-[6px] border border-current px-2 py-1 text-[12px]">Block IP</button>} />
       )}
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-4">
-        <SectionCard className="flex items-center justify-center lg:row-span-2">
-          <Gauge value={securityScore} label={`${securityScore}`} sublabel="Security score — auth failures, suspicious IPs, rate-limit hits" color={securityScore < 50 ? "var(--red)" : securityScore < 80 ? "var(--amber)" : "var(--green)"} />
-        </SectionCard>
-        <KpiCard label="Failed auth (401/403)" value={authFails.length} delta="last window" trend="down" icon={Lock} />
-        <KpiCard label="Rate-limited (429)" value={rateLimited.length} delta="possible abuse" trend="down" />
-        <KpiCard label="Suspicious IPs" value={byIp.length} delta="flagged" trend="down" />
-        <KpiCard label="JWT anomalies" value={jwtAnomalies.length} delta="token issues" trend="down" icon={KeyRound} />
-        <KpiCard label="Sensitive accesses" value={formatCompact(sensitiveAccess.reduce((s, x) => s + x.count, 0))} delta="audited" trend="neutral" />
+      <HeroBand
+        metrics={[
+          { label: "Failed auth (401/403)", value: authFails.length, delta: "last window", trend: "down", spark: seededSeries("sec-auth", 20, 20, 10), sparkColor: "var(--amber)" },
+          { label: "Rate-limited (429)", value: rateLimited.length, delta: "possible abuse", trend: "down", spark: seededSeries("sec-429", 20, 12, 8), sparkColor: "var(--red)" },
+          { label: "Suspicious IPs", value: byIp.length, delta: "flagged", trend: "down" },
+          { label: "JWT anomalies", value: jwtAnomalies.length, delta: "token issues", trend: "down" },
+          { label: "Sensitive accesses", value: formatCompact(sensitiveAccess.reduce((s, x) => s + x.count, 0)), delta: "audited", trend: "neutral", spark: seededSeries("sec-sens", 20, 30, 12), sparkColor: "var(--blue)" },
+        ]}
+      />
+
+      <ZoneLabel>Threat posture</ZoneLabel>
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <ChartCard title="Security score" headline={`${securityScore}`} headlineLabel="out of 100">
+          <div className="flex items-center justify-center py-2">
+            <Gauge value={securityScore} label={`${securityScore}`} sublabel="auth failures · suspicious IPs · rate limits" color={securityScore < 50 ? "var(--red)" : securityScore < 80 ? "var(--amber)" : "var(--green)"} />
+          </div>
+        </ChartCard>
+        <ChartCard
+          title="Failed authentication attempts over time"
+          className="lg:col-span-2"
+          legend={[
+            { label: "401 Unauthorized", color: "var(--amber)" },
+            { label: "403 Forbidden", color: "var(--red)" },
+          ]}
+          timeAxis="32 samples ago"
+        >
+          <MultiLineChart
+            series={[
+              { label: "401 Unauthorized", color: "var(--amber)", data: seededSeries("401", 32, authFails.length / 2 + 4, 8) },
+              { label: "403 Forbidden", color: "var(--red)", data: seededSeries("403", 32, authFails.length / 3 + 2, 6) },
+            ]}
+          />
+        </ChartCard>
       </div>
 
-      <SectionCard title="Failed authentication attempts over time">
-        <MultiLineChart
-          series={[
-            { label: "401 Unauthorized", color: "var(--amber)", data: seededSeries("401", 32, authFails.length / 2 + 4, 8) },
-            { label: "403 Forbidden", color: "var(--red)", data: seededSeries("403", 32, authFails.length / 3 + 2, 6) },
-          ]}
-        />
-      </SectionCard>
+      <ZoneLabel>Active investigations</ZoneLabel>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <SectionCard title="Failed auth by source IP">
@@ -122,6 +140,8 @@ export default function SecurityThreat() {
           </div>
         </SectionCard>
       </div>
+
+      <ZoneLabel>Audit trail</ZoneLabel>
 
       <SectionCard title="Sensitive endpoint access">
         <Table headers={["Endpoint", "Access count", "Unique users", "Failed (403)", "After-hours %", "Last accessed"]}>

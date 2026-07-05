@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
-import { AlertTriangle, GitCommit, Check, Rocket } from "lucide-react";
+import { AlertTriangle, GitCommit, Check } from "lucide-react";
 import { useErrorGroups } from "@/hooks/useDummyData";
 import {
-  PageHeader, SectionCard, KpiCard, FilterSelect,
+  PageHeader, SectionCard, FilterSelect,
   Table, Tr, Td, SeverityBadge, MonospaceText, Timestamp,
 } from "@/shared/observe";
-import { MultiLineChart, Banner, StatTile } from "./widgets";
+import { MultiLineChart, Banner, StatTile, ChartCard, HeroBand, ZoneLabel } from "./widgets";
 import { seededSeries } from "./lib";
 
 const RELEASES = ["v2.4.1", "v2.4.0", "v2.3.8", "v2.3.7"];
@@ -34,7 +34,7 @@ export default function ReleaseQuality() {
   const resolvedCount = 8;
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-5">
       <PageHeader
         title="Release Quality & CI/CD Health"
         description="Ensure every deploy improves the system, not breaks it · last 30 days."
@@ -48,12 +48,16 @@ export default function ReleaseQuality() {
         action={<div className="flex gap-2"><button className="rounded-[6px] border border-current px-2 py-1 text-[12px]">Initiate rollback</button><button onClick={() => navigate("/dashboards/errors")} className="rounded-[6px] border border-current px-2 py-1 text-[12px]">View errors</button></div>}
       />
 
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <KpiCard label="Deploy frequency" value="4.2 / wk" delta="Elite (DORA)" trend="up" icon={Rocket} />
-        <KpiCard label="Lead time" value="3.4h" delta="commit → prod" trend="up" />
-        <KpiCard label="MTTR" value="42m" delta="High (DORA)" trend="up" />
-        <KpiCard label="Change failure rate" value="14%" delta="Medium (DORA)" trend="down" />
-      </div>
+      <HeroBand
+        metrics={[
+          { label: "Deploy frequency", value: "4.2 / wk", delta: "Elite (DORA)", trend: "up", spark: seededSeries("rq-freq", 20, 20, 8) },
+          { label: "Lead time", value: "3.4h", delta: "commit → prod", trend: "up", spark: seededSeries("rq-lead", 20, 30, 10), sparkColor: "var(--blue)" },
+          { label: "MTTR", value: "42m", delta: "High (DORA)", trend: "up", spark: seededSeries("rq-mttr", 20, 25, 12), sparkColor: "var(--amber)" },
+          { label: "Change failure rate", value: "14%", delta: "Medium (DORA)", trend: "down", spark: seededSeries("rq-cfr", 20, 15, 6), sparkColor: "var(--red)" },
+        ]}
+      />
+
+      <ZoneLabel>Release comparison</ZoneLabel>
 
       <SectionCard title={`Release comparison — ${release} vs previous`}>
         <Table headers={["Metric", "Previous (baseline)", "Current", "Delta", "Status"]}>
@@ -69,7 +73,14 @@ export default function ReleaseQuality() {
         </Table>
       </SectionCard>
 
-      <SectionCard title="Canary deployment health">
+      <ChartCard
+        title="Canary deployment health"
+        legend={[
+          { label: "Canary error rate (5%)", color: "var(--red)" },
+          { label: "Stable error rate (95%)", color: "var(--green)" },
+        ]}
+        timeAxis="32 samples ago"
+      >
         <MultiLineChart
           series={[
             { label: "Canary error rate (5%)", color: "var(--red)", data: seededSeries("canary", 32, 14, 8) },
@@ -80,7 +91,9 @@ export default function ReleaseQuality() {
           <AlertTriangle className="size-4 text-[var(--amber)]" />
           <span className="text-[var(--text2)]">Decision gate: canary error rate &gt; 2× stable → recommend <strong className="text-[var(--red)]">rollback canary</strong>.</span>
         </div>
-      </SectionCard>
+      </ChartCard>
+
+      <ZoneLabel>Error delta</ZoneLabel>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <SectionCard title="New error types introduced">
@@ -106,6 +119,8 @@ export default function ReleaseQuality() {
           </div>
         </SectionCard>
       </div>
+
+      <ZoneLabel>Root cause</ZoneLabel>
 
       <SectionCard title="Suspect commit detection" action={<GitCommit className="size-4 text-[var(--text3)]" />}>
         <Table headers={["Commit", "Author", "Message", "Files", "Errors introduced", "Confidence"]}>

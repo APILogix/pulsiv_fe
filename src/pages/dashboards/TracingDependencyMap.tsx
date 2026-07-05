@@ -1,3 +1,4 @@
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import { AlertTriangle } from "lucide-react";
 import { useTraceEvents, useSpanEvents } from "@/hooks/useDummyData";
@@ -7,6 +8,7 @@ import {
   Table, Tr, Td, StatusBadge, MonospaceText, Timestamp, formatDuration, formatLatency,
 } from "@/shared/observe";
 import { BarList, StackedBars, Banner, StatTile, ChartCard, HeroBand, ZoneLabel } from "./widgets";
+import { ServiceTopologyGraph, buildTopology } from "./ServiceTopologyGraph";
 import { percentile, groupBy, seededSeries } from "./lib";
 import type { SpanEvent } from "@/types/events";
 
@@ -18,6 +20,7 @@ export default function TracingDependencyMap() {
   const setTimeRange = useTimeRangeStore((s) => s.setTimeRange);
   const traces = useTraceEvents();
   const spans = useSpanEvents();
+  const [selectedNode, setSelectedNode] = useState<string | null>(null);
 
   const traceList = traces.data ?? [];
   const spanList = spans.data ?? [];
@@ -25,13 +28,18 @@ export default function TracingDependencyMap() {
   const partial = traceList.filter((t) => t.isPartial);
   const errorTraces = traceList.filter((t) => t.rootSpan?.status === "error").length;
 
-  // Service dependency nodes
+  // Service dependency nodes (live span stats)
   const services = [...new Set(spanList.map((s) => s.metadata.service))];
   const nodes = services.map((svc) => {
     const svcSpans = spanList.filter((s) => s.metadata.service === svc);
     const errRate = svcSpans.length ? (svcSpans.filter((s) => s.status === "error").length / svcSpans.length) * 100 : 0;
-    return { svc, count: svcSpans.length, errRate };
+    const p95 = percentile(svcSpans.map((s) => s.duration), 95);
+    return { svc, count: svcSpans.length, errRate, p95 };
   }).sort((a, b) => b.count - a.count);
+
+  const topology = useMemo(() => buildTopology(nodes), [spanList.length]); // eslint-disable-line react-hooks/exhaustive-deps
+  const selectedMeta = selectedNode ? topology.nodes.find((n) => n.id === selectedNode) : null;
+  const selectedEdges = selectedNode ? topology.edges.filter((e) => e.from === selectedNode || e.to === selectedNode) : [];
 
   // DB queries
   const dbSpans = spanList.filter((s) => attr(s, "db.system") || /pg\.|prisma|mongo|redis|query/.test(s.name));
@@ -91,24 +99,82 @@ export default function TracingDependencyMap() {
 
       <ZoneLabel>Service topology</ZoneLabel>
 
-      <SectionCard title="Service dependency map">
-        <div className="flex flex-wrap items-stretch gap-3">
-          {nodes.map((n) => {
-            const tone = n.errRate > 5 ? "var(--red)" : n.errRate > 1 ? "var(--amber)" : "var(--green)";
-            return (
-              <button key={n.svc} onClick={() => navigate("/observability/traces")} className="flex min-w-[150px] flex-col rounded-[10px] border bg-[var(--bg2)] p-3 text-left" style={{ borderColor: tone }}>
-                <span className="flex items-center justify-between">
-                  <span className="truncate text-[13px] font-medium text-[var(--text)]">{n.svc}</span>
-                  <span className="size-2 rounded-full" style={{ background: tone }} />
-                </span>
-                <span className="mt-1 text-lg font-semibold tabular-nums text-[var(--text)]">{n.count}</span>
-                <span className="text-[11px] text-[var(--text3)]">spans · {n.errRate.toFixed(1)}% err</span>
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
+        <SectionCard title="Service dependency map" className="xl:col-span-2">
+          <ServiceTopologyGraph
+            nodes={topology.nodes}
+            edges={topology.edges}
+            selected={selectedNode}
+            onSelect={setSelectedNode}
+          />
+        </SectionCard>
+
+        <SectionCard title={selectedMeta ? selectedMeta.label : "Node inspector"}>
+          {selectedMeta ? (
+            <div className="flex h-full flex-col gap-3">
+              <div className="grid grid-cols-3 gap-2">
+                <div className="rounded-[8px] bg-[var(--bg2)] px-3 py-2">
+                  <div className="text-[10px] uppercase tracking-wider text-[var(--text3)]">Throughput</div>
+                  <div className="text-[15px] font-semibold tabular-nums text-[var(--text)]">{selectedMeta.rps} rps</div>
+                </div>
+                <div className="rounded-[8px] bg-[var(--bg2)] px-3 py-2">
+                  <div className="text-[10px] uppercase tracking-wider text-[var(--text3)]">Error rate</div>
+                  <div className="text-[15px] font-semibold tabular-nums" style={{ color: selectedMeta.errRate > 5 ? "var(--red)" : selectedMeta.errRate > 1 ? "var(--amber)" : "var(--green)" }}>{selectedMeta.errRate.toFixed(1)}%</div>
+                </div>
+                <div className="rounded-[8px] bg-[var(--bg2)] px-3 py-2">
+                  <div className="text-[10px] uppercase tracking-wider text-[var(--text3)]">P95</div>
+                  <div className="text-[15px] font-semibold tabular-nums" style={{ color: selectedMeta.p95 > 800 ? "var(--red)" : selectedMeta.p95 > 300 ? "var(--amber)" : "var(--text)" }}>{selectedMeta.p95}ms</div>
+                </div>
+              </div>
+
+              <div>
+                <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-[var(--text3)]">Connections</div>
+                <div className="flex flex-col gap-1.5">
+                  {selectedEdges.map((e) => {
+                    const other = e.from === selectedMeta.id ? e.to : e.from;
+                    const dir = e.from === selectedMeta.id ? "→" : "←";
+                    const tone = e.errRate > 5 ? "var(--red)" : e.errRate > 1 ? "var(--amber)" : "var(--green)";
+                    return (
+                      <button key={`${e.from}-${e.to}`} onClick={() => setSelectedNode(other)} className="flex items-center justify-between rounded-[8px] border border-[var(--border)] bg-[var(--bg2)] px-3 py-1.5 text-left hover:border-[var(--brand)]">
+                        <span className="flex items-center gap-2 text-[12px] text-[var(--text)]">
+                          <span className="text-[var(--text3)]">{dir}</span>
+                          {other}
+                        </span>
+                        <span className="text-[11px] tabular-nums" style={{ color: tone }}>{e.errRate.toFixed(1)}% err</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <button onClick={() => navigate("/observability/traces")} className="mt-auto rounded-[8px] border border-[var(--border)] px-3 py-2 text-[12px] font-medium text-[var(--text)] hover:border-[var(--brand)]">
+                View traces for {selectedMeta.label}
               </button>
-            );
-          })}
-        </div>
-        <div className="mt-3 text-[11px] text-[var(--text3)]">Node size ∝ span volume · color = health (error rate + latency). Click a node to filter the trace list.</div>
-      </SectionCard>
+            </div>
+          ) : (
+            <div className="flex h-full min-h-[200px] flex-col items-center justify-center gap-2 text-center">
+              <p className="text-[13px] text-[var(--text2)]">Select a node on the map</p>
+              <p className="max-w-[220px] text-[12px] text-[var(--text3)]">Click any service, datastore, or external dependency to inspect throughput, errors, latency, and connections.</p>
+            </div>
+          )}
+        </SectionCard>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        {topology.nodes.filter((n) => n.kind === "service").map((n) => {
+          const tone = n.errRate > 5 ? "var(--red)" : n.errRate > 1 ? "var(--amber)" : "var(--green)";
+          return (
+            <button key={n.id} onClick={() => setSelectedNode(n.id)} className="flex flex-col rounded-[10px] border border-[var(--border)] bg-[var(--bg1)] p-3 text-left hover:border-[var(--brand)]">
+              <span className="flex items-center justify-between">
+                <span className="truncate text-[12px] font-medium text-[var(--text)]">{n.label}</span>
+                <span className="size-2 rounded-full" style={{ background: tone }} />
+              </span>
+              <span className="mt-1 text-lg font-semibold tabular-nums text-[var(--text)]">{n.rps} <span className="text-[11px] font-normal text-[var(--text3)]">rps</span></span>
+              <span className="text-[11px] tabular-nums text-[var(--text3)]">{n.errRate.toFixed(1)}% err · p95 {n.p95}ms</span>
+            </button>
+          );
+        })}
+      </div>
 
       <ZoneLabel>Traces &amp; bottlenecks</ZoneLabel>
 

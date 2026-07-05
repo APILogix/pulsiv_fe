@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router';
 import { authApi } from '../api/auth.api';
 import { authQueryKeys } from '../api/auth.query';
 import { useAuthStore } from '../store/auth.store';
+import { markPostLoginSetup } from '../components/PostLoginSetup';
 import { toast } from 'sonner';
 
 export function useLoginMfa() {
@@ -16,6 +17,7 @@ export function useLoginMfa() {
       authApi.getCurrentUser().then((user) => {
         setAuth(user);
         queryClient.setQueryData(authQueryKeys.currentUser, user);
+        markPostLoginSetup();
         navigate('/dashboard', { replace: true });
       });
     },

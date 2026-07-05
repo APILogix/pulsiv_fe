@@ -387,6 +387,113 @@ export function Banner({ tone = "amber", icon: Icon, title, action }: {
   );
 }
 
+// ── Chart card: title + inline legend + headline values, body, time axis ──
+export interface ChartLegendItem { label: string; color: string; value?: string }
+export function ChartCard({ title, legend, headline, headlineLabel, action, children, timeAxis, className }: {
+  title: string;
+  legend?: ChartLegendItem[];
+  headline?: string;
+  headlineLabel?: string;
+  action?: React.ReactNode;
+  children: React.ReactNode;
+  timeAxis?: string; // e.g. "24 hours ago"
+  className?: string;
+}) {
+  return (
+    <div className={cn("flex flex-col rounded-[12px] border border-[var(--border)] bg-[var(--bg1)]", className)}>
+      <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2 px-5 pt-4">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <h3 className="text-[13px] font-semibold text-[var(--text)]">{title}</h3>
+            {action}
+          </div>
+          {legend && legend.length > 0 && (
+            <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1">
+              {legend.map((l) => (
+                <span key={l.label} className="flex items-center gap-1.5 text-[11px] text-[var(--text2)]">
+                  <span className="size-2 rounded-full" style={{ background: l.color }} />
+                  {l.label}
+                  {l.value && <strong className="tabular-nums font-semibold text-[var(--text)]">{l.value}</strong>}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+        {headline && (
+          <div className="text-right">
+            <div className="text-xl font-semibold tabular-nums leading-tight text-[var(--text)]">{headline}</div>
+            {headlineLabel && <div className="text-[11px] text-[var(--text3)]">{headlineLabel}</div>}
+          </div>
+        )}
+      </div>
+      <div className="flex-1 px-5 pb-2 pt-3">{children}</div>
+      {timeAxis && (
+        <div className="flex items-center justify-between px-5 pb-3 text-[10px] uppercase tracking-wider text-[var(--text3)]">
+          <span>{timeAxis}</span>
+          <span>Now</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Hero band: single card, divided KPI columns (Vercel-observability style) ──
+export interface HeroMetric {
+  label: string;
+  value: string | number;
+  delta?: string;
+  trend?: "up" | "down" | "neutral";
+  spark?: number[];
+  sparkColor?: string;
+}
+const HERO_TREND: Record<string, string> = {
+  up: "text-[var(--green)]",
+  down: "text-[var(--red)]",
+  neutral: "text-[var(--text3)]",
+};
+export function HeroBand({ metrics }: { metrics: HeroMetric[] }) {
+  return (
+    <div className="grid grid-cols-2 divide-[var(--border)] overflow-hidden rounded-[12px] border border-[var(--border)] bg-[var(--bg1)] max-lg:gap-px max-lg:bg-[var(--border)] lg:grid-cols-none lg:auto-cols-fr lg:grid-flow-col lg:divide-x">
+      {metrics.map((m) => (
+        <div key={m.label} className="flex flex-col gap-1 bg-[var(--bg1)] px-5 py-4">
+          <span className="text-[11px] font-medium uppercase tracking-wider text-[var(--text3)]">{m.label}</span>
+          <div className="flex items-end justify-between gap-2">
+            <span className="text-[22px] font-semibold tabular-nums leading-none text-[var(--text)]">{m.value}</span>
+            {m.spark && <MiniSpark data={m.spark} color={m.sparkColor ?? "var(--brand)"} />}
+          </div>
+          {m.delta && <span className={cn("text-[11px] font-medium", HERO_TREND[m.trend ?? "neutral"])}>{m.delta}</span>}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function MiniSpark({ data, color }: { data: number[]; color: string }) {
+  if (data.length === 0) return null;
+  const w = 64;
+  const h = 22;
+  const max = Math.max(...data, 1);
+  const min = Math.min(...data, 0);
+  const range = max - min || 1;
+  const step = w / (data.length - 1 || 1);
+  const pts = data.map((d, i) => `${i * step},${h - ((d - min) / range) * h}`).join(" ");
+  return (
+    <svg width={w} height={h} className="shrink-0 overflow-visible opacity-80">
+      <polyline points={pts} fill="none" stroke={color} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+// ── Section label: uppercase divider between dashboard zones ──
+export function ZoneLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex items-center gap-3 pt-1">
+      <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--text3)]">{children}</span>
+      <span className="h-px flex-1 bg-[var(--border)]" />
+    </div>
+  );
+}
+
 // ── Big stat with optional sparkline (count-up handled by caller) ──
 export function StatTile({ label, value, delta, tone, footer }: {
   label: string;

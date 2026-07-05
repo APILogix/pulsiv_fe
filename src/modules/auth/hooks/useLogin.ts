@@ -4,6 +4,7 @@ import { authApi } from '../api/auth.api';
 import { authQueryKeys } from '../api/auth.query';
 import { useAuthStore } from '../store/auth.store';
 import { getErrorMessage } from '@/infrastructure/api-client/error.interceptor';
+import { markPostLoginSetup } from '../components/PostLoginSetup';
 import { toast } from 'sonner';
 
 export function useLogin() {
@@ -28,6 +29,7 @@ export function useLogin() {
       authApi.getCurrentUser().then((user) => {
         setAuth(user);
         queryClient.setQueryData(authQueryKeys.currentUser, user);
+        markPostLoginSetup();
         navigate('/dashboard', { replace: true });
       });
     },

@@ -6,7 +6,9 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 import * as dummy from "@/lib/dummy-data";
 import type { ErrorFilters, RequestFilters, LogFilters } from "@/types/events";
 
-const delay = (ms: number) => new Promise((r) => setTimeout(r, ms + 1200));
+// Keep a tiny delay so Suspense boundaries render consistently without
+// making the app feel slow (previously +1200ms was added to every query).
+const delay = (ms: number) => new Promise((r) => setTimeout(r, Math.min(ms, 50)));
 
 const STALE_FAST = 15 * 1000;
 const STALE = 30 * 1000;

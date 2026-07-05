@@ -4,11 +4,11 @@ import { AlertTriangle, Check, EyeOff, TrendingUp } from "lucide-react";
 import { useErrorGroups } from "@/hooks/useDummyData";
 import { useTimeRangeStore, TIME_RANGES } from "@/stores/timeRangeStore";
 import {
-  PageHeader, SectionCard, KpiCard, FilterSelect, FilterBar,
+  PageHeader, FilterSelect, FilterBar,
   SeverityBadge, MonospaceText, Timestamp, MetricSparkline, formatCompact,
 } from "@/shared/observe";
 import { EmptyState } from "@/shared/components/EmptyState";
-import { Donut, StackedBars, Banner, CHART_COLORS } from "./widgets";
+import { Donut, StackedBars, Banner, ChartCard, HeroBand, ZoneLabel, CHART_COLORS } from "./widgets";
 import { seededSeries } from "./lib";
 import type { ErrorGroup } from "@/types/events";
 
@@ -71,7 +71,7 @@ export default function ErrorTriage() {
   });
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-5">
       <PageHeader
         title="Error Triage & Root Cause"
         description="Group, prioritize, investigate, and resolve errors efficiently · auto-refresh 30s."
@@ -85,26 +85,34 @@ export default function ErrorTriage() {
         action={<button onClick={() => navigate("/dashboards/releases")} className="rounded-[6px] border border-current px-2 py-1 text-[12px]">View affected release</button>}
       />
 
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <KpiCard label="Total errors (24h)" value={formatCompact(totalErrors)} delta="+18% vs prev" trend="down" icon={AlertTriangle} />
-        <KpiCard label="Unique error groups" value={groupList.length} delta="+3 new" trend="down" />
-        <KpiCard label="Affected users" value={formatCompact(affectedUsers)} delta="+42" trend="down" />
-        <KpiCard label="Resolved today" value={7} delta="Good progress" trend="up" icon={Check} />
-      </div>
+      <HeroBand
+        metrics={[
+          { label: "Total errors (24h)", value: formatCompact(totalErrors), delta: "+18% vs prev", trend: "down", spark: seededSeries("et-total", 20, 40, 25), sparkColor: "var(--red)" },
+          { label: "Unique error groups", value: groupList.length, delta: "+3 new", trend: "down" },
+          { label: "Affected users", value: formatCompact(affectedUsers), delta: "+42", trend: "down", spark: seededSeries("et-users", 20, 30, 15), sparkColor: "var(--amber)" },
+          { label: "Resolved today", value: 7, delta: "Good progress", trend: "up", spark: seededSeries("et-res", 20, 20, 10), sparkColor: "var(--green)" },
+        ]}
+      />
+
+      <ZoneLabel>Impact analysis</ZoneLabel>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <SectionCard title="Error mechanism breakdown">
+        <ChartCard title="Error mechanism breakdown" headline={formatCompact(totalErrors)} headlineLabel="total errors">
           <Donut segments={mechanismSegments} centerLabel={formatCompact(totalErrors)} centerSub="errors" />
-        </SectionCard>
-        <SectionCard title="Error impact by service">
+        </ChartCard>
+        <ChartCard
+          title="Error impact by service"
+          legend={[
+            { label: "Fatal", color: "var(--red)" },
+            { label: "Error", color: "var(--amber)" },
+            { label: "Warning", color: "var(--blue)" },
+          ]}
+        >
           <StackedBars groups={serviceImpact} horizontal />
-          <div className="mt-3 flex gap-4 text-[11px] text-[var(--text2)]">
-            <span className="flex items-center gap-1.5"><span className="size-2.5 rounded-sm bg-[var(--red)]" /> Fatal</span>
-            <span className="flex items-center gap-1.5"><span className="size-2.5 rounded-sm bg-[var(--amber)]" /> Error</span>
-            <span className="flex items-center gap-1.5"><span className="size-2.5 rounded-sm bg-[var(--blue)]" /> Warning</span>
-          </div>
-        </SectionCard>
+        </ChartCard>
       </div>
+
+      <ZoneLabel>Triage queue · {sorted.length} groups</ZoneLabel>
 
       <FilterBar onClear={() => { setSort("lastSeen"); setMechanismFilter("all"); }}>
         <FilterSelect label="Sort" value={sort} onChange={setSort} options={SORT_OPTIONS} />

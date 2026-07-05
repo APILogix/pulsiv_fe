@@ -1,13 +1,13 @@
 import { useNavigate } from "react-router";
-import { Activity, Radio, Zap } from "lucide-react";
+import { Radio, Zap } from "lucide-react";
 import { useErrorEvents, useRequestEvents } from "@/hooks/useDummyData";
 import { useTimeRangeStore } from "@/stores/timeRangeStore";
 import {
-  PageHeader, SectionCard, KpiCard,
+  PageHeader, SectionCard,
   Table, Tr, Td, MethodBadge, StatusCodeBadge, SeverityBadge, MonospaceText, Timestamp,
   MetricSparkline, formatCompact, formatLatency,
 } from "@/shared/observe";
-import { Gauge, Donut, Banner } from "./widgets";
+import { Gauge, Donut, Banner, ChartCard, HeroBand, ZoneLabel } from "./widgets";
 import { percentile, seededSeries, groupBy } from "./lib";
 
 const CONN_LIMITS = [
@@ -53,7 +53,7 @@ export default function RealtimeTraffic() {
   const errorStream = [...errList].sort((a, b) => b.timestamp - a.timestamp).slice(0, 20);
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-5">
       <PageHeader
         title="Real-Time Traffic & Request Flow"
         description="Know exactly what is happening right now across all APIs."

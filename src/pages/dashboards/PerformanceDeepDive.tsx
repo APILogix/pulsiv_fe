@@ -3,12 +3,12 @@ import { AlertTriangle, Database, Server } from "lucide-react";
 import { useRequestEvents, useSpanEvents } from "@/hooks/useDummyData";
 import { useTimeRangeStore, TIME_RANGES } from "@/stores/timeRangeStore";
 import {
-  PageHeader, SectionCard, KpiCard, FilterSelect, Tabs,
+  PageHeader, SectionCard, FilterSelect, Tabs,
   Table, Tr, Td, MethodBadge, StatusCodeBadge, MonospaceText, Timestamp, LatencyBar,
   formatLatency,
 } from "@/shared/observe";
-import { Heatmap, StackedBars, BarList, Banner } from "./widgets";
-import { percentile, groupBy } from "./lib";
+import { Heatmap, StackedBars, BarList, Banner, ChartCard, HeroBand, ZoneLabel } from "./widgets";
+import { percentile, groupBy, seededSeries } from "./lib";
 
 const TIME_OPTIONS = TIME_RANGES.map((r) => ({ value: r, label: r }));
 
@@ -150,7 +150,7 @@ export default function PerformanceDeepDive() {
   ];
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-5">
       <PageHeader
         title="API Performance & Latency Deep Dive"
         description="Identify, diagnose, and resolve latency bottlenecks at endpoint and dependency level."
@@ -164,27 +164,45 @@ export default function PerformanceDeepDive() {
         action={<button onClick={() => navigate("/dashboards/releases")} className="rounded-[6px] border border-current px-2 py-1 text-[12px]">View release</button>}
       />
 
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <KpiCard label="P50 median" value={formatLatency(p50)} delta="-4ms 24h" trend="up" />
-        <KpiCard label="P75" value={formatLatency(p75)} delta="+2ms 24h" trend="down" />
-        <KpiCard label="P90" value={formatLatency(p90)} delta="-11ms 24h" trend="up" />
-        <KpiCard label="P99" value={formatLatency(p99)} delta="+45ms 24h" trend="down" />
-      </div>
+      <HeroBand
+        metrics={[
+          { label: "P50 median", value: formatLatency(p50), delta: "-4ms 24h", trend: "up", spark: seededSeries("hp50", 20, p50, 30), sparkColor: "var(--green)" },
+          { label: "P75", value: formatLatency(p75), delta: "+2ms 24h", trend: "down", spark: seededSeries("hp75", 20, p75, 40), sparkColor: "var(--blue)" },
+          { label: "P90", value: formatLatency(p90), delta: "-11ms 24h", trend: "up", spark: seededSeries("hp90", 20, p90, 55), sparkColor: "var(--amber)" },
+          { label: "P95", value: formatLatency(p95), delta: "watchlist", trend: "neutral", spark: seededSeries("hp95", 20, p95, 70), sparkColor: "var(--violet)" },
+          { label: "P99", value: formatLatency(p99), delta: "+45ms 24h", trend: "down", spark: seededSeries("hp99", 20, p99, 100), sparkColor: "var(--red)" },
+        ]}
+      />
 
-      <SectionCard title="Latency distribution heatmap" action={<span className="text-[11px] text-[var(--text3)]">darker = more requests</span>}>
+      <ZoneLabel>Distribution</ZoneLabel>
+
+      <ChartCard
+        title="Latency distribution heatmap"
+        action={<span className="text-[11px] text-[var(--text3)]">darker = more requests</span>}
+        timeAxis="Range start"
+      >
         <Heatmap rows={heatRows} columns={timeCols} />
-      </SectionCard>
+      </ChartCard>
 
       <SectionCard title="Latency by dimension">
         <Tabs tabs={TABS} />
       </SectionCard>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <SectionCard title="Upstream dependency latency" action={<Database className="size-4 text-[var(--text3)]" />}>
-          <BarList items={depGroups} valueFormat={formatLatency} />
-        </SectionCard>
+      <ZoneLabel>Dependencies &amp; runtime</ZoneLabel>
 
-        <SectionCard title="Cold start vs warm requests" action={<Server className="size-4 text-[var(--text3)]" />}>
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <ChartCard title="Upstream dependency latency" action={<Database className="size-4 text-[var(--text3)]" />}>
+          <BarList items={depGroups} valueFormat={formatLatency} />
+        </ChartCard>
+
+        <ChartCard
+          title="Cold start vs warm requests"
+          action={<Server className="size-4 text-[var(--text3)]" />}
+          legend={[
+            { label: "Cold start", color: "var(--amber)" },
+            { label: "Warm", color: "var(--brand)" },
+          ]}
+        >
           <StackedBars
             groups={Array.from({ length: 12 }, (_, i) => ({
               label: `${i}h`,
@@ -194,12 +212,10 @@ export default function PerformanceDeepDive() {
               ],
             }))}
           />
-          <div className="mt-3 flex gap-4 text-[11px] text-[var(--text2)]">
-            <span className="flex items-center gap-1.5"><span className="size-2.5 rounded-sm bg-[var(--amber)]" /> Cold start</span>
-            <span className="flex items-center gap-1.5"><span className="size-2.5 rounded-sm bg-[var(--brand)]" /> Warm</span>
-          </div>
-        </SectionCard>
+        </ChartCard>
       </div>
+
+      <ZoneLabel>Outliers</ZoneLabel>
 
       <SectionCard title={`Slow request analysis — latency > P95 (${formatLatency(p95)})`}>
         <Table headers={["Timestamp", "Route", "Latency", "Status", "User", "Trace", "Service"]} maxHeight="32rem">

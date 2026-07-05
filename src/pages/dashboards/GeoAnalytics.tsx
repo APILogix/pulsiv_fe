@@ -1,12 +1,12 @@
-import { Globe, Users, Smartphone } from "lucide-react";
+import { Smartphone } from "lucide-react";
 import { useRequestEvents } from "@/hooks/useDummyData";
 import { useTimeRangeStore, TIME_RANGES } from "@/stores/timeRangeStore";
 import {
-  PageHeader, SectionCard, KpiCard, FilterSelect,
+  PageHeader, SectionCard, FilterSelect,
   Table, Tr, Td, formatCompact, formatLatency,
 } from "@/shared/observe";
-import { Donut, BarList, Funnel, StatTile, CHART_COLORS } from "./widgets";
-import { percentile, countryForIp, groupBy, uniqueBy } from "./lib";
+import { Donut, BarList, Funnel, StatTile, ChartCard, HeroBand, ZoneLabel, CHART_COLORS } from "./widgets";
+import { percentile, countryForIp, groupBy, uniqueBy, seededSeries } from "./lib";
 
 const TIME_OPTIONS = TIME_RANGES.map((r) => ({ value: r, label: r }));
 
@@ -54,22 +54,26 @@ export default function GeoAnalytics() {
     .slice(0, 10);
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-5">
       <PageHeader
         title="User Distribution & Geo-Analytics"
         description="Who uses the API, from where, on what devices, and how usage patterns vary."
         actions={<FilterSelect label="Range" value={timeRange} onChange={setTimeRange} options={TIME_OPTIONS} />}
       />
 
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <KpiCard label="DAU" value={formatCompact(dau)} delta="+6.2% vs prev" trend="up" icon={Users} />
-        <KpiCard label="MAU" value={formatCompact(mau)} delta="+3.1% vs prev" trend="up" icon={Users} />
-        <KpiCard label="DAU/MAU ratio" value={`${Math.round((dau / mau) * 100)}%`} delta="Engagement" trend="neutral" />
-        <KpiCard label="Countries" value={byCountry.length} delta="Global reach" trend="neutral" icon={Globe} />
-      </div>
+      <HeroBand
+        metrics={[
+          { label: "DAU", value: formatCompact(dau), delta: "+6.2% vs prev", trend: "up", spark: seededSeries("geo-dau", 20, 50, 15) },
+          { label: "MAU", value: formatCompact(mau), delta: "+3.1% vs prev", trend: "up", spark: seededSeries("geo-mau", 20, 60, 12), sparkColor: "var(--blue)" },
+          { label: "DAU/MAU ratio", value: `${Math.round((dau / mau) * 100)}%`, delta: "Engagement", trend: "neutral" },
+          { label: "Countries", value: byCountry.length, delta: "Global reach", trend: "neutral" },
+        ]}
+      />
+
+      <ZoneLabel>Geography</ZoneLabel>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <SectionCard title="Request volume by country" className="lg:col-span-2">
+        <ChartCard title="Request volume by country" headline={formatCompact(totalReq * 240)} headlineLabel="total requests" className="lg:col-span-2">
           <div className="grid grid-cols-2 gap-x-6 gap-y-1 sm:grid-cols-3">
             {byCountry.map((c) => (
               <div key={c.code} className="flex items-center gap-2 py-1">
@@ -86,14 +90,14 @@ export default function GeoAnalytics() {
               </div>
             ))}
           </div>
-        </SectionCard>
+        </ChartCard>
 
-        <SectionCard title="Active users">
+        <ChartCard title="Active users">
           <div className="flex flex-col gap-3">
             <StatTile label="New users today" value={formatCompact(Math.round(dau * 0.18))} />
             <StatTile label="Returning users" value={formatCompact(Math.round(dau * 0.82))} />
           </div>
-        </SectionCard>
+        </ChartCard>
       </div>
 
       <SectionCard title="Top countries by volume">
@@ -111,14 +115,18 @@ export default function GeoAnalytics() {
         </Table>
       </SectionCard>
 
+      <ZoneLabel>Devices &amp; platforms</ZoneLabel>
+
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <SectionCard title="Browser breakdown" action={<Smartphone className="size-4 text-[var(--text3)]" />}>
+        <ChartCard title="Browser breakdown" action={<Smartphone className="size-4 text-[var(--text3)]" />}>
           <Donut segments={browsers} centerLabel={formatCompact(totalReq * 240)} centerSub="requests" />
-        </SectionCard>
-        <SectionCard title="Operating system breakdown">
+        </ChartCard>
+        <ChartCard title="Operating system breakdown">
           <BarList items={os.map((o) => ({ label: o.label, value: o.value, color: o.color }))} />
-        </SectionCard>
+        </ChartCard>
       </div>
+
+      <ZoneLabel>Tenants &amp; adoption</ZoneLabel>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <SectionCard title="Tenant distribution (top 10)">

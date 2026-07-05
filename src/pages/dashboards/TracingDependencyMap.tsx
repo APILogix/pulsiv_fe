@@ -1,13 +1,13 @@
 import { useNavigate } from "react-router";
-import { AlertTriangle, GitBranch } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
 import { useTraceEvents, useSpanEvents } from "@/hooks/useDummyData";
 import { useTimeRangeStore, TIME_RANGES } from "@/stores/timeRangeStore";
 import {
-  PageHeader, SectionCard, KpiCard, FilterSelect,
+  PageHeader, SectionCard, FilterSelect,
   Table, Tr, Td, StatusBadge, MonospaceText, Timestamp, formatDuration, formatLatency,
 } from "@/shared/observe";
-import { BarList, StackedBars, Banner, StatTile } from "./widgets";
-import { percentile, groupBy } from "./lib";
+import { BarList, StackedBars, Banner, StatTile, ChartCard, HeroBand, ZoneLabel } from "./widgets";
+import { percentile, groupBy, seededSeries } from "./lib";
 import type { SpanEvent } from "@/types/events";
 
 const TIME_OPTIONS = TIME_RANGES.map((r) => ({ value: r, label: r }));
@@ -69,7 +69,7 @@ export default function TracingDependencyMap() {
   });
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-5">
       <PageHeader
         title="Distributed Tracing & Dependency Map"
         description="Visualize request flow across services and identify bottleneck dependencies."
@@ -80,12 +80,16 @@ export default function TracingDependencyMap() {
         <Banner tone="amber" icon={AlertTriangle} title={<><strong>{partial.length} partial traces detected</strong> — root spans may be missing due to timeout or dropped packets.</>} />
       )}
 
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <KpiCard label="Traces" value={traceList.length} delta="in range" trend="neutral" icon={GitBranch} />
-        <KpiCard label="Spans" value={spanList.length} delta="across services" trend="neutral" />
-        <KpiCard label="Error traces" value={errorTraces} delta={`${((errorTraces / (traceList.length || 1)) * 100).toFixed(1)}%`} trend="down" />
-        <KpiCard label="Partial traces" value={partial.length} delta="orphan timeouts" trend={partial.length ? "down" : "up"} />
-      </div>
+      <HeroBand
+        metrics={[
+          { label: "Traces", value: traceList.length, delta: "in range", trend: "neutral", spark: seededSeries("tr-traces", 20, 40, 15) },
+          { label: "Spans", value: spanList.length, delta: "across services", trend: "neutral", spark: seededSeries("tr-spans", 20, 80, 20), sparkColor: "var(--blue)" },
+          { label: "Error traces", value: errorTraces, delta: `${((errorTraces / (traceList.length || 1)) * 100).toFixed(1)}%`, trend: "down", spark: seededSeries("tr-err", 20, 10, 6), sparkColor: "var(--red)" },
+          { label: "Partial traces", value: partial.length, delta: "orphan timeouts", trend: partial.length ? "down" : "up", sparkColor: "var(--amber)" },
+        ]}
+      />
+
+      <ZoneLabel>Service topology</ZoneLabel>
 
       <SectionCard title="Service dependency map">
         <div className="flex flex-wrap items-stretch gap-3">

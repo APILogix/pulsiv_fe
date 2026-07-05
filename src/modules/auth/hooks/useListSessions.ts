@@ -1,12 +1,12 @@
 import { useQuery } from '@tanstack/react-query';
 import { authApi } from '../api/auth.api';
+import { authQueryCache, authQueryKeys } from '../api/auth.query';
 
 export function useListSessions() {
   return useQuery({
-    queryKey: ['sessions'],
+    queryKey: authQueryKeys.sessions,
     queryFn: authApi.listSessions,
-    staleTime: 2 * 60 * 1000,
-    gcTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: false,
+    staleTime: authQueryCache.activityStaleMs,
+    gcTime: authQueryCache.gcMs,
   });
 }

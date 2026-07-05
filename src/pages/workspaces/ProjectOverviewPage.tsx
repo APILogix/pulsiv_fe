@@ -7,12 +7,12 @@ export default function ProjectOverviewPage() {
 
   return (
     <div className="flex flex-col gap-5">
-      <PageHeader title="Project Overview" description="Summary of project state and SDK status." />
+      <PageHeader title="Project Overview" description="Summary of overall project state, event volumes, and health." />
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <KpiCard label="Total events" value={formatCompact(projects.reduce((s, p) => s + p.eventVolume24h, 0))} />
         <KpiCard label="Avg error rate" value={`${(projects.reduce((s, p) => s + Number(p.errorRate), 0) / (projects.length || 1)).toFixed(2)}%`} />
-        <KpiCard label="SDKs reporting" value={projects.length} />
+        <KpiCard label="Active Projects" value={projects.filter((p) => p.status === "active").length} />
         <KpiCard label="Healthy" value={projects.filter((p) => p.healthScore > 80).length} />
       </div>
 
@@ -25,14 +25,28 @@ export default function ProjectOverviewPage() {
         </SectionCard>
       </div>
 
-      <SectionCard title="SDK status" className="p-0">
-        <Table headers={["Project", "SDK", "Version", "Status"]}>
+      <SectionCard title="Project Health & Activity" className="p-0">
+        <Table headers={["Project", "Event Volume (24h)", "Error Rate", "Health Score", "Status"]}>
           {projects.map((p) => (
             <Tr key={p.id}>
-              <Td>{p.name}</Td>
-              <Td className="font-[family-name:var(--mono)] text-[12px] text-[var(--text2)]">pulse-node</Td>
-              <Td className="font-[family-name:var(--mono)] text-[12px] text-[var(--text2)]">1.5.0</Td>
-              <Td><StatusBadge status={p.status === "active" ? "healthy" : "archived"} /></Td>
+              <Td className="font-medium text-[var(--text)]">{p.name}</Td>
+              <Td className="tabular-nums text-[var(--text2)]">{formatCompact(p.eventVolume24h)}</Td>
+              <Td className="tabular-nums text-[var(--text2)]">{Number(p.errorRate).toFixed(2)}%</Td>
+              <Td>
+                <div className="flex items-center gap-2">
+                  <div className="h-1.5 w-16 overflow-hidden rounded-full bg-[var(--bg3)]">
+                    <div
+                      className="h-full rounded-full"
+                      style={{
+                        width: `${Math.min(100, Math.max(0, p.healthScore))}%`,
+                        background: p.healthScore > 80 ? "var(--green)" : p.healthScore > 50 ? "var(--amber)" : "var(--red)"
+                      }}
+                    />
+                  </div>
+                  <span className="text-[12px] font-medium text-[var(--text2)] tabular-nums">{p.healthScore}</span>
+                </div>
+              </Td>
+              <Td><StatusBadge status={p.status} /></Td>
             </Tr>
           ))}
         </Table>

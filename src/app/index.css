@@ -278,6 +278,16 @@
   display: none;
 }
 
+/* Hide all scrollbars globally */
+::-webkit-scrollbar {
+  display: none;
+}
+
+* {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
 /* Tooltip for rail icons */
 .rail-item::after {
   content: attr(data-title);

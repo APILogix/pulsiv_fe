@@ -1,23 +1,74 @@
+import { useState } from "react";
 import { Plus } from "lucide-react";
-import { useApiKeys } from "@/hooks/useDummyData";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { orgApi } from "@/modules/organizations/api/org.api";
+import { orgQueryKeys, useOrganizations } from "@/modules/organizations/hooks/useOrganizations";
+import type { ApiKey } from "@/modules/organizations/types/org.types";
 import {
-  PageHeader, KpiCard, FillPage, InfiniteTable, StatusBadge, Button, CopyButton, Timestamp, demoAction, demoSuccess, formatCompact,
+  PageHeader, KpiCard, FillPage, InfiniteTable, StatusBadge, Button, CopyButton, Timestamp,
 } from "@/shared/observe";
 import type { Column } from "@/shared/observe";
-import type { ApiKey } from "@/lib/dummy-data";
+import { toast } from "sonner";
 
 export default function OrgApiKeysPage() {
-  const { data, isLoading } = useApiKeys();
-  const keys = data ?? [];
+  const queryClient = useQueryClient();
+  const { activeOrgId } = useOrganizations();
+  const [newKey, setNewKey] = useState<{ name: string; rawKey: string } | null>(null);
+
+  const { data: keys, isLoading } = useQuery({
+    queryKey: orgQueryKeys.apiKeys(activeOrgId!),
+    queryFn: () => orgApi.listApiKeys(activeOrgId!, { limit: 100 }),
+    enabled: !!activeOrgId,
+  });
+
+  const createMutation = useMutation({
+    mutationFn: (data: { name: string; environmentId?: string; role?: string; expiresInDays?: number }) => orgApi.createApiKey(activeOrgId!, data),
+    onSuccess: (result) => {
+      setNewKey({ name: result.name, rawKey: result.rawKey });
+      toast.success("API key created");
+      queryClient.invalidateQueries({ queryKey: orgQueryKeys.apiKeys(activeOrgId!) });
+    },
+    onError: (err: any) => toast.error(err.response?.data?.message || "Failed to create key"),
+  });
+
+  const revokeMutation = useMutation({
+    mutationFn: (id: string) => orgApi.revokeApiKey(activeOrgId!, id),
+    onSuccess: () => {
+      toast.success("API key revoked");
+      queryClient.invalidateQueries({ queryKey: orgQueryKeys.apiKeys(activeOrgId!) });
+    },
+    onError: (err: any) => toast.error(err.response?.data?.message || "Failed to revoke key"),
+  });
+
+  const rotateMutation = useMutation({
+    mutationFn: (id: string) => orgApi.rotateApiKey(activeOrgId!, id),
+    onSuccess: (result) => {
+      setNewKey({ name: result.name, rawKey: result.rawKey });
+      toast.success("API key rotated");
+      queryClient.invalidateQueries({ queryKey: orgQueryKeys.apiKeys(activeOrgId!) });
+    },
+    onError: (err: any) => toast.error(err.response?.data?.message || "Failed to rotate key"),
+  });
+
+  const items = keys?.data || [];
 
   const columns: Column<ApiKey>[] = [
-    { key: "name", header: "Name", width: "1fr", cell: (k) => <span className="truncate font-medium">{k.name}</span> },
-    { key: "key", header: "Key", width: "160px", cell: (k) => <div onClick={(e) => e.stopPropagation()}><CopyButton value={`${k.prefix}_${k.id}`} label={`${k.prefix}••••`} /></div> },
-    { key: "type", header: "Type", width: "100px", cell: (k) => <span className="capitalize text-[var(--text2)]">{k.type}</span> },
-    { key: "perms", header: "Permissions", width: "110px", cell: (k) => <span className="text-[12px] text-[var(--text3)]">{k.permissions.length} scopes</span> },
-    { key: "used", header: "Last used", width: "130px", cell: (k) => <Timestamp value={k.lastUsedAt} /> },
-    { key: "status", header: "Status", width: "110px", cell: (k) => <StatusBadge status={k.status} /> },
-    { key: "actions", header: "", width: "100px", cell: (k) => (k.status === "active" ? <div onClick={(e) => e.stopPropagation()}><Button variant="danger" onClick={() => demoSuccess(`Revoked ${k.name}`)}>Revoke</Button></div> : null) },
+    { key: "name", header: "Name", width: "1fr", cell: (key) => <span className="truncate font-medium">{key.name}</span> },
+    { key: "key", header: "Key", width: "160px", cell: (key) => <div onClick={(event) => event.stopPropagation()}><CopyButton value={`${key.keyPrefix}_****`} label={`${key.keyPrefix}****`} /></div> },
+    { key: "role", header: "Role", width: "100px", cell: (key) => <span className="capitalize text-[var(--text2)]">{key.role}</span> },
+    { key: "used", header: "Last used", width: "130px", cell: (key) => key.lastUsedAt ? <Timestamp value={new Date(key.lastUsedAt).getTime()} /> : <span className="text-[var(--text3)]">-</span> },
+    { key: "status", header: "Status", width: "110px", cell: (key) => <StatusBadge status={key.revokedAt ? "revoked" : (key.expiresAt && new Date(key.expiresAt) < new Date() ? "expired" : "active")} /> },
+    {
+      key: "actions",
+      header: "",
+      width: "220px",
+      cell: (key) => (!key.revokedAt && (!key.expiresAt || new Date(key.expiresAt) > new Date()) ? (
+        <div className="flex gap-2" onClick={(event) => event.stopPropagation()}>
+          <Button variant="secondary" disabled={rotateMutation.isPending} onClick={() => rotateMutation.mutate(key.id)}>Rotate</Button>
+          <Button variant="danger" disabled={revokeMutation.isPending} onClick={() => revokeMutation.mutate(key.id)}>Revoke</Button>
+        </div>
+      ) : null),
+    },
   ];
 
   return (
@@ -25,17 +76,37 @@ export default function OrgApiKeysPage() {
       <PageHeader
         title="Org API Keys"
         description="Organization-level API key administration."
-        actions={<Button variant="primary" onClick={() => demoAction("Create org API key")}><Plus className="size-4" /> Create key</Button>}
+        actions={<Button variant="primary" onClick={() => {
+          const name = window.prompt("API key name");
+          if (!name?.trim()) return;
+          createMutation.mutate({ name: name.trim() });
+        }}><Plus className="mr-2 size-4" /> Create key</Button>}
       />
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <KpiCard label="Keys" value={keys.length} />
-        <KpiCard label="Active" value={keys.filter((k) => k.status === "active").length} />
-        <KpiCard label="Admin keys" value={keys.filter((k) => k.type === "admin").length} />
-        <KpiCard label="Usage / 24h" value={formatCompact(keys.reduce((s, k) => s + k.usage24h, 0))} />
+        <KpiCard label="Keys" value={items.length} />
+        <KpiCard label="Active" value={items.filter((key) => !key.revokedAt && (!key.expiresAt || new Date(key.expiresAt) > new Date())).length} />
+        <KpiCard label="Admin keys" value={items.filter((key) => key.role === "admin" || key.role === "owner").length} />
       </div>
 
-      <InfiniteTable className="flex-1" loading={isLoading} items={keys} queryKey={["orgApiKeys"]} columns={columns} getKey={(k) => k.id} />
+      {newKey ? (
+        <div className="rounded-[12px] border border-[var(--green)]/30 bg-[var(--green-bg)] p-4 text-sm">
+          <div className="font-medium text-[var(--text)]">Copy this raw key now for {newKey.name}.</div>
+          <div className="mt-2 flex items-center gap-3">
+            <code className="flex-1 overflow-x-auto rounded bg-[var(--bg2)] px-3 py-2 text-[12px]">{newKey.rawKey}</code>
+            <CopyButton value={newKey.rawKey} label="Copy" />
+          </div>
+        </div>
+      ) : null}
+
+      <InfiniteTable
+        className="flex-1"
+        loading={isLoading}
+        items={items}
+        queryKey={["orgApiKeys-table", activeOrgId]}
+        columns={columns}
+        getKey={(key) => key.id}
+      />
     </FillPage>
   );
 }

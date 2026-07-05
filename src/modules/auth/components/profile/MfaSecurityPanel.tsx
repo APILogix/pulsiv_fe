@@ -2,9 +2,11 @@ import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Smartphone, Key, Mail, ShieldCheck, MessageSquare, Trash2, Plus, Loader2, Star, Pencil,
+  ShieldOff,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { authApi } from '../../api/auth.api';
+import { authQueryKeys } from '../../api/auth.query';
 import { useListMFADevices } from '../../hooks/useListMFADevices';
 import { useCurrentUser } from '../../hooks/useCurrentUser';
 import type { MFADeviceDto, MFAType } from '../../types/auth.types';
@@ -46,10 +48,12 @@ export function MfaSecurityPanel() {
   const [renameValue, setRenameValue] = useState('');
   const [removeTarget, setRemoveTarget] = useState<MFADeviceDto | null>(null);
   const [removePassword, setRemovePassword] = useState('');
+  const [disableOpen, setDisableOpen] = useState(false);
 
   const invalidate = () => {
-    qc.invalidateQueries({ queryKey: ['mfa-devices'] });
-    qc.invalidateQueries({ queryKey: ['current-user'] });
+    qc.invalidateQueries({ queryKey: authQueryKeys.mfaDevices });
+    qc.invalidateQueries({ queryKey: authQueryKeys.currentUser });
+    qc.invalidateQueries({ queryKey: authQueryKeys.securitySummary });
   };
 
   const setPrimary = useMutation({
@@ -70,6 +74,16 @@ export function MfaSecurityPanel() {
     onError: (e) => toast.error(getErrorMessage(e)),
   });
 
+  const disableMfa = useMutation({
+    mutationFn: () => authApi.disableMFA({}),
+    onSuccess: () => {
+      invalidate();
+      setDisableOpen(false);
+      toast.success('MFA disabled');
+    },
+    onError: (e) => toast.error(getErrorMessage(e)),
+  });
+
   const mfaEnabled = !!user?.mfa_enabled;
   const verifiedDevices = devices.filter((d) => d.verified);
 
@@ -83,7 +97,7 @@ export function MfaSecurityPanel() {
       </div>
 
       {/* Status banner */}
-      <div className="bg-[#141414] border border-[#1f1f1f] rounded-lg p-6 flex items-center justify-between">
+      <div className="bg-[#141414] border border-[#1f1f1f] rounded-lg p-6 flex items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-3 mb-1">
             <h3 className="text-[16px] font-semibold text-white">MFA Status</h3>
@@ -97,6 +111,14 @@ export function MfaSecurityPanel() {
               : 'Add a verification method to enable two-factor authentication.'}
           </p>
         </div>
+        {mfaEnabled && (
+          <button
+            onClick={() => setDisableOpen(true)}
+            className="px-4 py-2 border border-[#ef4444]/20 bg-[#2a1313] text-[#ef4444] text-[13px] font-medium rounded-md hover:bg-[#3f1919] transition-all flex items-center gap-2 shrink-0"
+          >
+            <ShieldOff size={15} /> Disable MFA
+          </button>
+        )}
       </div>
 
       {/* Device list */}
@@ -238,6 +260,36 @@ export function MfaSecurityPanel() {
               className="bg-[#ef4444] text-white font-semibold hover:bg-[#dc2626]"
             >
               {remove.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Remove
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={disableOpen} onOpenChange={setDisableOpen}>
+        <DialogContent className="sm:max-w-md bg-[#141414] border-[#1f1f1f] text-white">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ShieldOff size={18} className="text-[#ef4444]" />
+              Disable MFA
+            </DialogTitle>
+            <DialogDescription className="text-[#8A8F98]">
+              This removes MFA protection from your account. You may be asked to verify your identity before the change is accepted.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="rounded-lg border border-[#3a1d1d] bg-[#171111] p-3 text-[13px] leading-relaxed text-[#b78b8b]">
+            Your account will be less secure. Re-enable MFA as soon as possible if this is temporary.
+          </div>
+          <DialogFooter className="pt-4 bg-[#111111] border-[#1f1f1f]">
+            <Button variant="outline" onClick={() => setDisableOpen(false)} className="border-[#2a2a2a] bg-transparent text-[#e8e8e8] hover:bg-[#1a1a1a]">
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => disableMfa.mutate()}
+              disabled={disableMfa.isPending}
+            >
+              {disableMfa.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Disable MFA
             </Button>
           </DialogFooter>
         </DialogContent>

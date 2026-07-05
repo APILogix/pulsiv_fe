@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ssoLoginSchema, type SsoLoginFormData } from '../schemas/auth.schema';
 import { authApi } from '../api/auth.api';
+import type { SsoDiscoveryResult } from '../types/auth.types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -12,18 +13,33 @@ import { Link } from 'react-router';
 export default function SsoLoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [discovery, setDiscovery] = useState<SsoDiscoveryResult | null>(null);
   const { register, handleSubmit, formState: { errors } } = useForm<SsoLoginFormData>({
     resolver: zodResolver(ssoLoginSchema),
   });
 
-  const onSubmit = handleSubmit((data) => {
+  const onSubmit = handleSubmit(async (data) => {
     setError('');
+    setDiscovery(null);
     setLoading(true);
-    authApi.ssoLogin(data)
-      .then((result) => {
-        window.location.assign(result.authorization_url);
-      })
-      .catch((err) => { setError(getErrorMessage(err)); setLoading(false); });
+
+    try {
+      const email = data.email ?? '';
+      const discovered = await authApi.discoverSSO(email);
+      setDiscovery(discovered);
+
+      if (!discovered.sso_available || (!discovered.saml_login_ready && !discovered.oidc_login_ready)) {
+        setError('No SSO provider is configured for this email domain.');
+        setLoading(false);
+        return;
+      }
+
+      const result = await authApi.ssoLogin(data);
+      window.location.assign(result.authorization_url);
+    } catch (err) {
+      setError(getErrorMessage(err));
+      setLoading(false);
+    }
   });
 
   return (
@@ -59,6 +75,24 @@ export default function SsoLoginPage() {
               {error}
             </div>
           )}
+          {discovery ? (
+            <div className="rounded-lg border border-[#262626] bg-[#161616] p-4 text-sm text-[#c9c9c9]">
+              <div className="text-xs uppercase tracking-[0.24em] text-[#777777]">Detected domain</div>
+              <div className="mt-1 font-medium text-[#f2f2f2]">{discovery.domain}</div>
+              <div className="mt-3 space-y-2">
+                {discovery.providers.map((provider) => {
+                  return (
+                    <div key={provider.provider_id} className="rounded-md border border-[#262626] bg-[#111111] px-3 py-2">
+                      <div className="font-medium text-[#f2f2f2]">{provider.provider_name}</div>
+                      <div className="mt-1 text-xs text-[#8b8b8b]">
+                        {provider.provider_type.toUpperCase()} for {provider.org_name}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
           <Button
             type="submit"
             className="w-full h-10 bg-[#34d399] text-[#04140d] font-semibold hover:bg-[#10b981] transition-colors disabled:opacity-50"

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Navigate, useLocation, useNavigate, Link } from 'react-router';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -8,6 +9,7 @@ import type { LoginMfaFormData } from '../schemas/auth.schema';
 import type { LoginMfaMethod, MFAType } from '../types/auth.types';
 import { useLoginMfa } from '../hooks/useLoginMfa';
 import { authApi } from '../api/auth.api';
+import { authQueryKeys } from '../api/auth.query';
 import { useAuthStore } from '../store/auth.store';
 import { loginWithPasskey, WebAuthnCeremonyError } from '../services/webauthn.client';
 import { getErrorMessage } from '@/infrastructure/api-client/error.interceptor';
@@ -39,6 +41,7 @@ function methodTitle(type: MFAType): string {
 export default function LoginMfaPage() {
   const location = useLocation();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const setAuth = useAuthStore((s) => s.setAuth);
   const { challengeId, deviceType: initialDeviceType, availableMethods } =
     (location.state || {}) as {
@@ -71,6 +74,8 @@ export default function LoginMfaPage() {
   const [showPicker, setShowPicker] = useState(false);
   const [isSwitching, setIsSwitching] = useState(false);
   const [passkeyBusy, setPasskeyBusy] = useState(false);
+  const [isResending, setIsResending] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
   const { mutate: loginMfa, isPending } = useLoginMfa();
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm<LoginMfaFormData>({
@@ -93,6 +98,7 @@ export default function LoginMfaPage() {
       await loginWithPasskey(challengeId);
       const user = await authApi.getCurrentUser();
       setAuth(user);
+      queryClient.setQueryData(authQueryKeys.currentUser, user);
       navigate('/dashboard', { replace: true });
     } catch (err) {
       const msg = err instanceof WebAuthnCeremonyError ? err.message : getErrorMessage(err);
@@ -139,6 +145,26 @@ export default function LoginMfaPage() {
       toast.error(getErrorMessage(err));
     } finally {
       setIsSwitching(false);
+    }
+  }
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const timer = window.setTimeout(() => setResendCooldown((value) => Math.max(0, value - 1)), 1000);
+    return () => window.clearTimeout(timer);
+  }, [resendCooldown]);
+
+  async function resendEmailCode() {
+    if (current.type !== 'email' || !current.id || current.id === 'primary' || resendCooldown > 0) return;
+    setIsResending(true);
+    try {
+      await authApi.resendEmailMfaOtp(current.id);
+      setResendCooldown(30);
+      toast.success('Verification code sent');
+    } catch (err) {
+      toast.error(getErrorMessage(err));
+    } finally {
+      setIsResending(false);
     }
   }
 
@@ -201,6 +227,20 @@ export default function LoginMfaPage() {
             >
               {isPending ? 'Verifying...' : 'Verify identity'}
             </Button>
+            {current.type === 'email' && current.id !== 'primary' && (
+              <button
+                type="button"
+                onClick={resendEmailCode}
+                disabled={isResending || resendCooldown > 0}
+                className="w-full text-center text-sm text-[#34d399] hover:text-[#10b981] transition-colors disabled:text-[#555555]"
+              >
+                {isResending
+                  ? 'Sending...'
+                  : resendCooldown > 0
+                    ? `Resend code in ${resendCooldown}s`
+                    : 'Resend code'}
+              </button>
+            )}
           </form>
         )}
 

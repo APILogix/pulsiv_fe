@@ -17,55 +17,29 @@
         transition: opacity 0.5s ease-in-out;
       }
       #initial-loader svg {
-        width: 80px;
-        height: 80px;
-        animation: pulse-logo 1.5s ease-in-out infinite alternate;
+        width: 260px;
+        height: 160px;
       }
-      @keyframes pulse-logo {
-        0% { transform: scale(0.95); opacity: 0.8; }
-        100% { transform: scale(1.05); opacity: 1; filter: drop-shadow(0 0 10px rgba(52, 211, 153, 0.4)); }
-      }
+      @keyframes letterIn { 0%{opacity:0; transform:translateY(14px);} 8%{opacity:1; transform:translateY(0);} 68%{opacity:1;} 82%{opacity:0;} 100%{opacity:0;} }
+      .wl { animation:letterIn 5s ease-in-out infinite; }
+      .wl0 { animation-delay:0s; } .wl1 { animation-delay:0.12s; } .wl2 { animation-delay:0.24s; }
+      .wl3 { animation-delay:0.36s; } .wl4 { animation-delay:0.48s; } .wl5 { animation-delay:0.6s; }
+      .burstring { fill:none; stroke:#34d399; opacity:0; animation:burstGo 5s ease-out infinite; }
+      @keyframes burstGo { 0%,44%{ r:2; opacity:0;} 46%{ opacity:0.8; stroke-width:2;} 70%{ r:95; opacity:0; stroke-width:0.3;} 100%{opacity:0;} }
     </style>
-    <script type="module" crossorigin src="/assets/index-DPgYPqYz.js"></script>
+    <script type="module" crossorigin src="/assets/index-lOPQH08W.js"></script>
     <link rel="modulepreload" crossorigin href="/assets/react-vendor-DbUW7vCe.js">
-    <link rel="modulepreload" crossorigin href="/assets/util-vendor-DPm1iPP9.js">
-    <link rel="modulepreload" crossorigin href="/assets/ui-vendor-tPr6ThOn.js">
-    <link rel="stylesheet" crossorigin href="/assets/index-DpacG2XX.css">
+    <link rel="modulepreload" crossorigin href="/assets/util-vendor-k7sYRu_z.js">
+    <link rel="modulepreload" crossorigin href="/assets/ui-vendor-Cfix57h-.js">
+    <link rel="stylesheet" crossorigin href="/assets/index-_5iUxdqr.css">
   </head>
   <body>
     <div id="initial-loader">
-      <svg width="120" height="120" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-          <linearGradient id="neonPulse" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stop-color="#34d399" />
-            <stop offset="100%" stop-color="#6366f1" />
-          </linearGradient>
-          <filter id="neonGlow" x="-50%" y="-50%" width="200%" height="200%">
-            <feGaussianBlur stdDeviation="8" result="blur" />
-            <feMerge>
-              <feMergeNode in="blur" />
-              <feMergeNode in="SourceGraphic" />
-            </feMerge>
-          </filter>
-        </defs>
-
-        <g filter="url(#neonGlow)">
-          <!-- Outer rotating dashed ring -->
-          <circle cx="60" cy="60" r="45" fill="none" stroke="url(#neonPulse)" stroke-width="2" stroke-dasharray="10 15" opacity="0.6">
-            <animateTransform attributeName="transform" type="rotate" from="0 60 60" to="360 60 60" dur="12s" repeatCount="indefinite" />
-          </circle>
-          
-          <!-- Inner pulsing ring -->
-          <circle cx="60" cy="60" r="32" fill="none" stroke="url(#neonPulse)" stroke-width="4" opacity="0.8">
-            <animate attributeName="r" values="30; 34; 30" dur="2s" repeatCount="indefinite" />
-            <animate attributeName="opacity" values="0.4; 0.9; 0.4" dur="2s" repeatCount="indefinite" />
-          </circle>
-          
-          <!-- Core waveform -->
-          <path d="M 35 60 L 45 60 L 52 42 L 68 78 L 75 60 L 85 60" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
-            <animate attributeName="stroke-width" values="3; 5; 3" dur="2s" repeatCount="indefinite" />
-          </path>
-        </g>
+      <svg width="260" height="160" viewBox="0 0 260 160" xmlns="http://www.w3.org/2000/svg" aria-label="Pulsiv loading">
+        <circle class="burstring" cx="130" cy="80" r="2"/>
+        <text x="130" y="88" font-family='ui-monospace, "SF Mono", "JetBrains Mono", Consolas, monospace' font-weight="700" font-size="34" letter-spacing="4" text-anchor="middle">
+          <tspan class="wl wl0" fill="#ffffff">P</tspan><tspan class="wl wl1" fill="#ffffff">U</tspan><tspan class="wl wl2" fill="#ffffff">L</tspan><tspan class="wl wl3" fill="#ffffff">S</tspan><tspan class="wl wl4" fill="#34d399">I</tspan><tspan class="wl wl5" fill="#ffffff">V</tspan>
+        </text>
       </svg>
     </div>
     <div id="pulse-root">

@@ -14,8 +14,18 @@ import AccountUnlockRequestPage from "@/modules/auth/pages/AccountUnlockRequestP
 import AccountUnlockConfirmPage from "@/modules/auth/pages/AccountUnlockConfirmPage";
 import SsoLoginPage from "@/modules/auth/pages/SsoLoginPage";
 import BackupCodesPage from "@/modules/auth/pages/BackupCodesPage";
+import AccountDeletionConfirmPage from "@/modules/auth/pages/AccountDeletionConfirmPage";
+import AuthCallbackPage from "@/modules/auth/pages/AuthCallbackPage";
 
 export const publicRoutes: RouteObject[] = [
+  {
+    path: "auth/callback",
+    element: <AuthCallbackPage />,
+  },
+  {
+    path: "account/delete/confirm",
+    element: <AccountDeletionConfirmPage />,
+  },
   {
     element: <RequireGuest />,
     children: [

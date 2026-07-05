@@ -7,8 +7,8 @@ export function QueryProvider({ children }: { children: ReactNode }) {
       new QueryClient({
         defaultOptions: {
           queries: {
-            staleTime: 30 * 1000, // 30 seconds
-            gcTime: 5 * 60 * 1000, // 5 minutes
+            staleTime: 5 * 60 * 1000,
+            gcTime: 30 * 60 * 1000,
             retry: (failureCount, error: unknown) => {
               // Don't retry 4xx errors
               if (
@@ -25,6 +25,7 @@ export function QueryProvider({ children }: { children: ReactNode }) {
               return failureCount < 3;
             },
             refetchOnWindowFocus: false,
+            refetchOnMount: false,
           },
           mutations: {
             retry: false,

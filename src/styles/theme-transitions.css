@@ -1,0 +1,46 @@
+/*
+ * Smooth color transitions when switching themes.
+ *
+ * Only color-ish properties transition (never layout/size), so theme changes
+ * never cause jank or layout shift. The transition is scoped to a short
+ * `data-theme-transition` window toggled by the theme store, so it does not
+ * interfere with hover/interactive transitions during normal use.
+ *
+ * Respects `prefers-reduced-motion`: the transition is fully disabled and the
+ * theme is applied instantly.
+ */
+
+:root[data-theme-transition] *,
+:root[data-theme-transition] *::before,
+:root[data-theme-transition] *::after {
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease,
+    color 180ms ease,
+    fill 180ms ease,
+    stroke 180ms ease,
+    box-shadow 180ms ease !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root[data-theme-transition] *,
+  :root[data-theme-transition] *::before,
+  :root[data-theme-transition] *::after {
+    transition: none !important;
+  }
+}
+
+/* ── High Contrast: stronger, always-visible focus rings ─────────────── */
+:root[data-theme="high-contrast"] *:focus-visible {
+  outline: 3px solid var(--pulse-accent-info, #67e8f9);
+  outline-offset: 3px;
+}
+
+/* ── Terminal: monospace-forward code surfaces ───────────────────────── */
+:root[data-theme="terminal"] code,
+:root[data-theme="terminal"] pre,
+:root[data-theme="terminal"] kbd,
+:root[data-theme="terminal"] samp {
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  color: var(--pulse-text-primary, #4ade80);
+}

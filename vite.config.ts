@@ -22,4 +22,30 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  optimizeDeps: {
+    include: [
+      "lucide-react",
+      "react",
+      "react-dom",
+      "react-router",
+      "clsx",
+      "sonner",
+      "cmdk",
+      "zustand",
+      "@tanstack/react-query",
+      "axios",
+      "zod",
+    ],
+  },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'react-vendor': ['react', 'react-dom', 'react-router'],
+          'ui-vendor': ['lucide-react', 'framer-motion', 'cmdk', 'sonner'],
+          'util-vendor': ['@tanstack/react-query', 'axios', 'zustand', 'zod', '@simplewebauthn/browser']
+        }
+      }
+    }
+  }
 })

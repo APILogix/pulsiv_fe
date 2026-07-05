@@ -83,17 +83,6 @@ export const resendVerificationSchema = z.object({
 });
 export type ResendVerificationFormData = z.infer<typeof resendVerificationSchema>;
 
-export const emailChangeRequestSchema = z.object({
-  new_email: z.string().email().max(255),
-  current_password: z.string().min(1).max(256),
-});
-export type EmailChangeRequestFormData = z.infer<typeof emailChangeRequestSchema>;
-
-export const emailChangeConfirmSchema = z.object({
-  token: z.string().min(64),
-});
-export type EmailChangeConfirmFormData = z.infer<typeof emailChangeConfirmSchema>;
-
 export const mfaSetupSchema = z.object({
   type: z.enum(['totp', 'email']),
   device_name: z.string().min(1).max(255),

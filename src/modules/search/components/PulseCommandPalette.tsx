@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router';
 import {
   CommandDialog,
@@ -19,7 +19,51 @@ export function PulseCommandPalette() {
   const navigate = useNavigate();
   const { isOpen, setOpen, query, setQuery, isLoading, results } = useSearchStore();
 
-  // Mock search effect to simulate API delay
+  // Pre-compute the flattened navigation array once rather than on every keystroke
+  const allSearchItems = useMemo<SearchResult[]>(() => {
+    const groupMap: Record<string, SearchResult['group']> = {
+      Overview: 'Navigation',
+      Observability: 'Observability',
+      Projects: 'Projects',
+      Alerts: 'Alerts',
+      Ingestion: 'Ingestion',
+      'AI Ops': 'AI Ops',
+      Administration: 'Administration',
+      Billing: 'Billing',
+      Settings: 'Settings',
+    };
+
+    const navResults: SearchResult[] = mainNavigation.flatMap((item) => {
+      const normalizedGroup = groupMap[item.label] ?? 'Navigation';
+      const base: SearchResult[] = [
+        {
+          id: item.path,
+          title: item.label,
+          subtitle: item.description,
+          group: normalizedGroup,
+          onSelect: () => navigate(item.path),
+        },
+      ];
+
+      const children = (item.children ?? []).map<SearchResult>((child) => ({
+        id: child.path,
+        title: child.label,
+        subtitle: child.description,
+        group: normalizedGroup,
+        onSelect: () => navigate(child.path),
+      }));
+
+      return [...base, ...children];
+    });
+
+    return [
+      ...navResults,
+      { id: 'settings', title: 'Settings', subtitle: 'Organization configuration workspace', group: 'Settings', onSelect: () => navigate('/settings') },
+      { id: 'security', title: 'Security Center', subtitle: 'User security controls and verification', group: 'Settings', onSelect: () => navigate('/auth/security'), shortcut: 'G S' },
+    ];
+  }, [navigate]);
+
+  // Filter the pre-computed list on keystroke
   useEffect(() => {
     if (!query) {
       useSearchStore.getState().setResults([]);
@@ -28,52 +72,13 @@ export function PulseCommandPalette() {
 
     useSearchStore.getState().setIsLoading(true);
     const timer = setTimeout(() => {
-      const groupMap: Record<string, SearchResult['group']> = {
-        Overview: 'Navigation',
-        Observability: 'Observability',
-        Projects: 'Projects',
-        Alerts: 'Alerts',
-        Ingestion: 'Ingestion',
-        'AI Ops': 'AI Ops',
-        Administration: 'Administration',
-        Billing: 'Billing',
-        Settings: 'Settings',
-      };
 
-      const navResults: SearchResult[] = mainNavigation.flatMap((item) => {
-        const normalizedGroup = groupMap[item.label] ?? 'Navigation';
-        const base: SearchResult[] = [
-          {
-            id: item.path,
-            title: item.label,
-            subtitle: item.description,
-            group: normalizedGroup,
-            onSelect: () => navigate(item.path),
-          },
-        ];
-
-        const children = (item.children ?? []).map<SearchResult>((child) => ({
-          id: child.path,
-          title: child.label,
-          subtitle: child.description,
-          group: normalizedGroup,
-          onSelect: () => navigate(child.path),
-        }));
-
-        return [...base, ...children];
-      });
-
-      const allResults: SearchResult[] = [
-        ...navResults,
-        { id: 'settings', title: 'Settings', subtitle: 'Organization configuration workspace', group: 'Settings', onSelect: () => navigate('/settings') },
-        { id: 'security', title: 'Security Center', subtitle: 'User security controls and verification', group: 'Settings', onSelect: () => navigate('/auth/security'), shortcut: 'G S' },
-      ];
-
-      const filtered = allResults.filter(
+      const lowerQuery = query.toLowerCase();
+      const filtered = allSearchItems.filter(
         (r) =>
-          r.title.toLowerCase().includes(query.toLowerCase()) ||
-          r.group.toLowerCase().includes(query.toLowerCase()) ||
-          r.subtitle?.toLowerCase().includes(query.toLowerCase())
+          r.title.toLowerCase().includes(lowerQuery) ||
+          r.group.toLowerCase().includes(lowerQuery) ||
+          r.subtitle?.toLowerCase().includes(lowerQuery)
       );
       
       useSearchStore.getState().setResults(filtered);

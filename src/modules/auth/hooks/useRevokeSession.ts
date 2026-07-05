@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { authApi } from '../api/auth.api';
+import { authQueryKeys } from '../api/auth.query';
 import { toast } from 'sonner';
 
 export function useRevokeSession() {
@@ -8,7 +9,8 @@ export function useRevokeSession() {
   return useMutation({
     mutationFn: authApi.revokeSession,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['sessions'] });
+      queryClient.invalidateQueries({ queryKey: authQueryKeys.sessions });
+      queryClient.invalidateQueries({ queryKey: authQueryKeys.securitySummary });
       toast.success('Session revoked successfully.');
     },
     onError: (error: any) => {
@@ -24,7 +26,8 @@ export function useRevokeAllSessions() {
   return useMutation({
     mutationFn: authApi.revokeAllSessions,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['sessions'] });
+      queryClient.invalidateQueries({ queryKey: authQueryKeys.sessions });
+      queryClient.invalidateQueries({ queryKey: authQueryKeys.securitySummary });
       toast.success('All sessions revoked successfully.');
     },
     onError: (error: any) => {
@@ -40,7 +43,8 @@ export function useRevokeOtherSessions() {
   return useMutation({
     mutationFn: authApi.revokeOtherSessions,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['sessions'] });
+      queryClient.invalidateQueries({ queryKey: authQueryKeys.sessions });
+      queryClient.invalidateQueries({ queryKey: authQueryKeys.securitySummary });
       toast.success('All other sessions revoked successfully.');
     },
     onError: (error: any) => {

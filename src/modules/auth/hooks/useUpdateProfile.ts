@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { authApi } from '../api/auth.api';
+import { authQueryKeys } from '../api/auth.query';
 import { useAuthStore } from '../store/auth.store';
 import { toast } from 'sonner';
 
@@ -11,7 +12,8 @@ export function useUpdateProfile() {
     mutationFn: authApi.updateCurrentUser,
     onSuccess: (updatedUser) => {
       setAuth(updatedUser);
-      queryClient.invalidateQueries({ queryKey: ['currentUser'] });
+      queryClient.setQueryData(authQueryKeys.currentUser, updatedUser);
+      queryClient.invalidateQueries({ queryKey: authQueryKeys.securitySummary });
       toast.success('Profile updated successfully!');
     },
     onError: (error: any) => {

@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { authApi } from '../api/auth.api';
+import { authQueryKeys } from '../api/auth.query';
 import { toast } from 'sonner';
 
 export function useRemoveMFADevice() {
@@ -9,8 +10,9 @@ export function useRemoveMFADevice() {
     mutationFn: ({ id, currentPassword }: { id: string; currentPassword?: string }) =>
       authApi.removeMFADevice(id, currentPassword),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['mfa-devices'] });
-      queryClient.invalidateQueries({ queryKey: ['current-user'] });
+      queryClient.invalidateQueries({ queryKey: authQueryKeys.mfaDevices });
+      queryClient.invalidateQueries({ queryKey: authQueryKeys.currentUser });
+      queryClient.invalidateQueries({ queryKey: authQueryKeys.securitySummary });
       toast.success('MFA device removed.');
     },
     onError: (error: any) => {

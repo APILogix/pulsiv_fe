@@ -6,76 +6,36 @@ export function PulsivLogo({ size = 48, animate = true }: { size?: number; anima
     <svg
       width={size}
       height={size}
-      viewBox="0 0 100 116"
+      viewBox="0 0 200 200"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       aria-label="Pulsiv logo"
     >
       <defs>
-        {/* Radar sweep gradient */}
-        <linearGradient id={`${id}-sweep`} x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0%" stopColor="var(--brand)" stopOpacity="0" />
-          <stop offset="60%" stopColor="var(--brand)" stopOpacity="0.3" />
-          <stop offset="100%" stopColor="var(--brand)" stopOpacity="0.9" />
-        </linearGradient>
-
-        {/* Clip path for the bowl to contain the radar completely (optional, but good for precise rendering) */}
-        <clipPath id={`${id}-bowl-clip`}>
-          <path d="M 28 22 v 46 h 22 c 12.7 0 23 -10.3 23 -23 c 0 -12.7 -10.3 -23 -23 -23 H 28 Z" />
-        </clipPath>
+        <style>
+          {`
+            .orbit-core-${id} { fill: var(--brand); animation: coreGlow-${id} 2s ease-in-out infinite; }
+            @keyframes coreGlow-${id} { 
+              0%, 100% { filter: drop-shadow(0 0 3px var(--brand-bg)); } 
+              50% { filter: drop-shadow(0 0 9px var(--brand-bg)); } 
+            }
+            .orbitring-${id} { fill: none; stroke: var(--muted-foreground); opacity: 0.35; }
+          `}
+        </style>
       </defs>
-
-      {/* The solid white "P" */}
-      <path
-        fillRule="evenodd"
-        clipRule="evenodd"
-        d="M 14 8 h 36 c 20.987 0 38 17.013 38 38 c 0 20.987 -17.013 38 -38 38 H 28 v 24 H 14 V 8 Z M 28 22 v 46 h 22 c 12.7 0 23 -10.3 23 -23 c 0 -12.7 -10.3 -23 -23 -23 H 28 Z"
-        fill="currentColor"
-      />
-
-      {/* Radar elements inside the bowl */}
-      {/* Bowl center is x=50, y=45. Radius is ~23 */}
-      <g clipPath={`url(#${id}-bowl-clip)`}>
-        {/* Concentric rings */}
-        <circle cx="50" cy="45" r="21" stroke="var(--brand)" strokeWidth="1.5" opacity="0.3" />
-        <circle cx="50" cy="45" r="14" stroke="var(--brand)" strokeWidth="1.5" opacity="0.5" />
-        <circle cx="50" cy="45" r="7" stroke="var(--brand)" strokeWidth="1.5" opacity="0.7" />
-        
-        {/* Center dot */}
-        <circle cx="50" cy="45" r="2.5" fill="var(--brand)" opacity="0.9">
-          {animate && (
-            <animate
-              attributeName="opacity"
-              values="0.8;0.4;0.8"
-              dur="2s"
-              repeatCount="indefinite"
-            />
-          )}
-        </circle>
-
-        {/* Radar sweep and target blip */}
-        {animate && (
-          <g>
-            <animateTransform
-              attributeName="transform"
-              type="rotate"
-              from="0 50 45"
-              to="360 50 45"
-              dur="3s"
-              repeatCount="indefinite"
-            />
-            {/* The sweeping arc */}
-            <path
-              d="M 50 45 L 73 45 A 23 23 0 0 0 50 22 Z"
-              fill={`url(#${id}-sweep)`}
-              opacity="0.7"
-            />
-            {/* The blip target on the leading edge */}
-            <circle cx="70" cy="45" r="4" stroke="var(--brand)" strokeWidth="1.5" fill="var(--bg)" />
-            <circle cx="70" cy="45" r="1.5" fill="var(--brand)" />
-          </g>
-        )}
-      </g>
+      <circle className={`orbitring-${id}`} cx="100" cy="100" r="40" strokeWidth="1"/>
+      <circle className={`orbitring-${id}`} cx="100" cy="100" r="62" strokeWidth="1"/>
+      <circle className={`orbitring-${id}`} cx="100" cy="100" r="84" strokeWidth="1"/>
+      <circle className={animate ? `orbit-core-${id}` : ''} cx="100" cy="100" r="9" fill={animate ? undefined : 'var(--brand)'}/>
+      <circle r="3.5" fill="var(--brand)">
+        {animate && <animateMotion dur="3.4s" repeatCount="indefinite" path="M140,100 A40,40 0 1,1 60,100 A40,40 0 1,1 140,100"/>}
+      </circle>
+      <circle r="3" fill="var(--foreground)" opacity="0.8">
+        {animate && <animateMotion dur="5.2s" repeatCount="indefinite" path="M162,100 A62,62 0 1,0 38,100 A62,62 0 1,0 162,100"/>}
+      </circle>
+      <circle r="2.6" fill="var(--brand)" opacity="0.7">
+        {animate && <animateMotion dur="7s" repeatCount="indefinite" path="M184,100 A84,84 0 1,1 16,100 A84,84 0 1,1 184,100"/>}
+      </circle>
     </svg>
   );
 }

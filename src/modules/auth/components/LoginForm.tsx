@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { loginSchema, type LoginFormData } from '../schemas/auth.schema';
@@ -66,10 +67,37 @@ export function LoginForm() {
           ) : (
             <div />
           )}
-          <a href="/auth/forgot-password" className="text-[13px] text-[#8A8F98] hover:text-white transition-colors">
+          <Link to="/auth/forgot-password" className="text-[13px] text-[#8A8F98] hover:text-white transition-colors">
             Forgot password?
-          </a>
+          </Link>
         </div>
+      </div>
+
+      <div className="space-y-3 rounded-md border border-[#1f1f1f] bg-[#111111] p-3">
+        <label className="flex items-start gap-3 text-[13px] text-[#8A8F98]">
+          <input
+            type="checkbox"
+            {...register('remember_me')}
+            disabled={isPending}
+            className="mt-0.5 h-4 w-4 rounded border-[#2a2a2a] bg-[#141414] accent-[#10b981]"
+          />
+          <span>
+            <span className="block font-medium text-[#e8e8e8]">Keep me signed in</span>
+            <span className="block text-[12px] text-[#5C5F66]">Use a longer refresh session on this browser.</span>
+          </span>
+        </label>
+        <label className="flex items-start gap-3 text-[13px] text-[#8A8F98]">
+          <input
+            type="checkbox"
+            {...register('trust_device')}
+            disabled={isPending}
+            className="mt-0.5 h-4 w-4 rounded border-[#2a2a2a] bg-[#141414] accent-[#10b981]"
+          />
+          <span>
+            <span className="block font-medium text-[#e8e8e8]">Trust this device after MFA</span>
+            <span className="block text-[12px] text-[#5C5F66]">Skip MFA on this device until the trust window expires.</span>
+          </span>
+        </label>
       </div>
 
       <Button

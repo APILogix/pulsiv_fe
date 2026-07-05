@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router';
 import { useAuth } from '@/modules/auth/hooks/useAuth';
 import { useLogout } from '@/modules/auth/hooks/useLogout';
 import { mainNavigation, MainNavItem, ModuleNavItem } from '@/app/navigation/navigation';
-import { ChevronRight, Package, User, LogOut, Sun, Moon, Settings } from 'lucide-react';
+import { ChevronRight, Package, LogOut, Sun, Moon } from 'lucide-react';
 import { PulsivLogo } from '@/shared/components/PulsivLogo';
 import { useTheme } from '@/theme';
 import clsx from 'clsx';
@@ -32,16 +32,19 @@ export function AppDualSidebar() {
     if (current) {
       setActiveRailItem(current);
       // Auto expand all groups for the active item
-      const newGroups = { ...expandedGroups };
-      if (current.children) {
-        current.children.forEach(c => {
-          const g = c.group || current.label;
-          newGroups[g] = true;
-        });
-      } else {
-        newGroups[current.label] = true;
-      }
-      setExpandedGroups(newGroups);
+      setExpandedGroups((prev) => {
+        const newGroups = { ...prev };
+        let changed = false;
+        if (current.children) {
+          current.children.forEach(c => {
+            const g = c.group || current.label;
+            if (!newGroups[g]) { newGroups[g] = true; changed = true; }
+          });
+        } else {
+          if (!newGroups[current.label]) { newGroups[current.label] = true; changed = true; }
+        }
+        return changed ? newGroups : prev;
+      });
       
       if (!current.children || current.children.length === 0) {
         setIsFlyoutOpen(false);
@@ -84,6 +87,15 @@ export function AppDualSidebar() {
     // Cleanup on unmount
     return () => document.body.classList.remove('flyout-overlay-active');
   }, [isPinned, isFlyoutOpen]);
+
+  // Handle mobile menu toggle
+  useEffect(() => {
+    const handleToggleMobileSidebar = () => {
+      setIsFlyoutOpen(prev => !prev);
+    };
+    window.addEventListener('toggle-mobile-sidebar', handleToggleMobileSidebar);
+    return () => window.removeEventListener('toggle-mobile-sidebar', handleToggleMobileSidebar);
+  }, []);
 
   const handleRailClick = (item: MainNavItem) => {
     setActiveRailItem(item);
@@ -179,21 +191,21 @@ export function AppDualSidebar() {
                  {user?.email?.charAt(0).toUpperCase() || 'U'}
               </div>
               <div className="overflow-hidden">
-                <strong className="block text-[13px] text-[var(--text)] truncate">{user?.email || 'User'}</strong>
-                <span className="text-[12px] text-[var(--text2)]">Pro Plan</span>
+                <strong className="block text-[13px] text-(--text) truncate">{user?.email || 'User'}</strong>
+                {/* <span className="text-[12px] text-[var(--text2)]">Pro Plan</span> */}
               </div>
             </div>
             <div className="flex flex-col">
-               <Link to="/settings/profile" className="text-[13px] py-2 cursor-pointer text-[var(--text2)] hover:text-[var(--text)] flex items-center gap-2" onClick={() => setIsProfileOpen(false)}>
+               {/* <Link to="/settings/profile" className="text-[13px] py-2 cursor-pointer text-[var(--text2)] hover:text-[var(--text)] flex items-center gap-2" onClick={() => setIsProfileOpen(false)}>
                  <User size={14} /> Profile Details
-               </Link>
+               </Link> */}
                <button onClick={toggleTheme} className="text-[13px] py-2 cursor-pointer text-[var(--text2)] hover:text-[var(--text)] flex items-center gap-2 text-left">
                   {resolvedTheme === 'dark' ? <Sun size={14} /> : <Moon size={14} />} Toggle Theme
                </button>
-               <Link to="/settings" className="text-[13px] py-2 cursor-pointer text-[var(--text2)] hover:text-[var(--text)] flex items-center gap-2" onClick={() => setIsProfileOpen(false)}>
+               {/* <Link to="/settings" className="text-[13px] py-2 cursor-pointer text-[var(--text2)] hover:text-[var(--text)] flex items-center gap-2" onClick={() => setIsProfileOpen(false)}>
                  <Settings size={14} /> Settings
                </Link>
-               <hr className="border-t border-[var(--border)] my-2" />
+               <hr className="border-t border-[var(--border)] my-2" /> */}
                <button 
                 onClick={() => { setIsProfileOpen(false); logout.mutate(); }} 
                 className="text-[13px] py-2 cursor-pointer text-[var(--red)] hover:text-[var(--red-d)] flex items-center gap-2 text-left"
@@ -210,13 +222,13 @@ export function AppDualSidebar() {
       <div 
         ref={flyoutRef}
         className={clsx(
-          "flyout-container font-sans bg-[var(--sidebar)] border-r border-[var(--border)] flex flex-col z-[90]",
-          isPinned ? "relative left-0 shadow-none shrink-0" : "fixed top-0 bottom-0 left-[var(--rail-width)] shadow-[10px_0_30px_rgba(0,0,0,0.5)] transform -translate-x-full transition-transform duration-300",
+          "flyout-container font-sans bg-[var(--sidebar)] border-r border-[var(--border)] flex flex-col z-[90] transition-all duration-300 ease-in-out overflow-hidden whitespace-nowrap",
+          isPinned ? "relative left-0 shadow-none shrink-0" : "fixed top-0 bottom-0 left-[var(--rail-width)] shadow-[10px_0_30px_rgba(0,0,0,0.5)] transform -translate-x-full",
           isFlyoutOpen && !isPinned && "translate-x-0",
-          isPinned && "w-[var(--flyout-width)]",
+          isPinned && isFlyoutOpen ? "w-[var(--flyout-width)] opacity-100" : "",
+          isPinned && !isFlyoutOpen ? "w-0 opacity-0 border-r-0" : "",
           !isPinned && "w-[var(--flyout-width)]"
         )}
-        style={{ display: (!isFlyoutOpen && isPinned) ? 'none' : 'flex' }}
       >
         <div className="h-[var(--header-height)] flex items-center justify-between px-4 border-b border-[var(--border)] shrink-0">
           <span className="text-[14px] font-semibold text-[var(--text)] uppercase tracking-wider">{activeRailItem?.label}</span>

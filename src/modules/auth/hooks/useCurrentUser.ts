@@ -1,26 +1,26 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { authApi } from '../api/auth.api';
+import { authQueryCache, authQueryKeys } from '../api/auth.query';
 import { useAuthStore } from '../store/auth.store';
 import type { UserProfile } from '../types/auth.types';
 
 /**
  * Single source of truth for the current user profile.
- * Uses TanStack Query with a 5-minute staleTime — no unnecessary refetches.
+ * Uses TanStack Query with a cache-first profile policy — no navigation refetches.
  * Automatically syncs the Zustand auth store on success.
  */
 export function useCurrentUser() {
   const setAuth = useAuthStore((s) => s.setAuth);
 
   return useQuery<UserProfile>({
-    queryKey: ['current-user'],
+    queryKey: authQueryKeys.currentUser,
     queryFn: async () => {
       const user = await authApi.getCurrentUser();
       setAuth(user);
       return user;
     },
-    staleTime: 5 * 60 * 1000,
-    gcTime: 10 * 60 * 1000,
-    refetchOnWindowFocus: false,
+    staleTime: authQueryCache.currentUserStaleMs,
+    gcTime: authQueryCache.gcMs,
   });
 }
 
@@ -30,5 +30,5 @@ export function useCurrentUser() {
  */
 export function useRefreshCurrentUser() {
   const queryClient = useQueryClient();
-  return () => queryClient.invalidateQueries({ queryKey: ['current-user'] });
+  return () => queryClient.invalidateQueries({ queryKey: authQueryKeys.currentUser });
 }

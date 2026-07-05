@@ -23,7 +23,7 @@ export default function BackupCodesPage() {
             Use a backup code
           </h2>
           <p className="text-sm text-[#999999] mt-1">
-            Enter one of your 8-character emergency recovery codes.
+            Enter one of your 20-character emergency recovery codes.
           </p>
         </div>
       </div>
@@ -34,18 +34,18 @@ export default function BackupCodesPage() {
             <Input
               id="code"
               type="text"
-              placeholder="XXXXXXXX"
+              placeholder="XXXXXXXXXXXXXXXXXXXX"
               value={code}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCode(e.target.value.toUpperCase())}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCode(e.target.value.toLowerCase())}
               required
-              maxLength={8}
-              className="h-12 font-mono text-center tracking-[0.3em] text-lg uppercase bg-[#161616] border-[#262626] text-[#e8e8e8] placeholder:text-[#555555] focus:border-[#34d399] focus:ring-1 focus:ring-[#34d399]/30 transition-colors"
+              maxLength={20}
+              className="h-12 font-mono text-center tracking-[0.3em] text-lg bg-[#161616] border-[#262626] text-[#e8e8e8] placeholder:text-[#555555] focus:border-[#34d399] focus:ring-1 focus:ring-[#34d399]/30 transition-colors"
             />
           </div>
           <Button
             type="submit"
             className="w-full h-10 bg-[#34d399] text-[#04140d] font-semibold hover:bg-[#10b981] transition-colors disabled:opacity-50"
-            disabled={isPending || code.length !== 8}
+            disabled={isPending || code.length !== 20}
           >
             {isPending ? (
               <span className="flex items-center gap-2">

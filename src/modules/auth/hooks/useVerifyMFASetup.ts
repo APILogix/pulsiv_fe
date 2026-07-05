@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { authApi } from '../api/auth.api';
+import { authQueryKeys } from '../api/auth.query';
 import { toast } from 'sonner';
 
 export function useVerifyMFASetup() {
@@ -8,8 +9,9 @@ export function useVerifyMFASetup() {
   return useMutation({
     mutationFn: authApi.verifyMFASetup,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['mfa-devices'] });
-      queryClient.invalidateQueries({ queryKey: ['current-user'] });
+      queryClient.invalidateQueries({ queryKey: authQueryKeys.mfaDevices });
+      queryClient.invalidateQueries({ queryKey: authQueryKeys.currentUser });
+      queryClient.invalidateQueries({ queryKey: authQueryKeys.securitySummary });
       toast.success('MFA successfully enabled!');
     },
     onError: (error: any) => {

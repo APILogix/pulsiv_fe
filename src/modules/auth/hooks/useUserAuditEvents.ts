@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { authApi } from '../api/auth.api';
+import { authQueryCache, authQueryKeys } from '../api/auth.query';
 
 /**
  * TanStack Query hook for user audit events.
@@ -7,11 +8,10 @@ import { authApi } from '../api/auth.api';
  */
 export function useUserAuditEvents(userId: string | undefined) {
   return useQuery({
-    queryKey: ['audit-events', userId],
+    queryKey: userId ? authQueryKeys.auditEvents(userId) : ['auth', 'audit-events', 'disabled'],
     queryFn: () => authApi.getUserAuditEvents(userId!, { limit: 30, offset: 0 }),
     enabled: !!userId,
-    staleTime: 2 * 60 * 1000,
-    gcTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: false,
+    staleTime: authQueryCache.activityStaleMs,
+    gcTime: authQueryCache.gcMs,
   });
 }

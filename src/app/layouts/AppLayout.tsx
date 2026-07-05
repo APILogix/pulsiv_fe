@@ -6,6 +6,7 @@ import { PulseCommandPalette } from '@/modules/search/components/PulseCommandPal
 import { useSearchShortcuts } from '@/modules/search/hooks/useSearchShortcuts';
 import { AppHeader } from './AppHeader';
 import { AppDualSidebar } from './AppDualSidebar';
+import { PostLoginSetup } from '@/modules/auth/components/PostLoginSetup';
 export function AppLayout() {
   useSearchShortcuts();
 
@@ -27,6 +28,7 @@ export function AppLayout() {
         </div>
       </main>
       <PulseCommandPalette />
+      <PostLoginSetup />
     </div>
   );
 }

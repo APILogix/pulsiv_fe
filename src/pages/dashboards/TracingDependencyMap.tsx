@@ -1,13 +1,13 @@
 import { useNavigate } from "react-router";
-import { AlertTriangle, GitBranch } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
 import { useTraceEvents, useSpanEvents } from "@/hooks/useDummyData";
 import { useTimeRangeStore, TIME_RANGES } from "@/stores/timeRangeStore";
 import {
-  PageHeader, SectionCard, KpiCard, FilterSelect,
+  PageHeader, SectionCard, FilterSelect,
   Table, Tr, Td, StatusBadge, MonospaceText, Timestamp, formatDuration, formatLatency,
 } from "@/shared/observe";
-import { BarList, StackedBars, Banner, StatTile } from "./widgets";
-import { percentile, groupBy } from "./lib";
+import { BarList, StackedBars, Banner, StatTile, ChartCard, HeroBand, ZoneLabel } from "./widgets";
+import { percentile, groupBy, seededSeries } from "./lib";
 import type { SpanEvent } from "@/types/events";
 
 const TIME_OPTIONS = TIME_RANGES.map((r) => ({ value: r, label: r }));
@@ -69,7 +69,7 @@ export default function TracingDependencyMap() {
   });
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-5">
       <PageHeader
         title="Distributed Tracing & Dependency Map"
         description="Visualize request flow across services and identify bottleneck dependencies."
@@ -80,12 +80,16 @@ export default function TracingDependencyMap() {
         <Banner tone="amber" icon={AlertTriangle} title={<><strong>{partial.length} partial traces detected</strong> — root spans may be missing due to timeout or dropped packets.</>} />
       )}
 
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <KpiCard label="Traces" value={traceList.length} delta="in range" trend="neutral" icon={GitBranch} />
-        <KpiCard label="Spans" value={spanList.length} delta="across services" trend="neutral" />
-        <KpiCard label="Error traces" value={errorTraces} delta={`${((errorTraces / (traceList.length || 1)) * 100).toFixed(1)}%`} trend="down" />
-        <KpiCard label="Partial traces" value={partial.length} delta="orphan timeouts" trend={partial.length ? "down" : "up"} />
-      </div>
+      <HeroBand
+        metrics={[
+          { label: "Traces", value: traceList.length, delta: "in range", trend: "neutral", spark: seededSeries("tr-traces", 20, 40, 15) },
+          { label: "Spans", value: spanList.length, delta: "across services", trend: "neutral", spark: seededSeries("tr-spans", 20, 80, 20), sparkColor: "var(--blue)" },
+          { label: "Error traces", value: errorTraces, delta: `${((errorTraces / (traceList.length || 1)) * 100).toFixed(1)}%`, trend: "down", spark: seededSeries("tr-err", 20, 10, 6), sparkColor: "var(--red)" },
+          { label: "Partial traces", value: partial.length, delta: "orphan timeouts", trend: partial.length ? "down" : "up", sparkColor: "var(--amber)" },
+        ]}
+      />
+
+      <ZoneLabel>Service topology</ZoneLabel>
 
       <SectionCard title="Service dependency map">
         <div className="flex flex-wrap items-stretch gap-3">
@@ -106,6 +110,8 @@ export default function TracingDependencyMap() {
         <div className="mt-3 text-[11px] text-[var(--text3)]">Node size ∝ span volume · color = health (error rate + latency). Click a node to filter the trace list.</div>
       </SectionCard>
 
+      <ZoneLabel>Traces &amp; bottlenecks</ZoneLabel>
+
       <SectionCard title="Trace list">
         <Table headers={["Trace ID", "Root span", "Duration", "Spans", "Status", "Started", "Service"]} maxHeight="28rem">
           {traceList.map((t) => (
@@ -123,18 +129,22 @@ export default function TracingDependencyMap() {
       </SectionCard>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <SectionCard title="External API call latency (P95)">
+        <ChartCard title="External API call latency (P95)">
           {extByHost.length ? <BarList items={extByHost} valueFormat={formatLatency} /> : <p className="text-[13px] text-[var(--text3)]">No external client spans in range.</p>}
-        </SectionCard>
-        <SectionCard title="Trace error rate by service">
+        </ChartCard>
+        <ChartCard
+          title="Trace error rate by service"
+          legend={[
+            { label: "OK", color: "var(--green)" },
+            { label: "Error", color: "var(--red)" },
+            { label: "Unset", color: "var(--bg3)" },
+          ]}
+        >
           <StackedBars groups={errStacks} horizontal />
-          <div className="mt-3 flex gap-4 text-[11px] text-[var(--text2)]">
-            <span className="flex items-center gap-1.5"><span className="size-2.5 rounded-sm bg-[var(--green)]" /> OK</span>
-            <span className="flex items-center gap-1.5"><span className="size-2.5 rounded-sm bg-[var(--red)]" /> Error</span>
-            <span className="flex items-center gap-1.5"><span className="size-2.5 rounded-sm bg-[var(--bg3)]" /> Unset</span>
-          </div>
-        </SectionCard>
+        </ChartCard>
       </div>
+
+      <ZoneLabel>Data layer</ZoneLabel>
 
       <SectionCard title="Database query performance">
         {dbGroups.length ? (

@@ -1,12 +1,12 @@
 import { useNavigate } from "react-router";
-import { DollarSign, TrendingDown, Package } from "lucide-react";
+import { TrendingDown } from "lucide-react";
 import { useRequestEvents } from "@/hooks/useDummyData";
 import { useTimeRangeStore, TIME_RANGES } from "@/stores/timeRangeStore";
 import {
-  PageHeader, SectionCard, KpiCard, FilterSelect,
+  PageHeader, SectionCard, FilterSelect,
   Table, Tr, Td, MonospaceText, formatCompact, formatLatency,
 } from "@/shared/observe";
-import { BarList, StackedBars, Funnel, MultiLineChart, StatTile, CHART_COLORS } from "./widgets";
+import { BarList, StackedBars, Funnel, MultiLineChart, StatTile, ChartCard, HeroBand, ZoneLabel, CHART_COLORS } from "./widgets";
 import { percentile, groupBy, uniqueBy, seededSeries } from "./lib";
 
 const TIME_OPTIONS = TIME_RANGES.map((r) => ({ value: r, label: r }));
@@ -48,19 +48,23 @@ export default function BusinessMetrics() {
     .slice(0, 10);
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-5">
       <PageHeader
         title="API Business Metrics"
         description="Treat the API as a product — measure adoption, friction, and value."
         actions={<FilterSelect label="Range" value={timeRange} onChange={setTimeRange} options={TIME_OPTIONS} />}
       />
 
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <KpiCard label="Billable API calls" value={formatCompact(total * 1240)} delta="+9.4% MoM" trend="up" icon={Package} />
-        <KpiCard label="API revenue (est.)" value={`$${formatCompact(total * 1240 * 0.0004)}`} delta="+12% MoM" trend="up" icon={DollarSign} />
-        <KpiCard label="4xx rate" value={`${((c4xx / total) * 100).toFixed(1)}%`} delta="client-side" trend="neutral" />
-        <KpiCard label="5xx rate" value={`${((c5xx / total) * 100).toFixed(2)}%`} delta="server-side" trend="down" />
-      </div>
+      <HeroBand
+        metrics={[
+          { label: "Billable API calls", value: formatCompact(total * 1240), delta: "+9.4% MoM", trend: "up", spark: seededSeries("bm-calls", 20, 50, 15) },
+          { label: "API revenue (est.)", value: `$${formatCompact(total * 1240 * 0.0004)}`, delta: "+12% MoM", trend: "up", spark: seededSeries("bm-rev", 20, 40, 12), sparkColor: "var(--green)" },
+          { label: "4xx rate", value: `${((c4xx / total) * 100).toFixed(1)}%`, delta: "client-side", trend: "neutral", spark: seededSeries("bm-4xx", 20, 20, 8), sparkColor: "var(--amber)" },
+          { label: "5xx rate", value: `${((c5xx / total) * 100).toFixed(2)}%`, delta: "server-side", trend: "down", spark: seededSeries("bm-5xx", 20, 8, 5), sparkColor: "var(--red)" },
+        ]}
+      />
+
+      <ZoneLabel>Adoption</ZoneLabel>
 
       <SectionCard title="API endpoint adoption">
         <Table headers={["Endpoint", "Calls", "Unique users", "Error rate", "Lifecycle"]} maxHeight="26rem">
@@ -76,8 +80,17 @@ export default function BusinessMetrics() {
         </Table>
       </SectionCard>
 
+      <ZoneLabel>Developer experience</ZoneLabel>
+
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <SectionCard title="Developer error rate — 4xx vs 5xx">
+        <ChartCard
+          title="Developer error rate — 4xx vs 5xx"
+          legend={[
+            { label: "4xx — docs/integration friction", color: "var(--amber)" },
+            { label: "5xx — infra failures", color: "var(--red)" },
+          ]}
+          timeAxis="14 days ago"
+        >
           <StackedBars
             groups={Array.from({ length: 14 }, (_, i) => ({
               label: `${i}d`,
@@ -87,13 +100,9 @@ export default function BusinessMetrics() {
               ],
             }))}
           />
-          <div className="mt-3 flex gap-4 text-[11px] text-[var(--text2)]">
-            <span className="flex items-center gap-1.5"><span className="size-2.5 rounded-sm bg-[var(--amber)]" /> 4xx — docs/integration friction</span>
-            <span className="flex items-center gap-1.5"><span className="size-2.5 rounded-sm bg-[var(--red)]" /> 5xx — infra failures</span>
-          </div>
-        </SectionCard>
+        </ChartCard>
 
-        <SectionCard title="Time to first 200 OK">
+        <ChartCard title="Time to first 200 OK" headline="52 min" headlineLabel="median · target < 1h">
           <Funnel
             stages={[
               { label: "Account created", value: 1000 },
@@ -102,12 +111,21 @@ export default function BusinessMetrics() {
               { label: "First 200 OK", value: 610 },
             ]}
           />
-          <div className="mt-3 text-[12px] text-[var(--text3)]">Median time to first 200: <strong className="text-[var(--text2)]">52 min</strong> · target &lt; 1h.</div>
-        </SectionCard>
+        </ChartCard>
       </div>
 
+      <ZoneLabel>Lifecycle &amp; retention</ZoneLabel>
+
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <SectionCard title="API version migration">
+        <ChartCard
+          title="API version migration"
+          legend={[
+            { label: "v1", color: CHART_COLORS[4] },
+            { label: "v2", color: CHART_COLORS[2] },
+            { label: "v3", color: CHART_COLORS[0] },
+          ]}
+          timeAxis="30 days ago"
+        >
           <MultiLineChart
             series={[
               { label: "v1", color: CHART_COLORS[4], data: seededSeries("v1", 30, 60, 20).map((v, i) => Math.max(5, v - i)) },
@@ -116,9 +134,9 @@ export default function BusinessMetrics() {
             ]}
           />
           <div className="mt-3 rounded-[8px] bg-[var(--amber-bg)] px-3 py-2 text-[12px] text-[var(--amber)]">v1 deprecated in 45 days — 22% of traffic still using it.</div>
-        </SectionCard>
+        </ChartCard>
 
-        <SectionCard title="Customer churn signal" action={<TrendingDown className="size-4 text-[var(--text3)]" />}>
+        <ChartCard title="Customer churn signal" action={<TrendingDown className="size-4 text-[var(--text3)]" />}>
           <div className="flex flex-col gap-2">
             {[
               { tenant: "tenant-acme", state: "Churned", days: 30, tone: "var(--red)" },
@@ -134,8 +152,10 @@ export default function BusinessMetrics() {
               </div>
             ))}
           </div>
-        </SectionCard>
+        </ChartCard>
       </div>
+
+      <ZoneLabel>Revenue</ZoneLabel>
 
       <SectionCard title="Top API consumers (tenants)">
         <Table headers={["Tenant", "Calls", "% traffic", "Users", "Err %", "P95", "Growth WoW"]}>

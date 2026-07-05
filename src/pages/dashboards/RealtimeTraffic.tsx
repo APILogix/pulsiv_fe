@@ -1,13 +1,13 @@
 import { useNavigate } from "react-router";
-import { Activity, Radio, Zap } from "lucide-react";
+import { Radio, Zap } from "lucide-react";
 import { useErrorEvents, useRequestEvents } from "@/hooks/useDummyData";
 import { useTimeRangeStore } from "@/stores/timeRangeStore";
 import {
-  PageHeader, SectionCard, KpiCard,
+  PageHeader, SectionCard,
   Table, Tr, Td, MethodBadge, StatusCodeBadge, SeverityBadge, MonospaceText, Timestamp,
   MetricSparkline, formatCompact, formatLatency,
 } from "@/shared/observe";
-import { Gauge, Donut, Banner } from "./widgets";
+import { Gauge, Donut, Banner, ChartCard, HeroBand, ZoneLabel } from "./widgets";
 import { percentile, seededSeries, groupBy } from "./lib";
 
 const CONN_LIMITS = [
@@ -53,7 +53,7 @@ export default function RealtimeTraffic() {
   const errorStream = [...errList].sort((a, b) => b.timestamp - a.timestamp).slice(0, 20);
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-5">
       <PageHeader
         title="Real-Time Traffic & Request Flow"
         description="Know exactly what is happening right now across all APIs."
@@ -72,24 +72,38 @@ export default function RealtimeTraffic() {
         <Banner tone="amber" icon={Zap} title={<><strong>{rateLimitHits} rate-limit hits/min</strong> — 429 responses exceeding threshold.</>} />
       )}
 
+      <HeroBand
+        metrics={[
+          { label: "Requests/min", value: formatCompact(reqList.length * 14), delta: "stable", trend: "neutral", spark: rpsSeries.slice(0, 20), sparkColor: "var(--green)" },
+          { label: "Rate-limit (429)/min", value: rateLimitHits, delta: rateLimitHits > 10 ? "over threshold" : "nominal", trend: rateLimitHits > 10 ? "down" : "up", spark: seededSeries("rt-429", 20, rateLimitHits || 4, 3), sparkColor: "var(--amber)" },
+          { label: "Live errors", value: errList.length, delta: "streaming", trend: "neutral", spark: seededSeries("rt-err", 20, 12, 6), sparkColor: "var(--red)" },
+          { label: "Avg latency", value: formatLatency(percentile(reqList.map((r) => r.latency), 50)), delta: "p50", trend: "neutral", spark: seededSeries("rt-lat", 20, 40, 15), sparkColor: "var(--blue)" },
+        ]}
+      />
+
+      <ZoneLabel>Live pulse</ZoneLabel>
+
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <SectionCard title="Live request rate" action={<Radio className="size-4 text-[var(--green)]" />}>
-          <div className="flex items-end justify-between">
-            <div>
-              <div className="text-4xl font-semibold tabular-nums text-[var(--text)]">{rps}<span className="ml-1 text-sm font-normal text-[var(--text3)]">req/s</span></div>
-              <div className="mt-1 text-[12px] text-[var(--text3)]">Peak {peakRps} req/s this window</div>
-            </div>
-          </div>
-          <div className="mt-3"><MetricSparkline data={rpsSeries} color="var(--green)" width={320} height={48} /></div>
-        </SectionCard>
+        <ChartCard
+          title="Live request rate"
+          action={<Radio className="size-4 text-[var(--green)]" />}
+          headline={`${rps} req/s`}
+          headlineLabel={`peak ${peakRps} req/s`}
+          timeAxis="15 minutes ago"
+        >
+          <MetricSparkline data={rpsSeries} color="var(--green)" width={320} height={64} />
+        </ChartCard>
 
-        <SectionCard title="Status code distribution">
+        <ChartCard
+          title="Status code distribution"
+          legend={statusSegments.map((s) => ({ label: s.label, color: s.color }))}
+        >
           <Donut segments={statusSegments} centerLabel={formatCompact(reqList.length * 14)} centerSub="req/min" size={140} />
-        </SectionCard>
+        </ChartCard>
 
-        <SectionCard title="Active connections">
+        <ChartCard title="Active connections" headline={`${Math.round(connPct)}%`} headlineLabel={`${totalConn} / ${totalMax} used`}>
           <div className="flex items-center gap-4">
-            <Gauge value={connPct} label={`${Math.round(connPct)}%`} sublabel={`${totalConn} / ${totalMax} connections`} size={130} color={connPct > 90 ? "var(--red)" : connPct > 70 ? "var(--amber)" : "var(--green)"} />
+            <Gauge value={connPct} label={`${Math.round(connPct)}%`} sublabel={`${totalConn} / ${totalMax}`} size={120} color={connPct > 90 ? "var(--red)" : connPct > 70 ? "var(--amber)" : "var(--green)"} />
             <div className="flex flex-1 flex-col gap-1.5">
               {CONN_LIMITS.map((c) => (
                 <div key={c.route} className="flex items-center gap-2 text-[11px]">
@@ -102,15 +116,10 @@ export default function RealtimeTraffic() {
               ))}
             </div>
           </div>
-        </SectionCard>
+        </ChartCard>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <KpiCard label="Requests/min" value={formatCompact(reqList.length * 14)} delta="stable" trend="neutral" icon={Activity} />
-        <KpiCard label="Rate-limit (429)/min" value={rateLimitHits} delta={rateLimitHits > 10 ? "over threshold" : "nominal"} trend={rateLimitHits > 10 ? "down" : "up"} icon={Zap} />
-        <KpiCard label="Live errors" value={errList.length} delta="streaming" trend="neutral" />
-        <KpiCard label="Avg latency" value={formatLatency(percentile(reqList.map((r) => r.latency), 50))} delta="p50" trend="neutral" />
-      </div>
+      <ZoneLabel>Hot paths</ZoneLabel>
 
       <SectionCard title="Top routes right now">
         <Table headers={["#", "Route", "Req/min", "Error rate", "P95", "Trend"]}>
@@ -126,6 +135,8 @@ export default function RealtimeTraffic() {
           ))}
         </Table>
       </SectionCard>
+
+      <ZoneLabel>Live streams</ZoneLabel>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <SectionCard title="Live traffic" className="lg:col-span-2">

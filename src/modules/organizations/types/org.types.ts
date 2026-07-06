@@ -145,7 +145,7 @@ export interface ScimToken {
 }
 
 export interface CreateScimTokenInput {
-  scopes: Array<'read' | 'write' | 'delete'>;
+  scopes: Array<'users:read' | 'users:write' | 'users:delete' | 'groups:read' | 'groups:write' | 'groups:delete' | 'bulk'>;
   allowedIps?: string[];
   expiresInDays?: number;
 }

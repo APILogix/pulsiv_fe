@@ -1,7 +1,9 @@
 import { useNavigate } from "react-router";
 import { Plus, FolderOpen } from "lucide-react";
-import { useProjects } from "@/hooks/useDummyData";
-import { PageHeader, KpiCard, FillPage, InfiniteCards, StatusBadge, Button, MetricSparkline, Timestamp, demoAction, formatCompact } from "@/shared/observe";
+import { useProjects } from "@/modules/projects/hooks/useProjects";
+import { PageHeader, KpiCard, FillPage, InfiniteCards, StatusBadge, Button, MetricSparkline, Timestamp, formatCompact } from "@/shared/observe";
+
+import { CreateProjectModal } from "@/modules/projects/CreateProjectModal";
 
 export default function ProjectsPage() {
   const navigate = useNavigate();
@@ -15,7 +17,11 @@ export default function ProjectsPage() {
       <PageHeader
         title="All Projects"
         description="Organization-scoped project inventory."
-        actions={<Button variant="primary" onClick={() => demoAction("Create project")}><Plus className="size-4" /> New project</Button>}
+        actions={
+          <CreateProjectModal>
+            <Button variant="primary"><Plus className="size-4 mr-2" /> New project</Button>
+          </CreateProjectModal>
+        }
       />
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">

@@ -1,7 +1,8 @@
 import { lazy } from "react";
 import { RouteObject, Navigate } from "react-router";
 import { RequireAuth } from "./route-guards";
-import { AppLayout } from "../layouts/AppLayout";
+
+const AppLayout = lazy(() => import("../layouts/AppLayout").then((m) => ({ default: m.AppLayout })));
 
 const DashboardPage = lazy(() => import("@/modules/dashboard/index").then((m) => ({ default: m.DashboardPage ?? (() => null) })));
 const SecurityCenterPage = lazy(() => import("@/modules/auth/pages/SecurityCenterPage").then((m) => ({ default: m.default })));
@@ -209,6 +210,7 @@ export const protectedRoutes: RouteObject[] = [
 
               { path: ":projectId/usage", element: <ProjectUsagePage /> },
               { path: ":projectId/settings", element: <ProjectSettingsPage /> },
+              { path: ":projectId/remote-config", element: <RemoteConfigPage /> },
             ],
           },
           {

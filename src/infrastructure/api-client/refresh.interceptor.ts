@@ -111,6 +111,7 @@ export function attachRefreshInterceptor(client: AxiosInstance): void {
         const data = refreshResponse.data?.data;
         if (data?.access_token) {
           tokenService.setAccessToken(data.access_token, data.expires_at);
+          tokenService.setCurrentOrgId(data.current_org_id);
         }
         isRefreshing = false;
         flushQueue(null);

@@ -1,1 +1,0 @@
-import{j as o}from"./util-vendor-k7sYRu_z.js";import{c as m}from"./index-0eiIzPMX.js";function i(s){const t=m.c(2),{message:r}=s;let e;return t[0]!==r?(e=o.jsx("div",{className:"p-8 text-center text-muted-foreground",children:r}),t[0]=r,t[1]=e):e=t[1],e}export{i as E};

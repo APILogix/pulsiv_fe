@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
+import { tokenService } from '@/modules/auth/services/token.service';
 
 interface OrgState {
   activeOrgId: string | null;
@@ -9,8 +10,11 @@ interface OrgState {
 export const useOrgStore = create<OrgState>()(
   persist(
     (set) => ({
-      activeOrgId: null,
-      setActiveOrgId: (id) => set({ activeOrgId: id }),
+      activeOrgId: tokenService.getCurrentOrgId(),
+      setActiveOrgId: (id) => {
+        tokenService.setCurrentOrgId(id);
+        set({ activeOrgId: id });
+      },
     }),
     {
       name: 'org-storage',

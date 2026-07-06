@@ -1,4 +1,4 @@
-import { useProjects } from "@/hooks/useDummyData";
+import { useProjects } from "@/modules/projects/hooks/useProjects";
 import { PageHeader, KpiCard, SectionCard, MetricSparkline, StatusBadge, Table, Tr, Td, formatCompact } from "@/shared/observe";
 
 export default function ProjectOverviewPage() {

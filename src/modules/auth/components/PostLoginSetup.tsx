@@ -84,7 +84,7 @@ export function PostLoginSetup() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, ease: "easeOut" }}
           >
-            <PulsivWordmark size={44} />
+            <PulsivWordmark size={44} animate={true} />
 
             <div className="flex w-full flex-col gap-3.5" aria-label="Setup progress">
               {STEPS.map((step, i) => {

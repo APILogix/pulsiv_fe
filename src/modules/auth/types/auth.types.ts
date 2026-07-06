@@ -27,6 +27,7 @@ export interface AuthSession {
   expires_at: string;
   token_type: string;
   session_id: string;
+  current_org_id?: string | null;
   user_id?: string;
 }
 

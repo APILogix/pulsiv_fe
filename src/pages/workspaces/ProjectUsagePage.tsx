@@ -1,10 +1,14 @@
-import { useApiKeys, useProjects } from "@/hooks/useDummyData";
+import { useParams } from "react-router";
+import { useProjects, useProject, useApiKeys, useProjectUsage } from "@/modules/projects/hooks/useProjects";
 import { PageHeader, KpiCard, SectionCard, MetricSparkline, Table, Tr, Td, formatCompact } from "@/shared/observe";
 
 export default function ProjectUsagePage() {
-  const { data: projects } = useProjects();
-  const { data: keys } = useApiKeys();
-  const list = projects ?? [];
+  const { projectId } = useParams();
+  const { data: allProjects } = useProjects();
+  const { data: project } = useProject(projectId || "");
+  const { data: keys } = useApiKeys(projectId || "");
+  useProjectUsage(projectId || "");
+  const list = projectId ? (project ? [project] : []) : (allProjects ?? []);
 
   return (
     <div className="flex flex-col gap-5">

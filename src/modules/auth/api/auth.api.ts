@@ -1,12 +1,19 @@
 import { apiClient } from '@/infrastructure/api-client/axios';
 import { tokenService } from '../services/token.service';
+import { useOrgStore } from '@/modules/organizations/store/org.store';
 import type {
   AuthSession,
   LoginMfaChallenge,
 } from '../types/auth.types';
 import type * as s from '../schemas/auth.schema';
 
-function storeSession(p: AuthSession) { tokenService.setAccessToken(p.access_token, p.expires_at); }
+function storeSession(p: AuthSession) {
+  tokenService.setAccessToken(p.access_token, p.expires_at);
+  tokenService.setCurrentOrgId(p.current_org_id);
+  if (p.current_org_id !== undefined) {
+    useOrgStore.getState().setActiveOrgId(p.current_org_id ?? null);
+  }
+}
 
 export const authApi = {
   async login(data: s.LoginFormData): Promise<AuthSession | LoginMfaChallenge> {

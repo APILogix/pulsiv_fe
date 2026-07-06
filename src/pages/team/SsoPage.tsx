@@ -3,8 +3,6 @@ import {
   AlertTriangle,
   ArrowRight,
   CheckCircle2,
-  ChevronDown,
-  Code2,
   ExternalLink,
   FileCode2,
   Globe,
@@ -17,12 +15,9 @@ import {
   ShieldCheck,
   ShieldOff,
   Trash2,
-  ToggleLeft,
-  ToggleRight,
   Unplug,
   User,
   Users,
-  Zap,
 } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -35,15 +30,11 @@ import {
   CopyButton,
   Field,
   inputClass,
-  MonospaceText,
   PageHeader,
   SectionCard,
   StatusBadge,
   SubmitButton,
-  Table,
-  Td,
   textareaClass,
-  Tr,
 } from "@/shared/observe";
 
 const ATTRIBUTE_MAPPINGS = [

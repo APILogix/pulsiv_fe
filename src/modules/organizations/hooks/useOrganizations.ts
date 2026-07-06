@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { orgApi } from '../api/org.api';
 import { useOrgStore } from '../store/org.store';
 import { useEffect } from 'react';
+import { tokenService } from '@/modules/auth/services/token.service';
 
 export const orgQueryKeys = {
   all: ['organizations'] as const,
@@ -37,9 +38,14 @@ export function useOrganizations() {
 
   // Auto-select first org if none is active
   useEffect(() => {
-    if (query.data?.data && query.data.data.length > 0 && !activeOrgId) {
-      setActiveOrgId(query.data.data[0].id);
-    }
+    if (!query.data?.data?.length || activeOrgId) return;
+
+    const currentOrgId = tokenService.getCurrentOrgId();
+    const currentOrg = query.data.data.find((org) => org.id === currentOrgId);
+    const nextOrgId = currentOrg?.id ?? query.data.data[0].id;
+    void orgApi.switchOrganization(nextOrgId)
+      .catch(() => undefined)
+      .finally(() => setActiveOrgId(nextOrgId));
   }, [query.data, activeOrgId, setActiveOrgId]);
 
   return {

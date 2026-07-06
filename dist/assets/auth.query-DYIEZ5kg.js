@@ -1,0 +1,1 @@
+const s={currentUser:["auth","current-user"],sessions:["auth","sessions"],mfaDevices:["auth","mfa-devices"],trustedDevices:["auth","trusted-devices"],securitySummary:["auth","security-summary"],auditEvents:e=>["auth","audit-events",e]},t={currentUserStaleMs:600*1e3,securityStateStaleMs:300*1e3,activityStaleMs:120*1e3,gcMs:1800*1e3};export{s as a,t as b};

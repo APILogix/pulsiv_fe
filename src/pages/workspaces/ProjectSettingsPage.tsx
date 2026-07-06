@@ -1,14 +1,35 @@
-import { useActionState, useState } from "react";
+import { useActionState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Trash2, MoreHorizontal, Plus } from "lucide-react";
+import { Trash2, MoreHorizontal } from "lucide-react";
+import { useParams } from "react-router";
+import { useApiKeys, useEnvironments, useProjectMutations } from "@/modules/projects/hooks/useProjects";
+import { CreateEnvironmentModal } from "@/modules/projects/CreateEnvironmentModal";
+import { CreateApiKeyModal } from "@/modules/projects/CreateApiKeyModal";
+import { ApiKeyDetailsSheet } from "@/modules/projects/ApiKeyDetailsSheet";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+import { RefreshCcw, PowerOff } from "lucide-react";
+import { Button as UiButton } from "@/components/ui/button";
 import {
-  PageHeader, FillPage, SectionCard, Field, SubmitButton, Button, inputClass, textareaClass, demoSuccess, demoAction, Tabs, InfiniteTable, StatusBadge, CopyButton, Timestamp, formatCompact,
+  Button,
+  CopyButton,
+  Field,
+  FillPage,
+  InfiniteTable,
+  PageHeader,
+  SectionCard,
+  StatusBadge,
+  SubmitButton,
+  Tabs,
+  Timestamp,
+  formatCompact,
+  inputClass,
+  textareaClass,
+  type Column,
 } from "@/shared/observe";
-import { useApiKeys } from "@/hooks/useDummyData";
-import type { Column } from "@/shared/observe";
-import type { ApiKey } from "@/lib/dummy-data";
+import { toast } from "sonner";
+import type { ProjectApiKeyView, ProjectEnvironmentView } from "@/modules/projects/api/projects.api";
 
 const schema = z.object({
   name: z.string().min(1, "Project name is required"),
@@ -19,32 +40,50 @@ type FormData = z.infer<typeof schema>;
 
 const DEFAULTS: FormData = { name: "Pulse API", slug: "pulse-api", description: "Primary observability project for the API gateway service." };
 
-function ActionMenu({ onRevoke }: { onRevoke: () => void }) {
-  const [open, setOpen] = useState(false);
+function ActionMenu({ 
+  apiKey, 
+  onRotate, 
+  onRegenerate, 
+  onDisable, 
+  onRevoke 
+}: { 
+  apiKey: ProjectApiKeyView; 
+  onRotate: (id: string) => void;
+  onRegenerate: (id: string) => void;
+  onDisable: (id: string) => void;
+  onRevoke: (id: string) => void;
+}) {
   return (
-    <div className="relative inline-block text-left">
-      <Button variant="ghost" className="h-8 w-8 p-0 text-[var(--text2)] hover:text-[var(--text)]" onClick={() => setOpen(!open)}>
-        <MoreHorizontal className="size-4" />
-      </Button>
-      {open && (
-        <>
-          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-full z-50 mt-1 w-36 rounded-md border border-[var(--border)] bg-[var(--bg1)] p-1 shadow-lg">
-            <button 
-              className="flex w-full items-center rounded px-2 py-1.5 text-sm font-medium text-[var(--red)] transition-colors hover:bg-[var(--red)]/10"
-              onClick={() => { setOpen(false); onRevoke(); }}
-            >
-              <Trash2 className="mr-2 size-4" />
-              Revoke key
-            </button>
-          </div>
-        </>
-      )}
+    <div onClick={(e) => e.stopPropagation()}>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <UiButton variant="ghost" size="icon" className="text-[var(--text2)] hover:text-[var(--text)]">
+            <MoreHorizontal className="size-4" />
+          </UiButton>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem onClick={() => onRotate(apiKey.id)}><RefreshCcw className="mr-2 size-4" /> Rotate Key</DropdownMenuItem>
+          <DropdownMenuItem onClick={() => onRegenerate(apiKey.id)}>Regenerate Key</DropdownMenuItem>
+          <DropdownMenuSeparator />
+          {apiKey.status === "active" ? (
+            <DropdownMenuItem onClick={() => onDisable(apiKey.id)}><PowerOff className="mr-2 size-4" /> Disable Key</DropdownMenuItem>
+          ) : null}
+          <DropdownMenuSeparator />
+          <DropdownMenuItem className="text-[var(--red)] focus:text-[var(--red)]" onClick={() => onRevoke(apiKey.id)}>
+            <Trash2 className="mr-2 size-4" /> Revoke Key
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   );
 }
 
 export default function ProjectSettingsPage() {
+  const { projectId = "" } = useParams();
+  const { data: apiKeys, isLoading: isKeysLoading } = useApiKeys(projectId);
+  const { data: environments, isLoading: isEnvsLoading } = useEnvironments(projectId);
+  const { rotateApiKey, regenerateApiKey, disableApiKey, revokeApiKey, deleteEnvironment } = useProjectMutations();
+
   const { register, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
     mode: "onBlur",
@@ -52,21 +91,37 @@ export default function ProjectSettingsPage() {
   });
 
   const [, submitAction] = useActionState(async () => {
+    // Replace with real updateProject mutation later
     await new Promise((r) => setTimeout(r, 800));
-    demoSuccess("Project settings saved");
+    toast.success("Project settings saved");
     return { success: true };
   }, { success: false });
 
-  const { data: apiKeys, isLoading: isKeysLoading } = useApiKeys();
-
-  const columns: Column<ApiKey>[] = [
-    { key: "name", header: "Name", width: "1fr", cell: (k) => <span className="truncate font-medium text-[var(--text)]">{k.name}</span> },
+  const columns: Column<ProjectApiKeyView>[] = [
+    { 
+      key: "name", 
+      header: "Name", 
+      width: "1fr", 
+      cell: (k) => (
+        <ApiKeyDetailsSheet apiKey={k}>
+          <button className="truncate font-medium text-[var(--text)] hover:underline outline-none cursor-pointer text-left">{k.name}</button>
+        </ApiKeyDetailsSheet>
+      ) 
+    },
     { key: "key", header: "Key", width: "160px", cell: (k) => <div onClick={(e) => e.stopPropagation()}><CopyButton value={`${k.prefix}_${k.id}`} label={`${k.prefix}••••`} /></div> },
     { key: "type", header: "Type", width: "110px", cell: (k) => <span className="capitalize text-[var(--text2)]">{k.type}</span> },
-    { key: "used", header: "Last used", width: "130px", cell: (k) => <Timestamp value={k.lastUsedAt} /> },
+    { key: "used", header: "Last used", width: "130px", cell: (k) => k.lastUsedAt ? <Timestamp value={k.lastUsedAt} /> : <span className="text-[var(--text3)]">Never</span> },
     { key: "usage", header: "Usage 24h", width: "110px", cell: (k) => <span className="tabular-nums text-[var(--text2)]">{formatCompact(k.usage24h)}</span> },
     { key: "status", header: "Status", width: "110px", cell: (k) => <StatusBadge status={k.status} /> },
-    { key: "actions", header: "", width: "60px", align: "right", cell: (k) => (k.status === "active" ? <div onClick={(e) => e.stopPropagation()}><ActionMenu onRevoke={() => demoSuccess(`Revoked ${k.name}`)} /></div> : null) },
+    { key: "actions", header: "", width: "60px", align: "right", cell: (k) => (
+      <ActionMenu 
+        apiKey={k} 
+        onRotate={(keyId) => rotateApiKey.mutate({ projectId, keyId })}
+        onRegenerate={(keyId) => regenerateApiKey.mutate({ projectId, keyId })}
+        onDisable={(keyId) => disableApiKey.mutate({ projectId, keyId })}
+        onRevoke={(keyId) => revokeApiKey.mutate({ projectId, keyId })}
+      />
+    ) },
   ];
 
   const generalTab = (
@@ -92,7 +147,7 @@ export default function ProjectSettingsPage() {
             <div className="text-[14px] font-medium text-[var(--text)]">Delete this project</div>
             <p className="text-[13px] text-[var(--text2)] mt-1">Permanently remove the project and all of its ingested data. This cannot be undone.</p>
           </div>
-          <Button variant="danger" onClick={() => demoAction("Delete project")}><Trash2 className="mr-2 size-4" /> Delete Project</Button>
+          <Button variant="danger" onClick={() => toast.info("Project deletion is not wired yet")}><Trash2 className="mr-2 size-4" /> Delete Project</Button>
         </div>
       </SectionCard>
     </div>
@@ -105,10 +160,51 @@ export default function ProjectSettingsPage() {
           <h3 className="text-[15px] font-medium text-[var(--text)]">API Keys</h3>
           <p className="text-[13px] text-[var(--text2)] mt-1">Manage project ingestion and SDK keys used to send observability data.</p>
         </div>
-        <Button variant="primary" onClick={() => demoAction("Create API key")}><Plus className="mr-2 size-4" /> Create Key</Button>
+        <CreateApiKeyModal />
       </div>
       <div className="flex-1 rounded-md border border-[var(--border)] overflow-hidden bg-[var(--bg1)]">
         <InfiniteTable loading={isKeysLoading} items={apiKeys || []} queryKey={["projectApiKeys"]} columns={columns} getKey={(k) => k.id} />
+      </div>
+    </div>
+  );
+
+  const environmentsTab = (
+    <div className="flex flex-col mt-4 min-h-[600px]">
+      <div className="mb-4 flex items-center justify-between">
+        <div>
+          <h3 className="text-[15px] font-medium text-[var(--text)]">Environments</h3>
+          <p className="text-[13px] text-[var(--text2)] mt-1">Manage isolated environments for your project (e.g. Production, Staging).</p>
+        </div>
+        <CreateEnvironmentModal />
+      </div>
+      <div className="flex-1 rounded-md border border-[var(--border)] overflow-hidden bg-[var(--bg1)]">
+        <InfiniteTable<ProjectEnvironmentView>
+          loading={isEnvsLoading} 
+          items={environments || []} 
+          queryKey={["projectEnvironments", projectId]} 
+          columns={[
+            { key: "name", header: "Name", width: "1fr", cell: (e) => <span className="font-medium text-[var(--text)]">{e.name}</span> },
+            { key: "slug", header: "Slug", width: "1fr", cell: (e) => <code className="text-[12px] text-[var(--text2)]">{e.slug}</code> },
+            { key: "type", header: "Type", width: "120px", cell: (e) => <span className="capitalize text-[var(--text2)]">{e.type}</span> },
+            { key: "status", header: "Status", width: "120px", cell: () => <StatusBadge status="active" /> },
+            { key: "actions", header: "", width: "60px", align: "right", cell: (e) => (
+              <div onClick={(ev) => ev.stopPropagation()}>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <UiButton variant="ghost" size="icon"><MoreHorizontal className="size-4" /></UiButton>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem>Edit Environment</DropdownMenuItem>
+                    <DropdownMenuItem className="text-[var(--red)] focus:text-[var(--red)]" onClick={() => deleteEnvironment.mutate({ projectId, env: e.slug })}>
+                      <Trash2 className="mr-2 size-4" /> Delete
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            ) },
+          ]} 
+          getKey={(e) => e.id || e.slug} 
+        />
       </div>
     </div>
   );
@@ -123,6 +219,7 @@ export default function ProjectSettingsPage() {
         <Tabs
           tabs={[
             { id: "general", label: "General", content: generalTab },
+            { id: "environments", label: "Environments", content: environmentsTab },
             { id: "keys", label: "API Keys", content: apiKeysTab },
           ]}
         />

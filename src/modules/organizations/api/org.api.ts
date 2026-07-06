@@ -1,4 +1,5 @@
 import { apiClient } from '@/infrastructure/api-client/axios';
+import { tokenService } from '@/modules/auth/services/token.service';
 import type * as t from '../types/org.types';
 
 const withOrgHeaders = (orgId: string) => ({
@@ -38,6 +39,12 @@ function mapPaymentMethod(paymentMethod: any): t.PaymentMethod {
 export const orgApi = {
   // Core
   createOrganization: (data: t.CreateOrganizationBody) => apiClient.post('/organizations', data).then(r => r.data.data as t.Organization),
+  switchOrganization: (orgId: string) => apiClient.post('/organizations/switch', { orgId }).then(r => {
+    const session = r.data.data as { access_token: string; expires_at: string; current_org_id: string };
+    tokenService.setAccessToken(session.access_token, session.expires_at);
+    tokenService.setCurrentOrgId(session.current_org_id);
+    return session;
+  }),
   listOrganizations: (params?: { cursor?: string; limit?: number; search?: string }) => apiClient.get('/organizations', { params }).then(r => r.data as t.CursorPaginatedResponse<t.UserOrganization>),
   getOrganization: (id: string) => apiClient.get(`/organizations/${id}`).then(r => r.data.data as t.Organization),
   updateOrganization: (id: string, data: t.UpdateOrganizationBody) => apiClient.patch(`/organizations/${id}`, data).then(r => r.data.data as t.Organization),

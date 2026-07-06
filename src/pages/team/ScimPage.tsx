@@ -3,8 +3,6 @@ import {
   AlertTriangle,
   CheckCircle2,
   Clock,
-  Copy,
-  ExternalLink,
   Info,
   KeyRound,
   Loader2,
@@ -14,8 +12,6 @@ import {
   ShieldCheck,
   Trash2,
   Users,
-  Workflow,
-  XCircle,
   Zap,
 } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -25,6 +21,7 @@ import { env } from "@/app/config/env";
 import { orgApi } from "@/modules/organizations/api/org.api";
 import { orgQueryKeys, useOrganizations } from "@/modules/organizations/hooks/useOrganizations";
 import type { CreateScimTokenInput } from "@/modules/organizations/types/org.types";
+import { Button as UiButton } from "@/components/ui/button";
 import {
   Button,
   CopyButton,
@@ -48,17 +45,21 @@ type ScimProvisioningPageProps = {
 type ScimScope = CreateScimTokenInput["scopes"][number];
 
 const SCIM_SCOPE_OPTIONS: Array<{ value: ScimScope; label: string; description: string; icon: React.ElementType }> = [
-  { value: "read", label: "Read", description: "Allow directory reads and discovery endpoints.", icon: Info },
-  { value: "write", label: "Write", description: "Allow create, update, and patch provisioning calls.", icon: Zap },
-  { value: "delete", label: "Delete", description: "Allow deprovisioning and delete operations.", icon: Trash2 },
+  { value: "users:read", label: "Read Users", description: "Allow user directory reads and discovery endpoints.", icon: Info },
+  { value: "users:write", label: "Write Users", description: "Allow user create, update, and patch provisioning calls.", icon: Zap },
+  { value: "users:delete", label: "Delete Users", description: "Allow user deprovisioning and delete operations.", icon: Trash2 },
+  { value: "groups:read", label: "Read Groups", description: "Allow group and role management reads.", icon: Info },
+  { value: "groups:write", label: "Write Groups", description: "Allow group creation and assignment.", icon: Zap },
+  { value: "groups:delete", label: "Delete Groups", description: "Allow group deletion.", icon: Trash2 },
+  { value: "bulk", label: "Bulk Sync", description: "Allow SCIM bulk sync operations.", icon: Zap },
 ];
 
 const SCIM_ENDPOINTS = (base: string) => [
-  { label: "Base URL", path: "", method: "ALL", description: "Root provisioning endpoint" },
-  { label: "Users", path: "/Users", method: "GET/POST", description: "User provisioning and syncing" },
-  { label: "Groups", path: "/Groups", method: "GET/POST", description: "Group and role management" },
-  { label: "ServiceProviderConfig", path: "/ServiceProviderConfig", method: "GET", description: "Capability discovery" },
-  { label: "Schemas", path: "/Schemas", method: "GET", description: "Resource schema definitions" },
+  { label: "Base URL", path: base, method: "ALL", description: "Root provisioning endpoint" },
+  { label: "Users", path: `${base}/Users`, method: "GET/POST", description: "User provisioning and syncing" },
+  { label: "Groups", path: `${base}/Groups`, method: "GET/POST", description: "Group and role management" },
+  { label: "ServiceProviderConfig", path: `${base}/ServiceProviderConfig`, method: "GET", description: "Capability discovery" },
+  { label: "Schemas", path: `${base}/Schemas`, method: "GET", description: "Resource schema definitions" },
 ];
 
 function formatExpiryLabel(expiresAt: string | null): string {
@@ -86,7 +87,7 @@ export function ScimProvisioningPage({ mode = "admin" }: ScimProvisioningPagePro
   const { activeOrgId } = useOrganizations();
 
   const [newTokenRaw, setNewTokenRaw] = useState<string | null>(null);
-  const [selectedScopes, setSelectedScopes] = useState<ScimScope[]>(["read", "write", "delete"]);
+  const [selectedScopes, setSelectedScopes] = useState<ScimScope[]>(["users:read", "users:write", "users:delete", "groups:read", "groups:write", "groups:delete"]);
   const [expiresInDays, setExpiresInDays] = useState("365");
   const [allowedIpsText, setAllowedIpsText] = useState("");
 
@@ -506,16 +507,16 @@ export function ScimProvisioningPage({ mode = "admin" }: ScimProvisioningPagePro
                   <span className="text-[12px] text-[var(--text3)]">Risk level</span>
                   <span
                     className={`text-[12px] font-semibold ${
-                      selectedScopes.includes("delete")
+                      selectedScopes.some((scope) => scope.endsWith(":delete"))
                         ? "text-[var(--red)]"
-                        : selectedScopes.includes("write")
+                        : selectedScopes.some((scope) => scope.endsWith(":write"))
                         ? "text-[var(--amber)]"
                         : "text-[var(--green)]"
                     }`}
                   >
-                    {selectedScopes.includes("delete")
+                    {selectedScopes.some((scope) => scope.endsWith(":delete"))
                       ? "High"
-                      : selectedScopes.includes("write")
+                      : selectedScopes.some((scope) => scope.endsWith(":write"))
                       ? "Medium"
                       : "Low"}
                   </span>
@@ -523,8 +524,7 @@ export function ScimProvisioningPage({ mode = "admin" }: ScimProvisioningPagePro
               </div>
             </div>
 
-            <Button
-              variant="primary"
+            <UiButton
               className="w-full"
               disabled={generateMutation.isPending || selectedScopes.length === 0}
               onClick={() => generateMutation.mutate()}
@@ -535,7 +535,7 @@ export function ScimProvisioningPage({ mode = "admin" }: ScimProvisioningPagePro
                 <KeyRound className="mr-2 size-4" />
               )}
               Generate token
-            </Button>
+            </UiButton>
           </div>
         </div>
       </SectionCard>

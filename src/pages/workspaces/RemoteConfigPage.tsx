@@ -1,9 +1,12 @@
 import { useEffect, useState } from "react";
+import { useParams } from "react-router";
 import { Loader2, Plus, RotateCcw } from "lucide-react";
 import {
   PageHeader, FillPage, SectionCard, StatusBadge, Field, SubmitButton, inputClass, Button, Tabs,
 } from "@/shared/observe";
 import { toast } from "sonner";
+import { useOrganizations } from "@/modules/organizations/hooks/useOrganizations";
+import { useSdkConfigs, useSdkConfigVersions, useSdkConfigDeployments, useSdkConfigMutations, useResolveSdkConfig } from "@/modules/projects/hooks/useSdkConfigs";
 
 function Toggle({ checked, onChange, disabled, label, description, badge }: any) {
   return (
@@ -58,56 +61,33 @@ function Slider({ value, min, max, step, onChange, disabled, label, description,
   );
 }
 
-// DUMMY DATA FOR NOW
-const DUMMY_CONFIGS = [
-  {
-    id: "conf_1",
-    configKey: "sdk.client",
-    environment: "production",
-    isActive: true,
-    rolloutPercentage: 100,
-    configValue: {
-      schemaVersion: 1,
-      features: { metrics: true, profiling: false, sessionReplay: true },
-      sampling: { traces: 0.5 },
-      limits: { maxSpansPerTrace: 2000 },
-      privacy: { scrubbing: { headers: ["authorization", "cookie"] } },
-      instrumentation: { mongodb: true, redis: false }
-    }
-  },
-  {
-    id: "conf_2",
-    configKey: "sdk.backend",
-    environment: "staging",
-    isActive: false,
-    rolloutPercentage: 50,
-    configValue: { schemaVersion: 1 }
-  }
-];
-
-const DUMMY_VERSIONS = [
-  { id: "v_2", version: 2, changeType: "Updated metrics flag", createdAt: new Date().toISOString(), changeDiff: { "features.metrics": true } },
-  { id: "v_1", version: 1, changeType: "Initial creation", createdAt: new Date(Date.now() - 86400000).toISOString(), changeDiff: {} }
-];
-
-const DUMMY_DEPLOYMENTS = [
-  { id: "d_1", version: 2, rolloutPercentage: 100, status: "active" }
-];
+function getCurrentPlanTier(): "free" | "pro" | "enterprise" {
+  return "enterprise";
+}
 
 export default function RemoteConfigPage() {
-  const [selectedConfigId, setSelectedConfigId] = useState<string | null>("conf_1");
+  const { projectId } = useParams();
+  const { activeOrgId } = useOrganizations();
+  
+  const [selectedConfigId, setSelectedConfigId] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [localConfig, setLocalConfig] = useState<any>(null);
 
-  const tier = "enterprise";
+  const [resolveEnv, setResolveEnv] = useState("production");
+  const [resolvePlatform, setResolvePlatform] = useState("web");
+  const [resolvedResult, setResolvedResult] = useState<any>(null);
+
+  const tier = getCurrentPlanTier();
   const isPro = tier === "pro" || tier === "enterprise";
   const isEnt = tier === "enterprise";
 
-  const configs = DUMMY_CONFIGS;
-  const selectedConfig = configs.find((config) => config.id === selectedConfigId) || null;
-  const versions = DUMMY_VERSIONS;
-  const deployments = DUMMY_DEPLOYMENTS;
-  const isLoading = false;
+  const { data: configs, isLoading } = useSdkConfigs(activeOrgId!, projectId);
+  const selectedConfig = configs?.find((config: any) => config.id === selectedConfigId) || null;
+  const { data: versions } = useSdkConfigVersions(activeOrgId!, selectedConfigId!);
+  const { data: deployments } = useSdkConfigDeployments(activeOrgId!, selectedConfigId!);
+
+  const { createConfig, updateConfig, rollbackConfig, ackVersion } = useSdkConfigMutations();
+  const resolveMutation = useResolveSdkConfig();
 
   useEffect(() => {
     if (selectedConfig) {
@@ -132,17 +112,25 @@ export default function RemoteConfigPage() {
     setLocalConfig((prev: any) => ({ ...prev, instrumentation: { ...(prev?.instrumentation || {}), [key]: val } }));
   };
 
-  const createMutation = { mutate: (fd: FormData) => toast.success("Dummy Create") };
-  const updateMutation = { mutate: (fd: FormData) => toast.success("Dummy Update") };
-  const rollbackMutation = { mutate: (v: number) => toast.success("Dummy Rollback") };
-  const ackMutation = { mutate: (v: number) => toast.success("Dummy Ack") };
-
+  const updateMutation = { mutate: (payload: any) => {
+    if (!selectedConfigId || !activeOrgId) return;
+    updateConfig.mutate({ orgId: activeOrgId, configId: selectedConfigId, projectId, data: payload });
+  }};
+  
   const visualEditor = (
     <form
       className="flex flex-col gap-6"
       onSubmit={(event) => {
         event.preventDefault();
-        toast.success("Saved Configuration (Dummy)");
+        const formData = new FormData(event.currentTarget);
+        const payload = {
+          environment: formData.get("environment"),
+          rolloutPercentage: Number(formData.get("rolloutPercentage")),
+          changeSummary: formData.get("changeSummary"),
+          isActive: formData.get("isActive") === "on",
+          configValue: localConfig,
+        };
+        updateMutation.mutate(payload);
       }}
     >
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -265,7 +253,15 @@ export default function RemoteConfigPage() {
       className="flex flex-col gap-6"
       onSubmit={(event) => {
         event.preventDefault();
-        toast.success("Saved JSON (Dummy)");
+        const formData = new FormData(event.currentTarget);
+        const payload = {
+          environment: formData.get("environment"),
+          rolloutPercentage: Number(formData.get("rolloutPercentage")),
+          changeSummary: formData.get("changeSummary"),
+          isActive: formData.get("isActive") === "on",
+          configValue: JSON.parse(formData.get("configValue") as string),
+        };
+        updateMutation.mutate(payload);
       }}
     >
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -296,8 +292,8 @@ export default function RemoteConfigPage() {
               <div className="text-xs text-[var(--text3)]">{version.changeType} · {new Date(version.createdAt).toLocaleString()}</div>
             </div>
             <div className="flex gap-2">
-              <Button variant="secondary" onClick={() => ackMutation.mutate(version.version)}>Acknowledge</Button>
-              <Button variant="ghost" onClick={() => rollbackMutation.mutate(version.version)}><RotateCcw className="mr-2 size-4" />Rollback</Button>
+              <Button type="button" variant="secondary" onClick={() => ackVersion.mutate({ orgId: activeOrgId!, configId: selectedConfigId!, version: version.version })}>Acknowledge</Button>
+              <Button type="button" variant="ghost" onClick={() => rollbackConfig.mutate({ orgId: activeOrgId!, configId: selectedConfigId!, version: version.version })}><RotateCcw className="mr-2 size-4" />Rollback</Button>
             </div>
           </div>
           <pre className="mt-3 overflow-x-auto rounded bg-[var(--bg1)] border border-[var(--border)] p-3 text-[12px] text-[var(--text2)]">{JSON.stringify(version.changeDiff || version.configValue, null, 2)}</pre>
@@ -326,6 +322,54 @@ export default function RemoteConfigPage() {
     </div>
   );
 
+  const handleResolve = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!activeOrgId) return;
+    try {
+      const result = await resolveMutation.mutateAsync({ orgId: activeOrgId, projectId, environment: resolveEnv, platform: resolvePlatform });
+      setResolvedResult(result);
+      toast.success("Resolved config retrieved");
+    } catch (err) {
+      toast.error("Failed to resolve config");
+    }
+  };
+
+  const resolveTab = (
+    <div className="flex flex-col gap-6 max-w-[800px] mt-4">
+      <SectionCard title="Test Resolution">
+        <form onSubmit={handleResolve} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <Field label="Environment">
+            <select className={inputClass} value={resolveEnv} onChange={(e) => setResolveEnv(e.target.value)}>
+              <option value="production">Production</option>
+              <option value="staging">Staging</option>
+              <option value="development">Development</option>
+            </select>
+          </Field>
+          <Field label="Platform">
+            <select className={inputClass} value={resolvePlatform} onChange={(e) => setResolvePlatform(e.target.value)}>
+              <option value="web">Web (Browser)</option>
+              <option value="node">Node.js</option>
+              <option value="python">Python</option>
+              <option value="ios">iOS</option>
+              <option value="android">Android</option>
+            </select>
+          </Field>
+          <div className="sm:col-span-2 pt-2">
+            <SubmitButton>Simulate Resolution</SubmitButton>
+          </div>
+        </form>
+        {resolvedResult && (
+          <div className="mt-6 border-t border-[var(--border)] pt-4">
+            <div className="text-[14px] font-medium text-[var(--text)] mb-3">Final Merged Payload</div>
+            <pre className="overflow-x-auto rounded bg-[var(--bg1)] border border-[var(--border)] p-4 text-[13px] text-[var(--text2)] font-mono">
+              {JSON.stringify(resolvedResult, null, 2)}
+            </pre>
+          </div>
+        )}
+      </SectionCard>
+    </div>
+  );
+
   if (isLoading) {
     return <FillPage><div className="flex h-32 items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-[var(--brand)]" /></div></FillPage>;
   }
@@ -333,8 +377,8 @@ export default function RemoteConfigPage() {
   return (
     <FillPage>
       <PageHeader
-        title="Remote Config"
-        description="Manage SDK configuration, rollout percentages, and client-side feature flags."
+        title={projectId ? "Project Remote Config" : "Remote Config"}
+        description={projectId ? `Manage SDK configuration and overrides for project ${projectId}.` : "Manage organization-wide SDK configuration, rollout percentages, and client-side feature flags."}
       />
 
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-6">
@@ -370,10 +414,22 @@ export default function RemoteConfigPage() {
           <SectionCard title="Create SDK Config">
             <form
               className="grid grid-cols-1 gap-4 sm:grid-cols-2"
-              onSubmit={(event) => {
+              onSubmit={async (event) => {
                 event.preventDefault();
-                createMutation.mutate(new FormData(event.currentTarget));
+                if (!activeOrgId) return;
+                const formData = new FormData(event.currentTarget);
+                const payload = {
+                  configKey: formData.get("configKey"),
+                  configType: formData.get("configType"),
+                  environment: formData.get("environment"),
+                  schemaVersion: formData.get("schemaVersion"),
+                  rolloutPercentage: Number(formData.get("rolloutPercentage")),
+                  isEncrypted: formData.get("isEncrypted") === "on",
+                  configValue: JSON.parse(formData.get("configValue") as string),
+                };
+                await createConfig.mutateAsync({ orgId: activeOrgId, projectId, data: payload });
                 event.currentTarget.reset();
+                setShowCreate(false);
               }}
             >
               <Field label="Config key"><input name="configKey" required placeholder="sdk.client" className={inputClass} /></Field>
@@ -407,6 +463,7 @@ export default function RemoteConfigPage() {
               { id: "advanced", label: "JSON", content: advancedEditor },
               { id: "history", label: "History", content: versionsTab },
               { id: "rollouts", label: "Rollouts", content: deploymentsTab },
+              { id: "resolve", label: "Resolve Tester", content: resolveTab },
             ]}
           />
         ) : (

@@ -10,12 +10,25 @@ import {
 import { Button } from '@/components/ui/button';
 import { ChevronDown, Check, Plus, Loader2 } from 'lucide-react';
 import { useOrganizations } from '@/modules/organizations/hooks/useOrganizations';
+import { orgApi } from '@/modules/organizations/api/org.api';
+import { useState } from 'react';
 
 export function OrgSwitcher() {
   const { organizations, activeOrgId, setActiveOrgId, isLoading } = useOrganizations();
   const navigate = useNavigate();
+  const [switchingOrgId, setSwitchingOrgId] = useState<string | null>(null);
 
   const activeOrg = organizations.find((org) => org.id === activeOrgId);
+  const switchOrg = async (orgId: string) => {
+    if (orgId === activeOrgId) return;
+    setSwitchingOrgId(orgId);
+    try {
+      await orgApi.switchOrganization(orgId);
+      setActiveOrgId(orgId);
+    } finally {
+      setSwitchingOrgId(null);
+    }
+  };
 
   return (
     <DropdownMenu>
@@ -48,11 +61,15 @@ export function OrgSwitcher() {
         {organizations.map((org) => (
           <DropdownMenuItem
             key={org.id}
-            onClick={() => setActiveOrgId(org.id)}
-            className="flex items-center justify-between cursor-pointer focus:bg-accent focus:text-accent-foreground"
-          >
-            <span>{org.name}</span>
-            {activeOrgId === org.id && <Check className="h-4 w-4 text-primary" />}
+          onClick={() => void switchOrg(org.id)}
+          className="flex items-center justify-between cursor-pointer focus:bg-accent focus:text-accent-foreground"
+        >
+          <span>{org.name}</span>
+            {switchingOrgId === org.id ? (
+              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+            ) : activeOrgId === org.id ? (
+              <Check className="h-4 w-4 text-primary" />
+            ) : null}
           </DropdownMenuItem>
         ))}
         <DropdownMenuSeparator className="bg-border" />

@@ -1,11 +1,11 @@
 import { useNavigate } from "react-router";
-import { useIntegrations } from "@/hooks/useDummyData";
+import { useConnectors } from "@/modules/organizations/hooks/useConnectors";
 import { PageHeader, FillPage, InfiniteCards, StatusBadge, Button, Timestamp, demoSuccess } from "@/shared/observe";
 
 export default function IntegrationsPage() {
   const navigate = useNavigate();
-  const { data, isLoading } = useIntegrations();
-  const integrations = data ?? [];
+  const { data, isLoading } = useConnectors();
+  const integrations: any[] = data ?? [];
 
   return (
     <FillPage>

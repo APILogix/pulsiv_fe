@@ -1,16 +1,15 @@
 import { useNavigate } from "react-router";
 import { Plus, FolderOpen } from "lucide-react";
 import { useProjects } from "@/modules/projects/hooks/useProjects";
-import { PageHeader, KpiCard, FillPage, InfiniteCards, StatusBadge, Button, MetricSparkline, Timestamp, formatCompact } from "@/shared/observe";
-
-import { CreateProjectModal } from "@/modules/projects/CreateProjectModal";
+import { PageHeader, KpiCard, FillPage, InfiniteCards, StatusBadge, Button, Timestamp, formatCompact } from "@/shared/observe";
 
 export default function ProjectsPage() {
   const navigate = useNavigate();
   const { data, isLoading } = useProjects();
   const projects = data ?? [];
   const active = projects.filter((p) => p.status === "active").length;
-  const totalVolume = projects.reduce((s, p) => s + p.eventVolume24h, 0);
+  const totalKeys = projects.reduce((s, p) => s + p.apiKeysCount, 0);
+  const productionDefaults = projects.filter((p) => p.defaultEnvironment === "production").length;
 
   return (
     <FillPage>
@@ -18,17 +17,17 @@ export default function ProjectsPage() {
         title="All Projects"
         description="Organization-scoped project inventory."
         actions={
-          <CreateProjectModal>
-            <Button variant="primary"><Plus className="size-4 mr-2" /> New project</Button>
-          </CreateProjectModal>
+          <Button variant="primary" onClick={() => navigate("/projects/new")}>
+            <Plus className="mr-2 h-4 w-4" /> New Project
+          </Button>
         }
       />
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <KpiCard label="Projects" value={projects.length} icon={FolderOpen} />
         <KpiCard label="Active" value={active} />
-        <KpiCard label="Events / 24h" value={formatCompact(totalVolume)} />
-        <KpiCard label="Avg health" value={`${Math.round(projects.reduce((s, p) => s + p.healthScore, 0) / (projects.length || 1))}`} />
+        <KpiCard label="API Keys" value={formatCompact(totalKeys)} />
+        <KpiCard label="Prod Default" value={productionDefaults} />
       </div>
 
       <InfiniteCards
@@ -38,7 +37,7 @@ export default function ProjectsPage() {
         queryKey={["projects"]}
         getKey={(p) => p.id}
         renderCard={(p) => {
-          const tone = p.healthScore > 85 ? "var(--green)" : p.healthScore > 70 ? "var(--amber)" : "var(--red)";
+          // const tone = p.status === "active" ? "var(--green)" : p.status === "suspended" ? "var(--amber)" : "var(--red)";
           return (
             <div
               onClick={() => navigate(`/projects/${p.id}`)}
@@ -51,18 +50,15 @@ export default function ProjectsPage() {
                 </div>
                 <StatusBadge status={p.status} />
               </div>
-              <p className="mt-2 line-clamp-2 text-[13px] text-[var(--text2)]">{p.description}</p>
+              <p className="mt-2 line-clamp-2 text-[13px] text-[var(--text2)]">{p.description || "No description provided."}</p>
               <div className="mt-3 flex items-end justify-between">
                 <div>
-                  <div className="text-[12px] text-[var(--text3)]">Health</div>
-                  <div className="text-lg font-semibold tabular-nums" style={{ color: tone }}>{p.healthScore}</div>
+                  <div className="text-[11px] text-[var(--text3)]">Default environment</div>
+                  <div className="font-semibold capitalize text-[14px] text-[var(--text)]">{p.defaultEnvironment}</div>
                 </div>
-                <MetricSparkline data={Array.from({ length: 14 }, () => 40 + Math.random() * 50)} color={tone} />
               </div>
-              <div className="mt-3 flex items-center justify-between border-t border-[var(--border)] pt-2 text-[12px] text-[var(--text3)]">
-                <span>{formatCompact(p.eventVolume24h)} events</span>
-                <span>{p.errorRate}% errors</span>
-                <span>updated <Timestamp value={p.lastActivityAt} /></span>
+              <div className="mt-3 border-t border-[var(--border)] pt-3 text-[11px] text-[var(--text3)]">
+                Created <Timestamp value={p.createdAt} />
               </div>
             </div>
           );

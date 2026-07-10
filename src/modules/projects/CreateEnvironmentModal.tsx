@@ -11,7 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { inputClass } from "@/shared/observe";
-import { useProjectMutations } from "./hooks/useProjects";
+import { useProject, useProjectMutations } from "./hooks/useProjects";
 import { useParams } from "react-router";
 import { toast } from "sonner";
 import { Plus } from "lucide-react";
@@ -22,6 +22,7 @@ export function CreateEnvironmentModal({ children }: { children?: React.ReactNod
 
   const { projectId = "" } = useParams();
   const { createEnvironment } = useProjectMutations();
+  const { data: project } = useProject(projectId);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -30,9 +31,9 @@ export function CreateEnvironmentModal({ children }: { children?: React.ReactNod
       const formData = new FormData(e.currentTarget);
       const environment = formData.get("environment") as string;
 
-      await createEnvironment.mutateAsync({ projectId, data: { environment, isActive: true } });
+      await createEnvironment.mutateAsync({ projectId, data: { environment } });
       setOpen(false);
-      toast.success("Environment created successfully");
+      toast.success("Environment record refreshed successfully");
     } catch (err) {
       toast.error("Failed to create environment");
     } finally {
@@ -54,16 +55,22 @@ export function CreateEnvironmentModal({ children }: { children?: React.ReactNod
           <DialogHeader>
             <DialogTitle>Create Environment</DialogTitle>
             <DialogDescription>
-              Add a new environment to track distinct events for this project.
+              The current backend schema exposes a single environment record derived from the project's default environment.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
               <Label htmlFor="environment">Environment</Label>
-              <select id="environment" name="environment" className={inputClass} required defaultValue="development">
-                <option value="production">Production</option>
-                <option value="staging">Staging</option>
-                <option value="development">Development</option>
+              <select
+                id="environment"
+                name="environment"
+                className={inputClass}
+                required
+                defaultValue={project?.defaultEnvironment ?? "development"}
+              >
+                <option value={project?.defaultEnvironment ?? "development"}>
+                  {project?.defaultEnvironment ?? "development"}
+                </option>
               </select>
             </div>
           </div>

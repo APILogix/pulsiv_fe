@@ -65,12 +65,24 @@ const LogDetailPage = lazy(() => import("@/pages/observe/LogDetailPage"));
 
 // Workspaces
 const ProjectsPage = lazy(() => import("@/pages/workspaces/ProjectsPage"));
-const ProjectDetailPage = lazy(() => import("@/pages/workspaces/ProjectDetailPage"));
+const CreateProjectWizardPage = lazy(() => import("@/pages/workspaces/CreateProjectWizardPage"));
 const ProjectOverviewPage = lazy(() => import("@/pages/workspaces/ProjectOverviewPage"));
 
+// Project Shell
+const ProjectShellPage = lazy(() => import("@/pages/workspaces/ProjectShellPage").then(m => ({ default: m.ProjectShellPage })));
 const ProjectUsagePage = lazy(() => import("@/pages/workspaces/ProjectUsagePage"));
 const ProjectSettingsPage = lazy(() => import("@/pages/workspaces/ProjectSettingsPage"));
+const ProjectApiKeysPage = lazy(() => import("@/pages/workspaces/ProjectApiKeysPage"));
+const ProjectActivityPage = lazy(() => import("@/pages/workspaces/ProjectActivityPage"));
 const RemoteConfigPage = lazy(() => import("@/pages/workspaces/RemoteConfigPage"));
+const ProjectAlertRoutesPage = lazy(() => import("@/pages/workspaces/ProjectAlertRoutesPage"));
+
+// Mock pages (kept imported but can be hidden from routing for now)
+const ProjectMembersPage = lazy(() => import("@/pages/workspaces/ProjectMembersPage"));
+const AlertRouteWizardPage = lazy(() => import("@/pages/workspaces/AlertRouteWizardPage"));
+const MemberAlertPreferencesPage = lazy(() => import("@/pages/workspaces/MemberAlertPreferencesPage"));
+const AlertDeliveryLogsPage = lazy(() => import("@/pages/workspaces/AlertDeliveryLogsPage"));
+const DeadLetterQueuePage = lazy(() => import("@/pages/workspaces/DeadLetterQueuePage"));
 
 // Act
 const IncidentsPage = lazy(() => import("@/pages/act/IncidentsPage"));
@@ -197,20 +209,33 @@ export const protectedRoutes: RouteObject[] = [
 
           {
             path: "projects",
-            element: <ModuleLayout />,
             children: [
-              { index: true, element: <ProjectsPage /> },
-              { path: "overview", element: <ProjectOverviewPage /> },
-
-              { path: "usage", element: <ProjectUsagePage /> },
-              { path: "settings", element: <ProjectSettingsPage /> },
-              { path: "remote-config", element: <RemoteConfigPage /> },
-              { path: ":projectId", element: <ProjectDetailPage /> },
-              { path: ":projectId/overview", element: <ProjectOverviewPage /> },
-
-              { path: ":projectId/usage", element: <ProjectUsagePage /> },
-              { path: ":projectId/settings", element: <ProjectSettingsPage /> },
-              { path: ":projectId/remote-config", element: <RemoteConfigPage /> },
+              {
+                element: <ModuleLayout />,
+                children: [
+                  { index: true, element: <ProjectsPage /> },
+                  { path: "new", element: <CreateProjectWizardPage /> },
+                ]
+              },
+              {
+                path: ":projectId",
+                element: <ProjectShellPage />,
+                children: [
+                  { index: true, element: <Navigate to="overview" replace /> },
+                  { path: "overview", element: <ProjectOverviewPage /> },
+                  { path: "usage", element: <ProjectUsagePage /> },
+                  { path: "api-keys", element: <ProjectApiKeysPage /> },
+                  { path: "activity", element: <ProjectActivityPage /> },
+                  { path: "remote-config", element: <RemoteConfigPage /> },
+                  { path: "routes", element: <ProjectAlertRoutesPage /> },
+                  { path: "settings/general", element: <ProjectSettingsPage /> },
+                  { path: "members", element: <ProjectMembersPage /> },
+                  { path: "routes/:routeId", element: <AlertRouteWizardPage /> },
+                  { path: "preferences", element: <MemberAlertPreferencesPage /> },
+                  { path: "deliveries", element: <AlertDeliveryLogsPage /> },
+                  { path: "dlq", element: <DeadLetterQueuePage /> },
+                ]
+              }
             ],
           },
           {

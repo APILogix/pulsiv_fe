@@ -30,10 +30,9 @@ export function CreateApiKeyModal({ children }: { children?: React.ReactNode }) 
     try {
       const formData = new FormData(e.currentTarget);
       const name = formData.get("name") as string;
-      const keyType = formData.get("keyType") as string;
       const environment = formData.get("environment") as string;
 
-      await createApiKey.mutateAsync({ projectId, data: { name, keyType, environment } });
+      await createApiKey.mutateAsync({ projectId, data: { name, environment } });
       setOpen(false);
       toast.success("API Key generated successfully");
     } catch (err) {
@@ -66,19 +65,10 @@ export function CreateApiKeyModal({ children }: { children?: React.ReactNode }) 
               <Input id="key-name" name="name" placeholder="e.g. Production Ingest Key" required />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="key-type">Type</Label>
-              <select id="key-type" name="keyType" className={inputClass} required defaultValue="standard">
-                <option value="standard">Standard</option>
-                <option value="ingestion_only">Ingestion only</option>
-                <option value="read_only">Read-only</option>
-                <option value="admin">Admin</option>
-              </select>
-            </div>
-            <div className="grid gap-2">
               <Label htmlFor="env-select">Environment</Label>
               <select id="env-select" name="environment" className={inputClass} required defaultValue="production">
                 <option value="production">Production</option>
-                <option value="staging">Staging</option>
+                <option value="development">Development</option>
               </select>
             </div>
           </div>

@@ -9,28 +9,20 @@ export type ProjectView = {
   name: string;
   slug: string;
   description: string | null;
-  status: "active" | "paused" | "archived";
-  environment: "development" | "staging" | "production";
-  environments: string[];
-  eventVolume24h: number;
-  errorRate: number;
-  healthScore: number;
-  memberCount: number;
+  status: "active" | "suspended" | "archived";
+  environment: "development" | "production";
+  defaultEnvironment: "development" | "production";
   apiKeysCount: number;
   activeApiKeysCount: number;
   createdAt: number;
   updatedAt: number;
-  lastActivityAt: number;
 };
 
 export type ProjectEnvironmentView = {
   id: string;
   projectId: string;
   orgId: string;
-  environment: string;
-  name: string;
-  slug: string;
-  type: string;
+  environment: "development" | "production";
   isActive: boolean;
   createdAt: number;
   updatedAt: number;
@@ -42,15 +34,43 @@ export type ProjectApiKeyView = {
   orgId: string | null;
   keyPrefix: string;
   prefix: string;
-  keyType: string;
-  type: string;
-  environment: string;
-  name: string;
+  environment: "development" | "production";
+  name: string | null;
+  description: string | null;
   isActive: boolean;
-  status: string;
+  status: "active" | "revoked" | "expired";
   lastUsedAt: number | null;
-  usage24h: number;
-  usageCount: number;
+  expiresAt: number | null;
+  revokedAt: number | null;
+  createdAt: number;
+  updatedAt: number;
+};
+
+
+export type ProjectSettingsView = {
+  retentionDays: number;
+  maxEventsPerSecond: number;
+  autoArchive: boolean;
+  alertingEnabled: boolean;
+  ingestionEnabled: boolean;
+  createdAt: number;
+  updatedAt: number;
+};
+
+export type ProjectOverviewView = {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  status: "active" | "suspended" | "archived";
+  settings: ProjectSettingsView;
+  memberCount: number;
+  apiKeysCount: number;
+  activeApiKeysCount: number;
+  usage: {
+    totalEvents: number;
+    totalBytes: number;
+  };
   createdAt: number;
   updatedAt: number;
 };
@@ -67,25 +87,18 @@ const toTime = (value: unknown): number => {
 
 const normalizeProject = (project: any): ProjectView => ({
   ...project,
-  description: project.description ?? "",
-  environments: Array.isArray(project.environments) ? project.environments : [project.environment].filter(Boolean),
-  eventVolume24h: Number(project.eventVolume24h ?? project.stats?.totalRequests ?? 0),
-  errorRate: Number(project.errorRate ?? 0),
-  healthScore: Number(project.healthScore ?? (project.status === "active" ? 100 : project.status === "paused" ? 70 : 0)),
-  memberCount: Number(project.memberCount ?? 0),
+  description: project.description ?? null,
+  defaultEnvironment: project.defaultEnvironment ?? project.default_environment ?? project.environment ?? "production",
+  environment: project.defaultEnvironment ?? project.default_environment ?? project.environment ?? "production",
   apiKeysCount: Number(project.apiKeysCount ?? project.stats?.apiKeysCount ?? 0),
   activeApiKeysCount: Number(project.activeApiKeysCount ?? project.stats?.activeKeysCount ?? 0),
   createdAt: toTime(project.createdAt),
   updatedAt: toTime(project.updatedAt),
-  lastActivityAt: toTime(project.lastActivityAt ?? project.updatedAt ?? project.createdAt),
 });
 
 const normalizeEnvironment = (environment: any): ProjectEnvironmentView => ({
   ...environment,
   environment: environment.environment,
-  name: environment.name ?? environment.environment,
-  slug: environment.slug ?? environment.environment,
-  type: environment.type ?? environment.environment,
   isActive: Boolean(environment.isActive ?? true),
   createdAt: toTime(environment.createdAt),
   updatedAt: toTime(environment.updatedAt),
@@ -95,15 +108,14 @@ const normalizeApiKey = (apiKey: any): ProjectApiKeyView => ({
   ...apiKey,
   keyPrefix: apiKey.keyPrefix ?? apiKey.prefix ?? "",
   prefix: apiKey.prefix ?? apiKey.keyPrefix ?? "",
-  keyType: apiKey.keyType ?? apiKey.type ?? "standard",
-  type: apiKey.type ?? apiKey.keyType ?? "standard",
-  name: apiKey.name ?? "API key",
+  name: apiKey.name ?? null,
+  description: apiKey.description ?? null,
   isActive: Boolean(apiKey.isActive ?? apiKey.status === "active"),
   lastUsedAt: apiKey.lastUsedAt ? toTime(apiKey.lastUsedAt) : null,
-  usage24h: Number(apiKey.usage24h ?? apiKey.usageCount ?? 0),
-  usageCount: Number(apiKey.usageCount ?? apiKey.usage24h ?? 0),
+  expiresAt: apiKey.expiresAt ? toTime(apiKey.expiresAt) : null,
+  revokedAt: apiKey.revokedAt ? toTime(apiKey.revokedAt) : null,
   createdAt: toTime(apiKey.createdAt),
-  updatedAt: toTime(apiKey.updatedAt),
+  updatedAt: toTime(apiKey.updatedAt ?? apiKey.createdAt),
 });
 
 // --- Project API ---
@@ -116,11 +128,23 @@ export const projectsApi = {
     const { data } = await apiClient.get(projectPath(orgId, projectId));
     return normalizeProject(data.data);
   },
-  create: async (orgId: string, payload: { name: string; description?: string; environment?: string }): Promise<ProjectView> => {
+  create: async (
+    orgId: string,
+    payload: { name: string; description?: string; environment?: "development" | "production" },
+  ): Promise<ProjectView> => {
     const { data } = await apiClient.post(projectBase(orgId), payload);
     return normalizeProject(data.data);
   },
-  update: async (orgId: string, projectId: string, payload: Partial<{ name: string; description: string; environment: string; status: string }>): Promise<ProjectView> => {
+  update: async (
+    orgId: string,
+    projectId: string,
+    payload: Partial<{
+      name: string;
+      description: string | null;
+      environment: "development" | "production";
+      status: "active" | "suspended" | "archived";
+    }>,
+  ): Promise<ProjectView> => {
     const { data } = await apiClient.patch(projectPath(orgId, projectId), payload);
     return normalizeProject(data.data);
   },
@@ -148,6 +172,21 @@ export const projectsApi = {
     const { data } = await apiClient.post(`${projectPath(orgId, projectId)}/restore`);
     return normalizeProject(data.data);
   },
+
+  // --- New Core Endpoints ---
+  getSettings: async (orgId: string, projectId: string): Promise<ProjectSettingsView> => {
+    const { data } = await apiClient.get(`${projectPath(orgId, projectId)}/settings`);
+    return data.data;
+  },
+  updateSettings: async (orgId: string, projectId: string, payload: Partial<ProjectSettingsView>): Promise<ProjectSettingsView> => {
+    const { data } = await apiClient.patch(`${projectPath(orgId, projectId)}/settings`, payload);
+    return data.data;
+  },
+  getOverview: async (orgId: string, projectId: string): Promise<ProjectOverviewView> => {
+    const { data } = await apiClient.get(`${projectPath(orgId, projectId)}/overview`);
+    return data.data;
+  },
+
   getStats: async (orgId: string, projectId: string) => {
     const { data } = await apiClient.get(`${projectPath(orgId, projectId)}/stats`);
     return data.data;
@@ -163,22 +202,43 @@ export const projectsApi = {
 
   // --- Environments API ---
   listEnvironments: async (orgId: string, projectId: string): Promise<ProjectEnvironmentView[]> => {
-    const { data } = await apiClient.get(`${projectPath(orgId, projectId)}/environments`);
-    return (data.data ?? []).map(normalizeEnvironment);
+    const project = await projectsApi.get(orgId, projectId);
+    return [{
+      id: `${project.id}:${project.defaultEnvironment}`,
+      projectId: project.id,
+      orgId: project.orgId,
+      environment: project.defaultEnvironment,
+      isActive: project.status === "active",
+      createdAt: project.createdAt,
+      updatedAt: project.updatedAt,
+    }];
   },
-  getEnvironment: async (orgId: string, projectId: string, env: string): Promise<ProjectEnvironmentView> => {
+  getEnvironment: async (
+    orgId: string,
+    projectId: string,
+    env: "development" | "production",
+  ): Promise<ProjectEnvironmentView> => {
     const { data } = await apiClient.get(`${projectPath(orgId, projectId)}/environments/${env}`);
     return normalizeEnvironment(data.data);
   },
-  createEnvironment: async (orgId: string, projectId: string, payload: { environment: string; isActive?: boolean }): Promise<ProjectEnvironmentView> => {
+  createEnvironment: async (
+    orgId: string,
+    projectId: string,
+    payload: { environment: "development" | "production" },
+  ): Promise<ProjectEnvironmentView> => {
     const { data } = await apiClient.post(`${projectPath(orgId, projectId)}/environments`, payload);
     return normalizeEnvironment(data.data);
   },
-  updateEnvironment: async (orgId: string, projectId: string, env: string, payload: Record<string, unknown>): Promise<ProjectEnvironmentView> => {
+  updateEnvironment: async (
+    orgId: string,
+    projectId: string,
+    env: "development" | "production",
+    payload: Record<string, unknown>,
+  ): Promise<ProjectEnvironmentView> => {
     const { data } = await apiClient.patch(`${projectPath(orgId, projectId)}/environments/${env}`, payload);
     return normalizeEnvironment(data.data);
   },
-  deleteEnvironment: async (orgId: string, projectId: string, env: string) => {
+  deleteEnvironment: async (orgId: string, projectId: string, env: "development" | "production") => {
     const { data } = await apiClient.delete(`${projectPath(orgId, projectId)}/environments/${env}`);
     return data;
   },
@@ -192,7 +252,11 @@ export const projectsApi = {
     const { data } = await apiClient.get(`${projectPath(orgId, projectId)}/api-keys/${keyId}`);
     return normalizeApiKey(data.data);
   },
-  createApiKey: async (orgId: string, projectId: string, payload: { name?: string; keyType?: string; environment: string }) => {
+  createApiKey: async (
+    orgId: string,
+    projectId: string,
+    payload: { name?: string; environment: "development" | "production" },
+  ) => {
     const { data } = await apiClient.post(`${projectPath(orgId, projectId)}/api-keys`, payload);
     return data.data?.apiKey ? { ...data.data, apiKey: normalizeApiKey(data.data.apiKey) } : normalizeApiKey(data.data);
   },
@@ -206,15 +270,11 @@ export const projectsApi = {
   },
   rotateApiKey: async (orgId: string, projectId: string, keyId: string) => {
     const { data } = await apiClient.post(`${projectPath(orgId, projectId)}/api-keys/${keyId}/rotate`);
-    return normalizeApiKey(data.data);
+    return data.data?.apiKey ? { ...data.data, apiKey: normalizeApiKey(data.data.apiKey) } : normalizeApiKey(data.data);
   },
   regenerateApiKey: async (orgId: string, projectId: string, keyId: string) => {
     const { data } = await apiClient.post(`${projectPath(orgId, projectId)}/api-keys/${keyId}/regenerate`);
-    return normalizeApiKey(data.data);
-  },
-  enableApiKey: async (orgId: string, projectId: string, keyId: string) => {
-    const { data } = await apiClient.post(`${projectPath(orgId, projectId)}/api-keys/${keyId}/enable`);
-    return normalizeApiKey(data.data);
+    return data.data?.apiKey ? { ...data.data, apiKey: normalizeApiKey(data.data.apiKey) } : normalizeApiKey(data.data);
   },
   disableApiKey: async (orgId: string, projectId: string, keyId: string) => {
     const { data } = await apiClient.post(`${projectPath(orgId, projectId)}/api-keys/${keyId}/disable`);
@@ -230,6 +290,20 @@ export const projectsApi = {
   },
   bulkRevokeApiKeys: async (orgId: string, projectId: string, payload: { keyIds: string[] }) => {
     const { data } = await apiClient.post(`${projectPath(orgId, projectId)}/api-keys/bulk-revoke`, payload);
+    return data.data;
+  },
+
+  // --- Members API ---
+  listMembers: async (orgId: string, projectId: string) => {
+    const { data } = await apiClient.get(`${projectPath(orgId, projectId)}/members`);
+    return data.data ?? [];
+  },
+  addMember: async (orgId: string, projectId: string, payload: { userId: string; role: string }) => {
+    const { data } = await apiClient.post(`${projectPath(orgId, projectId)}/members`, payload);
+    return data.data;
+  },
+  removeMember: async (orgId: string, projectId: string, userId: string) => {
+    const { data } = await apiClient.delete(`${projectPath(orgId, projectId)}/members/${userId}`);
     return data.data;
   },
 };

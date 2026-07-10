@@ -1,228 +1,224 @@
-import { useActionState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Trash2, MoreHorizontal } from "lucide-react";
-import { useParams } from "react-router";
-import { useApiKeys, useEnvironments, useProjectMutations } from "@/modules/projects/hooks/useProjects";
-import { CreateEnvironmentModal } from "@/modules/projects/CreateEnvironmentModal";
-import { CreateApiKeyModal } from "@/modules/projects/CreateApiKeyModal";
-import { ApiKeyDetailsSheet } from "@/modules/projects/ApiKeyDetailsSheet";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
-import { RefreshCcw, PowerOff } from "lucide-react";
-import { Button as UiButton } from "@/components/ui/button";
-import {
-  Button,
-  CopyButton,
-  Field,
-  FillPage,
-  InfiniteTable,
-  PageHeader,
-  SectionCard,
-  StatusBadge,
-  SubmitButton,
-  Tabs,
-  Timestamp,
-  formatCompact,
-  inputClass,
-  textareaClass,
-  type Column,
-} from "@/shared/observe";
+import { Trash2 } from "lucide-react";
+import { useNavigate } from "react-router";
+import { useProjectMutations, useProjectSettings } from "@/modules/projects/hooks/useProjects";
+import { Button } from "@/shared/observe";
+import { Field, FillPage, PageHeader, SectionCard, inputClass, textareaClass } from "@/shared/observe";
 import { toast } from "sonner";
-import type { ProjectApiKeyView, ProjectEnvironmentView } from "@/modules/projects/api/projects.api";
+import { useCurrentProject } from "./ProjectShellPage";
 
-const schema = z.object({
+const generalSchema = z.object({
   name: z.string().min(1, "Project name is required"),
-  slug: z.string().min(1, "Slug is required").regex(/^[a-z0-9-]+$/, "Lowercase letters, numbers and dashes only"),
-  description: z.string().max(280, "Keep it under 280 characters").optional(),
+  description: z.string().max(5000, "Keep it under 5000 characters").nullable().optional(),
 });
-type FormData = z.infer<typeof schema>;
 
-const DEFAULTS: FormData = { name: "Pulse API", slug: "pulse-api", description: "Primary observability project for the API gateway service." };
+const advancedSchema = z.object({
+  retentionDays: z.number().min(1).max(365),
+  maxEventsPerSecond: z.number().min(100),
+  autoArchive: z.boolean(),
+  alertingEnabled: z.boolean(),
+  ingestionEnabled: z.boolean(),
+});
 
-function ActionMenu({ 
-  apiKey, 
-  onRotate, 
-  onRegenerate, 
-  onDisable, 
-  onRevoke 
-}: { 
-  apiKey: ProjectApiKeyView; 
-  onRotate: (id: string) => void;
-  onRegenerate: (id: string) => void;
-  onDisable: (id: string) => void;
-  onRevoke: (id: string) => void;
-}) {
-  return (
-    <div onClick={(e) => e.stopPropagation()}>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <UiButton variant="ghost" size="icon" className="text-[var(--text2)] hover:text-[var(--text)]">
-            <MoreHorizontal className="size-4" />
-          </UiButton>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem onClick={() => onRotate(apiKey.id)}><RefreshCcw className="mr-2 size-4" /> Rotate Key</DropdownMenuItem>
-          <DropdownMenuItem onClick={() => onRegenerate(apiKey.id)}>Regenerate Key</DropdownMenuItem>
-          <DropdownMenuSeparator />
-          {apiKey.status === "active" ? (
-            <DropdownMenuItem onClick={() => onDisable(apiKey.id)}><PowerOff className="mr-2 size-4" /> Disable Key</DropdownMenuItem>
-          ) : null}
-          <DropdownMenuSeparator />
-          <DropdownMenuItem className="text-[var(--red)] focus:text-[var(--red)]" onClick={() => onRevoke(apiKey.id)}>
-            <Trash2 className="mr-2 size-4" /> Revoke Key
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </div>
-  );
-}
+type GeneralFormData = z.infer<typeof generalSchema>;
+type AdvancedFormData = z.infer<typeof advancedSchema>;
 
 export default function ProjectSettingsPage() {
-  const { projectId = "" } = useParams();
-  const { data: apiKeys, isLoading: isKeysLoading } = useApiKeys(projectId);
-  const { data: environments, isLoading: isEnvsLoading } = useEnvironments(projectId);
-  const { rotateApiKey, regenerateApiKey, disableApiKey, revokeApiKey, deleteEnvironment } = useProjectMutations();
+  const navigate = useNavigate();
+  const { project, projectId } = useCurrentProject();
+  const { updateProject, deleteProject, updateSettings } = useProjectMutations();
+  
+  const { data: settings } = useProjectSettings(projectId);
 
-  const { register, formState: { errors } } = useForm<FormData>({
-    resolver: zodResolver(schema),
+  const [savingGeneral, setSavingGeneral] = useState(false);
+  const [savingAdvanced, setSavingAdvanced] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  const {
+    register: registerGeneral,
+    handleSubmit: handleGeneralSubmit,
+    reset: resetGeneral,
+    formState: { errors: generalErrors },
+  } = useForm<GeneralFormData>({
+    resolver: zodResolver(generalSchema),
     mode: "onBlur",
-    defaultValues: DEFAULTS,
+    defaultValues: { name: "", description: "" },
   });
 
-  const [, submitAction] = useActionState(async () => {
-    // Replace with real updateProject mutation later
-    await new Promise((r) => setTimeout(r, 800));
-    toast.success("Project settings saved");
-    return { success: true };
-  }, { success: false });
-
-  const columns: Column<ProjectApiKeyView>[] = [
-    { 
-      key: "name", 
-      header: "Name", 
-      width: "1fr", 
-      cell: (k) => (
-        <ApiKeyDetailsSheet apiKey={k}>
-          <button className="truncate font-medium text-[var(--text)] hover:underline outline-none cursor-pointer text-left">{k.name}</button>
-        </ApiKeyDetailsSheet>
-      ) 
+  const {
+    register: registerAdvanced,
+    handleSubmit: handleAdvancedSubmit,
+    reset: resetAdvanced,
+    formState: { errors: advancedErrors },
+  } = useForm<AdvancedFormData>({
+    resolver: zodResolver(advancedSchema),
+    mode: "onBlur",
+    defaultValues: {
+      retentionDays: 30,
+      maxEventsPerSecond: 1000,
+      autoArchive: false,
+      alertingEnabled: true,
+      ingestionEnabled: true,
     },
-    { key: "key", header: "Key", width: "160px", cell: (k) => <div onClick={(e) => e.stopPropagation()}><CopyButton value={`${k.prefix}_${k.id}`} label={`${k.prefix}••••`} /></div> },
-    { key: "type", header: "Type", width: "110px", cell: (k) => <span className="capitalize text-[var(--text2)]">{k.type}</span> },
-    { key: "used", header: "Last used", width: "130px", cell: (k) => k.lastUsedAt ? <Timestamp value={k.lastUsedAt} /> : <span className="text-[var(--text3)]">Never</span> },
-    { key: "usage", header: "Usage 24h", width: "110px", cell: (k) => <span className="tabular-nums text-[var(--text2)]">{formatCompact(k.usage24h)}</span> },
-    { key: "status", header: "Status", width: "110px", cell: (k) => <StatusBadge status={k.status} /> },
-    { key: "actions", header: "", width: "60px", align: "right", cell: (k) => (
-      <ActionMenu 
-        apiKey={k} 
-        onRotate={(keyId) => rotateApiKey.mutate({ projectId, keyId })}
-        onRegenerate={(keyId) => regenerateApiKey.mutate({ projectId, keyId })}
-        onDisable={(keyId) => disableApiKey.mutate({ projectId, keyId })}
-        onRevoke={(keyId) => revokeApiKey.mutate({ projectId, keyId })}
-      />
-    ) },
-  ];
+  });
 
-  const generalTab = (
-    <div className="flex flex-col gap-6 max-w-[800px] mt-4">
-      <SectionCard title="General Settings">
-        <form action={submitAction} className="flex flex-col gap-4">
-          <Field label="Name" error={errors.name?.message}>
-            <input {...register("name")} className={inputClass} />
-          </Field>
-          <Field label="Slug" error={errors.slug?.message} hint="Used in API endpoints and URLs.">
-            <input {...register("slug")} className={inputClass} />
-          </Field>
-          <Field label="Description" error={errors.description?.message}>
-            <textarea {...register("description")} className={textareaClass} rows={4} />
-          </Field>
-          <div className="pt-2"><SubmitButton>Save Changes</SubmitButton></div>
-        </form>
-      </SectionCard>
+  useEffect(() => {
+    if (!project) return;
+    resetGeneral({
+      name: project.name,
+      description: project.description ?? "",
+    });
+  }, [project, resetGeneral]);
 
-      <SectionCard title="Danger Zone" className="border border-[var(--red)]/20 bg-[var(--red)]/5">
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="text-[14px] font-medium text-[var(--text)]">Delete this project</div>
-            <p className="text-[13px] text-[var(--text2)] mt-1">Permanently remove the project and all of its ingested data. This cannot be undone.</p>
-          </div>
-          <Button variant="danger" onClick={() => toast.info("Project deletion is not wired yet")}><Trash2 className="mr-2 size-4" /> Delete Project</Button>
-        </div>
-      </SectionCard>
-    </div>
-  );
+  useEffect(() => {
+    if (!settings) return;
+    resetAdvanced({
+      retentionDays: settings.retentionDays,
+      maxEventsPerSecond: settings.maxEventsPerSecond,
+      autoArchive: settings.autoArchive,
+      alertingEnabled: settings.alertingEnabled,
+      ingestionEnabled: settings.ingestionEnabled,
+    });
+  }, [settings, resetAdvanced]);
 
-  const apiKeysTab = (
-    <div className="flex flex-col mt-4 min-h-[600px]">
-      <div className="mb-4 flex items-center justify-between">
-        <div>
-          <h3 className="text-[15px] font-medium text-[var(--text)]">API Keys</h3>
-          <p className="text-[13px] text-[var(--text2)] mt-1">Manage project ingestion and SDK keys used to send observability data.</p>
-        </div>
-        <CreateApiKeyModal />
-      </div>
-      <div className="flex-1 rounded-md border border-[var(--border)] overflow-hidden bg-[var(--bg1)]">
-        <InfiniteTable loading={isKeysLoading} items={apiKeys || []} queryKey={["projectApiKeys"]} columns={columns} getKey={(k) => k.id} />
-      </div>
-    </div>
-  );
+  const onGeneralSubmit = handleGeneralSubmit(async (data) => {
+    if (!project) return;
+    setSavingGeneral(true);
+    try {
+      await updateProject.mutateAsync({
+        id: project.id,
+        data: {
+          name: data.name,
+          description: data.description?.trim() ? data.description : null,
+        },
+      });
+      toast.success("General settings saved");
+    } catch {
+      toast.error("Failed to save general settings");
+    } finally {
+      setSavingGeneral(false);
+    }
+  });
 
-  const environmentsTab = (
-    <div className="flex flex-col mt-4 min-h-[600px]">
-      <div className="mb-4 flex items-center justify-between">
-        <div>
-          <h3 className="text-[15px] font-medium text-[var(--text)]">Environments</h3>
-          <p className="text-[13px] text-[var(--text2)] mt-1">Manage isolated environments for your project (e.g. Production, Staging).</p>
-        </div>
-        <CreateEnvironmentModal />
-      </div>
-      <div className="flex-1 rounded-md border border-[var(--border)] overflow-hidden bg-[var(--bg1)]">
-        <InfiniteTable<ProjectEnvironmentView>
-          loading={isEnvsLoading} 
-          items={environments || []} 
-          queryKey={["projectEnvironments", projectId]} 
-          columns={[
-            { key: "name", header: "Name", width: "1fr", cell: (e) => <span className="font-medium text-[var(--text)]">{e.name}</span> },
-            { key: "slug", header: "Slug", width: "1fr", cell: (e) => <code className="text-[12px] text-[var(--text2)]">{e.slug}</code> },
-            { key: "type", header: "Type", width: "120px", cell: (e) => <span className="capitalize text-[var(--text2)]">{e.type}</span> },
-            { key: "status", header: "Status", width: "120px", cell: () => <StatusBadge status="active" /> },
-            { key: "actions", header: "", width: "60px", align: "right", cell: (e) => (
-              <div onClick={(ev) => ev.stopPropagation()}>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <UiButton variant="ghost" size="icon"><MoreHorizontal className="size-4" /></UiButton>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem>Edit Environment</DropdownMenuItem>
-                    <DropdownMenuItem className="text-[var(--red)] focus:text-[var(--red)]" onClick={() => deleteEnvironment.mutate({ projectId, env: e.slug })}>
-                      <Trash2 className="mr-2 size-4" /> Delete
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            ) },
-          ]} 
-          getKey={(e) => e.id || e.slug} 
-        />
-      </div>
-    </div>
-  );
+  const onAdvancedSubmit = handleAdvancedSubmit(async (data) => {
+    if (!project) return;
+    setSavingAdvanced(true);
+    try {
+      await updateSettings.mutateAsync({
+        id: project.id,
+        data,
+      });
+      toast.success("Advanced settings saved");
+    } catch {
+      toast.error("Failed to save advanced settings");
+    } finally {
+      setSavingAdvanced(false);
+    }
+  });
+
+  const handleDelete = async () => {
+    if (!project) return;
+    setDeleting(true);
+    try {
+      await deleteProject.mutateAsync(project.id);
+      toast.success("Project archived");
+      navigate("/projects");
+    } catch {
+      toast.error("Failed to archive project");
+      setDeleting(false);
+    }
+  };
 
   return (
-    <FillPage>
-      <PageHeader 
-        title="Project Settings" 
-        description="Manage your project configuration, API keys, and danger zone actions." 
+    <FillPage className="flex flex-col gap-6">
+      <PageHeader
+        title="Project Settings"
+        description={\`Manage project metadata and lifecycle controls.\${project ? \` Default environment: \${project.defaultEnvironment}.\` : ""}\`}
       />
-      <div className="flex-1 overflow-y-auto">
-        <Tabs
-          tabs={[
-            { id: "general", label: "General", content: generalTab },
-            { id: "environments", label: "Environments", content: environmentsTab },
-            { id: "keys", label: "API Keys", content: apiKeysTab },
-          ]}
-        />
+      <div className="sidebar-scroll flex-1 overflow-y-auto">
+        <div className="flex max-w-[800px] flex-col gap-8 pb-12">
+          
+          <SectionCard title="General Settings">
+            <form onSubmit={onGeneralSubmit} className="flex flex-col gap-5">
+              <Field label="Name" error={generalErrors.name?.message}>
+                <input {...registerGeneral("name")} className={inputClass} />
+              </Field>
+              <Field label="Slug" hint="Slug is generated on creation and is not editable in the current schema.">
+                <input value={project?.slug ?? ""} className={inputClass} disabled readOnly />
+              </Field>
+              <Field label="Description" error={generalErrors.description?.message}>
+                <textarea {...registerGeneral("description")} className={textareaClass} rows={4} />
+              </Field>
+              <div className="pt-2">
+                <Button type="submit" variant="primary" disabled={savingGeneral}>
+                  {savingGeneral ? "Saving..." : "Save General Changes"}
+                </Button>
+              </div>
+            </form>
+          </SectionCard>
+
+          <SectionCard title="Advanced Settings">
+            <form onSubmit={onAdvancedSubmit} className="flex flex-col gap-5">
+              <div className="grid grid-cols-2 gap-4">
+                <Field label="Retention Days" error={advancedErrors.retentionDays?.message} hint="How long events are stored.">
+                  <input type="number" {...registerAdvanced("retentionDays", { valueAsNumber: true })} className={inputClass} />
+                </Field>
+                <Field label="Rate Limit (events/sec)" error={advancedErrors.maxEventsPerSecond?.message} hint="Max burst per second.">
+                  <input type="number" {...registerAdvanced("maxEventsPerSecond", { valueAsNumber: true })} className={inputClass} />
+                </Field>
+              </div>
+              
+              <div className="flex flex-col gap-3 mt-2">
+                <label className="flex items-center gap-3">
+                  <input type="checkbox" {...registerAdvanced("ingestionEnabled")} className="w-4 h-4 rounded border-[var(--border)] text-[var(--brand)] focus:ring-[var(--brand)]" />
+                  <div>
+                    <div className="text-[14px] font-medium text-[var(--text)]">Enable Ingestion</div>
+                    <div className="text-[12px] text-[var(--text2)]">Allow events and telemetry to be ingested</div>
+                  </div>
+                </label>
+                
+                <label className="flex items-center gap-3">
+                  <input type="checkbox" {...registerAdvanced("alertingEnabled")} className="w-4 h-4 rounded border-[var(--border)] text-[var(--brand)] focus:ring-[var(--brand)]" />
+                  <div>
+                    <div className="text-[14px] font-medium text-[var(--text)]">Enable Alerting</div>
+                    <div className="text-[12px] text-[var(--text2)]">Process alert rules and send notifications</div>
+                  </div>
+                </label>
+                
+                <label className="flex items-center gap-3">
+                  <input type="checkbox" {...registerAdvanced("autoArchive")} className="w-4 h-4 rounded border-[var(--border)] text-[var(--brand)] focus:ring-[var(--brand)]" />
+                  <div>
+                    <div className="text-[14px] font-medium text-[var(--text)]">Auto Archive</div>
+                    <div className="text-[12px] text-[var(--text2)]">Automatically archive this project if inactive for 90 days</div>
+                  </div>
+                </label>
+              </div>
+
+              <div className="pt-2">
+                <Button type="submit" variant="primary" disabled={savingAdvanced}>
+                  {savingAdvanced ? "Saving..." : "Save Advanced Settings"}
+                </Button>
+              </div>
+            </form>
+          </SectionCard>
+
+          <SectionCard title="Danger Zone" className="border border-[var(--red)]/20 bg-[var(--red)]/5">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-[14px] font-medium text-[var(--text)]">Archive this project</div>
+                <p className="mt-1 text-[13px] text-[var(--text2)]">
+                  This uses the project soft-delete flow and revokes active project API keys.
+                </p>
+              </div>
+              <Button variant="danger" onClick={handleDelete} disabled={deleting}>
+                <Trash2 className="mr-2 size-4" /> {deleting ? "Archiving..." : "Archive Project"}
+              </Button>
+            </div>
+          </SectionCard>
+        </div>
       </div>
     </FillPage>
   );

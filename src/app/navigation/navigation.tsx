@@ -141,11 +141,6 @@ export const mainNavigation: MainNavItem[] = [
     description: "Project lifecycle, project API keys, and project-level usage.",
     children: [
       { label: "All projects", path: "/projects", icon: FolderOpen, status: "live", exact: true, description: "Organization-scoped project inventory." },
-      { label: "Project overview", path: "/projects/overview", icon: LayoutDashboard, status: "live", description: "Summary of project state and stats." },
-
-      { label: "Usage", path: "/projects/usage", icon: LineChart, status: "live", description: "Project usage, key activity, and consumption trends." },
-      { label: "Project settings", path: "/projects/settings", icon: Wrench, status: "partial", description: "Project controls backed by current project CRUD endpoints." },
-      { label: "Remote config", path: "/projects/remote-config", icon: Cable, status: "live", description: "Manage project remote configuration keys." },
     ],
   },
   {

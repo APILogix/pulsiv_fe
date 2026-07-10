@@ -6,12 +6,15 @@ export const projectQueryKeys = {
   all: ["projects"] as const,
   lists: () => [...projectQueryKeys.all, "list"] as const,
   detail: (id: string) => [...projectQueryKeys.all, "detail", id] as const,
+  settings: (id: string) => [...projectQueryKeys.all, "settings", id] as const,
+  overview: (id: string) => [...projectQueryKeys.all, "overview", id] as const,
   stats: (id: string) => [...projectQueryKeys.all, "stats", id] as const,
   usage: (id: string) => [...projectQueryKeys.all, "usage", id] as const,
   activity: (id: string) => [...projectQueryKeys.all, "activity", id] as const,
   environments: (id: string) => [...projectQueryKeys.all, "environments", id] as const,
   apiKeys: (id: string) => [...projectQueryKeys.all, "apiKeys", id] as const,
   apiKeyUsage: (id: string, keyId: string) => [...projectQueryKeys.apiKeys(id), keyId, "usage"] as const,
+  members: (id: string) => [...projectQueryKeys.all, "members", id] as const,
 };
 
 // --- Queries ---
@@ -30,6 +33,25 @@ export const useProject = (projectId: string) => {
   return useQuery({
     queryKey: [...projectQueryKeys.detail(projectId), activeOrgId],
     queryFn: () => projectsApi.get(activeOrgId!, projectId),
+    enabled: !!activeOrgId && !!projectId,
+  });
+};
+
+
+export const useProjectSettings = (projectId: string) => {
+  const activeOrgId = useOrgStore((state) => state.activeOrgId);
+  return useQuery({
+    queryKey: [...projectQueryKeys.settings(projectId), activeOrgId],
+    queryFn: () => projectsApi.getSettings(activeOrgId!, projectId),
+    enabled: !!activeOrgId && !!projectId,
+  });
+};
+
+export const useProjectOverview = (projectId: string) => {
+  const activeOrgId = useOrgStore((state) => state.activeOrgId);
+  return useQuery({
+    queryKey: [...projectQueryKeys.overview(projectId), activeOrgId],
+    queryFn: () => projectsApi.getOverview(activeOrgId!, projectId),
     enabled: !!activeOrgId && !!projectId,
   });
 };
@@ -79,6 +101,15 @@ export const useApiKeys = (projectId: string) => {
   });
 };
 
+export const useProjectMembers = (projectId: string) => {
+  const activeOrgId = useOrgStore((state) => state.activeOrgId);
+  return useQuery({
+    queryKey: [...projectQueryKeys.members(projectId), activeOrgId],
+    queryFn: () => projectsApi.listMembers(activeOrgId!, projectId),
+    enabled: !!activeOrgId && !!projectId,
+  });
+};
+
 // --- Mutations ---
 export const useProjectMutations = () => {
   const queryClient = useQueryClient();
@@ -93,11 +124,27 @@ export const useProjectMutations = () => {
       mutationFn: (data: any) => projectsApi.create(orgId(), data),
       onSuccess: () => queryClient.invalidateQueries({ queryKey: projectQueryKeys.lists() }),
     }),
+
+    updateSettings: useMutation({
+      mutationFn: ({ id, data }: { id: string; data: any }) => projectsApi.updateSettings(orgId(), id, data),
+      onSuccess: (_, { id }) => {
+        queryClient.invalidateQueries({ queryKey: projectQueryKeys.settings(id) });
+        queryClient.invalidateQueries({ queryKey: projectQueryKeys.overview(id) });
+      },
+    }),
+
     updateProject: useMutation({
       mutationFn: ({ id, data }: { id: string; data: any }) => projectsApi.update(orgId(), id, data),
       onSuccess: (_, { id }) => {
         queryClient.invalidateQueries({ queryKey: projectQueryKeys.lists() });
         queryClient.invalidateQueries({ queryKey: projectQueryKeys.detail(id) });
+      },
+    }),
+    deleteProject: useMutation({
+      mutationFn: (id: string) => projectsApi.delete(orgId(), id),
+      onSuccess: (_, id) => {
+        queryClient.invalidateQueries({ queryKey: projectQueryKeys.lists() });
+        queryClient.removeQueries({ queryKey: projectQueryKeys.detail(id) });
       },
     }),
     archiveProject: useMutation({
@@ -121,7 +168,7 @@ export const useProjectMutations = () => {
       onSuccess: (_, { projectId }) => queryClient.invalidateQueries({ queryKey: projectQueryKeys.environments(projectId) }),
     }),
     deleteEnvironment: useMutation({
-      mutationFn: ({ projectId, env }: { projectId: string; env: string }) => projectsApi.deleteEnvironment(orgId(), projectId, env),
+      mutationFn: ({ projectId, env }: { projectId: string; env: string }) => projectsApi.deleteEnvironment(orgId(), projectId, env as "development" | "production"),
       onSuccess: (_, { projectId }) => queryClient.invalidateQueries({ queryKey: projectQueryKeys.environments(projectId) }),
     }),
     createApiKey: useMutation({
@@ -140,13 +187,21 @@ export const useProjectMutations = () => {
       mutationFn: ({ projectId, keyId }: { projectId: string; keyId: string }) => projectsApi.revokeApiKey(orgId(), projectId, keyId),
       onSuccess: (_, { projectId }) => queryClient.invalidateQueries({ queryKey: projectQueryKeys.apiKeys(projectId) }),
     }),
-    enableApiKey: useMutation({
-      mutationFn: ({ projectId, keyId }: { projectId: string; keyId: string }) => projectsApi.enableApiKey(orgId(), projectId, keyId),
-      onSuccess: (_, { projectId }) => queryClient.invalidateQueries({ queryKey: projectQueryKeys.apiKeys(projectId) }),
-    }),
     disableApiKey: useMutation({
       mutationFn: ({ projectId, keyId }: { projectId: string; keyId: string }) => projectsApi.disableApiKey(orgId(), projectId, keyId),
       onSuccess: (_, { projectId }) => queryClient.invalidateQueries({ queryKey: projectQueryKeys.apiKeys(projectId) }),
+    }),
+    addMember: useMutation({
+      mutationFn: ({ projectId, userId, role }: { projectId: string; userId: string; role: string }) => projectsApi.addMember(orgId(), projectId, { userId, role }),
+      onSuccess: (_, { projectId }) => {
+        queryClient.invalidateQueries({ queryKey: projectQueryKeys.members(projectId) });
+      },
+    }),
+    removeMember: useMutation({
+      mutationFn: ({ projectId, userId }: { projectId: string; userId: string }) => projectsApi.removeMember(orgId(), projectId, userId),
+      onSuccess: (_, { projectId }) => {
+        queryClient.invalidateQueries({ queryKey: projectQueryKeys.members(projectId) });
+      },
     }),
   };
 };

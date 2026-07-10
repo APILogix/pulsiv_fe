@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router';
 import { useAuth } from '@/modules/auth/hooks/useAuth';
 import { useLogout } from '@/modules/auth/hooks/useLogout';
 import { mainNavigation, MainNavItem, ModuleNavItem } from '@/app/navigation/navigation';
-import { ChevronRight, Package, LogOut, Sun, Moon } from 'lucide-react';
+import { ChevronRight, Package, LogOut, Sun, Moon, LayoutDashboard, KeyRound, Activity, Cable, FileText, Settings, LineChart, Users } from 'lucide-react';
 import { PulsivLogo } from '@/shared/components/PulsivLogo';
 import { useTheme } from '@/theme';
 import clsx from 'clsx';
@@ -24,6 +24,33 @@ export function AppDualSidebar() {
   const profileRef = useRef<HTMLDivElement>(null);
   const railRef = useRef<HTMLElement>(null);
 
+  // Compute dynamic children for Workspaces
+  const getDynamicChildren = (item: MainNavItem | null, pathname: string): ModuleNavItem[] => {
+    let children = item?.children || [];
+    if (item?.label === "Workspaces") {
+      const projectMatch = pathname.match(/^\/projects\/([a-zA-Z0-9_-]+)(?:\/|$)/);
+      if (projectMatch) {
+        const possibleId = projectMatch[1];
+        if (possibleId !== "overview" && possibleId !== "usage" && possibleId !== "new") {
+          children = [
+            ...children,
+            { label: "Overview", path: `/projects/${possibleId}/overview`, icon: LayoutDashboard, status: "live", description: "", group: "Active Project" },
+            { label: "Usage", path: `/projects/${possibleId}/usage`, icon: LineChart, status: "live", description: "", group: "Active Project" },
+            { label: "API Keys", path: `/projects/${possibleId}/api-keys`, icon: KeyRound, status: "live", description: "", group: "Active Project" },
+            { label: "Activity", path: `/projects/${possibleId}/activity`, icon: Activity, status: "live", description: "", group: "Active Project" },
+            { label: "Remote Config", path: `/projects/${possibleId}/remote-config`, icon: Cable, status: "live", description: "", group: "Active Project" },
+            { label: "Alert Routes", path: `/projects/${possibleId}/routes`, icon: FileText, status: "live", description: "", group: "Active Project" },
+            { label: "Members", path: `/projects/${possibleId}/members`, icon: Users, status: "live", description: "", group: "Active Project" },
+            { label: "General Settings", path: `/projects/${possibleId}/settings/general`, icon: Settings, status: "live", description: "", group: "Active Project" },
+          ];
+        }
+      }
+    }
+    return children;
+  };
+
+  const navItemsToRender = getDynamicChildren(activeRailItem, location.pathname);
+
   // Initialize active rail item based on current URL
   useEffect(() => {
     const current = mainNavigation.find(
@@ -32,11 +59,12 @@ export function AppDualSidebar() {
     if (current) {
       setActiveRailItem(current);
       // Auto expand all groups for the active item
+      const currentChildren = getDynamicChildren(current, location.pathname);
       setExpandedGroups((prev) => {
         const newGroups = { ...prev };
         let changed = false;
-        if (current.children) {
-          current.children.forEach(c => {
+        if (currentChildren.length > 0) {
+          currentChildren.forEach(c => {
             const g = c.group || current.label;
             if (!newGroups[g]) { newGroups[g] = true; changed = true; }
           });
@@ -46,7 +74,7 @@ export function AppDualSidebar() {
         return changed ? newGroups : prev;
       });
       
-      if (!current.children || current.children.length === 0) {
+      if (!currentChildren || currentChildren.length === 0) {
         setIsFlyoutOpen(false);
       }
     } else {
@@ -99,15 +127,16 @@ export function AppDualSidebar() {
 
   const handleRailClick = (item: MainNavItem) => {
     setActiveRailItem(item);
-    if (!item.children || item.children.length === 0) {
+    const dynamicChildren = getDynamicChildren(item, location.pathname);
+    if (!dynamicChildren || dynamicChildren.length === 0) {
       setIsFlyoutOpen(false);
     } else if (!isFlyoutOpen) {
       setIsFlyoutOpen(true);
     }
     // Auto expand when clicking rail
     const newGroups = { ...expandedGroups };
-    if (item.children) {
-      item.children.forEach(c => {
+    if (dynamicChildren && dynamicChildren.length > 0) {
+      dynamicChildren.forEach(c => {
         const g = c.group || item.label;
         newGroups[g] = true;
       });
@@ -242,11 +271,11 @@ export function AppDualSidebar() {
         </div>
 
         <div className="grow overflow-y-auto p-2 sidebar-scroll">
-          {activeRailItem?.children?.length ? (
+          {navItemsToRender.length > 0 ? (
             <div className="category-view active">
               {Object.entries(
-                activeRailItem.children.reduce((acc, child) => {
-                  const groupName = child.group || activeRailItem.label;
+                navItemsToRender.reduce((acc, child) => {
+                  const groupName = child.group || activeRailItem?.label || "Navigation";
                   if (!acc[groupName]) acc[groupName] = [];
                   acc[groupName].push(child);
                   return acc;

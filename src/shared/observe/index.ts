@@ -11,3 +11,4 @@ export { Tabs } from "./Tabs";
 export * from "./form";
 export * from "./infinite";
 export * from "./Skeletons";
+export * from "./settings";

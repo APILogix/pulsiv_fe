@@ -25,7 +25,7 @@ export default function ProjectOverviewPage() {
         breadcrumbs={[{ label: "Workspaces" }, { label: "Projects", to: "/projects" }, { label: overview.name }]}
         actions={
           <div className="flex items-center gap-2">
-            <UiButton variant="secondary" size="sm" onClick={() => navigate(\`/projects/\${overview.id}/remote-config\`)}>
+            <UiButton variant="secondary" size="sm" onClick={() => navigate(`/projects/${overview.id}/remote-config`)}>
               Remote Config
             </UiButton>
             <StatusBadge status={overview.status} />

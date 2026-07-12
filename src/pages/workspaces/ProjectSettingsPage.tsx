@@ -136,7 +136,7 @@ export default function ProjectSettingsPage() {
     <FillPage className="flex flex-col gap-6">
       <PageHeader
         title="Project Settings"
-        description={\`Manage project metadata and lifecycle controls.\${project ? \` Default environment: \${project.defaultEnvironment}.\` : ""}\`}
+        description={`Manage project metadata and lifecycle controls.${project ? ` Default environment: ${project.defaultEnvironment}.` : ""}`}
       />
       <div className="sidebar-scroll flex-1 overflow-y-auto">
         <div className="flex max-w-[800px] flex-col gap-8 pb-12">

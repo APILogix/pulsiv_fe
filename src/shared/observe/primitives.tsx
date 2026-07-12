@@ -155,8 +155,8 @@ export function PageHeader({ title, description, breadcrumbs, actions }: {
   actions?: React.ReactNode;
 }) {
   return (
-    <div className="flex items-start justify-between gap-4">
-      <div>
+    <div className="flex flex-wrap items-start justify-between gap-4">
+      <div className="min-w-0">
         {breadcrumbs && breadcrumbs.length > 0 && (
           <div className="mb-1.5 flex items-center gap-1 text-[12px] text-[var(--text3)]">
             {breadcrumbs.map((b, i) => (

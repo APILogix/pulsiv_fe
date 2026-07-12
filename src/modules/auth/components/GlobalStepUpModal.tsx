@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -21,6 +21,7 @@ export function GlobalStepUpModal() {
   const [challenge, setChallenge] = useState<MFAChallenge | null>(null);
   const [isResending, setIsResending] = useState(false);
   const [passkeyBusy, setPasskeyBusy] = useState(false);
+  const challengeRequestStarted = useRef(false);
 
   const isPasskey = challenge?.device_type === 'hardware_key';
   
@@ -34,7 +35,8 @@ export function GlobalStepUpModal() {
 
   // When modal opens, create a challenge
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && !challengeRequestStarted.current) {
+      challengeRequestStarted.current = true;
       reset();
       setChallenge(null);
       setIsResending(false);
@@ -47,6 +49,8 @@ export function GlobalStepUpModal() {
           toast.error("Failed to initiate security challenge");
           rejectStepUp(err);
         });
+    } else if (!isOpen) {
+      challengeRequestStarted.current = false;
     }
   }, [isOpen, reset, setValue, rejectStepUp]);
 

@@ -3,19 +3,21 @@ import { Link, useLocation } from 'react-router';
 import { useAuth } from '@/modules/auth/hooks/useAuth';
 import { useLogout } from '@/modules/auth/hooks/useLogout';
 import { mainNavigation, MainNavItem, ModuleNavItem } from '@/app/navigation/navigation';
-import { ChevronRight, Package, LogOut, Sun, Moon, LayoutDashboard, KeyRound, Activity, Cable, FileText, Settings, LineChart, Users } from 'lucide-react';
+import { ChevronRight, LogOut, Sun, Moon, LayoutDashboard, KeyRound, Activity, Cable, FileText, Settings, LineChart, Users } from 'lucide-react';
 import { PulsivLogo } from '@/shared/components/PulsivLogo';
 import { useTheme } from '@/theme';
 import clsx from 'clsx';
+import { useSidebarStore } from '@/stores/sidebarStore';
+import { useOrganizations } from '@/modules/organizations/hooks/useOrganizations';
 
 export function AppDualSidebar() {
-  const [isPinned, setIsPinned] = useState(true);
-  const [isFlyoutOpen, setIsFlyoutOpen] = useState(true);
+  const { setHasInnerItems, isFlyoutOpen, setIsFlyoutOpen } = useSidebarStore();
   const [activeRailItem, setActiveRailItem] = useState<MainNavItem | null>(null);
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   
   const { user } = useAuth();
+  const { organizations, activeOrgId } = useOrganizations();
   const logout = useLogout();
   const location = useLocation();
   const { resolvedTheme, toggleTheme } = useTheme();
@@ -50,6 +52,19 @@ export function AppDualSidebar() {
   };
 
   const navItemsToRender = getDynamicChildren(activeRailItem, location.pathname);
+  const activeOrg = organizations.find((org) => org.id === activeOrgId);
+  const flyoutTitle = activeRailItem?.label === 'Organization' && activeOrg
+    ? activeOrg.name
+    : activeRailItem?.label;
+  const flyoutContext = activeRailItem?.label === 'Organization' && activeOrg
+    ? 'Organization'
+    : undefined;
+
+  // Sync hasInnerItems to store
+  const hasItems = navItemsToRender.length > 0;
+  useEffect(() => {
+    setHasInnerItems(hasItems);
+  }, [hasItems, setHasInnerItems]);
 
   // Initialize active rail item based on current URL
   useEffect(() => {
@@ -85,7 +100,7 @@ export function AppDualSidebar() {
     }
   }, [location.pathname]);
 
-  // Handle clicking outside unpinned flyout or profile popover
+  // Handle clicking outside profile popover
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       const target = event.target as Node;
@@ -93,28 +108,12 @@ export function AppDualSidebar() {
       if (isProfileOpen && profileRef.current && !profileRef.current.contains(target) && railRef.current && !railRef.current.contains(target)) {
         setIsProfileOpen(false);
       }
-
-      if (!isPinned && isFlyoutOpen && flyoutRef.current && railRef.current) {
-        if (!flyoutRef.current.contains(target) && !railRef.current.contains(target)) {
-          setIsFlyoutOpen(false);
-        }
-      }
     }
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [isPinned, isFlyoutOpen, isProfileOpen]);
+  }, [isProfileOpen]);
 
-  // Update body class for overlay
-  useEffect(() => {
-    if (!isPinned && isFlyoutOpen) {
-      document.body.classList.add('flyout-overlay-active');
-    } else {
-      document.body.classList.remove('flyout-overlay-active');
-    }
-    
-    // Cleanup on unmount
-    return () => document.body.classList.remove('flyout-overlay-active');
-  }, [isPinned, isFlyoutOpen]);
+
 
   // Handle mobile menu toggle
   useEffect(() => {
@@ -150,12 +149,7 @@ export function AppDualSidebar() {
     setExpandedGroups((prev) => ({ ...prev, [label]: !prev[label] }));
   };
 
-  const togglePin = () => {
-    setIsPinned(!isPinned);
-    if (!isPinned) {
-      setIsFlyoutOpen(true);
-    }
-  };
+
 
   return (
     <>
@@ -251,23 +245,21 @@ export function AppDualSidebar() {
       <div 
         ref={flyoutRef}
         className={clsx(
-          "flyout-container font-sans bg-[var(--sidebar)] border-r border-[var(--border)] flex flex-col z-[90] transition-all duration-300 ease-in-out overflow-hidden whitespace-nowrap",
-          isPinned ? "relative left-0 shadow-none shrink-0" : "fixed top-0 bottom-0 left-[var(--rail-width)] shadow-[10px_0_30px_rgba(0,0,0,0.5)] transform -translate-x-full",
-          isFlyoutOpen && !isPinned && "translate-x-0",
-          isPinned && isFlyoutOpen ? "w-[var(--flyout-width)] opacity-100" : "",
-          isPinned && !isFlyoutOpen ? "w-0 opacity-0 border-r-0" : "",
-          !isPinned && "w-[var(--flyout-width)]"
+          "flyout-container font-sans bg-[var(--sidebar)] border-r border-[var(--border)] flex flex-col z-[90] transition-all duration-300 ease-in-out overflow-hidden whitespace-nowrap relative shrink-0",
+          isFlyoutOpen ? "w-[var(--flyout-width)] opacity-100" : "w-0 opacity-0 border-r-0"
         )}
       >
         <div className="h-[var(--header-height)] flex items-center justify-between px-4 border-b border-[var(--border)] shrink-0">
-          <span className="text-[14px] font-semibold text-[var(--text)] uppercase tracking-wider">{activeRailItem?.label}</span>
-          <button 
-            className={clsx("w-7 h-7 flex items-center justify-center rounded transition-colors", isPinned ? "text-[var(--brand)]" : "text-[var(--text2)] hover:bg-[var(--bg2)] hover:text-[var(--text)]")}
-            onClick={togglePin}
-            title={isPinned ? "Unpin Sidebar" : "Pin Sidebar"}
-          >
-            <Package size={18} />
-          </button>
+          <div className="min-w-0">
+            {flyoutContext && (
+              <span className="block text-[10px] font-medium uppercase tracking-[0.08em] text-[var(--text3)]">
+                {flyoutContext}
+              </span>
+            )}
+            <span className="block truncate text-[14px] font-semibold text-[var(--text)] tracking-normal">
+              {flyoutTitle}
+            </span>
+          </div>
         </div>
 
         <div className="grow overflow-y-auto p-2 sidebar-scroll">

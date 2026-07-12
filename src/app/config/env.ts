@@ -12,7 +12,10 @@ const envSchema = z.object({
   VITE_API_URL: z
     .string()
     .url()
-    .default('http://127.0.0.1:5000'),
+    // Keep this host identical to the backend's local API_PUBLIC_URL. Cookies
+    // are host-scoped, so localhost and 127.0.0.1 are not interchangeable
+    // during the OAuth callback -> refresh handoff.
+    .default('http://localhost:5000'),
   VITE_APP_ENV: z
     .enum(['development', 'staging', 'production'])
     .default('development'),

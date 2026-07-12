@@ -22,13 +22,33 @@ export interface UserProfile {
   created_at: string;
 }
 
+export interface AuthSessionUser {
+  id: string;
+  email: string;
+  name: string;
+}
+
+export interface AuthSessionOrg {
+  id: string;
+  slug: string;
+  name: string;
+  role: string;
+}
+
 export interface AuthSession {
   access_token: string;
   expires_at: string;
   token_type: string;
   session_id: string;
   current_org_id?: string | null;
+  default_org_id?: string | null;
   user_id?: string;
+  /** Embedded user info returned by sendAuthSession (login, mfa, backup-code routes). */
+  user?: AuthSessionUser;
+  /** Default org slug returned by sendAuthSession. */
+  default_org_slug?: string | null;
+  /** List of orgs the user belongs to, returned by sendAuthSession. */
+  organizations?: AuthSessionOrg[];
 }
 
 export interface UserSecuritySummary {
@@ -41,6 +61,17 @@ export interface UserSecuritySummary {
   account_locked: boolean;
   locked_until: string | null;
   status: UserStatus;
+}
+
+export interface EmailVerificationStatus {
+  verified: boolean;
+  email?: string;
+  verified_at?: string | null;
+  [key: string]: unknown;
+}
+
+export interface EffectiveAuthPolicy {
+  [key: string]: unknown;
 }
 
 export interface MFADeviceDto {

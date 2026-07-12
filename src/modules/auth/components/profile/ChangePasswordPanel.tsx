@@ -32,6 +32,7 @@ export function ChangePasswordPanel() {
               <label className="text-[13px] font-medium text-[#8A8F98]">Current Password</label>
               <Input 
                 type="password" 
+                placeholder="Enter your current password"
                 {...register('current_password')} 
                 className="bg-[#0c0c0c] border-[#1f1f1f] text-white text-[14px] px-3.5 py-2.5 rounded-md focus:border-[#10b981] h-auto" 
               />
@@ -41,6 +42,7 @@ export function ChangePasswordPanel() {
               <label className="text-[13px] font-medium text-[#8A8F98]">New Password</label>
               <Input 
                 type="password" 
+                placeholder="Enter a new password"
                 {...register('new_password')} 
                 className="bg-[#0c0c0c] border-[#1f1f1f] text-white text-[14px] px-3.5 py-2.5 rounded-md focus:border-[#10b981] h-auto" 
               />
@@ -50,6 +52,7 @@ export function ChangePasswordPanel() {
               <label className="text-[13px] font-medium text-[#8A8F98]">Confirm New Password</label>
               <Input 
                 type="password" 
+                placeholder="Confirm your new password"
                 {...register('confirm_new_password')} 
                 className="bg-[#0c0c0c] border-[#1f1f1f] text-white text-[14px] px-3.5 py-2.5 rounded-md focus:border-[#10b981] h-auto" 
               />

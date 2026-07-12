@@ -1,0 +1,31 @@
+import { useActionState, useEffect, useMemo, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Globe2, Loader2, RefreshCw, ShieldCheck, Star, Trash2 } from 'lucide-react';
+import { toast } from 'sonner';
+import { orgApi } from '@/modules/organizations/api/org.api';
+import { orgQueryKeys, useOrganizations } from '@/modules/organizations/hooks/useOrganizations';
+import type { CreatedVerifiedDomain, VerifiedDomain } from '@/modules/organizations/types/org.types';
+import { Button, CopyButton, Field, PageHeader, SectionCard, SubmitButton, inputClass } from '@/shared/observe';
+
+function DomainCard({ domain, onVerify, onPrimary, onAutoJoin, onDelete, pending }: { domain: VerifiedDomain; onVerify: () => void; onPrimary: () => void; onAutoJoin: () => void; onDelete: () => void; pending: boolean }) {
+  return <article className="rounded-[12px] border border-[var(--border)] bg-[var(--bg1)] p-4">
+    <div className="flex items-start justify-between gap-3"><div className="min-w-0"><div className="flex items-center gap-2"><Globe2 className="size-4 text-[var(--brand)]" /><h2 className="truncate font-semibold text-[var(--text)]">{domain.domain}</h2>{domain.isPrimary && <span className="rounded-full bg-[var(--brand)]/10 px-2 py-0.5 text-[10px] font-semibold text-[var(--brand)]">Primary</span>}</div><p className="mt-2 text-xs text-[var(--text2)]">{domain.isVerified ? `Verified ${domain.verifiedAt ? new Date(domain.verifiedAt).toLocaleDateString() : ''}` : 'Awaiting DNS TXT verification'}</p></div><span className={`rounded-full px-2 py-1 text-[11px] font-medium ${domain.isVerified ? 'bg-[var(--green)]/10 text-[var(--green)]' : 'bg-[var(--amber)]/10 text-[var(--amber)]'}`}>{domain.isVerified ? 'Verified' : 'Pending'}</span></div>
+    <div className="mt-4 flex flex-wrap gap-2"><Button variant="secondary" disabled={pending} onClick={onVerify}><RefreshCw className="mr-1 size-3.5" />{domain.isVerified ? 'Recheck DNS' : 'Verify DNS'}</Button>{domain.isVerified && !domain.isPrimary && <Button variant="secondary" disabled={pending} onClick={onPrimary}><Star className="mr-1 size-3.5" />Make primary</Button>}{domain.isVerified && <Button variant="secondary" disabled={pending} onClick={onAutoJoin}>{domain.autoJoinEnabled ? 'Disable auto-join' : 'Enable auto-join'}</Button>}<Button variant="ghost" disabled={pending} onClick={onDelete}><Trash2 className="size-3.5 text-[var(--red)]" /></Button></div>
+  </article>;
+}
+
+export default function DomainsPage() {
+  const { activeOrgId } = useOrganizations(); const qc = useQueryClient(); const [created, setCreated] = useState<CreatedVerifiedDomain | null>(null);
+  const { data, isLoading } = useQuery({ queryKey: orgQueryKeys.domains(activeOrgId!), queryFn: () => orgApi.listDomains(activeOrgId!, { limit: 100 }), enabled: !!activeOrgId });
+  const invalidate = () => qc.invalidateQueries({ queryKey: orgQueryKeys.domains(activeOrgId!) });
+  const action = useMutation({ mutationFn: async ({ type, id, enabled }: { type: 'verify'|'primary'|'auto'|'delete'; id: string; enabled?: boolean }) => { if (!activeOrgId) throw new Error('No active organization'); if(type==='verify') return orgApi.verifyDomain(activeOrgId,id); if(type==='primary') return orgApi.makePrimaryDomain(activeOrgId,id); if(type==='auto') return orgApi.setDomainAutoJoin(activeOrgId,id,!!enabled); return orgApi.deleteDomain(activeOrgId,id); }, onSuccess: (_, v) => { toast.success(v.type === 'delete' ? 'Domain removed' : 'Domain updated'); invalidate(); }, onError: (e: any) => toast.error(e?.response?.data?.error?.message ?? e?.message ?? 'Domain action failed') });
+  const [state, createAction] = useActionState(async (_: unknown, form: FormData) => { if (!activeOrgId) return { error: 'No active organization' }; try { const domain = String(form.get('domain') ?? '').trim().toLowerCase(); const result = await orgApi.createDomain(activeOrgId, { domain }); setCreated(result); invalidate(); return { error: null }; } catch (e: any) { return { error: e?.response?.data?.error?.message ?? 'Unable to add domain' }; } }, { error: null as string | null });
+  useEffect(() => { if (state.error) toast.error(state.error); }, [state.error]);
+  const domains = useMemo(() => data?.data ?? [], [data?.data]);
+  if (isLoading) return <div className="flex h-32 items-center justify-center"><Loader2 className="size-6 animate-spin text-[var(--brand)]" /></div>;
+  return <div className="flex flex-col gap-6"><PageHeader title="Verified domains" description="Prove company-domain ownership before enabling SSO discovery or automatic membership." />
+    <SectionCard title="Add a company domain"><form action={createAction} className="flex flex-col gap-3 sm:flex-row sm:items-end"><div className="min-w-0 flex-1"><Field label="Domain"><input name="domain" required placeholder="example.com" autoCapitalize="none" autoCorrect="off" className={inputClass} /></Field></div><SubmitButton><ShieldCheck className="mr-1.5 size-4" />Create verification</SubmitButton></form></SectionCard>
+    {created && <SectionCard title="Publish this DNS TXT record"><p className="mb-3 text-sm text-[var(--text2)]">Add this record at your DNS provider, then select “Verify DNS”. The token is shown only for this creation session.</p><div className="grid gap-3 sm:grid-cols-2"><div><div className="mb-1 text-xs text-[var(--text3)]">Host</div><CopyButton value={created.dnsInstructions.host} label={created.dnsInstructions.host} /></div><div><div className="mb-1 text-xs text-[var(--text3)]">TXT value</div><CopyButton value={created.dnsInstructions.value} label="Copy verification value" /></div></div></SectionCard>}
+    <div className="grid gap-4 lg:grid-cols-2">{domains.map(d => <DomainCard key={d.id} domain={d} pending={action.isPending} onVerify={() => action.mutate({type:'verify',id:d.id})} onPrimary={() => action.mutate({type:'primary',id:d.id})} onAutoJoin={() => action.mutate({type:'auto',id:d.id,enabled:!d.autoJoinEnabled})} onDelete={() => { if (confirm(`Remove ${d.domain}?`)) action.mutate({type:'delete',id:d.id}); }} />)}</div>
+    {!domains.length && <div className="rounded-[12px] border border-dashed border-[var(--border)] p-8 text-center text-sm text-[var(--text2)]">No company domains have been added.</div>}</div>;
+}

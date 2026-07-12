@@ -1,5 +1,5 @@
 import { createContext, useContext } from "react";
-import { Outlet, useParams, Navigate, Link, NavLink } from "react-router";
+import { Outlet, useParams, Navigate, Link } from "react-router";
 import { useProject } from "@/modules/projects/hooks/useProjects";
 import { DetailSkeleton } from "@/shared/observe";
 

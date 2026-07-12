@@ -15,7 +15,8 @@ const CheckoutCancelPage = lazy(() => import("@/modules/billing/pages/CheckoutCa
 
 const SettingsLayout = lazy(() => import("../layouts/SettingsLayout"));
 const ModuleLayout = lazy(() => import("../layouts/ModuleLayout").then((m) => ({ default: m.ModuleLayout })));
-const SettingsGeneralPage = lazy(() => import("@/modules/settings/pages/SettingsGeneralPage"));
+const EmailVerificationStatusPage = lazy(() => import("@/modules/auth/pages/EmailVerificationStatusPage"));
+const EffectiveAuthPolicyPage = lazy(() => import("@/modules/auth/pages/EffectiveAuthPolicyPage"));
 
 const PersonalDetailsPanel = lazy(() => import("@/modules/auth/components/profile/PersonalDetailsPanel").then(m => ({ default: m.PersonalDetailsPanel })));
 const ChangePasswordPanel = lazy(() => import("@/modules/auth/components/profile/ChangePasswordPanel").then(m => ({ default: m.ChangePasswordPanel })));
@@ -26,6 +27,7 @@ const AuditLogsPanel = lazy(() => import("@/modules/auth/components/profile/Audi
 const TrustedDevicesPanel = lazy(() => import("@/modules/auth/components/profile/TrustedDevicesPanel").then(m => ({ default: m.TrustedDevicesPanel })));
 const MfaRecoveryPanel = lazy(() => import("@/modules/auth/components/profile/MfaRecoveryPanel").then(m => ({ default: m.MfaRecoveryPanel })));
 const PrivacyAndDeletionPanel = lazy(() => import("@/modules/auth/components/profile/PrivacyAndDeletionPanel").then(m => ({ default: m.PrivacyAndDeletionPanel })));
+const LinkedAccountsPanel = lazy(() => import("@/modules/auth/components/profile/LinkedAccountsPanel").then(m => ({ default: m.LinkedAccountsPanel })));
 
 // ── Custom dashboards ──
 const DashboardsOverview = lazy(() => import("@/pages/dashboards/DashboardsOverview"));
@@ -119,9 +121,9 @@ const SsoPage = lazy(() => import("@/pages/team/SsoPage"));
 const ScimPage = lazy(() => import("@/pages/team/ScimPage"));
 const SecurityEventsPage = lazy(() => import("@/pages/team/SecurityEventsPage"));
 const AuditLogsPage = lazy(() => import("@/pages/team/AuditLogsPage"));
-const OrgApiKeysPage = lazy(() => import("@/pages/team/OrgApiKeysPage"));
-const EnvironmentsPage = lazy(() => import("@/pages/team/EnvironmentsPage"));
-const EnvironmentDetailPage = lazy(() => import("@/pages/team/EnvironmentDetailPage"));
+const DomainsPage = lazy(() => import("@/pages/team/DomainsPage"));
+const OrgSettingsPage = lazy(() => import("@/pages/team/OrgSettingsPage"));
+const SdkConfigPage = lazy(() => import("@/pages/team/SdkConfigPage"));
 const CompliancePage = lazy(() => import("@/pages/team/CompliancePage"));
 const TeamsPage = lazy(() => import("@/pages/team/TeamsPage"));
 const TeamOwnershipPage = lazy(() => import("@/pages/team/TeamOwnershipPage"));
@@ -137,7 +139,6 @@ const BillingQuotasPage = lazy(() => import("@/pages/billing/BillingQuotasPage")
 const PromotionsPage = lazy(() => import("@/pages/billing/PromotionsPage"));
 
 // Settings (new surfaces — others reuse existing module components)
-const SettingsApiKeysPage = lazy(() => import("@/pages/settings/SettingsApiKeysPage"));
 const WebhooksPage = lazy(() => import("@/pages/settings/WebhooksPage"));
 const WebhookDetailPage = lazy(() => import("@/pages/settings/WebhookDetailPage"));
 const IntegrationsPage = lazy(() => import("@/pages/settings/IntegrationsPage"));
@@ -281,6 +282,8 @@ export const protectedRoutes: RouteObject[] = [
             element: <ModuleLayout />,
             children: [
               { index: true, element: <OrgProfilePage /> },
+              { path: "settings", element: <OrgSettingsPage /> },
+              { path: "domains", element: <DomainsPage /> },
               { path: "members", element: <MembersPage /> },
               { path: "members/:userId", element: <MemberDetailPage /> },
               { path: "invitations", element: <InvitationsPage /> },
@@ -288,9 +291,7 @@ export const protectedRoutes: RouteObject[] = [
               { path: "scim", element: <ScimPage /> },
               { path: "security-events", element: <SecurityEventsPage /> },
               { path: "audit-logs", element: <AuditLogsPage /> },
-              { path: "api-keys", element: <OrgApiKeysPage /> },
-              { path: "environments", element: <EnvironmentsPage /> },
-              { path: "environments/:envId", element: <EnvironmentDetailPage /> },
+              { path: "sdk-config", element: <SdkConfigPage /> },
               { path: "compliance", element: <CompliancePage /> },
               { path: "teams", element: <TeamsPage /> },
               { path: "teams/ownership", element: <TeamOwnershipPage /> },
@@ -326,22 +327,24 @@ export const protectedRoutes: RouteObject[] = [
             path: "developer",
             element: <ModuleLayout />,
             children: [
-              { path: "api-keys", element: <SettingsApiKeysPage /> },
               { path: "data-retention", element: <DataRetentionPage /> },
-              { path: "custom-settings", element: <div className="p-8 text-[var(--text2)] text-center text-lg">Custom settings coming soon</div> },
+              { path: "custom-settings", element: <SdkConfigPage /> },
             ],
           },
           {
             path: "settings",
             element: <SettingsLayout />,
             children: [
-              { index: true, element: <SettingsGeneralPage /> },
+              { index: true, element: <SecurityCenterPage /> },
               { path: "profile", element: <PersonalDetailsPanel /> },
               { path: "password", element: <ChangePasswordPanel /> },
               { path: "mfa", element: <MfaSecurityPanel /> },
               { path: "sessions", element: <ActiveSessionsPanel /> },
               { path: "backup-codes", element: <BackupCodesPanel /> },
               { path: "trusted-devices", element: <TrustedDevicesPanel /> },
+              { path: "linked-accounts", element: <LinkedAccountsPanel /> },
+              { path: "email-verification", element: <EmailVerificationStatusPage /> },
+              { path: "authentication-policy", element: <EffectiveAuthPolicyPage /> },
               { path: "mfa-recovery", element: <MfaRecoveryPanel /> },
               { path: "privacy", element: <PrivacyAndDeletionPanel /> },
               { path: "personal-logs", element: <AuditLogsPanel /> },

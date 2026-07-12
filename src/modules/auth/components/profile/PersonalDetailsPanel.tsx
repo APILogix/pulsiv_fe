@@ -79,8 +79,8 @@ export function PersonalDetailsPanel() {
               <label className="text-[13px] font-medium text-white/90">Email Address</label>
               <Input 
                 value={user?.email ?? ''} 
-                disabled 
-                className="bg-[#111111] border-[#1f1f1f] text-[#5C5F66] text-[14px] px-3.5 py-2.5 rounded-md h-auto cursor-not-allowed"
+                readOnly
+                className="bg-[#0c0c0c] border-[#1f1f1f] text-white text-[14px] px-3.5 py-2.5 rounded-md h-auto cursor-not-allowed"
               />
               <span className="text-[11px] text-[#5C5F66]">Email address changes are not available from account settings.</span>
             </div>

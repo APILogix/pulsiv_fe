@@ -31,7 +31,6 @@ export function TrustedDevicesPanel() {
     mutationFn: () => authApi.trustDevice('Current device'),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: authQueryKeys.trustedDevices });
-      toast.success('Current device trusted');
     },
     onError: (error) => toast.error(getErrorMessage(error)),
   });
@@ -40,7 +39,6 @@ export function TrustedDevicesPanel() {
     mutationFn: authApi.revokeTrustedDevice,
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: authQueryKeys.trustedDevices });
-      toast.success('Trusted device revoked');
     },
     onError: (error) => toast.error(getErrorMessage(error)),
   });

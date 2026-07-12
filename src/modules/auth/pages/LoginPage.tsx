@@ -1,14 +1,28 @@
-import { Link } from 'react-router';
 import { useState } from 'react';
+import { Link } from 'react-router';
 import { toast } from 'sonner';
 import { LoginForm } from '../components/LoginForm';
+import { LoginMfaForm } from '../components/LoginMfaForm';
+import { LoginBackupCodeForm } from '../components/LoginBackupCodeForm';
 import { authApi } from '../api/auth.api';
 import { getErrorMessage } from '@/infrastructure/api-client/error.interceptor';
+import { useLogin } from '../hooks/useLogin';
 
 export default function LoginPage() {
-  const [socialProvider, setSocialProvider] = useState<string | null>(null);
+  const {
+    loginState,
+    challengeData,
+    login,
+    loginMfa,
+    loginBackup,
+    isPending,
+    resetState
+  } = useLogin();
 
-  async function startSocialLogin(provider: 'github' | 'google' | 'microsoft') {
+  const [socialProvider, setSocialProvider] = useState<string | null>(null);
+  const [showBackupCodes, setShowBackupCodes] = useState(false);
+
+  async function startSocialLogin(provider: 'github' | 'google') {
     setSocialProvider(provider);
     try {
       const result = await authApi.socialLogin(provider);
@@ -17,6 +31,34 @@ export default function LoginPage() {
       toast.error(getErrorMessage(error));
       setSocialProvider(null);
     }
+  }
+
+  const handleCancelMfa = () => {
+    resetState();
+    setShowBackupCodes(false);
+  };
+
+  if (loginState === 'mfa_required' && challengeData) {
+    if (showBackupCodes) {
+      return (
+        <LoginBackupCodeForm
+          challengeId={challengeData.challengeId}
+          loginBackupCode={loginBackup}
+          isPending={isPending}
+          onCancel={() => setShowBackupCodes(false)}
+        />
+      );
+    }
+
+    return (
+      <LoginMfaForm
+        challengeData={challengeData}
+        loginMfa={loginMfa}
+        isPending={isPending}
+        onSelectBackupCodes={() => setShowBackupCodes(true)}
+        onCancel={handleCancelMfa}
+      />
+    );
   }
 
   return (
@@ -51,20 +93,6 @@ export default function LoginPage() {
           <span className="text-[15px] font-semibold">G</span>
           {socialProvider === 'google' ? 'Redirecting...' : 'Continue with Google'}
         </button>
-        <button
-          type="button"
-          disabled={socialProvider !== null}
-          onClick={() => startSocialLogin('microsoft')}
-          className="w-full flex items-center justify-center gap-2.5 bg-[#141414] border border-[#1f1f1f] hover:bg-white/5 hover:border-[#2a2a2a] text-white text-sm font-medium py-3 rounded-md transition-all disabled:opacity-60"
-        >
-          <span className="grid grid-cols-2 gap-0.5">
-            <span className="h-2 w-2 bg-[#f25022]" />
-            <span className="h-2 w-2 bg-[#7fba00]" />
-            <span className="h-2 w-2 bg-[#00a4ef]" />
-            <span className="h-2 w-2 bg-[#ffb900]" />
-          </span>
-          {socialProvider === 'microsoft' ? 'Redirecting...' : 'Continue with Microsoft'}
-        </button>
         <Link
           to="/auth/login/sso"
           className="w-full flex items-center justify-center gap-2.5 bg-[#141414] border border-[#1f1f1f] hover:bg-white/5 hover:border-[#2a2a2a] text-white text-sm font-medium py-3 rounded-md transition-all"
@@ -85,7 +113,7 @@ export default function LoginPage() {
         <div className="flex-1 border-b border-[#1f1f1f]"></div>
       </div>
 
-      <LoginForm />
+      <LoginForm login={login} isPending={isPending} />
 
       <div className="text-center mt-8 text-sm text-[#8A8F98]">
         Don't have an account? <Link to="/auth/register" className="text-[#10b981] font-medium hover:underline">Sign up</Link>

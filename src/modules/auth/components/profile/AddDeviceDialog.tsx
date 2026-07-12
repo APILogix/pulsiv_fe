@@ -73,7 +73,6 @@ export function AddDeviceDialog({ open, onOpenChange, onComplete }: Props) {
           setBackupCodes(res.backup_codes);
           setStep('backup');
         } else {
-          toast.success('Security key added');
           close();
         }
         return;
@@ -100,7 +99,6 @@ export function AddDeviceDialog({ open, onOpenChange, onComplete }: Props) {
         setBackupCodes(codes);
         setStep('backup');
       } else {
-        toast.success('Device added');
         close();
       }
     } catch (err) {
@@ -189,10 +187,10 @@ export function AddDeviceDialog({ open, onOpenChange, onComplete }: Props) {
               />
             </div>
             <div className="flex justify-end gap-2 pt-4">
-              <Button variant="outline" onClick={() => setStep('choose')} className="border-[#2a2a2a] bg-transparent text-[#e8e8e8] hover:bg-[#1a1a1a]">Back</Button>
-              <Button onClick={startEnrollment} disabled={busy} className="bg-[#10b981] text-black font-semibold hover:bg-[#0ea271]">
+              <Button variant="outline" onClick={() => setStep('choose')} className="border-[#2a2a2a] bg-transparent text-[#e8e8e8] hover:bg-[#1a1a1a] hover:text-[#e8e8e8] focus-visible:text-[#e8e8e8]">Back</Button>
+              <Button onClick={startEnrollment} disabled={busy} className="bg-[#10b981] text-black font-semibold hover:bg-[#0ea271] hover:text-black focus-visible:text-black active:text-black">
                 {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {method === 'hardware_key' ? 'Continue with security key' : 'Continue'}
+                Verify
               </Button>
             </div>
           </>
@@ -225,8 +223,8 @@ export function AddDeviceDialog({ open, onOpenChange, onComplete }: Props) {
               </div>
             </div>
             <div className="flex justify-end gap-2 pt-4">
-              <Button onClick={verifyCode} disabled={busy || code.length !== 6} className="bg-[#10b981] text-black font-semibold hover:bg-[#0ea271]">
-                {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Verify & enable
+              <Button onClick={verifyCode} disabled={busy || code.length !== 6} className="bg-[#10b981] text-black font-semibold hover:bg-[#0ea271] hover:text-black focus-visible:text-black active:text-black">
+                {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Verify
               </Button>
             </div>
           </>
@@ -252,8 +250,8 @@ export function AddDeviceDialog({ open, onOpenChange, onComplete }: Props) {
               <button onClick={resendEmail} className="text-[12px] text-[#10b981] hover:text-[#0ea271] transition-colors">Resend code</button>
             </div>
             <div className="flex justify-end gap-2 pt-4">
-              <Button onClick={verifyCode} disabled={busy || code.length !== 6} className="bg-[#10b981] text-black font-semibold hover:bg-[#0ea271]">
-                {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Verify & enable
+              <Button onClick={verifyCode} disabled={busy || code.length !== 6} className="bg-[#10b981] text-black font-semibold hover:bg-[#0ea271] hover:text-black focus-visible:text-black active:text-black">
+                {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Verify
               </Button>
             </div>
           </>
@@ -273,11 +271,11 @@ export function AddDeviceDialog({ open, onOpenChange, onComplete }: Props) {
               ))}
             </div>
             <div className="flex gap-2 pt-2">
-              <Button variant="outline" onClick={copyCodes} className="flex-1 border-[#2a2a2a] bg-transparent text-[#e8e8e8] hover:bg-[#1a1a1a]"><Copy size={14} className="mr-1.5" /> Copy</Button>
-              <Button variant="outline" onClick={downloadCodes} className="flex-1 border-[#2a2a2a] bg-transparent text-[#e8e8e8] hover:bg-[#1a1a1a]"><Download size={14} className="mr-1.5" /> Download</Button>
+              <Button variant="outline" onClick={copyCodes} className="flex-1 border-[#2a2a2a] bg-transparent text-[#e8e8e8] hover:bg-[#1a1a1a] hover:text-[#e8e8e8] focus-visible:text-[#e8e8e8]"><Copy size={14} className="mr-1.5" /> Copy</Button>
+              <Button variant="outline" onClick={downloadCodes} className="flex-1 border-[#2a2a2a] bg-transparent text-[#e8e8e8] hover:bg-[#1a1a1a] hover:text-[#e8e8e8] focus-visible:text-[#e8e8e8]"><Download size={14} className="mr-1.5" /> Download</Button>
             </div>
             <div className="flex justify-end pt-2">
-              <Button onClick={close} className="bg-[#10b981] text-black font-semibold hover:bg-[#0ea271]">Done</Button>
+              <Button onClick={close} className="bg-[#10b981] text-black font-semibold hover:bg-[#0ea271] hover:text-black focus-visible:text-black active:text-black">Done</Button>
             </div>
           </>
         )}

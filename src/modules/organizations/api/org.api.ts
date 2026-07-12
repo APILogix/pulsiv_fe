@@ -81,7 +81,8 @@ export const orgApi = {
   // Billing Summary
   getBillingSummary: (orgId: string) => apiClient.get(`/organizations/${orgId}/billing-summary`).then(r => r.data.data as t.OrganizationBillingSummary),
   getUsageLimits: (orgId: string) => apiClient.get(`/organizations/${orgId}/usage-limits`).then(r => r.data.data as t.UsageLimitsResponse),
-  getBillingUsageOverview: (orgId: string) => apiClient.get('/billing/usage/overview', withOrgHeaders(orgId)).then(r => r.data.data as t.BillingUsageOverview),
+  getCurrentUsage: (orgId: string) => apiClient.get('/billing/usage/current', withOrgHeaders(orgId)).then(r => r.data.data),
+  getDailyUsage: (orgId: string) => apiClient.get('/billing/usage/daily', withOrgHeaders(orgId)).then(r => r.data.data as { date: string, eventsCount: number }[]),
   
   // Billing - Invoices
   listInvoices: (orgId: string) => apiClient.get('/billing/invoices', withOrgHeaders(orgId)).then(r => (r.data.data?.invoices ?? []).map(mapInvoice) as t.Invoice[]),
@@ -98,16 +99,14 @@ export const orgApi = {
   applyPromotion: (orgId: string, code: string) => apiClient.post('/billing/coupons/apply', { code }, withOrgHeaders(orgId)).then(r => r.data.data),
   removePromotion: (orgId: string) => apiClient.delete('/billing/coupons', withOrgHeaders(orgId)),
 
-  // Environments
-  listEnvironments: (orgId: string) => apiClient.get(`/organizations/${orgId}/environments`).then(r => r.data.data as t.Environment[]),
-  createEnvironment: (orgId: string, data: { name: string; description?: string; isProduction?: boolean }) => apiClient.post(`/organizations/${orgId}/environments`, data).then(r => r.data.data as t.Environment),
-  updateEnvironment: (orgId: string, envId: string, data: { name?: string; description?: string; isProduction?: boolean }) => apiClient.patch(`/organizations/${orgId}/environments/${envId}`, data).then(r => r.data.data as t.Environment),
-
-  // API Keys
-  listApiKeys: (orgId: string, params?: { cursor?: string; limit?: number }) => apiClient.get(`/organizations/${orgId}/api-keys`, { params }).then(r => r.data as t.CursorPaginatedResponse<t.ApiKey>),
-  createApiKey: (orgId: string, data: { name: string; environmentId?: string; role?: string; expiresInDays?: number }) => apiClient.post(`/organizations/${orgId}/api-keys`, data).then(r => r.data.data as t.ApiKey & { rawKey: string }),
-  revokeApiKey: (orgId: string, keyId: string) => apiClient.delete(`/organizations/${orgId}/api-keys/${keyId}`),
-  rotateApiKey: (orgId: string, keyId: string) => apiClient.post(`/organizations/${orgId}/api-keys/${keyId}/rotate`).then(r => r.data.data as t.ApiKey & { rawKey: string }),
+  // Verified domains
+  listDomains: (orgId: string, params?: { cursor?: string; limit?: number; search?: string; verified?: boolean }) => apiClient.get(`/organizations/${orgId}/domains`, { params }).then(r => r.data.data as t.CursorPaginatedResponse<t.VerifiedDomain>),
+  createDomain: (orgId: string, data: { domain: string; metadata?: Record<string, unknown> }) => apiClient.post(`/organizations/${orgId}/domains`, data).then(r => r.data.data as t.CreatedVerifiedDomain),
+  verifyDomain: (orgId: string, domainId: string) => apiClient.post(`/organizations/${orgId}/domains/${domainId}/verify`).then(r => r.data.data as t.VerifiedDomain & { verified: boolean }),
+  recheckDomain: (orgId: string, domainId: string) => apiClient.post(`/organizations/${orgId}/domains/${domainId}/recheck`).then(r => r.data.data as t.VerifiedDomain & { verified: boolean }),
+  setDomainAutoJoin: (orgId: string, domainId: string, enabled: boolean) => apiClient.post(`/organizations/${orgId}/domains/${domainId}/${enabled ? 'enable-auto-join' : 'disable-auto-join'}`).then(r => r.data.data as t.VerifiedDomain),
+  makePrimaryDomain: (orgId: string, domainId: string) => apiClient.post(`/organizations/${orgId}/domains/${domainId}/make-primary`).then(r => r.data.data as t.VerifiedDomain),
+  deleteDomain: (orgId: string, domainId: string) => apiClient.delete(`/organizations/${orgId}/domains/${domainId}`),
 
   // SSO / SCIM
   listSsoProviders: (orgId: string) => apiClient.get(`/organizations/${orgId}/sso`).then(r => r.data.data as t.SsoProvider[]),

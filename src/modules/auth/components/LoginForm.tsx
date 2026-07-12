@@ -3,13 +3,16 @@ import { Link } from 'react-router';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { loginSchema, type LoginFormData } from '../schemas/auth.schema';
-import { useLogin } from '../hooks/useLogin';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
-export function LoginForm() {
-  const { mutate: login, isPending } = useLogin();
+interface LoginFormProps {
+  login: (data: LoginFormData) => void;
+  isPending: boolean;
+}
+
+export function LoginForm({ login, isPending }: LoginFormProps) {
   const [showPassword, setShowPassword] = useState(false);
   const { register, handleSubmit, formState: { errors } } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),

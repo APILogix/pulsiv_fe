@@ -95,24 +95,82 @@ function TrendWave({ color }: { color: string }) {
   );
 }
 
-/** KPI stat card matching the reference ops-console design. */
-function MetricCard({ label, value, delta, deltaColor, subtitle }: {
-  label: string; value: string; delta: string; deltaColor: string; subtitle: string;
-}) {
+function TopKpiRow({ total, rate, p95Val, degradedCount }: { total: number, rate: number, p95Val: number, degradedCount: number }) {
   return (
-    <div className="rounded-[12px] border border-[var(--border)] bg-[var(--bg1)] p-5">
-      <div className="text-[11px] font-medium uppercase tracking-[0.1em] text-[var(--text3)] font-[family-name:var(--mono)]">
-        {label}
+    <div className="flex flex-row overflow-x-auto rounded-[12px] border border-[var(--border)] bg-[var(--bg1)] [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+      {/* KPI 1 */}
+      <div className="flex-1 p-5 border-r border-[var(--border)] min-w-[200px]">
+        <div className="text-[11px] font-medium uppercase tracking-[0.1em] text-[var(--text3)] font-[family-name:var(--mono)]">
+          API CALLS (24H)
+        </div>
+        <div className="mt-3 flex items-center justify-between">
+          <span className="text-[28px] font-bold tabular-nums leading-none text-[var(--text)]">
+            {formatCompact(total * 1240)}
+          </span>
+          <TrendWave color="#34d399" />
+        </div>
+        <div className="mt-2 text-[12px] font-medium" style={{ color: "#34d399" }}>
+          +12.4% vs prev
+        </div>
       </div>
-      <div className="mt-3 flex items-baseline gap-2">
-        <span className="text-[28px] font-bold tabular-nums leading-none text-[var(--text)]">
-          {value}
-        </span>
-        <span className="flex items-center text-[12px] font-medium tabular-nums" style={{ color: deltaColor }}>
-          <TrendWave color={deltaColor} />{delta}
-        </span>
+      {/* KPI 2 */}
+      <div className="flex-1 p-5 border-r border-[var(--border)] min-w-[200px]">
+        <div className="text-[11px] font-medium uppercase tracking-[0.1em] text-[var(--text3)] font-[family-name:var(--mono)]">
+          ERROR RATE
+        </div>
+        <div className="mt-3 flex items-center justify-between">
+          <span className="text-[28px] font-bold tabular-nums leading-none text-[var(--text)]">
+            {rate.toFixed(2)}%
+          </span>
+          <TrendWave color="#ef4444" />
+        </div>
+        <div className="mt-2 text-[12px] font-medium" style={{ color: "#34d399" }}>
+          -0.08% vs prev
+        </div>
       </div>
-      <div className="mt-2 text-[12px] text-[var(--text3)]">{subtitle}</div>
+      {/* KPI 3 */}
+      <div className="flex-1 p-5 border-r border-[var(--border)] min-w-[200px]">
+        <div className="text-[11px] font-medium uppercase tracking-[0.1em] text-[var(--text3)] font-[family-name:var(--mono)]">
+          P95 LATENCY
+        </div>
+        <div className="mt-3 flex items-center justify-between">
+          <span className="text-[28px] font-bold tabular-nums leading-none text-[var(--text)]">
+            {formatLatency(p95Val)}
+          </span>
+          <TrendWave color="#8b5cf6" />
+        </div>
+        <div className="mt-2 text-[12px] font-medium" style={{ color: "#34d399" }}>
+          -22ms vs prev
+        </div>
+      </div>
+      {/* KPI 4 */}
+      <div className="flex-1 p-5 border-r border-[var(--border)] min-w-[200px]">
+        <div className="text-[11px] font-medium uppercase tracking-[0.1em] text-[var(--text3)] font-[family-name:var(--mono)]">
+          AVAILABILITY
+        </div>
+        <div className="mt-3 flex items-center justify-between">
+          <span className="text-[28px] font-bold tabular-nums leading-none text-[var(--text)]">
+            {degradedCount > 0 ? "77.20%" : "99.99%"}
+          </span>
+        </div>
+        <div className="mt-2 text-[12px] font-medium" style={{ color: "#34d399" }}>
+          +0.01%
+        </div>
+      </div>
+      {/* KPI 5 */}
+      <div className="flex-1 p-5 min-w-[200px]">
+        <div className="text-[11px] font-medium uppercase tracking-[0.1em] text-[var(--text3)] font-[family-name:var(--mono)]">
+          REVENUE AT RISK
+        </div>
+        <div className="mt-3 flex items-center justify-between">
+          <span className="text-[28px] font-bold tabular-nums leading-none text-[var(--text)]">
+            $4,845
+          </span>
+        </div>
+        <div className="mt-2 text-[12px] font-medium" style={{ color: "#ef4444" }}>
+          17 failed payments
+        </div>
+      </div>
     </div>
   );
 }
@@ -410,11 +468,12 @@ function TopEndpointsPanel() {
 
 function DashboardSkeleton() {
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-6 p-4 lg:p-8 max-w-[1400px] mx-auto w-full">
       <div className="h-14" />
-      <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <div key={`ks-${i}`} className="h-[120px] animate-pulse rounded-[12px] border border-[var(--border)] bg-[var(--bg1)]" />
+      {/* TopKpiRow Skeleton */}
+      <div className="flex flex-row gap-0 rounded-[12px] border border-[var(--border)] bg-[var(--bg1)] overflow-hidden">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <div key={`ks-${i}`} className="h-[140px] flex-1 border-r border-[var(--border)] animate-pulse bg-[var(--bg2)] min-w-[200px]" />
         ))}
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -458,7 +517,7 @@ export default function DashboardPage() {
   const degradedCount = SERVICES.length - healthyCount;
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-6 p-4 lg:p-8 max-w-[1400px] mx-auto w-full">
       {/* ── Header ── */}
       <div>
         <h1 className="text-[22px] font-semibold text-[var(--text)]">Dashboard</h1>
@@ -468,36 +527,12 @@ export default function DashboardPage() {
       </div>
 
       {/* ── KPI Metrics ── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        <MetricCard
-          label="Total Requests"
-          value={formatCompact(total * 1240)}
-          delta="+12.3%"
-          deltaColor="#34d399"
-          subtitle="vs previous 24h"
-        />
-        <MetricCard
-          label="Error Rate"
-          value={`${rate.toFixed(2)}%`}
-          delta="-0.08%"
-          deltaColor="#34d399"
-          subtitle="vs previous 24h"
-        />
-        <MetricCard
-          label="P95 Latency"
-          value={formatLatency(p95Val)}
-          delta="+14ms"
-          deltaColor="#f59e0b"
-          subtitle="vs previous 24h"
-        />
-        <MetricCard
-          label="Active Services"
-          value={`${SERVICES.length - degradedCount}/${SERVICES.length}`}
-          delta={degradedCount > 0 ? `${degradedCount} degraded` : "All healthy"}
-          deltaColor={degradedCount > 0 ? "#f59e0b" : "#34d399"}
-          subtitle="checks passing"
-        />
-      </div>
+      <TopKpiRow 
+        total={total} 
+        rate={rate} 
+        p95Val={p95Val} 
+        degradedCount={degradedCount} 
+      />
 
       {/* ── Request Volume + Latency Percentiles ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

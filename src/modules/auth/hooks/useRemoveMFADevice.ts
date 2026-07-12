@@ -13,7 +13,6 @@ export function useRemoveMFADevice() {
       queryClient.invalidateQueries({ queryKey: authQueryKeys.mfaDevices });
       queryClient.invalidateQueries({ queryKey: authQueryKeys.currentUser });
       queryClient.invalidateQueries({ queryKey: authQueryKeys.securitySummary });
-      toast.success('MFA device removed.');
     },
     onError: (error: any) => {
       if (error.response?.data?.error?.code === 'PASSWORD_REQUIRED') return;

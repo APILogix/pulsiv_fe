@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { Navigate, useNavigate, useSearchParams } from 'react-router';
+import { useNavigate, useSearchParams } from 'react-router';
 import { AlertTriangle, Loader2 } from 'lucide-react';
 import { authApi } from '../api/auth.api';
-import { authQueryKeys } from '../api/auth.query';
 import { useAuthStore } from '../store/auth.store';
+import { completeLogin } from '../services/post-login';
 import { getErrorMessage } from '@/infrastructure/api-client/error.interceptor';
 import { Button } from '@/components/ui/button';
 
@@ -18,24 +18,20 @@ export default function AuthCallbackPage() {
   const callbackError = params.get('error');
 
   useEffect(() => {
+    if (window.opener && window.opener !== window) {
+      window.opener.postMessage({ type: 'pulsiv:identity-link', linked: true }, window.location.origin);
+      window.close();
+      return;
+    }
     if (callbackError) {
-      setError(params.get('error_description') || callbackError);
+      setError(params.get('error_description') || params.get('message') || callbackError);
       return;
     }
 
     authApi.refreshSession()
-      .then(() => authApi.getCurrentUser())
-      .then((user) => {
-        setAuth(user);
-        queryClient.setQueryData(authQueryKeys.currentUser, user);
-        navigate('/dashboard', { replace: true });
-      })
+      .then((session) => completeLogin(session, { setAuth, queryClient, navigate }))
       .catch((err) => setError(getErrorMessage(err)));
   }, [callbackError, navigate, params, queryClient, setAuth]);
-
-  if (callbackError && !error) {
-    return <Navigate to="/auth/login" replace />;
-  }
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] px-4 py-12 text-white">

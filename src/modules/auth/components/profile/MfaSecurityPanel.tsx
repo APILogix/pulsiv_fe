@@ -58,7 +58,7 @@ export function MfaSecurityPanel() {
 
   const setPrimary = useMutation({
     mutationFn: (id: string) => authApi.setPrimaryMFADevice(id),
-    onSuccess: () => { invalidate(); toast.success('Primary device updated'); },
+    onSuccess: () => { invalidate(); },
     onError: (e) => toast.error(getErrorMessage(e)),
   });
 
@@ -70,7 +70,7 @@ export function MfaSecurityPanel() {
 
   const remove = useMutation({
     mutationFn: ({ id, password }: { id: string; password: string }) => authApi.removeMFADevice(id, password),
-    onSuccess: () => { invalidate(); setRemoveTarget(null); setRemovePassword(''); toast.success('Device removed'); },
+    onSuccess: () => { invalidate(); setRemoveTarget(null); setRemovePassword(''); },
     onError: (e) => toast.error(getErrorMessage(e)),
   });
 
@@ -79,7 +79,6 @@ export function MfaSecurityPanel() {
     onSuccess: () => {
       invalidate();
       setDisableOpen(false);
-      toast.success('MFA disabled');
     },
     onError: (e) => toast.error(getErrorMessage(e)),
   });

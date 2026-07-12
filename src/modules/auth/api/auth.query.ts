@@ -3,6 +3,7 @@ export const authQueryKeys = {
   sessions: ['auth', 'sessions'] as const,
   mfaDevices: ['auth', 'mfa-devices'] as const,
   trustedDevices: ['auth', 'trusted-devices'] as const,
+  linkedIdentities: ['auth', 'linked-identities'] as const,
   securitySummary: ['auth', 'security-summary'] as const,
   auditEvents: (userId: string) => ['auth', 'audit-events', userId] as const,
 };

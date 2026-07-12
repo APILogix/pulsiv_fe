@@ -8,7 +8,7 @@ import { getErrorMessage } from '@/infrastructure/api-client/error.interceptor';
 export default function RegisterPage() {
   const [socialProvider, setSocialProvider] = useState<string | null>(null);
 
-  async function startSocialLogin(provider: 'github' | 'google' | 'microsoft') {
+  async function startSocialLogin(provider: 'github' | 'google') {
     setSocialProvider(provider);
     try {
       const result = await authApi.socialLogin(provider);
@@ -48,20 +48,6 @@ export default function RegisterPage() {
         >
           <span className="text-[15px] font-semibold">G</span>
           {socialProvider === 'google' ? 'Redirecting...' : 'Sign up with Google'}
-        </button>
-        <button
-          type="button"
-          disabled={socialProvider !== null}
-          onClick={() => startSocialLogin('microsoft')}
-          className="w-full flex items-center justify-center gap-2.5 bg-transparent text-white border border-[#1f1f1f] text-[14px] font-medium p-3 rounded-lg hover:bg-white/5 hover:border-[#2a2a2a] transition-all disabled:opacity-60"
-        >
-          <span className="grid grid-cols-2 gap-0.5">
-            <span className="h-2 w-2 bg-[#f25022]" />
-            <span className="h-2 w-2 bg-[#7fba00]" />
-            <span className="h-2 w-2 bg-[#00a4ef]" />
-            <span className="h-2 w-2 bg-[#ffb900]" />
-          </span>
-          {socialProvider === 'microsoft' ? 'Redirecting...' : 'Sign up with Microsoft'}
         </button>
       </div>
 

@@ -6,9 +6,13 @@ import type {
   LoginMfaChallenge,
 } from '../types/auth.types';
 import type * as s from '../schemas/auth.schema';
+import type { LinkedIdentity } from '../types/auth.types';
 
 function storeSession(p: AuthSession) {
   tokenService.setAccessToken(p.access_token, p.expires_at);
+  // Prefer current_org_id from the response; fall back to nothing.
+  // The org store will be populated from the embedded organizations list
+  // or via a subsequent API call.
   tokenService.setCurrentOrgId(p.current_org_id);
   if (p.current_org_id !== undefined) {
     useOrgStore.getState().setActiveOrgId(p.current_org_id ?? null);
@@ -93,6 +97,9 @@ export const authApi = {
   listTrustedDevices: () => apiClient.get('/auth/trusted-devices').then(r => r.data.data),
   trustDevice: (dn?: string) => apiClient.post('/auth/trusted-devices', { device_name: dn }),
   revokeTrustedDevice: (id: string) => apiClient.delete(`/auth/trusted-devices/${id}`),
+  listLinkedIdentities: () => apiClient.get('/auth/identity-providers').then(r => r.data.data as LinkedIdentity[]),
+  startIdentityLink: (provider: 'google' | 'github') => apiClient.post(`/auth/identity-providers/${provider}/link`).then(r => r.data.data as { authorization_url: string; state: string }),
+  unlinkIdentity: (linkId: string) => apiClient.delete(`/auth/identity-providers/${linkId}`),
   webauthnRegisterOptions: (device_name: string) => apiClient.post('/auth/mfa/webauthn/register/options', { device_name }).then(r => r.data.data),
   webauthnRegisterVerify: (d: { device_name: string; challenge: string; response: unknown }) => apiClient.post('/auth/mfa/webauthn/register/verify', d).then(r => r.data.data),
   webauthnLoginMfaOptions: (challenge_id: string) => apiClient.post('/auth/login/mfa/webauthn/options', { challenge_id }).then(r => r.data.data),

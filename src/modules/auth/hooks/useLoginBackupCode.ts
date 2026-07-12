@@ -1,9 +1,8 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router';
 import { authApi } from '../api/auth.api';
-import { authQueryKeys } from '../api/auth.query';
 import { useAuthStore } from '../store/auth.store';
-import { markPostLoginSetup } from '../components/PostLoginSetup';
+import { completeLogin } from '../services/post-login';
 import { toast } from 'sonner';
 
 export function useLoginBackupCode() {
@@ -13,13 +12,8 @@ export function useLoginBackupCode() {
 
   return useMutation({
     mutationFn: authApi.loginBackupCode,
-    onSuccess: () => {
-      authApi.getCurrentUser().then((user) => {
-        setAuth(user);
-        queryClient.setQueryData(authQueryKeys.currentUser, user);
-        markPostLoginSetup();
-        navigate('/dashboard', { replace: true });
-      });
+    onSuccess: (session) => {
+      completeLogin(session, { setAuth, queryClient, navigate });
     },
     onError: (error: any) => {
       const message = error.response?.data?.error?.message || 'Invalid backup code';
@@ -27,3 +21,4 @@ export function useLoginBackupCode() {
     }
   });
 }
+

@@ -11,7 +11,6 @@ export function useRevokeSession() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: authQueryKeys.sessions });
       queryClient.invalidateQueries({ queryKey: authQueryKeys.securitySummary });
-      toast.success('Session revoked successfully.');
     },
     onError: (error: any) => {
       const message = error.response?.data?.error?.message || 'Failed to revoke session';
@@ -28,7 +27,6 @@ export function useRevokeAllSessions() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: authQueryKeys.sessions });
       queryClient.invalidateQueries({ queryKey: authQueryKeys.securitySummary });
-      toast.success('All sessions revoked successfully.');
     },
     onError: (error: any) => {
       const message = error.response?.data?.error?.message || 'Failed to revoke sessions';
@@ -45,7 +43,6 @@ export function useRevokeOtherSessions() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: authQueryKeys.sessions });
       queryClient.invalidateQueries({ queryKey: authQueryKeys.securitySummary });
-      toast.success('All other sessions revoked successfully.');
     },
     onError: (error: any) => {
       const message = error.response?.data?.error?.message || 'Failed to revoke other sessions';

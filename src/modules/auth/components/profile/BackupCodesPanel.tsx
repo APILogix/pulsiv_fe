@@ -24,7 +24,6 @@ export function BackupCodesPanel() {
       setCodes(data.backup_codes);
       setPromptOpen(false);
       setMfaCode('');
-      toast.success('New backup codes generated');
     },
     onError: (e) => toast.error(getErrorMessage(e)),
   });

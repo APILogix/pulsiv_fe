@@ -86,7 +86,7 @@ function label(key: string) {
 function formatValue(value: unknown): string {
   if (value === -1 || value === "-1") return "∞";
   if (typeof value === "boolean") return value ? "ENABLED" : "DISABLED";
-  if (typeof value === "number") return String(value);
+  if (typeof value === "number") return Intl.NumberFormat("en-US", { notation: "compact" }).format(value);
   if (typeof value === "string") {
     if (value === "none") return "None";
     return value;
@@ -124,7 +124,12 @@ export default function PlanPage() {
   if (!summary)
     return <div className="text-sm text-[var(--text2)]">Billing summary unavailable.</div>;
 
-  const features: Record<string, unknown> = summary.plan.features || {};
+  const s = summary as any;
+  const features: Record<string, unknown> = {
+    max_team_members: s.usage?.activeMembers?.limit ?? -1,
+    sso_saml: s.usage?.ssoProviders?.enabled ?? false,
+    scim: s.usage?.scimTokens?.enabled ?? false,
+  };
 
   /* Derive lists */
   const coreLimits = CORE_LIMIT_KEYS
@@ -161,17 +166,17 @@ export default function PlanPage() {
 
       {/* KPI row */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <KpiCard label="Plan key" value={summary.plan.key || "unassigned"} />
-        <KpiCard label="Plan tier" value={summary.plan.tier || "unassigned"} />
-        <KpiCard label="Subscription" value={summary.subscription.status} />
+        <KpiCard label="Plan key" value={s.planTier || "unassigned"} />
+        <KpiCard label="Plan tier" value={s.planTier || "unassigned"} />
+        <KpiCard label="Subscription" value={s.subscriptionStatus} />
         <KpiCard
           label="Monthly event limit"
           value={
-            summary.plan.eventLimitMonthly === -1
+            s.eventLimitMonthly === -1
               ? "∞"
-              : summary.plan.eventLimitMonthly >= 999999999
+              : s.eventLimitMonthly >= 999999999
               ? "Unlimited"
-              : summary.plan.eventLimitMonthly.toLocaleString()
+              : Intl.NumberFormat("en-US", { notation: "compact" }).format(s.eventLimitMonthly ?? 0)
           }
         />
       </div>
@@ -183,28 +188,28 @@ export default function PlanPage() {
             <div>
               <div className="flex items-center gap-3">
                 <span className="text-2xl font-bold text-[var(--text)]">
-                  {summary.plan.tier || summary.plan.key || "Plan"}
+                  {s.planTier || "Plan"}
                 </span>
                 <span className="rounded-full bg-[var(--brand-bg)] px-3 py-1 text-xs font-semibold text-[var(--brand)] uppercase tracking-wide">
-                  {summary.subscription.status}
+                  {s.subscriptionStatus}
                 </span>
               </div>
               <div className="mt-2 flex items-center gap-4 text-sm text-[var(--text2)]">
                 <span>
                   Hard cap:{" "}
                   <span className="font-medium text-[var(--text)]">
-                    {summary.plan.hardCap ? "Enabled" : "Disabled"}
+                    {s.hardCap ? "Enabled" : "Disabled"}
                   </span>
                 </span>
               </div>
             </div>
             <div className="text-right">
               <div className="text-3xl font-bold text-[var(--text)]">
-                {summary.plan.eventLimitMonthly === -1
+                {s.eventLimitMonthly === -1
                   ? "∞"
-                  : summary.plan.eventLimitMonthly >= 999999999
+                  : s.eventLimitMonthly >= 999999999
                   ? "Unlimited"
-                  : summary.plan.eventLimitMonthly.toLocaleString()}
+                  : Intl.NumberFormat("en-US", { notation: "compact" }).format(s.eventLimitMonthly ?? 0)}
               </div>
               <div className="text-sm text-[var(--text2)] mt-1">Events / month</div>
             </div>

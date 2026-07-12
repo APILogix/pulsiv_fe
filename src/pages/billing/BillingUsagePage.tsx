@@ -25,11 +25,41 @@ function buildHeatmapRows(activity: { date: string; events: number }[]) {
 export default function BillingUsagePage() {
   const { activeOrgId } = useOrganizations();
 
-  const { data: usageOverview, isLoading: isUsageLoading } = useQuery({
-    queryKey: [...orgQueryKeys.billing(activeOrgId!), "usageOverview"],
-    queryFn: () => orgApi.getBillingUsageOverview(activeOrgId!),
+  const { data: currentUsage, isLoading: isUsageLoading } = useQuery({
+    queryKey: [...orgQueryKeys.billing(activeOrgId!), "currentUsage"],
+    queryFn: () => orgApi.getCurrentUsage(activeOrgId!),
     enabled: !!activeOrgId,
   });
+
+  const { data: dailyUsage, isLoading: isDailyLoading } = useQuery({
+    queryKey: [...orgQueryKeys.billing(activeOrgId!), "dailyUsage"],
+    queryFn: () => orgApi.getDailyUsage(activeOrgId!),
+    enabled: !!activeOrgId,
+  });
+
+  const usageOverview = useMemo(() => {
+    if (!currentUsage || !dailyUsage) return null;
+    const today = new Date().toISOString().slice(0, 10);
+    const todayEvents = dailyUsage.find((d) => d.date.startsWith(today))?.eventsCount ?? 0;
+    const monthToDateEvents = currentUsage.eventsUsed ?? 0;
+    const eventLimitMonthly = currentUsage.eventLimit ?? -1;
+    const remainingEvents = currentUsage.remainingEvents ?? -1;
+    const percentUsed = eventLimitMonthly > 0 ? (monthToDateEvents / eventLimitMonthly) * 100 : 0;
+
+    return {
+      periodStart: new Date(new Date().setDate(1)).toISOString(),
+      periodEnd: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString(),
+      summary: {
+        todayEvents,
+        monthToDateEvents,
+        eventLimitMonthly,
+        remainingEvents,
+        percentUsed,
+        projectedMonthEndEvents: monthToDateEvents * 1.2, // Simple forecast mock
+      },
+      activity: dailyUsage.map((d) => ({ date: d.date, events: d.eventsCount })),
+    };
+  }, [currentUsage, dailyUsage]);
 
   const { data: limits, isLoading: isLimitsLoading } = useQuery({
     queryKey: [...orgQueryKeys.billing(activeOrgId!), "usageLimits"],
@@ -47,7 +77,7 @@ export default function BillingUsagePage() {
     [usageOverview],
   );
 
-  if (isUsageLoading || isLimitsLoading) {
+  if (isUsageLoading || isDailyLoading || isLimitsLoading) {
     return <div className="flex h-32 items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-[var(--brand)]" /></div>;
   }
 
@@ -56,10 +86,9 @@ export default function BillingUsagePage() {
   }
 
   const limitCards = [
-    { label: "Members", used: limits.limits.members.used ?? 0, limit: limits.limits.members.limit, pending: limits.limits.members.pending ?? 0 },
-    { label: "API keys", used: limits.limits.apiKeys.used ?? 0, limit: limits.limits.apiKeys.limit },
-    { label: "Environments", used: limits.limits.environments.used ?? 0, limit: limits.limits.environments.limit },
-    { label: "SCIM tokens", used: limits.limits.scimTokens.used ?? 0, limit: limits.limits.scimTokens.limit },
+    { label: "Members", used: limits.limits?.members?.used ?? 0, limit: limits.limits?.members?.limit, pending: limits.limits?.members?.pending ?? 0 },
+    { label: "SSO Providers", used: limits.limits?.ssoProviders?.used ?? 0, limit: limits.limits?.ssoProviders?.limit },
+    { label: "SCIM tokens", used: limits.limits?.scimTokens?.used ?? 0, limit: limits.limits?.scimTokens?.limit },
   ];
 
   return (

@@ -12,7 +12,6 @@ export function useVerifyMFASetup() {
       queryClient.invalidateQueries({ queryKey: authQueryKeys.mfaDevices });
       queryClient.invalidateQueries({ queryKey: authQueryKeys.currentUser });
       queryClient.invalidateQueries({ queryKey: authQueryKeys.securitySummary });
-      toast.success('MFA successfully enabled!');
     },
     onError: (error: any) => {
       const message = error.response?.data?.error?.message || 'Invalid verification code';

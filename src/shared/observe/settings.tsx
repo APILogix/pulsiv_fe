@@ -18,6 +18,39 @@ const TILE_TONES: Record<string, string> = {
 
 export type TileTone = "brand" | "green" | "red" | "amber" | "blue" | "violet" | "neutral";
 
+export function HeroPanel({ children, className }: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={cn("rounded-[12px] border border-[var(--border)] bg-[var(--bg1)] p-5", className)}>
+      {children}
+    </div>
+  );
+}
+
+const STAT_CHIP_TONES: Record<string, string> = {
+  default: "text-[var(--text)]",
+  success: "text-[var(--green)]",
+  warning: "text-[var(--amber)]",
+  danger: "text-[var(--red)]",
+};
+
+export function StatChip({ label, value, tone = "default" }: {
+  label: string;
+  value: string;
+  tone?: "default" | "success" | "warning" | "danger";
+}) {
+  return (
+    <div className="flex items-baseline gap-1.5 rounded-[8px] border border-[var(--border)] bg-[var(--bg2)] px-2.5 py-1.5">
+      <span className={cn("font-[family-name:var(--mono)] text-[13px] font-semibold tabular-nums", STAT_CHIP_TONES[tone] ?? STAT_CHIP_TONES.default)}>
+        {value}
+      </span>
+      <span className="text-[11px] text-[var(--text3)]">{label}</span>
+    </div>
+  );
+}
+
 export function IconTile({ icon: Icon, tone = "brand", className }: {
   icon: LucideIcon;
   tone?: TileTone;

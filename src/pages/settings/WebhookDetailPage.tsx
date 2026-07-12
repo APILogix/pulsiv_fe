@@ -31,7 +31,7 @@ export default function WebhookDetailPage() {
           icon={Webhook}
           message="Webhook not found. This endpoint may have been removed."
           action={
-            <Button variant="outline" onClick={() => navigate(-1)}>
+            <Button variant="secondary" onClick={() => navigate(-1)}>
               <ArrowLeft className="size-3.5" /> Back to webhooks
             </Button>
           }
@@ -55,7 +55,14 @@ export default function WebhookDetailPage() {
       <PageHeader
         title={w.name}
         breadcrumbs={[{ label: "Settings" }, { label: "Webhooks" }, { label: w.name }]}
-        actions={<StatusBadge status={w.status} />}
+        actions={
+          <div className="flex items-center gap-2">
+            <StatusBadge status={w.status} />
+            <Button variant="secondary" onClick={() => demoSuccess("Test event sent")}>
+              <Send className="size-3.5" /> Send test
+            </Button>
+          </div>
+        }
       />
 
       {/* Hero: endpoint identity + health at a glance */}
@@ -83,9 +90,6 @@ export default function WebhookDetailPage() {
               ))}
             </div>
           </div>
-          <Button variant="outline" onClick={() => demoSuccess("Test event sent")}>
-            <Send className="size-3.5" /> Send test
-          </Button>
         </div>
         <div className="mt-4 flex flex-wrap gap-2">
           <StatChip label="Deliveries" value={String(total)} />
@@ -111,7 +115,7 @@ export default function WebhookDetailPage() {
                     icon={Send}
                     message="No deliveries yet. Deliveries will appear here once events are sent to this endpoint."
                     action={
-                      <Button variant="outline" onClick={() => demoSuccess("Test event sent")}>
+                      <Button variant="secondary" onClick={() => demoSuccess("Test event sent")}>
                         <Send className="size-3.5" /> Send test event
                       </Button>
                     }

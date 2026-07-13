@@ -8,7 +8,8 @@ import {
 } from "@/shared/observe";
 import type { Column } from "@/shared/observe";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { Loader2, MoreHorizontal, Check, X } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 export default function BillingQuotasPage() {
   const queryClient = useQueryClient();
@@ -102,12 +103,33 @@ export default function BillingQuotasPage() {
     { key: "status", header: "Status", width: "110px", cell: (r) => <StatusBadge status={r.status as any} /> },
     { key: "reason", header: "Reason", width: "140px", cell: (r) => <span className="truncate text-[var(--text2)]" title={r.reason}>{r.reason}</span> },
     { key: "when", header: "When", width: "120px", cell: (r) => <Timestamp value={new Date(r.createdAt).getTime()} /> },
-    { key: "actions", header: "", width: "180px", cell: (r) => canReview && r.status === "pending" ? (
-      <div className="flex gap-2" onClick={(event) => event.stopPropagation()}>
-        <Button variant="secondary" disabled={reviewMutation.isPending} onClick={() => reviewMutation.mutate({ requestId: r.id, decision: "approve" })}>Approve</Button>
-        <Button variant="ghost" disabled={reviewMutation.isPending} onClick={() => reviewMutation.mutate({ requestId: r.id, decision: "reject" })}>Reject</Button>
-      </div>
-    ) : null },
+    {
+      key: "actions",
+      header: "",
+      width: "60px",
+      align: "right" as const,
+      cell: (r) => canReview && r.status === "pending" ? (
+        <div className="flex justify-end" onClick={(e) => e.stopPropagation()}>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="h-8 w-8 p-0">
+                <span className="sr-only">Open menu</span>
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem disabled={reviewMutation.isPending} onClick={() => reviewMutation.mutate({ requestId: r.id, decision: "approve" })}>
+                <Check className="mr-2 h-4 w-4 text-[var(--green)]" /> Approve
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem disabled={reviewMutation.isPending} onClick={() => reviewMutation.mutate({ requestId: r.id, decision: "reject" })} className="text-[var(--red)] focus:text-[var(--red)] focus:bg-[var(--red-bg)]">
+                <X className="mr-2 h-4 w-4" /> Reject
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      ) : null,
+    },
   ];
 
   return (

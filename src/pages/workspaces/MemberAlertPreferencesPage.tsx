@@ -39,15 +39,16 @@ export default function MemberAlertPreferencesPage() {
 
   const handleSave = async () => {
     try {
-      // Loop over prefs and save them
-      for (const pref of prefs) {
-        await updateMutation.mutateAsync({
+      await Promise.all(
+        prefs.map((pref) =>
+          updateMutation.mutateAsync({
           routeId: pref.routeId,
           isSubscribed: pref.isSubscribed,
           minSeverity: pref.minSeverity,
           quietHours: pref.quietHours?.enabled ? pref.quietHours : null,
-        });
-      }
+          })
+        )
+      );
       toast.success("Preferences updated successfully");
     } catch (e) {
       toast.error("Failed to update preferences");
@@ -87,15 +88,18 @@ export default function MemberAlertPreferencesPage() {
                   <div className="text-sm font-medium mb-2">Minimum Severity</div>
                   <div className="flex gap-2">
                     {(["info", "warning", "error", "critical"] as Severity[]).map(sev => (
-                      <div
+                      <button
                         key={sev}
+                        type="button"
                         className={`cursor-pointer rounded-full transition-all ${
                           pref.minSeverity === sev ? "ring-2 ring-primary ring-offset-2" : "opacity-60 grayscale hover:opacity-100 hover:grayscale-0"
                         }`}
+                        aria-pressed={pref.minSeverity === sev}
+                        aria-label={`Set minimum severity to ${sev}`}
                         onClick={() => handleSeverityChange(pref.id, sev)}
                       >
                         <SeverityBadge severity={sev} />
-                      </div>
+                      </button>
                     ))}
                   </div>
                 </div>

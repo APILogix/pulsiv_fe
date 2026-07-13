@@ -1,5 +1,7 @@
 import { useNavigate } from "react-router";
 import { useQuery } from "@tanstack/react-query";
+import { MoreHorizontal, Download } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { orgApi } from "@/modules/organizations/api/org.api";
 import { orgQueryKeys, useOrganizations } from "@/modules/organizations/hooks/useOrganizations";
 import type { Invoice } from "@/modules/organizations/types/org.types";
@@ -27,7 +29,29 @@ export default function InvoicesPage() {
     { key: "amount", header: "Amount", width: "110px", align: "right", cell: (i) => <span className="font-semibold tabular-nums">${i.amount.toFixed(2)}</span> },
     { key: "status", header: "Status", width: "110px", cell: (i) => <StatusBadge status={i.status as any} /> },
     { key: "due", header: "Due", width: "130px", cell: (i) => <Timestamp value={new Date(i.dueDate).getTime()} /> },
-    { key: "actions", header: "", width: "120px", cell: (i) => <div onClick={(e) => e.stopPropagation()}><Button variant="ghost" onClick={() => { if (i.pdfUrl) { window.open(i.pdfUrl, '_blank'); } else { toast.info("PDF not available"); } }}>Download</Button></div> },
+    {
+      key: "actions",
+      header: "",
+      width: "60px",
+      align: "right" as const,
+      cell: (i) => (
+        <div className="flex justify-end" onClick={(e) => e.stopPropagation()}>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="h-8 w-8 p-0">
+                <span className="sr-only">Open menu</span>
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => { if (i.pdfUrl) { window.open(i.pdfUrl, '_blank'); } else { toast.info("PDF not available"); } }}>
+                <Download className="mr-2 h-4 w-4" /> Download PDF
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      ),
+    },
   ];
 
   return (

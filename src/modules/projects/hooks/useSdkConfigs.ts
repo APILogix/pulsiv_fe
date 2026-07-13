@@ -19,14 +19,6 @@ export const useSdkConfigs = (orgId: string, projectId?: string, filters?: { env
   });
 };
 
-export const useSdkConfig = (orgId: string, configId: string, projectId?: string) => {
-  return useQuery({
-    queryKey: sdkConfigQueryKeys.detail(orgId, configId, projectId),
-    queryFn: () => projectId ? sdkConfigsApi.getProjectConfig(orgId, projectId, configId) : sdkConfigsApi.getOrgConfig(orgId, configId),
-    enabled: !!orgId && !!configId,
-  });
-};
-
 export const useSdkConfigVersions = (orgId: string, configId: string) => {
   return useQuery({
     queryKey: sdkConfigQueryKeys.versions(orgId, configId),
@@ -44,9 +36,15 @@ export const useSdkConfigDeployments = (orgId: string, configId: string) => {
 };
 
 export const useResolveSdkConfig = () => {
+  const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ orgId, projectId, environment, platform }: { orgId: string; projectId?: string; environment: string; platform?: string }) => 
-      projectId ? sdkConfigsApi.resolveProjectConfig(orgId, projectId, { environment, platform }) : sdkConfigsApi.resolveOrgConfig(orgId, { environment, platform })
+    mutationFn: ({ orgId, projectId, environment, platform }: { orgId: string; projectId?: string; environment: string; platform?: string }) =>
+      projectId ? sdkConfigsApi.resolveProjectConfig(orgId, projectId, { environment, platform }) : sdkConfigsApi.resolveOrgConfig(orgId, { environment, platform }),
+    onSuccess: (_data, { orgId, projectId }) => {
+      queryClient.invalidateQueries({
+        queryKey: projectId ? sdkConfigQueryKeys.projectList(orgId, projectId) : sdkConfigQueryKeys.orgList(orgId),
+      });
+    },
   });
 };
 
@@ -58,6 +56,7 @@ export const useSdkConfigMutations = () => {
       mutationFn: ({ orgId, projectId, data }: { orgId: string; projectId?: string; data: any }) =>
         sdkConfigsApi.createOrgConfig(orgId, projectId ? { ...data, projectId } : data),
       onSuccess: (_, { orgId, projectId }) => {
+      queryClient.invalidateQueries({ queryKey: ['auth'] });
         queryClient.invalidateQueries({ queryKey: projectId ? sdkConfigQueryKeys.projectList(orgId, projectId) : sdkConfigQueryKeys.orgList(orgId) });
       },
     }),
@@ -65,6 +64,7 @@ export const useSdkConfigMutations = () => {
       mutationFn: ({ orgId, configId, projectId, data }: { orgId: string; configId: string; projectId?: string; data: any }) => 
         projectId ? sdkConfigsApi.updateProjectConfig(orgId, projectId, configId, data) : sdkConfigsApi.updateOrgConfig(orgId, configId, data),
       onSuccess: (_, { orgId, configId, projectId }) => {
+      queryClient.invalidateQueries({ queryKey: ['auth'] });
         queryClient.invalidateQueries({ queryKey: projectId ? sdkConfigQueryKeys.projectList(orgId, projectId) : sdkConfigQueryKeys.orgList(orgId) });
         queryClient.invalidateQueries({ queryKey: sdkConfigQueryKeys.detail(orgId, configId, projectId) });
       },
@@ -73,6 +73,7 @@ export const useSdkConfigMutations = () => {
       mutationFn: ({ orgId, configId, version, reason }: { orgId: string; configId: string; version: number; reason?: string }) =>
         sdkConfigsApi.rollbackOrgConfig(orgId, configId, version, reason ?? `Rollback to version ${version}`),
       onSuccess: (_, { orgId, configId }) => {
+      queryClient.invalidateQueries({ queryKey: ['auth'] });
         queryClient.invalidateQueries({ queryKey: sdkConfigQueryKeys.detail(orgId, configId) });
         queryClient.invalidateQueries({ queryKey: sdkConfigQueryKeys.versions(orgId, configId) });
       }
@@ -80,6 +81,7 @@ export const useSdkConfigMutations = () => {
     ackVersion: useMutation({
       mutationFn: ({ orgId, configId, version }: { orgId: string; configId: string; version: number }) => sdkConfigsApi.ackOrgConfigVersion(orgId, configId, version),
       onSuccess: (_, { orgId, configId }) => {
+      queryClient.invalidateQueries({ queryKey: ['auth'] });
         queryClient.invalidateQueries({ queryKey: sdkConfigQueryKeys.deployments(orgId, configId) });
         queryClient.invalidateQueries({ queryKey: sdkConfigQueryKeys.versions(orgId, configId) });
       }

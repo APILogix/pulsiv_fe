@@ -1,16 +1,18 @@
-import { ArrowRight, RotateCw } from "lucide-react";
+import { useState } from "react";
+import { ArrowRight, RotateCw, MoreHorizontal } from "lucide-react";
 import { PageHeader, KpiCard, SectionCard, Table, Tr, Td, StatusCodeBadge, Button, Timestamp, demoSuccess } from "@/shared/observe";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 const STAGES = ["Ingest", "Validate", "Enrich", "Dedupe", "Store"];
 
 export default function PipelinePage() {
-  const deadLetters = Array.from({ length: 12 }, (_, i) => ({
+  const [deadLetters] = useState(() => Array.from({ length: 12 }, (_, i) => ({
     id: `dl-${i}`,
     eventType: ["error", "request", "log", "span"][i % 4],
     reason: ["Schema mismatch", "Payload too large", "Invalid timestamp", "Missing API key"][i % 4],
     code: [422, 413, 400, 401][i % 4],
     ts: Date.now() - i * 1800000,
-  }));
+  })));
 
   return (
     <div className="flex flex-col gap-5">
@@ -49,7 +51,23 @@ export default function PipelinePage() {
               <Td className="text-[var(--text2)]">{d.reason}</Td>
               <Td><StatusCodeBadge code={d.code} /></Td>
               <Td><Timestamp value={d.ts} /></Td>
-              <Td><Button variant="ghost" onClick={() => demoSuccess(`Replayed ${d.id}`)}><RotateCw className="size-3.5" /> Replay</Button></Td>
+              <Td>
+                <div className="flex justify-end" onClick={(e) => e.stopPropagation()}>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" className="h-8 w-8 p-0">
+                        <span className="sr-only">Open menu</span>
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => demoSuccess(`Replayed ${d.id}`)}>
+                        <RotateCw className="mr-2 h-4 w-4" /> Replay
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              </Td>
             </Tr>
           ))}
         </Table>

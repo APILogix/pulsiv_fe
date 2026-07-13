@@ -1,11 +1,13 @@
-import { useMutation } from '@tanstack/react-query';
+import { useMutation , useQueryClient} from '@tanstack/react-query';
 import { authApi } from '../api/auth.api';
 import { toast } from 'sonner';
 
 export function useRequestAccountUnlock() {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: authApi.requestAccountUnlock,
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['auth'] });
       toast.success('Unlock link sent! Check your email.');
     },
     onError: (error: any) => {

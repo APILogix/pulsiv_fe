@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useNavigate } from "react-router";
 import { AlertTriangle } from "lucide-react";
 import { useTraceEvents, useSpanEvents } from "@/hooks/useDummyData";
@@ -18,6 +19,7 @@ export default function TracingDependencyMap() {
   const setTimeRange = useTimeRangeStore((s) => s.setTimeRange);
   const traces = useTraceEvents();
   const spans = useSpanEvents();
+  const [now] = useState(() => Date.now());
 
   const traceList = traces.data ?? [];
   const spanList = spans.data ?? [];
@@ -96,7 +98,7 @@ export default function TracingDependencyMap() {
           {nodes.map((n) => {
             const tone = n.errRate > 5 ? "var(--red)" : n.errRate > 1 ? "var(--amber)" : "var(--green)";
             return (
-              <button key={n.svc} onClick={() => navigate("/observability/traces")} className="flex min-w-[150px] flex-col rounded-[10px] border bg-[var(--bg2)] p-3 text-left" style={{ borderColor: tone }}>
+              <button type="button" key={n.svc} onClick={() => navigate("/observability/traces")} className="flex min-w-[150px] flex-col rounded-[10px] border bg-[var(--bg2)] p-3 text-left" style={{ borderColor: tone }}>
                 <span className="flex items-center justify-between">
                   <span className="truncate text-[13px] font-medium text-[var(--text)]">{n.svc}</span>
                   <span className="size-2 rounded-full" style={{ background: tone }} />
@@ -121,7 +123,7 @@ export default function TracingDependencyMap() {
               <Td><span style={{ color: t.totalDuration > 1000 ? "var(--red)" : t.totalDuration > 300 ? "var(--amber)" : "var(--green)" }} className="tabular-nums font-semibold">{formatDuration(t.totalDuration)}</span></Td>
               <Td className="tabular-nums">{t.spanCount}</Td>
               <Td><StatusBadge status={t.isPartial ? "in_progress" : t.rootSpan?.status === "error" ? "error" : "ok"} /></Td>
-              <Td><Timestamp value={t.rootSpan?.startTime ?? Date.now()} /></Td>
+              <Td><Timestamp value={t.rootSpan?.startTime ?? now} /></Td>
               <Td className="text-[var(--text2)]">{t.metadata.service}</Td>
             </Tr>
           ))}

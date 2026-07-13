@@ -25,7 +25,7 @@ export default function AiOverviewPage() {
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {FEATURES.map((f) => (
-          <div key={f.title} onClick={() => navigate(f.to)} className="cursor-pointer rounded-[12px] border border-[var(--border)] bg-[var(--bg1)] p-5 transition-colors hover:border-[var(--input)]">
+          <div key={f.title} role="button" tabIndex={0} onClick={() => navigate(f.to)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(f.to); } }} className="cursor-pointer rounded-[12px] border border-[var(--border)] bg-[var(--bg1)] p-5 transition-colors hover:border-[var(--input)]">
             <div className="flex size-10 items-center justify-center rounded-[10px] bg-[var(--brand-bg)]"><f.icon className="size-5 text-[var(--brand)]" /></div>
             <div className="mt-3 font-semibold text-[var(--text)]">{f.title}</div>
             <p className="mt-1 text-[13px] text-[var(--text2)]">{f.desc}</p>

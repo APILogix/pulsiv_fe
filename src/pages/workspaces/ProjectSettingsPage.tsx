@@ -96,9 +96,9 @@ export default function ProjectSettingsPage() {
         },
       });
       toast.success("General settings saved");
+      setSavingGeneral(false);
     } catch {
       toast.error("Failed to save general settings");
-    } finally {
       setSavingGeneral(false);
     }
   });
@@ -112,9 +112,9 @@ export default function ProjectSettingsPage() {
         data,
       });
       toast.success("Advanced settings saved");
+      setSavingAdvanced(false);
     } catch {
       toast.error("Failed to save advanced settings");
-    } finally {
       setSavingAdvanced(false);
     }
   });

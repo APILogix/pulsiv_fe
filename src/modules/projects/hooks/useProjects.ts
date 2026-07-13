@@ -56,38 +56,11 @@ export const useProjectOverview = (projectId: string) => {
   });
 };
 
-export const useProjectStats = (projectId: string) => {
-  const activeOrgId = useOrgStore((state) => state.activeOrgId);
-  return useQuery({
-    queryKey: [...projectQueryKeys.stats(projectId), activeOrgId],
-    queryFn: () => projectsApi.getStats(activeOrgId!, projectId),
-    enabled: !!activeOrgId && !!projectId,
-  });
-};
-
 export const useProjectUsage = (projectId: string) => {
   const activeOrgId = useOrgStore((state) => state.activeOrgId);
   return useQuery({
     queryKey: [...projectQueryKeys.usage(projectId), activeOrgId],
     queryFn: () => projectsApi.getUsage(activeOrgId!, projectId),
-    enabled: !!activeOrgId && !!projectId,
-  });
-};
-
-export const useProjectActivity = (projectId: string) => {
-  const activeOrgId = useOrgStore((state) => state.activeOrgId);
-  return useQuery({
-    queryKey: [...projectQueryKeys.activity(projectId), activeOrgId],
-    queryFn: () => projectsApi.getActivity(activeOrgId!, projectId),
-    enabled: !!activeOrgId && !!projectId,
-  });
-};
-
-export const useEnvironments = (projectId: string) => {
-  const activeOrgId = useOrgStore((state) => state.activeOrgId);
-  return useQuery({
-    queryKey: [...projectQueryKeys.environments(projectId), activeOrgId],
-    queryFn: () => projectsApi.listEnvironments(activeOrgId!, projectId),
     enabled: !!activeOrgId && !!projectId,
   });
 };

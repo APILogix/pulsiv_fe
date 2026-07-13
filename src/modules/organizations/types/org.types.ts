@@ -25,6 +25,29 @@ export interface Organization {
   updatedAt: string;
 }
 
+export interface VerifiedDomain {
+  id: string;
+  domain: string;
+  isPrimary: boolean;
+  isVerified: boolean;
+  autoJoinEnabled: boolean;
+  verificationMethod: string | null;
+  verificationStartedAt: string | null;
+  verifiedAt: string | null;
+  lastVerificationCheckAt: string | null;
+  metadata: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreatedVerifiedDomain extends VerifiedDomain {
+  dnsInstructions: {
+    recordType: 'TXT';
+    host: string;
+    value: string;
+  };
+}
+
 export interface UserOrganization {
   id: string;
   name: string;

@@ -1,4 +1,4 @@
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { useParams, useNavigate } from "react-router";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -18,6 +18,7 @@ export default function AlertRuleDetailPage() {
   const { ruleId = "" } = useParams();
   const navigate = useNavigate();
   const { data: rule, isLoading } = useAlertRule(ruleId);
+  const [sparklineData] = useState(() => Array.from({ length: 40 }, () => Math.random() * 100));
 
   const { register, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -55,7 +56,7 @@ export default function AlertRuleDetailPage() {
 
         <SectionCard title="Preview">
           <p className="mb-3 text-[13px] text-[var(--text2)]">Recent metric values against the configured threshold ({rule.threshold ?? "anomaly"}).</p>
-          <MetricSparkline data={Array.from({ length: 40 }, () => Math.random() * 100)} color="var(--amber)" width={460} height={120} />
+          <MetricSparkline data={sparklineData} color="var(--amber)" width={460} height={120} />
         </SectionCard>
       </div>
     </div>

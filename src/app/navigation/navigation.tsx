@@ -64,18 +64,6 @@ export interface MainNavItem extends ModuleNavItem {
   children?: ModuleNavItem[];
 }
 
-export const navStatusLabel: Record<NavStatus, string> = {
-  live: "Live",
-  partial: "Partial",
-  "coming-soon": "Coming soon",
-};
-
-export const navStatusClassName: Record<NavStatus, string> = {
-  live: "bg-[var(--green-bg)] text-[var(--green)]",
-  partial: "bg-[var(--yellow-bg)] text-[var(--yellow)]",
-  "coming-soon": "bg-[var(--brand-bg)] text-[var(--brand)]",
-};
-
 export const mainNavigation: MainNavItem[] = [
   {
     label: "Home",
@@ -269,7 +257,3 @@ export const mainNavigation: MainNavItem[] = [
     ],
   },
 ];
-
-export function findMainNavItem(pathname: string): MainNavItem | undefined {
-  return mainNavigation.find((item) => pathname === item.path || pathname.startsWith(`${item.path}/`));
-}

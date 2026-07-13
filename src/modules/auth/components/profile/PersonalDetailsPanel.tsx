@@ -41,7 +41,7 @@ export function PersonalDetailsPanel() {
             {user?.full_name?.charAt(0).toUpperCase() || 'U'}
           </div>
           <div>
-            <button className="px-4 py-2.5 bg-[#1a1a1a] text-white border border-[#1f1f1f] text-[13px] font-medium rounded-md hover:bg-[#2a2a2a] transition-all">
+            <button type="button" className="px-4 py-2.5 bg-[#1a1a1a] text-white border border-[#1f1f1f] text-[13px] font-medium rounded-md hover:bg-[#2a2a2a] transition-all">
               Upload New Avatar
             </button>
             <p className="text-[12px] text-[#5C5F66] mt-2">JPG, GIF or PNG. Max size of 2MB.</p>
@@ -58,8 +58,9 @@ export function PersonalDetailsPanel() {
           <form id="profile-form" onSubmit={handleSubmit(onSubmit)} className="space-y-5">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div className="flex flex-col gap-2">
-                <label className="text-[13px] font-medium text-[#8A8F98]">First Name</label>
+                <label htmlFor="profile-first-name" className="text-[13px] font-medium text-[#8A8F98]">First Name</label>
                 <Input 
+                  id="profile-first-name"
                   {...register('full_name')} 
                   defaultValue={firstName}
                   className="bg-[#0c0c0c] border-[#1f1f1f] text-white text-[14px] px-3.5 py-2.5 rounded-md focus:border-[#10b981] h-auto"
@@ -67,8 +68,9 @@ export function PersonalDetailsPanel() {
                 {errors.full_name && <p className="text-[#ef4444] text-xs mt-1">{errors.full_name.message}</p>}
               </div>
               <div className="flex flex-col gap-2">
-                <label className="text-[13px] font-medium text-[#8A8F98]">Last Name</label>
+                <label htmlFor="profile-last-name" className="text-[13px] font-medium text-[#8A8F98]">Last Name</label>
                 <Input 
+                  id="profile-last-name"
                   defaultValue={lastName}
                   className="bg-[#0c0c0c] border-[#1f1f1f] text-white text-[14px] px-3.5 py-2.5 rounded-md focus:border-[#10b981] h-auto"
                 />
@@ -76,8 +78,9 @@ export function PersonalDetailsPanel() {
             </div>
             
             <div className="flex flex-col gap-2">
-              <label className="text-[13px] font-medium text-white/90">Email Address</label>
+              <label htmlFor="profile-email" className="text-[13px] font-medium text-white/90">Email Address</label>
               <Input 
+                id="profile-email"
                 value={user?.email ?? ''} 
                 readOnly
                 className="bg-[#0c0c0c] border-[#1f1f1f] text-white text-[14px] px-3.5 py-2.5 rounded-md h-auto cursor-not-allowed"

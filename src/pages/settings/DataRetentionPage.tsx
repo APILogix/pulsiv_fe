@@ -10,7 +10,7 @@ const TIERS = [
 ];
 
 export default function DataRetentionPage() {
-  const [retention, setRetention] = useState<Record<string, number>>(Object.fromEntries(TIERS.map((t) => [t.name, t.days])));
+  const [retention, setRetention] = useState<Record<string, number>>(() => Object.fromEntries(TIERS.map((t) => [t.name, t.days])));
   const monthlyCost = TIERS.reduce((s, t) => s + retention[t.name] * t.costPerDay, 0);
 
   return (
@@ -32,6 +32,7 @@ export default function DataRetentionPage() {
               <input
                 type="range" min={1} max={365} value={retention[t.name]}
                 onChange={(e) => setRetention((p) => ({ ...p, [t.name]: Number(e.target.value) }))}
+                aria-label={`${t.name} retention period`}
                 className="w-full accent-[var(--brand)]"
               />
             </div>

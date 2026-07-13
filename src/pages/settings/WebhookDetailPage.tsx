@@ -1,7 +1,8 @@
 import { useParams, useNavigate } from "react-router";
-import { ArrowLeft, RotateCw } from "lucide-react";
+import { ArrowLeft, RotateCw, MoreHorizontal } from "lucide-react";
 import { useWebhook } from "@/hooks/useDummyData";
 import { PageHeader, SectionCard, StatusBadge, StatusCodeBadge, Tabs, Table, Tr, Td, CopyButton, Button, Timestamp, demoSuccess, DetailSkeleton } from "@/shared/observe";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 export default function WebhookDetailPage() {
   const { webhookId = "" } = useParams();
@@ -43,7 +44,23 @@ export default function WebhookDetailPage() {
                       <Td className="tabular-nums">{d.duration}ms</Td>
                       <Td className="tabular-nums text-[var(--text2)]">{d.retryCount}</Td>
                       <Td><Timestamp value={d.timestamp} /></Td>
-                      <Td><Button variant="ghost" onClick={() => demoSuccess("Redelivered")}><RotateCw className="size-3.5" /> Redeliver</Button></Td>
+                      <Td>
+                        <div className="flex justify-end" onClick={(e) => e.stopPropagation()}>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" className="h-8 w-8 p-0">
+                                <span className="sr-only">Open menu</span>
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => demoSuccess("Redelivered")}>
+                                <RotateCw className="mr-2 h-4 w-4" /> Redeliver
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      </Td>
                     </Tr>
                   ))}
                 </Table>

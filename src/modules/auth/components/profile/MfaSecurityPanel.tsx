@@ -15,6 +15,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { AddDeviceDialog } from './AddDeviceDialog';
 
 const TYPE_ICON: Record<MFAType, typeof Smartphone> = {
@@ -85,6 +86,18 @@ export function MfaSecurityPanel() {
 
   const mfaEnabled = !!user?.mfa_enabled;
   const verifiedDevices = devices.filter((d) => d.verified);
+  const mfaBusy = disableMfa.isPending;
+
+  function handleMfaToggle(nextChecked: boolean) {
+    if (mfaBusy) return;
+    if (nextChecked) {
+      setAddOpen(true);
+      return;
+    }
+    if (mfaEnabled) {
+      setDisableOpen(true);
+    }
+  }
 
   return (
     <div className="flex flex-col gap-6 animate-in fade-in duration-300 w-full max-w-[800px]">
@@ -100,9 +113,6 @@ export function MfaSecurityPanel() {
         <div>
           <div className="flex items-center gap-3 mb-1">
             <h3 className="text-[16px] font-semibold text-white">MFA Status</h3>
-            <span className={`px-2 py-0.5 border text-[10px] font-semibold uppercase tracking-wider rounded ${mfaEnabled ? 'border-[#10b981] text-[#10b981]' : 'border-[#3a3a3a] text-[#8A8F98]'}`}>
-              {mfaEnabled ? 'Enabled' : 'Not enabled'}
-            </span>
           </div>
           <p className="text-[14px] text-[#8A8F98]">
             {mfaEnabled
@@ -110,14 +120,18 @@ export function MfaSecurityPanel() {
               : 'Add a verification method to enable two-factor authentication.'}
           </p>
         </div>
-        {mfaEnabled && (
-          <button
-            onClick={() => setDisableOpen(true)}
-            className="px-4 py-2 border border-[#ef4444]/20 bg-[#2a1313] text-[#ef4444] text-[13px] font-medium rounded-md hover:bg-[#3f1919] transition-all flex items-center gap-2 shrink-0"
-          >
-            <ShieldOff size={15} /> Disable MFA
-          </button>
-        )}
+        <div className="flex items-center gap-3 shrink-0">
+          <span className={`text-[12px] font-semibold uppercase tracking-[0.2em] ${mfaEnabled ? 'text-[#10b981]' : 'text-[#8A8F98]'}`}>
+            {mfaEnabled ? 'On' : 'Off'}
+          </span>
+          <Switch
+            checked={mfaEnabled}
+            onCheckedChange={handleMfaToggle}
+            disabled={mfaBusy}
+            aria-label="Toggle multi-factor authentication"
+            className={mfaBusy ? 'opacity-60 cursor-not-allowed' : ''}
+          />
+        </div>
       </div>
 
       {/* Device list */}
@@ -128,6 +142,7 @@ export function MfaSecurityPanel() {
             <p className="text-[13px] text-[#8A8F98] mt-1">Manage your authenticator apps and security keys.</p>
           </div>
           <button
+            type="button"
             onClick={() => setAddOpen(true)}
             className="px-4 py-2 bg-white text-black text-[13px] font-medium rounded-md hover:bg-[#e8e8e8] transition-all flex items-center gap-2"
           >
@@ -169,6 +184,7 @@ export function MfaSecurityPanel() {
                   <div className="flex items-center gap-2 shrink-0">
                     {d.verified && !d.is_primary && (
                       <button
+                        type="button"
                         onClick={() => setPrimary.mutate(d.id)}
                         disabled={setPrimary.isPending}
                         title="Set as default"
@@ -178,15 +194,19 @@ export function MfaSecurityPanel() {
                       </button>
                     )}
                     <button
+                      type="button"
                       onClick={() => { setRenameTarget(d); setRenameValue(d.name); }}
                       title="Rename"
+                      aria-label={`Rename ${d.name}`}
                       className="p-2 border border-[#2a2a2a] bg-[#1a1a1a] text-[#8A8F98] rounded-md hover:text-white hover:bg-[#2a2a2a] transition-all"
                     >
                       <Pencil size={16} />
                     </button>
                     <button
+                      type="button"
                       onClick={() => setRemoveTarget(d)}
                       title="Remove"
+                      aria-label={`Remove ${d.name}`}
                       className="p-2 border border-[#2a2a2a] bg-[#1a1a1a] text-[#8A8F98] rounded-md hover:border-[rgba(239,68,68,0.3)] hover:text-[#ef4444] transition-all"
                     >
                       <Trash2 size={16} />

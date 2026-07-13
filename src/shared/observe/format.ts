@@ -30,16 +30,19 @@ export function formatAbsoluteTime(timestamp: number): string {
   return ABS_FMT.format(new Date(timestamp));
 }
 
+const DATE_FMT = new Intl.DateTimeFormat("en-US", { year: "numeric", month: "short", day: "numeric" });
 export function formatDate(timestamp: number): string {
-  return new Intl.DateTimeFormat("en-US", { year: "numeric", month: "short", day: "numeric" }).format(new Date(timestamp));
+  return DATE_FMT.format(new Date(timestamp));
 }
 
+const NUM_FMT = new Intl.NumberFormat("en-US");
 export function formatNumber(value: number): string {
-  return new Intl.NumberFormat("en-US").format(value);
+  return NUM_FMT.format(value);
 }
 
+const COMPACT_FMT = new Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 1 });
 export function formatCompact(value: number): string {
-  return new Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 1 }).format(value);
+  return COMPACT_FMT.format(value);
 }
 
 export function formatDuration(ms: number): string {

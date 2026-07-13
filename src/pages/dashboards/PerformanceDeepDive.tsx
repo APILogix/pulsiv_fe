@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useNavigate } from "react-router";
 import { AlertTriangle, Database, Server } from "lucide-react";
 import { useRequestEvents, useSpanEvents } from "@/hooks/useDummyData";
@@ -27,6 +28,7 @@ export default function PerformanceDeepDive() {
 
   const reqList = requests.data ?? [];
   const spanList = spans.data ?? [];
+  const [randomDurs] = useState(() => Array.from({ length: 4 }, () => 40 + Math.random() * 60));
   const latencies = reqList.map((r) => r.latency);
 
   const p50 = percentile(latencies, 50);
@@ -73,9 +75,9 @@ export default function PerformanceDeepDive() {
     { label: "Redis commands", match: (n: string) => /redis/.test(n) },
     { label: "External API", match: (n: string) => /http|fetch|GET|POST/.test(n) },
     { label: "Message queue", match: (n: string) => /queue|kafka|sqs|amqp/.test(n) },
-  ].map((d) => {
+  ].map((d, i) => {
     const matched = clientSpans.filter((s) => d.match(s.name));
-    const dur = matched.length ? matched.reduce((s, x) => s + x.duration, 0) / matched.length : 40 + Math.random() * 60;
+    const dur = matched.length ? matched.reduce((s, x) => s + x.duration, 0) / matched.length : randomDurs[i];
     return { label: d.label, value: Math.round(dur), color: latencyTone(dur) };
   });
 
@@ -161,7 +163,7 @@ export default function PerformanceDeepDive() {
         tone="red"
         icon={AlertTriangle}
         title={<><strong>Latency regression detected</strong> on <span className="font-[family-name:var(--mono)]">POST /api/v1/payments</span> — P95 increased 340% vs 7-day baseline.</>}
-        action={<button onClick={() => navigate("/dashboards/releases")} className="rounded-[6px] border border-current px-2 py-1 text-[12px]">View release</button>}
+        action={<button type="button" onClick={() => navigate("/dashboards/releases")} className="rounded-[6px] border border-current px-2 py-1 text-[12px]">View release</button>}
       />
 
       <HeroBand

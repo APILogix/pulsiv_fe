@@ -29,8 +29,9 @@ export function ChangePasswordPanel() {
         <div className="p-6">
           <form id="password-form" onSubmit={handleSubmit(onSubmit)} className="space-y-5 max-w-[400px]">
             <div className="flex flex-col gap-2">
-              <label className="text-[13px] font-medium text-[#8A8F98]">Current Password</label>
+              <label htmlFor="current-password" className="text-[13px] font-medium text-[#8A8F98]">Current Password</label>
               <Input 
+                id="current-password"
                 type="password" 
                 placeholder="Enter your current password"
                 {...register('current_password')} 
@@ -39,8 +40,9 @@ export function ChangePasswordPanel() {
               {errors.current_password && <p className="text-[#ef4444] text-xs mt-1">{errors.current_password.message}</p>}
             </div>
             <div className="flex flex-col gap-2">
-              <label className="text-[13px] font-medium text-[#8A8F98]">New Password</label>
+              <label htmlFor="new-password" className="text-[13px] font-medium text-[#8A8F98]">New Password</label>
               <Input 
+                id="new-password"
                 type="password" 
                 placeholder="Enter a new password"
                 {...register('new_password')} 
@@ -49,8 +51,9 @@ export function ChangePasswordPanel() {
               {errors.new_password && <p className="text-[#ef4444] text-xs mt-1">{errors.new_password.message}</p>}
             </div>
             <div className="flex flex-col gap-2">
-              <label className="text-[13px] font-medium text-[#8A8F98]">Confirm New Password</label>
+              <label htmlFor="confirm-new-password" className="text-[13px] font-medium text-[#8A8F98]">Confirm New Password</label>
               <Input 
+                id="confirm-new-password"
                 type="password" 
                 placeholder="Confirm your new password"
                 {...register('confirm_new_password')} 

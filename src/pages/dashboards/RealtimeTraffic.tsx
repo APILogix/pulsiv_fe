@@ -58,7 +58,7 @@ export default function RealtimeTraffic() {
         title="Real-Time Traffic & Request Flow"
         description="Know exactly what is happening right now across all APIs."
         actions={
-          <button
+          <button type="button"
             onClick={toggleLive}
             className="inline-flex items-center gap-2 rounded-[8px] border border-[var(--border)] bg-[var(--bg2)] px-3 py-1.5 text-sm font-medium text-[var(--text)]"
           >
@@ -157,7 +157,7 @@ export default function RealtimeTraffic() {
         <SectionCard title="Error alert stream">
           <div className="flex max-h-[28rem] flex-col divide-y divide-[var(--border)] overflow-auto">
             {errorStream.map((e) => (
-              <button key={e.eventId} onClick={() => navigate(`/observability/errors/${e.fingerprint}`)} className="flex items-start gap-2 py-2 text-left first:pt-0 hover:opacity-80">
+              <button type="button" key={e.eventId} onClick={() => navigate(`/observability/errors/${e.fingerprint}`)} className="flex items-start gap-2 py-2 text-left first:pt-0 hover:opacity-80">
                 <SeverityBadge severity={e.severity} />
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-[12px] font-medium text-[var(--text)]">{e.name}</div>

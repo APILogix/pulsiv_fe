@@ -14,7 +14,7 @@
 import type { QueryClient } from '@tanstack/react-query';
 import { authApi } from '../api/auth.api';
 import { authQueryKeys } from '../api/auth.query';
-import { markPostLoginSetup } from '../components/PostLoginSetup';
+import { markPostLoginSetup } from './post-login-setup-flag';
 import type { AuthSession } from '../types/auth.types';
 
 interface PostLoginDeps {

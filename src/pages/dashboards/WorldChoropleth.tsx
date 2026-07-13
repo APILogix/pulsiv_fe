@@ -54,12 +54,11 @@ export function WorldChoropleth({ data, formatRequests }: {
       >
         <Geographies geography={GEO_URL}>
           {({ geographies }) =>
-            geographies
-              .filter((geo) => geo.id !== "010") /* hide Antarctica */
-              .map((geo) => {
+            geographies.flatMap((geo) => {
+                if (geo.id === "010") return []; /* hide Antarctica */
                 const datum = byNumericId.get(String(geo.id));
                 const intensity = datum ? 0.25 + 0.75 * (datum.share / maxShare) : 0;
-                return (
+                return [(
                   <Geography
                     key={geo.rsmKey}
                     geography={geo}
@@ -83,7 +82,7 @@ export function WorldChoropleth({ data, formatRequests }: {
                     }}
                     onMouseLeave={() => setTooltip(null)}
                   />
-                );
+                )];
               })
           }
         </Geographies>

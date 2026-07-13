@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { PageHeader, KpiCard, SectionCard, Table, Tr, Td, MetricSparkline } from "@/shared/observe";
 
 const MODELS = [
@@ -8,6 +9,8 @@ const MODELS = [
 ];
 
 export default function CostUsagePage() {
+  const [sparklineData] = useState(() => Array.from({ length: 30 }, (_, i) => 5 + i * 0.4 + Math.random() * 3));
+
   return (
     <div className="flex flex-col gap-5">
       <PageHeader title="Cost & Usage" description="AI model spend tracking and token usage governance." />
@@ -20,7 +23,7 @@ export default function CostUsagePage() {
       </div>
 
       <SectionCard title="Spend trend (30d)">
-        <MetricSparkline data={Array.from({ length: 30 }, (_, i) => 5 + i * 0.4 + Math.random() * 3)} color="var(--violet)" width={760} height={120} />
+        <MetricSparkline data={sparklineData} color="var(--violet)" width={760} height={120} />
       </SectionCard>
 
       <SectionCard title="Breakdown by model" className="p-0">

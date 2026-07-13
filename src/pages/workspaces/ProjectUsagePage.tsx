@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import { useProjectUsage } from "@/modules/projects/hooks/useProjects";
 import { PageHeader, SectionCard, MetricSparkline, formatCompact } from "@/shared/observe";
 import { useCurrentProject } from "./ProjectShellPage";
@@ -93,19 +92,24 @@ function TrendIndicator({ value, suffix = "%" }: { value: number; suffix?: strin
 }
 
 /* ── bar chart component ── */
-function BarChart({ data, maxVal, color = "var(--brand)" }: { data: number[]; maxVal: number; color?: string }) {
+interface BarChartDatum {
+  id: string;
+  value: number;
+}
+
+function BarChart({ data, maxVal, color = "var(--brand)" }: { data: BarChartDatum[]; maxVal: number; color?: string }) {
   return (
     <div className="flex items-end gap-[2px] h-[100px]">
-      {data.map((v, i) => {
-        const h = maxVal > 0 ? (v / maxVal) * 100 : 0;
+      {data.map((point) => {
+        const h = maxVal > 0 ? (point.value / maxVal) * 100 : 0;
         return (
           <div
-            key={i}
+            key={point.id}
             className="flex-1 rounded-t-sm transition-all duration-200 hover:opacity-80 group relative min-w-[4px]"
-            style={{ height: `${Math.max(h, 1)}%`, background: v > 0 ? color : "rgba(255,255,255,0.04)" }}
+            style={{ height: `${Math.max(h, 1)}%`, background: point.value > 0 ? color : "rgba(255,255,255,0.04)" }}
           >
             <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-[var(--bg3)] text-[var(--text)] text-[10px] px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10 shadow-lg">
-              {formatCompact(v)}
+              {formatCompact(point.value)}
             </div>
           </div>
         );
@@ -118,9 +122,9 @@ export default function ProjectUsagePage() {
   const { project: p, projectId } = useCurrentProject();
   useProjectUsage(projectId);
 
-  const heatmap = useMemo(() => generateHeatmapData(projectId), [projectId]);
-  const trend30d = useMemo(() => generateUsageTrend(projectId), [projectId]);
-  const hourly = useMemo(() => generateHourlyBreakdown(projectId), [projectId]);
+  const heatmap = generateHeatmapData(projectId);
+  const trend30d = generateUsageTrend(projectId);
+  const hourly = generateHourlyBreakdown(projectId);
 
   const maxHeat = Math.max(...heatmap.grid.map((c) => c.value));
   const totalEvents = trend30d.reduce((s, v) => s + v, 0);
@@ -264,7 +268,11 @@ export default function ProjectUsagePage() {
             <span className="text-xl font-bold text-[var(--text)] tabular-nums">{formatCompact(todayEvents)}</span>
             <span className="text-[12px] text-[var(--text3)]">events today</span>
           </div>
-          <BarChart data={hourly.map((h) => h.events)} maxVal={maxHourlyEvents} color="rgba(16,185,129,0.6)" />
+          <BarChart
+            data={hourly.map((h) => ({ id: String(h.hour), value: h.events }))}
+            maxVal={maxHourlyEvents}
+            color="rgba(16,185,129,0.6)"
+          />
           <div className="flex justify-between mt-2 text-[10px] text-[var(--text3)] tabular-nums">
             <span>00:00</span>
             <span>06:00</span>

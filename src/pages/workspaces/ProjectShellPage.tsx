@@ -20,12 +20,12 @@ export function useCurrentProject() {
 
 export function ProjectShellPage() {
   const { projectId } = useParams<{ projectId: string }>();
+  const safeProjectId = projectId ?? "";
+  const { data: project, isLoading, error } = useProject(safeProjectId);
 
   if (!projectId) {
     return <Navigate to="/projects" replace />;
   }
-
-  const { data: project, isLoading, error } = useProject(projectId);
 
   if (isLoading) {
     return (
@@ -48,7 +48,7 @@ export function ProjectShellPage() {
   }
 
   return (
-    <ProjectContext.Provider value={{ project, projectId }}>
+    <ProjectContext.Provider value={{ project, projectId: safeProjectId }}>
       <div className="flex-1 h-full w-full bg-[var(--bg)] overflow-auto p-6">
         <Outlet />
       </div>

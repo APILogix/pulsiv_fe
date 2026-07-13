@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Smartphone, Key, Mail, ChevronRight, Loader2, Copy, Download, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import { authApi } from '../../api/auth.api';
@@ -31,7 +31,7 @@ export function AddDeviceDialog({ open, onOpenChange, onComplete }: Props) {
   const [deviceName, setDeviceName] = useState('');
   const [busy, setBusy] = useState(false);
   const [setupData, setSetupData] = useState<MFASetupDto | null>(null);
-  const [deviceId, setDeviceId] = useState('');
+  const deviceIdRef = useRef('');
   const [code, setCode] = useState('');
   const [backupCodes, setBackupCodes] = useState<string[]>([]);
 
@@ -41,7 +41,7 @@ export function AddDeviceDialog({ open, onOpenChange, onComplete }: Props) {
     setDeviceName('');
     setBusy(false);
     setSetupData(null);
-    setDeviceId('');
+    deviceIdRef.current = '';
     setCode('');
     setBackupCodes([]);
   }
@@ -75,16 +75,17 @@ export function AddDeviceDialog({ open, onOpenChange, onComplete }: Props) {
         } else {
           close();
         }
+        setBusy(false);
         return;
       }
       const data = await authApi.setupMFA({ type: method, device_name: name });
       setSetupData(data);
-      setDeviceId(data.device_id);
+      deviceIdRef.current = data.device_id;
       setStep(method === 'totp' ? 'totp-verify' : 'email-verify');
+      setBusy(false);
     } catch (err) {
       const msg = err instanceof WebAuthnCeremonyError ? err.message : getErrorMessage(err);
       toast.error(msg);
-    } finally {
       setBusy(false);
     }
   }
@@ -92,7 +93,7 @@ export function AddDeviceDialog({ open, onOpenChange, onComplete }: Props) {
   async function verifyCode() {
     setBusy(true);
     try {
-      await authApi.verifyMFASetup({ device_id: deviceId, code });
+      await authApi.verifyMFASetup({ device_id: deviceIdRef.current, code });
       onComplete();
       const codes = setupData?.backup_codes ?? [];
       if (codes.length) {
@@ -101,17 +102,17 @@ export function AddDeviceDialog({ open, onOpenChange, onComplete }: Props) {
       } else {
         close();
       }
+      setBusy(false);
     } catch (err) {
       toast.error(getErrorMessage(err));
-    } finally {
       setBusy(false);
     }
   }
 
   async function resendEmail() {
-    if (!deviceId) return;
+    if (!deviceIdRef.current) return;
     try {
-      await authApi.resendEmailMfaOtp(deviceId);
+      await authApi.resendEmailMfaOtp(deviceIdRef.current);
       toast.success('Verification code resent');
     } catch (err) {
       toast.error(getErrorMessage(err));
@@ -134,10 +135,11 @@ export function AddDeviceDialog({ open, onOpenChange, onComplete }: Props) {
   }
 
   const totpSetup = setupData?.device_type === 'totp' ? (setupData as TOTPSetupDto) : null;
+  const totpQrCodeUrl = totpSetup?.qr_code_url ?? totpSetup?.qrCodeUrl ?? '';
 
   return (
     <Dialog open={open} onOpenChange={(o) => (o ? onOpenChange(true) : close())}>
-      <DialogContent className="sm:max-w-md bg-[#141414] border-[#1f1f1f] text-white">
+      <DialogContent className="sm:max-w-md max-h-[85vh] overflow-y-auto bg-[#141414] border-[#1f1f1f] text-white">
         {step === 'choose' && (
           <>
             <DialogHeader>
@@ -151,6 +153,7 @@ export function AddDeviceDialog({ open, onOpenChange, onComplete }: Props) {
                 return (
                   <button
                     key={m}
+                    type="button"
                     onClick={() => pick(m)}
                     className="w-full flex items-center gap-4 rounded-lg border border-[#1f1f1f] bg-[#0c0c0c] px-4 py-3 text-left hover:border-[#10b981]/40 hover:bg-[#101010] transition-colors"
                   >
@@ -190,7 +193,7 @@ export function AddDeviceDialog({ open, onOpenChange, onComplete }: Props) {
               <Button variant="outline" onClick={() => setStep('choose')} className="border-[#2a2a2a] bg-transparent text-[#e8e8e8] hover:bg-[#1a1a1a] hover:text-[#e8e8e8] focus-visible:text-[#e8e8e8]">Back</Button>
               <Button onClick={startEnrollment} disabled={busy} className="bg-[#10b981] text-black font-semibold hover:bg-[#0ea271] hover:text-black focus-visible:text-black active:text-black">
                 {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Verify
+                Continue
               </Button>
             </div>
           </>
@@ -203,9 +206,15 @@ export function AddDeviceDialog({ open, onOpenChange, onComplete }: Props) {
               <DialogDescription className="text-[#8A8F98]">Scan with your authenticator app, then enter the 6-digit code.</DialogDescription>
             </DialogHeader>
             <div className="flex flex-col items-center gap-4 pt-2">
-              <div className="bg-white p-3 rounded-lg">
-                <img src={totpSetup.qr_code_url} alt="TOTP QR code" className="w-44 h-44" />
-              </div>
+              {totpQrCodeUrl ? (
+                <div className="bg-white p-3 rounded-lg">
+                  <img src={totpQrCodeUrl} alt="TOTP QR code" className="w-44 h-44" />
+                </div>
+              ) : (
+                <div className="w-full rounded-lg border border-[#2a2a2a] bg-[#0c0c0c] px-4 py-6 text-center text-[13px] text-[#8A8F98]">
+                  QR code unavailable. Use the manual setup key below in your authenticator app.
+                </div>
+              )}
               <div className="w-full text-center">
                 <p className="text-[12px] text-[#8A8F98] mb-1">Can't scan? Enter this key manually:</p>
                 <code className="text-[12px] font-mono text-[#e8e8e8] break-all bg-[#0c0c0c] border border-[#1f1f1f] rounded px-2 py-1 inline-block">{totpSetup.secret}</code>
@@ -218,11 +227,15 @@ export function AddDeviceDialog({ open, onOpenChange, onComplete }: Props) {
                   onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                   placeholder="000000"
                   inputMode="numeric"
+                  autoFocus
                   className="h-12 font-mono text-center tracking-[0.3em] text-lg bg-[#0c0c0c] border-[#262626] text-white"
                 />
               </div>
             </div>
             <div className="flex justify-end gap-2 pt-4">
+              <Button variant="outline" onClick={() => setStep('configure')} className="border-[#2a2a2a] bg-transparent text-[#e8e8e8] hover:bg-[#1a1a1a] hover:text-[#e8e8e8] focus-visible:text-[#e8e8e8]">
+                Back
+              </Button>
               <Button onClick={verifyCode} disabled={busy || code.length !== 6} className="bg-[#10b981] text-black font-semibold hover:bg-[#0ea271] hover:text-black focus-visible:text-black active:text-black">
                 {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Verify
               </Button>
@@ -247,7 +260,7 @@ export function AddDeviceDialog({ open, onOpenChange, onComplete }: Props) {
                 autoFocus
                 className="h-12 font-mono text-center tracking-[0.3em] text-lg bg-[#0c0c0c] border-[#262626] text-white"
               />
-              <button onClick={resendEmail} className="text-[12px] text-[#10b981] hover:text-[#0ea271] transition-colors">Resend code</button>
+              <button type="button" onClick={resendEmail} className="text-[12px] text-[#10b981] hover:text-[#0ea271] transition-colors">Resend code</button>
             </div>
             <div className="flex justify-end gap-2 pt-4">
               <Button onClick={verifyCode} disabled={busy || code.length !== 6} className="bg-[#10b981] text-black font-semibold hover:bg-[#0ea271] hover:text-black focus-visible:text-black active:text-black">

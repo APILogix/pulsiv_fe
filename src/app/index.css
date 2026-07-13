@@ -269,6 +269,12 @@
   animation: pulse-dot 2s ease-in-out infinite;
 }
 
+/* faster pulse for verification progress */
+@keyframes pulse-fast {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
 .sidebar-scroll {
   scrollbar-width: none;
   -ms-overflow-style: none;

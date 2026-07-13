@@ -4,25 +4,54 @@ import { toast } from 'sonner';
 import { LoginForm } from '../components/LoginForm';
 import { LoginMfaForm } from '../components/LoginMfaForm';
 import { LoginBackupCodeForm } from '../components/LoginBackupCodeForm';
+import { useLogin } from '../hooks/useLogin';
 import { authApi } from '../api/auth.api';
 import { getErrorMessage } from '@/infrastructure/api-client/error.interceptor';
-import { useLogin } from '../hooks/useLogin';
+
+function PulsivWordmark() {
+  return (
+    <svg viewBox="0 0 260 64" aria-label="Pulsiv" className="h-11 w-auto">
+      <text
+        x="0"
+        y="44"
+        fontFamily='ui-monospace, "SF Mono", "JetBrains Mono", Consolas, monospace'
+        fontWeight="700"
+        fontSize="34"
+        letterSpacing="4"
+      >
+        <tspan fill="var(--text)">P</tspan>
+        <tspan fill="var(--text)">U</tspan>
+        <tspan fill="var(--text)">L</tspan>
+        <tspan fill="var(--text)">S</tspan>
+        <tspan fill="var(--brand)">I</tspan>
+        <tspan fill="var(--text)">V</tspan>
+      </text>
+    </svg>
+  );
+}
+
+function GoogleIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className="h-[18px] w-[18px]">
+      <path fill="#EA4335" d="M12 10.2v3.9h5.5c-.24 1.25-.95 2.3-2 3.01l3.23 2.5c1.88-1.73 2.97-4.27 2.97-7.3 0-.71-.06-1.39-.18-2.04H12z" />
+      <path fill="#34A853" d="M12 22c2.7 0 4.96-.9 6.61-2.44l-3.23-2.5c-.9.6-2.05.95-3.38.95-2.6 0-4.81-1.75-5.6-4.1l-3.34 2.58A9.99 9.99 0 0 0 12 22z" />
+      <path fill="#4A90E2" d="M6.4 13.9A6 6 0 0 1 6.09 12c0-.66.11-1.3.31-1.9L3.06 7.52A10 10 0 0 0 2 12c0 1.61.38 3.14 1.06 4.48l3.34-2.58z" />
+      <path fill="#FBBC05" d="M12 5.98c1.47 0 2.79.5 3.83 1.48l2.87-2.87C16.95 2.96 14.7 2 12 2 8.08 2 4.7 4.24 3.06 7.52l3.34 2.58c.79-2.35 3-4.12 5.6-4.12z" />
+    </svg>
+  );
+}
 
 export default function LoginPage() {
-  const {
-    loginState,
-    challengeData,
-    login,
-    loginMfa,
-    loginBackup,
-    isPending,
-    resetState
-  } = useLogin();
-
-  const [socialProvider, setSocialProvider] = useState<string | null>(null);
+  const { loginState, challengeData, login, loginMfa, loginBackup, isPending, resetState } = useLogin();
   const [showBackupCodes, setShowBackupCodes] = useState(false);
+  const [socialProvider, setSocialProvider] = useState<string | null>(null);
 
-  async function startSocialLogin(provider: 'github' | 'google') {
+  const handleCancelMfa = () => {
+    resetState();
+    setShowBackupCodes(false);
+  };
+
+  async function startSocialLogin(provider: 'github' | 'google' | 'microsoft') {
     setSocialProvider(provider);
     try {
       const result = await authApi.socialLogin(provider);
@@ -33,90 +62,57 @@ export default function LoginPage() {
     }
   }
 
-  const handleCancelMfa = () => {
-    resetState();
-    setShowBackupCodes(false);
-  };
-
   if (loginState === 'mfa_required' && challengeData) {
     if (showBackupCodes) {
-      return (
-        <LoginBackupCodeForm
-          challengeId={challengeData.challengeId}
-          loginBackupCode={loginBackup}
-          isPending={isPending}
-          onCancel={() => setShowBackupCodes(false)}
-        />
-      );
+      return <LoginBackupCodeForm challengeId={challengeData.challengeId} loginBackupCode={loginBackup} isPending={isPending} onCancel={() => setShowBackupCodes(false)} />;
     }
 
-    return (
-      <LoginMfaForm
-        challengeData={challengeData}
-        loginMfa={loginMfa}
-        isPending={isPending}
-        onSelectBackupCodes={() => setShowBackupCodes(true)}
-        onCancel={handleCancelMfa}
-      />
-    );
+    return <LoginMfaForm challengeData={challengeData} loginMfa={loginMfa} isPending={isPending} onSelectBackupCodes={() => setShowBackupCodes(true)} onCancel={handleCancelMfa} />;
   }
 
   return (
     <div className="w-full">
-      <div className="text-center mb-8">
-        <h1 className="text-[28px] font-bold tracking-[-0.5px] text-white mb-2">
-          Welcome back
-        </h1>
-        <p className="text-[15px] text-[#8A8F98]">
-          Monitor, debug, and optimize your services.
+      <div className="mb-6 text-center">
+        <p className="mb-6 text-[13px] text-[var(--text3)]">
+          Don&apos;t have an account?{' '}
+          <Link to="/auth/register" className="font-medium text-[var(--brand)] transition-colors hover:text-[var(--brand-d)]">
+            Create one
+          </Link>
         </p>
+        <div className="mb-5 flex items-center justify-center">
+          <PulsivWordmark />
+        </div>
+        <h1 className="mb-2 text-[28px] font-semibold tracking-[-0.04em] text-[var(--text)]">Sign in to Pulsiv</h1>
+        <p className="text-[15px] text-[var(--text2)]">Continue with Google or sign in with your work email.</p>
       </div>
 
-      <div className="flex flex-col gap-3 mb-6">
-        <button
-          type="button"
-          disabled={socialProvider !== null}
-          onClick={() => startSocialLogin('github')}
-          className="w-full flex items-center justify-center gap-2.5 bg-[#141414] border border-[#1f1f1f] hover:bg-white/5 hover:border-[#2a2a2a] text-white text-sm font-medium py-3 rounded-md transition-all disabled:opacity-60"
-        >
-          <svg viewBox="0 0 24 24" fill="currentColor" stroke="none" className="w-[18px] h-[18px]">
-            <path d="M12 2C6.477 2 2 6.477 2 12c0 4.42 2.865 8.166 6.839 9.489.5.092.682-.217.682-.482 0-.237-.008-.866-.013-1.7-2.782.603-3.369-1.34-3.369-1.34-.454-1.156-1.11-1.463-1.11-1.463-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.831.092-.646.35-1.086.636-1.336-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.578 9.578 0 0112 6.836c.85.004 1.705.114 2.504.336 1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.203 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.578.688.48C19.138 20.163 22 16.418 22 12c0-5.523-4.477-10-10-10z"></path>
-          </svg>
-          {socialProvider === 'github' ? 'Redirecting...' : 'Continue with GitHub'}
-        </button>
+      <div className="rounded-[12px] border border-[var(--border)] bg-[var(--bg1)] p-5 shadow-[var(--pulse-surface-elevated)]">
         <button
           type="button"
           disabled={socialProvider !== null}
           onClick={() => startSocialLogin('google')}
-          className="w-full flex items-center justify-center gap-2.5 bg-[#141414] border border-[#1f1f1f] hover:bg-white/5 hover:border-[#2a2a2a] text-white text-sm font-medium py-3 rounded-md transition-all disabled:opacity-60"
+          className="flex h-12 w-full items-center justify-center gap-3 rounded-[8px] border border-[var(--border)] bg-[var(--bg2)] text-sm font-medium text-[var(--text)] transition-colors hover:border-[var(--input)] hover:bg-[var(--bg3)] disabled:opacity-60"
         >
-          <span className="text-[15px] font-semibold">G</span>
+          <GoogleIcon />
           {socialProvider === 'google' ? 'Redirecting...' : 'Continue with Google'}
         </button>
-        <Link
-          to="/auth/login/sso"
-          className="w-full flex items-center justify-center gap-2.5 bg-[#141414] border border-[#1f1f1f] hover:bg-white/5 hover:border-[#2a2a2a] text-white text-sm font-medium py-3 rounded-md transition-all"
-        >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-[18px] h-[18px]">
-            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-          </svg>
-          Continue with SSO
-        </Link>
-      </div>
 
-      <div className="flex items-center text-center mb-6">
-        <div className="flex-1 border-b border-[#1f1f1f]"></div>
-        <span className="px-3 text-[#5C5F66] text-[12px] font-semibold uppercase tracking-wider">
-          Or continue with email
-        </span>
-        <div className="flex-1 border-b border-[#1f1f1f]"></div>
-      </div>
+        <div className="my-5 flex items-center text-center">
+          <div className="flex-1 border-b border-[var(--border)]" />
+          <span className="px-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--text3)]">
+            or continue with email
+          </span>
+          <div className="flex-1 border-b border-[var(--border)]" />
+        </div>
 
-      <LoginForm login={login} isPending={isPending} />
+        <LoginForm login={login} isPending={isPending} />
 
-      <div className="text-center mt-8 text-sm text-[#8A8F98]">
-        Don't have an account? <Link to="/auth/register" className="text-[#10b981] font-medium hover:underline">Sign up</Link>
+        <div className="mt-5 flex items-center justify-between gap-3 text-[12px] text-[var(--text3)]">
+          <span>Need enterprise access?</span>
+          <Link to="/auth/login/sso" className="font-medium text-[var(--text2)] transition-colors hover:text-[var(--text)]">
+            Sign in with SSO
+          </Link>
+        </div>
       </div>
     </div>
   );

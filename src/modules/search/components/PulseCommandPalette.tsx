@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import {
   CommandDialog,
@@ -19,51 +19,6 @@ export function PulseCommandPalette() {
   const navigate = useNavigate();
   const { isOpen, setOpen, query, setQuery, isLoading, results } = useSearchStore();
 
-  // Pre-compute the flattened navigation array once rather than on every keystroke
-  const allSearchItems = useMemo<SearchResult[]>(() => {
-    const groupMap: Record<string, SearchResult['group']> = {
-      Overview: 'Navigation',
-      Observability: 'Observability',
-      Projects: 'Projects',
-      Alerts: 'Alerts',
-      Ingestion: 'Ingestion',
-      'AI Ops': 'AI Ops',
-      Administration: 'Administration',
-      Billing: 'Billing',
-      Settings: 'Settings',
-    };
-
-    const navResults: SearchResult[] = mainNavigation.flatMap((item) => {
-      const normalizedGroup = groupMap[item.label] ?? 'Navigation';
-      const base: SearchResult[] = [
-        {
-          id: item.path,
-          title: item.label,
-          subtitle: item.description,
-          group: normalizedGroup,
-          onSelect: () => navigate(item.path),
-        },
-      ];
-
-      const children = (item.children ?? []).map<SearchResult>((child) => ({
-        id: child.path,
-        title: child.label,
-        subtitle: child.description,
-        group: normalizedGroup,
-        onSelect: () => navigate(child.path),
-      }));
-
-      return [...base, ...children];
-    });
-
-    return [
-      ...navResults,
-      { id: 'settings', title: 'Settings', subtitle: 'Organization configuration workspace', group: 'Settings', onSelect: () => navigate('/settings') },
-      { id: 'security', title: 'Security Center', subtitle: 'User security controls and verification', group: 'Settings', onSelect: () => navigate('/auth/security'), shortcut: 'G S' },
-    ];
-  }, [navigate]);
-
-  // Filter the pre-computed list on keystroke
   useEffect(() => {
     if (!query) {
       useSearchStore.getState().setResults([]);
@@ -72,6 +27,46 @@ export function PulseCommandPalette() {
 
     useSearchStore.getState().setIsLoading(true);
     const timer = setTimeout(() => {
+      const groupMap: Record<string, SearchResult['group']> = {
+        Overview: 'Navigation',
+        Observability: 'Observability',
+        Projects: 'Projects',
+        Alerts: 'Alerts',
+        Ingestion: 'Ingestion',
+        'AI Ops': 'AI Ops',
+        Administration: 'Administration',
+        Billing: 'Billing',
+        Settings: 'Settings',
+      };
+
+      const navResults: SearchResult[] = mainNavigation.flatMap((item) => {
+        const normalizedGroup = groupMap[item.label] ?? 'Navigation';
+        const base: SearchResult[] = [
+          {
+            id: item.path,
+            title: item.label,
+            subtitle: item.description,
+            group: normalizedGroup,
+            onSelect: () => navigate(item.path),
+          },
+        ];
+
+        const children = (item.children ?? []).map<SearchResult>((child) => ({
+          id: child.path,
+          title: child.label,
+          subtitle: child.description,
+          group: normalizedGroup,
+          onSelect: () => navigate(child.path),
+        }));
+
+        return [...base, ...children];
+      });
+
+      const allSearchItems: SearchResult[] = [
+        ...navResults,
+        { id: 'settings', title: 'Settings', subtitle: 'Organization configuration workspace', group: 'Settings', onSelect: () => navigate('/settings') },
+        { id: 'security', title: 'Security Center', subtitle: 'User security controls and verification', group: 'Settings', onSelect: () => navigate('/auth/security'), shortcut: 'G S' },
+      ];
 
       const lowerQuery = query.toLowerCase();
       const filtered = allSearchItems.filter(
@@ -86,7 +81,7 @@ export function PulseCommandPalette() {
     }, 300);
 
     return () => clearTimeout(timer);
-  }, [query, navigate]);
+  }, [navigate, query]);
 
   return (
     <CommandDialog open={isOpen} onOpenChange={setOpen} className="top-[120px] translate-y-0 sm:max-w-[600px] bg-[#141414] border-[#2a2a2a] p-0 shadow-2xl overflow-hidden rounded-[12px] data-[state=open]:zoom-in-98 data-[state=open]:duration-150 data-[state=closed]:duration-150">

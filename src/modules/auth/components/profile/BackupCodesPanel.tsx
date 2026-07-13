@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation , useQueryClient} from '@tanstack/react-query';
 import { ShieldCheck, Copy, Download, Printer, Loader2, KeyRound, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { authApi } from '../../api/auth.api';
@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
 export function BackupCodesPanel() {
+  const queryClient = useQueryClient();
   const { data: user } = useCurrentUser();
   const mfaEnabled = !!user?.mfa_enabled;
 
@@ -21,6 +22,7 @@ export function BackupCodesPanel() {
   const regenerate = useMutation({
     mutationFn: (mfa_code: string) => authApi.regenerateBackupCodes({ mfa_code }),
     onSuccess: (data: { backup_codes: string[] }) => {
+      queryClient.invalidateQueries({ queryKey: ['auth'] });
       setCodes(data.backup_codes);
       setPromptOpen(false);
       setMfaCode('');
@@ -84,7 +86,7 @@ export function BackupCodesPanel() {
                 Generating a new set invalidates all previous codes.
               </p>
             </div>
-            <button
+            <button type="button"
               onClick={() => { setCodes(null); setMfaCode(''); setPromptOpen(true); }}
               className="px-4 py-2 bg-[#1a1a1a] text-[#e8e8e8] border border-[#2a2a2a] text-[13px] font-medium rounded-md hover:bg-[#2a2a2a] transition-all flex items-center gap-2"
             >

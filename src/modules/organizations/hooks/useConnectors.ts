@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/infrastructure/api-client/axios";
 import { useOrgStore } from "@/modules/organizations/store/org.store";
 
-export const connectorKeys = {
+const connectorKeys = {
   all: ["connectors"] as const,
   lists: (orgId: string) => [...connectorKeys.all, "list", orgId] as const,
 };

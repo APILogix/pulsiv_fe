@@ -16,6 +16,7 @@ export function AppHeader({ onMenuClick }: AppHeaderProps) {
     <header className="h-14 shrink-0 border-b border-border bg-background/80 backdrop-blur-md flex items-center px-4 sticky top-0 z-10 w-full transition-all gap-2 md:gap-4">
       {/* Mobile Menu Button */}
       <button 
+        type="button"
         onClick={onMenuClick}
         className="md:hidden p-2 -ml-2 text-muted-foreground hover:text-foreground rounded-md hover:bg-accent"
         aria-label="Open menu"
@@ -27,9 +28,11 @@ export function AppHeader({ onMenuClick }: AppHeaderProps) {
       <div className="flex items-center flex-1 min-w-0 gap-2">
         {hasInnerItems && (
           <button
+            type="button"
             onClick={() => setIsFlyoutOpen(!isFlyoutOpen)}
             className="hidden md:flex p-2 -ml-2 text-muted-foreground hover:text-foreground rounded-md hover:bg-accent transition-colors"
             title={isFlyoutOpen ? "Close Inner Sidebar" : "Open Inner Sidebar"}
+            aria-label={isFlyoutOpen ? "Close inner sidebar" : "Open inner sidebar"}
           >
             {isFlyoutOpen ? <PanelLeftClose size={18} /> : <PanelLeftOpen size={18} />}
           </button>

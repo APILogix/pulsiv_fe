@@ -36,9 +36,11 @@ export default function AlertRulesPage() {
       width: "90px",
       cell: (r) => (
         <button
+          type="button"
           onClick={(e) => { e.stopPropagation(); toggle(r); }}
           role="switch"
           aria-checked={isOn(r.id, r.enabled)}
+          aria-label={`Toggle ${r.name}`}
           className={cn(
             "relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors",
             isOn(r.id, r.enabled) ? "bg-[var(--brand)]" : "bg-[var(--bg3)]"

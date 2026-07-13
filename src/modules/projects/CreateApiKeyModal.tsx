@@ -35,9 +35,9 @@ export function CreateApiKeyModal({ children }: { children?: React.ReactNode }) 
       await createApiKey.mutateAsync({ projectId, data: { name, environment } });
       setOpen(false);
       toast.success("API Key generated successfully");
+      setLoading(false);
     } catch (err) {
       toast.error("Failed to generate API Key");
-    } finally {
       setLoading(false);
     }
   };
@@ -66,7 +66,7 @@ export function CreateApiKeyModal({ children }: { children?: React.ReactNode }) 
             </div>
             <div className="grid gap-2">
               <Label htmlFor="env-select">Environment</Label>
-              <select id="env-select" name="environment" className={inputClass} required defaultValue="production">
+              <select id="env-select" name="environment" aria-label="Environment" className={inputClass} required defaultValue="production">
                 <option value="production">Production</option>
                 <option value="development">Development</option>
               </select>

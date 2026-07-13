@@ -91,8 +91,8 @@ export default function MemberDetailPage() {
                   }}
                 >
                   <div className="flex-1">
-                    <label className="mb-1 block text-sm text-[var(--text2)]">Role</label>
-                    <select name="role" defaultValue={m.role} className="w-full rounded-[10px] border border-[var(--border)] bg-[var(--bg1)] px-3 py-2 text-sm">
+                    <label htmlFor="member-role" className="mb-1 block text-sm text-[var(--text2)]">Role</label>
+                    <select id="member-role" name="role" defaultValue={m.role} className="w-full rounded-[10px] border border-[var(--border)] bg-[var(--bg1)] px-3 py-2 text-sm">
                       <option value="viewer">Viewer</option>
                       <option value="member">Member</option>
                       <option value="developer">Developer</option>

@@ -113,7 +113,8 @@ export interface TOTPSetupDto {
   device_id: string;
   device_type: 'totp';
   secret: string;
-  qr_code_url: string;
+  qr_code_url?: string;
+  qrCodeUrl?: string;
   backup_codes: string[];
   warning: string;
 }

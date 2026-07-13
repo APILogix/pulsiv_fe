@@ -26,13 +26,11 @@ export default function AcceptInviteLandingPage() {
   const queryClient = useQueryClient();
   
   const [invitation, setInvitation] = useState<InvitationValidation | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [isValidating, setIsValidating] = useState(true);
+  const [error, setError] = useState<string | null>(token ? null : 'No invitation token provided.');
+  const [isValidating, setIsValidating] = useState(!!token);
 
   useEffect(() => {
     if (!token) {
-      setError('No invitation token provided.');
-      setIsValidating(false);
       return;
     }
 

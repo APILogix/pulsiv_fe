@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { PageHeader, KpiCard, SectionCard, MetricSparkline } from "@/shared/observe";
 
 const LIMITS = [
@@ -8,6 +9,8 @@ const LIMITS = [
 ];
 
 export default function RateLimitsPage() {
+  const [sparklineData] = useState(() => Array.from({ length: 30 }, (_, i) => 300 + i * 18 + Math.random() * 30));
+
   return (
     <div className="flex flex-col gap-5">
       <PageHeader title="Rate Limits" description="Operational rate-limit visibility for ingest traffic." />
@@ -38,7 +41,7 @@ export default function RateLimitsPage() {
       </SectionCard>
 
       <SectionCard title="Quota forecast (30d)">
-        <MetricSparkline data={Array.from({ length: 30 }, (_, i) => 300 + i * 18 + Math.random() * 30)} color="var(--amber)" width={760} height={120} />
+        <MetricSparkline data={sparklineData} color="var(--amber)" width={760} height={120} />
       </SectionCard>
     </div>
   );

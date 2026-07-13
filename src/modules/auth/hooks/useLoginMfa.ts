@@ -13,6 +13,7 @@ export function useLoginMfa() {
   return useMutation({
     mutationFn: authApi.loginMfa,
     onSuccess: (session) => {
+      queryClient.invalidateQueries({ queryKey: ['auth'] });
       completeLogin(session, { setAuth, queryClient, navigate });
     },
     onError: (error: any) => {

@@ -1,5 +1,6 @@
-import { Plus } from "lucide-react";
+import { Plus, MoreHorizontal } from "lucide-react";
 import { useApiKeys } from "@/hooks/useDummyData";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import {
   PageHeader, KpiCard, FillPage, InfiniteTable, StatusBadge, Button, CopyButton, Timestamp, demoAction, demoSuccess, formatCompact,
 } from "@/shared/observe";
@@ -17,7 +18,29 @@ export default function KeysTokensPage() {
     { key: "ip", header: "Last used IP", width: "130px", cell: (k) => <span className="font-[family-name:var(--mono)] text-[12px] text-[var(--text2)]">{k.lastUsedIp}</span> },
     { key: "used", header: "Last used", width: "130px", cell: (k) => <Timestamp value={k.lastUsedAt} /> },
     { key: "status", header: "Status", width: "110px", cell: (k) => <StatusBadge status={k.status} /> },
-    { key: "actions", header: "", width: "100px", cell: (k) => (k.status === "active" ? <div onClick={(e) => e.stopPropagation()}><Button variant="danger" onClick={() => demoSuccess(`Revoked ${k.name}`)}>Revoke</Button></div> : null) },
+    {
+      key: "actions",
+      header: "",
+      width: "60px",
+      align: "right" as const,
+      cell: (k) => k.status === "active" ? (
+        <div className="flex justify-end" onClick={(e) => e.stopPropagation()}>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="h-8 w-8 p-0">
+                <span className="sr-only">Open menu</span>
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => demoSuccess(`Revoked ${k.name}`)} className="text-[var(--red)] focus:text-[var(--red)] focus:bg-[var(--red-bg)]">
+                Revoke
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      ) : null,
+    },
   ];
 
   return (

@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router";
-import { Plus, Send } from "lucide-react";
+import { Plus, Send, MoreHorizontal } from "lucide-react";
 import { useChannels } from "@/hooks/useDummyData";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import {
   PageHeader, KpiCard, FillPage, InfiniteTable, StatusBadge, Button, Timestamp, demoAction, demoSuccess,
 } from "@/shared/observe";
@@ -18,7 +19,29 @@ export default function ChannelsPage() {
     { key: "dest", header: "Destination", width: "1fr", cell: (c) => <span className="truncate font-[family-name:var(--mono)] text-[12px] text-[var(--text2)]">{c.destination}</span> },
     { key: "status", header: "Status", width: "110px", cell: (c) => <StatusBadge status={c.status} /> },
     { key: "tested", header: "Last tested", width: "130px", cell: (c) => <Timestamp value={c.lastTestedAt} /> },
-    { key: "actions", header: "", width: "100px", cell: (c) => <div onClick={(e) => e.stopPropagation()}><Button variant="ghost" onClick={() => demoSuccess(`Test sent to ${c.name}`)}><Send className="size-3.5" /> Test</Button></div> },
+    {
+      key: "actions",
+      header: "",
+      width: "60px",
+      align: "right" as const,
+      cell: (c) => (
+        <div className="flex justify-end" onClick={(e) => e.stopPropagation()}>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="h-8 w-8 p-0">
+                <span className="sr-only">Open menu</span>
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => demoSuccess(`Test sent to ${c.name}`)}>
+                <Send className="mr-2 h-4 w-4" /> Send Test
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      ),
+    },
   ];
 
   return (

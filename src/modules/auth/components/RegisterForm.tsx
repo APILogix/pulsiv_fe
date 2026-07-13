@@ -7,6 +7,15 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
+const getStrengthLevel = (val: string) => {
+  let strength = 0;
+  if (val.length > 0) strength = 1;
+  if (val.length >= 6) strength = 2;
+  if (val.length >= 8 && /[0-9]/.test(val)) strength = 3;
+  if (val.length >= 10 && /[^A-Za-z0-9]/.test(val)) strength = 4;
+  return strength;
+};
+
 export function RegisterForm() {
   const { mutate: registerUser, isPending } = useRegister();
   const [showPassword, setShowPassword] = useState(false);
@@ -19,14 +28,7 @@ export function RegisterForm() {
     registerUser(data);
   };
 
-  const getStrengthLevel = (val: string) => {
-    let strength = 0;
-    if (val.length > 0) strength = 1;
-    if (val.length >= 6) strength = 2;
-    if (val.length >= 8 && /[0-9]/.test(val)) strength = 3;
-    if (val.length >= 10 && /[^A-Za-z0-9]/.test(val)) strength = 4;
-    return strength;
-  };
+
 
   const strength = getStrengthLevel(passwordValue);
 

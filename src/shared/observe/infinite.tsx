@@ -8,10 +8,10 @@ import { cn } from "@/lib/utils";
 export function useInfiniteScroll<T>(items: T[], resetKey: string, pageSize = 20) {
   const [count, setCount] = useState(pageSize);
   const [loading, setLoading] = useState(false);
-  const prevKey = useRef(resetKey);
+  const [prevKey, setPrevKey] = useState(resetKey);
 
-  if (prevKey.current !== resetKey) {
-    prevKey.current = resetKey;
+  if (prevKey !== resetKey) {
+    setPrevKey(resetKey);
     setCount(pageSize);
   }
 
@@ -42,7 +42,9 @@ function Sentinel({ onLoadMore, loading, hasMore, footerNote }: {
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const cb = useRef(onLoadMore);
-  cb.current = onLoadMore;
+  useEffect(() => {
+    cb.current = onLoadMore;
+  }, [onLoadMore]);
 
   useEffect(() => {
     const el = ref.current;

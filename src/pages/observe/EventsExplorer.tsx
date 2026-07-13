@@ -25,6 +25,12 @@ function filterList<T>(items: T[], query: string, get: (t: T) => string): T[] {
   return items.filter((i) => get(i).toLowerCase().includes(q));
 }
 
+const footer = (p: { hasMore: boolean; loading: boolean; shown: number; total: number }) => (
+  <div className="py-3 text-center text-[12px] text-[var(--text3)]">
+    {p.hasMore ? (p.loading ? "Loading more…" : `Showing ${p.shown} of ${p.total}`) : `All ${p.total} loaded`}
+  </div>
+);
+
 export default function EventsExplorer() {
   const navigate = useNavigate();
   const [activeType, setActiveType] = useState<TypeId>("error");
@@ -46,11 +52,7 @@ export default function EventsExplorer() {
     error: errors.length, request: requests.length, log: logs.length, span: spans.length, metric: metrics.length,
   };
 
-  const footer = (p: { hasMore: boolean; loading: boolean; shown: number; total: number }) => (
-    <div className="py-3 text-center text-[12px] text-[var(--text3)]">
-      {p.hasMore ? (p.loading ? "Loading more…" : `Showing ${p.shown} of ${p.total}`) : `All ${p.total} loaded`}
-    </div>
-  );
+
 
   return (
     <ListShell
@@ -62,7 +64,7 @@ export default function EventsExplorer() {
           </FilterBar>
           <div className="flex items-center gap-1 border-b border-[var(--border)]">
             {TYPES.map((t) => (
-              <button
+              <button type="button"
                 key={t.id}
                 onClick={() => setActiveType(t.id)}
                 className={cn(
@@ -139,7 +141,10 @@ export default function EventsExplorer() {
 function Row({ children, onClick }: { children: React.ReactNode; onClick?: () => void }) {
   return (
     <div
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
       onClick={onClick}
+      onKeyDown={onClick ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } } : undefined}
       className={cn("flex h-12 items-center gap-3 border-b border-[var(--border)] px-4", onClick && "cursor-pointer hover:bg-[var(--bg2)]")}
     >
       {children}

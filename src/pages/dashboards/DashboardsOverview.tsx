@@ -134,7 +134,7 @@ export default function DashboardsOverview() {
           {cards.map((card) => {
             const Icon = card.icon;
             return (
-              <button
+              <button type="button"
                 key={card.id}
                 onClick={() => navigate(card.to)}
                 className="group flex flex-col gap-3 rounded-[12px] border border-[var(--border)] bg-[var(--bg2)] p-4 text-left transition-colors hover:border-[var(--input)]"

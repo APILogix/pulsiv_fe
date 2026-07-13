@@ -15,8 +15,10 @@ export interface ConnectorSelectorProps {
 }
 
 export function ConnectorSelector({ connectors, selectedIds, onChange }: ConnectorSelectorProps) {
+  const selectedIdSet = new Set(selectedIds);
+
   const toggle = (id: string) => {
-    if (selectedIds.includes(id)) {
+    if (selectedIdSet.has(id)) {
       onChange(selectedIds.filter(x => x !== id));
     } else {
       onChange([...selectedIds, id]);
@@ -34,10 +36,11 @@ export function ConnectorSelector({ connectors, selectedIds, onChange }: Connect
   return (
     <div className="grid gap-2 sm:grid-cols-2">
       {connectors.map(connector => {
-        const isSelected = selectedIds.includes(connector.id);
+        const isSelected = selectedIdSet.has(connector.id);
         
         return (
-          <div
+          <button
+            type="button"
             key={connector.id}
             onClick={() => toggle(connector.id)}
             className={cn(
@@ -62,7 +65,7 @@ export function ConnectorSelector({ connectors, selectedIds, onChange }: Connect
                 connector.status === "degraded" ? "bg-amber-500" : "bg-red-500"
               )} />
             </div>
-          </div>
+          </button>
         );
       })}
     </div>

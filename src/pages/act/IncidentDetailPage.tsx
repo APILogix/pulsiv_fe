@@ -49,8 +49,8 @@ export default function IncidentDetailPage() {
             content: (
               <SectionCard>
                 <div className="relative ml-3 border-l border-[var(--border)] pl-5">
-                  {inc.activityLog.map((a, i) => (
-                    <div key={i} className="relative pb-4 last:pb-0">
+                  {inc.activityLog.map((a) => (
+                    <div key={`${a.timestamp}-${a.actor}-${a.action}-${a.message}`} className="relative pb-4 last:pb-0">
                       <span className="absolute -left-[26px] top-1 size-2.5 rounded-full bg-[var(--brand)]" />
                       <div className="flex items-center gap-2">
                         <span className="text-[13px] font-medium text-[var(--text)] capitalize">{a.action}</span>

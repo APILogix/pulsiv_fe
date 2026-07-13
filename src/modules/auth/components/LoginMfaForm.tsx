@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router';
 import { useForm } from 'react-hook-form';
@@ -56,10 +56,7 @@ export function LoginMfaForm({ challengeData, loginMfa, isPending, onSelectBacku
   
   const { challengeId, deviceType: initialDeviceType, availableMethods } = challengeData;
 
-  const methods = useMemo<LoginMfaMethod[]>(
-    () => availableMethods ?? [],
-    [availableMethods],
-  );
+  const methods: LoginMfaMethod[] = availableMethods ?? [];
 
   const [current, setCurrent] = useState<LoginMfaMethod>(() => {
     const primary =
@@ -103,24 +100,38 @@ export function LoginMfaForm({ challengeData, loginMfa, isPending, onSelectBacku
     try {
       const session = await loginWithPasskey(challengeId);
       await completeLogin(session, { setAuth, queryClient, navigate });
+      setPasskeyBusy(false);
     } catch (err) {
       const msg = err instanceof WebAuthnCeremonyError ? err.message : getErrorMessage(err);
       toast.error(msg);
-    } finally {
       setPasskeyBusy(false);
     }
   }
 
   // Auto-trigger the passkey ceremony when the primary method is a security key.
   useEffect(() => {
+    if (!challengeId) {
+      onCancel();
+    }
+  }, [challengeId, onCancel]);
+
+  useEffect(() => {
     if (isPasskey && challengeId && !autoPasskeyStarted.current) {
       autoPasskeyStarted.current = true;
-      void runPasskey();
+      void (async () => {
+        setPasskeyBusy(true);
+        try {
+          const session = await loginWithPasskey(challengeId);
+          await completeLogin(session, { setAuth, queryClient, navigate });
+          setPasskeyBusy(false);
+        } catch (err) {
+          const msg = err instanceof WebAuthnCeremonyError ? err.message : getErrorMessage(err);
+          toast.error(msg);
+          setPasskeyBusy(false);
+        }
+      })();
     }
-    // StrictMode re-runs effects in development. The ref prevents two
-    // concurrent WebAuthn ceremonies, which causes the browser to cancel one.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [challengeId, isPasskey, navigate, queryClient, setAuth]);
 
   async function selectMethod(method: LoginMfaMethod) {
     if (method.id === current.id) {
@@ -146,16 +157,19 @@ export function LoginMfaForm({ challengeData, loginMfa, isPending, onSelectBacku
       } else if (method.type === 'hardware_key') {
         await runPasskey();
       }
+      setIsSwitching(false);
     } catch (err) {
       toast.error(getErrorMessage(err));
-    } finally {
       setIsSwitching(false);
     }
   }
 
   useEffect(() => {
     if (resendCooldown <= 0) return;
-    const timer = window.setTimeout(() => setResendCooldown((value) => Math.max(0, value - 1)), 1000);
+    const timer = window.setTimeout(
+      () => setResendCooldown((value) => Math.max(0, value - 1)),
+      1000,
+    );
     return () => window.clearTimeout(timer);
   }, [resendCooldown]);
 
@@ -166,17 +180,14 @@ export function LoginMfaForm({ challengeData, loginMfa, isPending, onSelectBacku
       await authApi.resendEmailMfaOtp(current.id);
       setResendCooldown(30);
       toast.success('Verification code sent');
+      setIsResending(false);
     } catch (err) {
       toast.error(getErrorMessage(err));
-    } finally {
       setIsResending(false);
     }
   }
 
-  if (!challengeId) {
-    onCancel();
-    return null;
-  }
+  if (!challengeId) return null;
 
   const CurrentIcon = METHOD_ICON[current.type] ?? ShieldCheck;
   const alternativeMethods = methods.filter((m) => m.id !== current.id);

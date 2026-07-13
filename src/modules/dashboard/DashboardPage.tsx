@@ -391,10 +391,10 @@ function RecentActivityPanel() {
     <div className="rounded-[12px] border border-[var(--border)] bg-[var(--bg1)] p-5">
       <h3 className="text-[14px] font-semibold text-[var(--text)] mb-4">Recent activity</h3>
       <div className="flex flex-col gap-4">
-        {ACTIVITY.map((a, i) => {
+        {ACTIVITY.map((a) => {
           const s = SEV_MAP[a.sev];
           return (
-            <div key={i} className="flex gap-3">
+            <div key={`${a.title}-${a.at}`} className="flex gap-3">
               <span
                 className="shrink-0 rounded-[4px] px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide leading-snug mt-0.5"
                 style={{ background: s.bg, color: s.fg }}

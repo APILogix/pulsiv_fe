@@ -13,9 +13,10 @@ export default function AuthCallbackPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const setAuth = useAuthStore((state) => state.setAuth);
-  const [error, setError] = useState('');
-
   const callbackError = params.get('error');
+  const [error, setError] = useState(() => 
+    callbackError ? (params.get('error_description') || params.get('message') || callbackError) : ''
+  );
 
   useEffect(() => {
     if (window.opener && window.opener !== window) {
@@ -24,7 +25,6 @@ export default function AuthCallbackPage() {
       return;
     }
     if (callbackError) {
-      setError(params.get('error_description') || params.get('message') || callbackError);
       return;
     }
 

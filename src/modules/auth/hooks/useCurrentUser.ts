@@ -1,4 +1,4 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { authApi } from '../api/auth.api';
 import { authQueryCache, authQueryKeys } from '../api/auth.query';
 import { useAuthStore } from '../store/auth.store';
@@ -24,11 +24,3 @@ export function useCurrentUser() {
   });
 }
 
-/**
- * Imperatively refresh the current user.
- * Call after mutations that change user state (MFA toggle, profile update, etc.)
- */
-export function useRefreshCurrentUser() {
-  const queryClient = useQueryClient();
-  return () => queryClient.invalidateQueries({ queryKey: authQueryKeys.currentUser });
-}

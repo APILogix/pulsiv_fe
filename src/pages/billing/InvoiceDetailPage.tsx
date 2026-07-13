@@ -40,8 +40,8 @@ export default function InvoiceDetailPage() {
 
       <SectionCard title="Line items" className="p-0">
         <Table headers={["Description", "Amount"]}>
-          {(inv.items || []).map((li, i) => (
-            <Tr key={i}>
+          {(inv.items || []).map((li) => (
+            <Tr key={li.description}>
               <Td>{li.description}</Td>
               <Td className="font-semibold tabular-nums">${li.amount.toFixed(2)}</Td>
             </Tr>

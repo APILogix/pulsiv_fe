@@ -147,6 +147,7 @@ export function NotificationCenter() {
           </div>
           {unreadCount > 0 && (
             <button
+              type="button"
               onClick={markAllRead}
               className="flex items-center gap-1 text-[12px] text-[var(--text2)] transition-colors hover:text-[var(--brand)]"
             >
@@ -169,6 +170,7 @@ export function NotificationCenter() {
               const Icon = n.icon;
               return (
                 <button
+                  type="button"
                   key={n.id}
                   onClick={() => open(n)}
                   className={cn(
@@ -205,6 +207,7 @@ export function NotificationCenter() {
         {/* Footer */}
         <div className="border-t border-[var(--border)] p-2">
           <button
+            type="button"
             onClick={() => navigate('/alerts')}
             className="w-full rounded-lg py-2 text-center text-[13px] font-medium text-[var(--brand)] transition-colors hover:bg-[var(--bg2)]"
           >

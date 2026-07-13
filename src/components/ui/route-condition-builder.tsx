@@ -80,15 +80,18 @@ export function RouteConditionBuilder({ value, onChange }: RouteConditionBuilder
         <Label>Severity Levels</Label>
         <div className="flex flex-wrap gap-3">
           {SEVERITIES.map(sev => (
-            <div
+            <button
               key={sev}
+              type="button"
               className={`cursor-pointer rounded-full transition-all ${
                 value.severities.includes(sev) ? "ring-2 ring-primary ring-offset-2" : "opacity-60 grayscale"
               }`}
+              aria-pressed={value.severities.includes(sev)}
+              aria-label={`Toggle ${sev} severity`}
               onClick={() => toggleSeverity(sev)}
             >
               <SeverityBadge severity={sev} />
-            </div>
+            </button>
           ))}
         </div>
       </div>

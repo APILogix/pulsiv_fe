@@ -1,5 +1,4 @@
 import { Outlet, useLocation } from "react-router";
-import { PulsivWordmark } from "@/shared/components/PulsivLogo";
 
 interface PanelContent {
   image: string;
@@ -7,8 +6,6 @@ interface PanelContent {
   description: string;
 }
 
-// Per-page imagery + copy. Compressed WebP assets (~40-90KB each) keep
-// auth pages fast; the browser caches them across auth navigation.
 const PANELS: { match: (path: string) => boolean; content: PanelContent }[] = [
   {
     match: (p) => p.includes("/register"),
@@ -49,23 +46,20 @@ export function AuthLayout() {
   const panel = PANELS.find((p) => p.match(pathname))!.content;
 
   return (
-    <div className="flex h-[100dvh] w-full bg-[#0c0c0c] text-white font-sans antialiased overflow-hidden">
-      {/* LEFT PANEL */}
-      <div className="flex-1 flex flex-col p-6 sm:p-10 w-full lg:max-w-[600px] lg:min-w-[500px] bg-[#0c0c0c] z-10 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-        {/* Brand Header */}
-        <div className="flex items-center justify-center lg:justify-start gap-3 mt-8 mb-8 lg:mt-0 lg:mb-auto">
-          <PulsivWordmark size={32} />
+    <div className="flex h-[100dvh] w-full overflow-hidden bg-[var(--bg)] font-sans text-[var(--text)] antialiased">
+      <div className="z-10 flex w-full flex-1 flex-col overflow-y-auto bg-[var(--bg)] p-6 sm:p-10 lg:min-w-[500px] lg:max-w-[600px] [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+        <div className="mb-8 mt-8 flex items-center justify-center lg:mb-auto lg:mt-0 lg:justify-start">
+          <span className="font-mono text-[27px] font-bold tracking-[0.16em] text-[var(--text)]" aria-label="Pulsiv">
+            PULS<span className="text-[var(--brand)]">I</span>V
+          </span>
         </div>
 
-        {/* Form Container (Outlet) */}
-        <div className="w-full max-w-[380px] mx-auto mb-auto lg:mt-10">
+        <div className="mx-auto mb-auto w-full max-w-[420px] lg:mt-10">
           <Outlet />
         </div>
       </div>
 
-      {/* RIGHT PANEL */}
-      <div className="hidden lg:flex flex-[1.2] bg-[#080808] relative overflow-hidden items-center justify-center border-l border-[#1f1f1f]">
-        {/* Background Image — <img> so the browser can prioritize/cache it */}
+      <div className="relative hidden flex-[1.2] items-center justify-center overflow-hidden border-l border-[var(--border)] bg-[var(--bg1)] lg:flex">
         <img
           src={panel.image || "/placeholder.svg"}
           alt=""
@@ -75,15 +69,13 @@ export function AuthLayout() {
           fetchPriority="high"
         />
 
-        {/* Gradient Overlay for blending */}
-        <div className="absolute inset-0 z-10 bg-gradient-to-t from-[#0c0c0c] via-[#0c0c0c]/40 to-transparent" />
-        <div className="absolute inset-0 z-10 bg-gradient-to-r from-[#0c0c0c] via-transparent to-[#0c0c0c]/20" />
+        <div className="absolute inset-0 z-10 bg-gradient-to-t from-[var(--bg)] via-[color:color-mix(in_srgb,var(--bg)_55%,transparent)] to-transparent" />
+        <div className="absolute inset-0 z-10 bg-gradient-to-r from-[var(--bg)] via-transparent to-[color:color-mix(in_srgb,var(--bg)_20%,transparent)]" />
 
-        {/* Text Overlay */}
-        <div className="relative z-20 flex flex-col items-center text-center px-12 pb-12 mt-auto">
-          <div className="w-12 h-1 bg-[#10b981] mb-6 rounded-full shadow-[0_0_15px_#10b981]" />
-          <h2 className="text-3xl font-bold text-white mb-4 tracking-tight text-balance">{panel.title}</h2>
-          <p className="text-sm text-[#999999] max-w-[400px] leading-relaxed text-pretty">{panel.description}</p>
+        <div className="relative z-20 mt-auto flex flex-col items-center px-12 pb-12 text-center">
+          <div className="mb-6 h-1 w-12 rounded-full bg-[var(--brand)] shadow-[0_0_18px_var(--brand)]" />
+          <h2 className="mb-4 text-3xl font-bold tracking-tight text-[var(--text)] text-balance">{panel.title}</h2>
+          <p className="max-w-[400px] text-sm leading-relaxed text-[var(--text3)] text-pretty">{panel.description}</p>
         </div>
       </div>
     </div>

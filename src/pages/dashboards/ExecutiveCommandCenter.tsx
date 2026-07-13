@@ -129,7 +129,7 @@ export default function ExecutiveCommandCenter() {
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {services.map((svc) => (
-          <button
+          <button type="button"
             key={svc.name}
             onClick={() => navigate(`/dashboards/performance?service=${svc.name}`)}
             className="group rounded-[12px] border border-[var(--border)] bg-[var(--bg1)] p-4 text-left transition-colors hover:border-[var(--input)]"
@@ -165,11 +165,11 @@ export default function ExecutiveCommandCenter() {
       <ZoneLabel>Attention required</ZoneLabel>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <SectionCard title="Top error groups (24h)" action={<button onClick={() => navigate("/dashboards/errors")} className="text-[12px] text-[var(--brand)]">View all →</button>}>
+        <SectionCard title="Top error groups (24h)" action={<button type="button" onClick={() => navigate("/dashboards/errors")} className="text-[12px] text-[var(--brand)]">View all →</button>}>
           {topErrors.length === 0 ? <EmptyState message="No errors in range" /> : (
             <div className="flex flex-col divide-y divide-[var(--border)]">
               {topErrors.map((e) => (
-                <button
+                <button type="button"
                   key={e.eventId}
                   onClick={() => navigate(`/observability/errors/${e.fingerprint}`)}
                   className="flex items-center gap-3 py-2.5 text-left first:pt-0 last:pb-0 hover:opacity-80"
@@ -187,7 +187,7 @@ export default function ExecutiveCommandCenter() {
           )}
         </SectionCard>
 
-        <SectionCard title="Slowest endpoints" action={<button onClick={() => navigate("/dashboards/performance")} className="text-[12px] text-[var(--brand)]">Deep dive →</button>}>
+        <SectionCard title="Slowest endpoints" action={<button type="button" onClick={() => navigate("/dashboards/performance")} className="text-[12px] text-[var(--brand)]">Deep dive →</button>}>
           <BarList
             items={slowest.map((s) => ({
               label: s.key,

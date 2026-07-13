@@ -64,27 +64,6 @@ export function getErrorMessage(error: unknown): string {
     : 'An unexpected error occurred. Please try again.';
 }
 
-export function getValidationErrors(error: unknown): Record<string, string> | null {
-  if (axios.isAxiosError(error)) {
-    const details = error.response?.data?.error?.details;
-    if (details?.issues && Array.isArray(details.issues)) {
-      const fieldErrors = details.issues as Array<{
-        path: string[];
-        message: string;
-      }>;
-      const result: Record<string, string> = {};
-      for (const issue of fieldErrors) {
-        const field = issue.path[issue.path.length - 1] ?? issue.path[0];
-        if (issue.message) {
-          result[field] = issue.message;
-        }
-      }
-      return Object.keys(result).length > 0 ? result : null;
-    }
-  }
-  return null;
-}
-
 export function getErrorCode(error: unknown): string | null {
   if (axios.isAxiosError(error)) {
     return error.response?.data?.error?.code ?? null;

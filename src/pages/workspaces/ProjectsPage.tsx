@@ -40,7 +40,10 @@ export default function ProjectsPage() {
           // const tone = p.status === "active" ? "var(--green)" : p.status === "suspended" ? "var(--amber)" : "var(--red)";
           return (
             <div
+              role="button"
+              tabIndex={0}
               onClick={() => navigate(`/projects/${p.id}`)}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(`/projects/${p.id}`); } }}
               className="cursor-pointer rounded-[12px] border border-[var(--border)] bg-[var(--bg1)] p-4 transition-colors hover:border-[var(--input)]"
             >
               <div className="flex items-start justify-between">

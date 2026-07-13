@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useEndpoints } from "@/hooks/useDummyData";
 import { PageHeader, KpiCard, SectionCard, StatusBadge, MetricSparkline, formatCompact } from "@/shared/observe";
 
@@ -12,6 +13,7 @@ export default function ConnectionsOverview() {
   const { data } = useEndpoints();
   const endpoints = data ?? [];
   const totalReq = endpoints.reduce((s, e) => s + e.requests24h, 0);
+  const [sparklineData] = useState(() => Array.from({ length: 30 }, () => Math.random() * 50 + 20));
 
   return (
     <div className="flex flex-col gap-5">
@@ -45,7 +47,7 @@ export default function ConnectionsOverview() {
               </div>
             ))}
           </div>
-          <div className="mt-4"><MetricSparkline data={Array.from({ length: 30 }, () => Math.random() * 50 + 20)} width={420} height={60} /></div>
+          <div className="mt-4"><MetricSparkline data={sparklineData} width={420} height={60} /></div>
         </SectionCard>
       </div>
     </div>

@@ -20,7 +20,7 @@ export default function IntegrationDetailPage() {
 
   return (
     <div className="flex flex-col gap-5">
-      <button onClick={() => navigate(-1)} className="flex items-center gap-1.5 text-sm text-[var(--text2)] hover:text-[var(--text)]"><ArrowLeft className="size-4" /> Back to integrations</button>
+      <button type="button" onClick={() => navigate(-1)} className="flex items-center gap-1.5 text-sm text-[var(--text2)] hover:text-[var(--text)]"><ArrowLeft className="size-4" /> Back to integrations</button>
       <PageHeader
         title={i.name}
         breadcrumbs={[{ label: "Settings" }, { label: "Integrations" }, { label: i.name }]}
@@ -29,17 +29,17 @@ export default function IntegrationDetailPage() {
 
       <SectionCard title="Configuration">
         <form action={saveAction} className="grid max-w-xl grid-cols-1 gap-4">
-          {Object.entries(i.config).filter(([, v]) => v).map(([k, v]) => (
+          {Object.entries(i.config).flatMap(([k, v]) => v ? [(
             <Field key={k} label={k}><input defaultValue={String(v)} className={inputClass} /></Field>
-          ))}
+          )] : [])}
           <div><SubmitButton>Save settings</SubmitButton></div>
         </form>
       </SectionCard>
 
       <SectionCard title="Sync log" className="p-0">
         <Table headers={["Status", "Message", "Time"]}>
-          {i.syncLog.map((s, idx) => (
-            <Tr key={idx}><Td><StatusBadge status={s.status} /></Td><Td className="text-[var(--text2)]">{s.message}</Td><Td><Timestamp value={s.timestamp} /></Td></Tr>
+          {i.syncLog.map((s) => (
+            <Tr key={s.timestamp}><Td><StatusBadge status={s.status} /></Td><Td className="text-[var(--text2)]">{s.message}</Td><Td><Timestamp value={s.timestamp} /></Td></Tr>
           ))}
         </Table>
       </SectionCard>

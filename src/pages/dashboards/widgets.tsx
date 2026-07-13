@@ -137,7 +137,7 @@ export function BarList({ items, valueFormat }: { items: BarListItem[]; valueFor
   return (
     <div className="flex flex-col gap-2">
       {items.map((item) => (
-        <button
+        <button type="button"
           key={item.label}
           onClick={item.onClick}
           className={cn("group relative block w-full overflow-hidden rounded-[7px] text-left", item.onClick && "cursor-pointer")}
@@ -160,7 +160,7 @@ export function BarList({ items, valueFormat }: { items: BarListItem[]; valueFor
 }
 
 // ── Multi-line chart (percentiles, series over time) ──
-export interface LineSeries { label: string; color: string; data: number[] }
+interface LineSeries { label: string; color: string; data: number[] }
 export function MultiLineChart({ series, height = 200, logScale = false }: {
   series: LineSeries[];
   height?: number;
@@ -268,7 +268,7 @@ export function DualAxisChart({ bars, line, height = 220 }: { bars: number[]; li
 }
 
 // ── Stacked bar chart (per-group severity/status stacks) ──
-export interface StackGroup { label: string; segments: { value: number; color: string }[] }
+interface StackGroup { label: string; segments: { value: number; color: string }[] }
 export function StackedBars({ groups, horizontal = false }: { groups: StackGroup[]; horizontal?: boolean }) {
   const totals = groups.map((g) => g.segments.reduce((s, x) => s + x.value, 0));
   const max = Math.max(...totals, 1);
@@ -337,7 +337,7 @@ export function Heatmap({ rows, columns }: { rows: { label: string; cells: numbe
 }
 
 // ── Funnel chart ──
-export interface FunnelStage { label: string; value: number }
+interface FunnelStage { label: string; value: number }
 export function Funnel({ stages }: { stages: FunnelStage[] }) {
   const max = Math.max(...stages.map((s) => s.value), 1);
   return (
@@ -388,7 +388,7 @@ export function Banner({ tone = "amber", icon: Icon, title, action }: {
 }
 
 // ── Chart card: title + inline legend + headline values, body, time axis ──
-export interface ChartLegendItem { label: string; color: string; value?: string }
+interface ChartLegendItem { label: string; color: string; value?: string }
 export function ChartCard({ title, legend, headline, headlineLabel, action, children, timeAxis, className }: {
   title: string;
   legend?: ChartLegendItem[];
@@ -438,7 +438,7 @@ export function ChartCard({ title, legend, headline, headlineLabel, action, chil
 }
 
 // ── Hero band: single card, divided KPI columns (Vercel-observability style) ──
-export interface HeroMetric {
+interface HeroMetric {
   label: string;
   value: string | number;
   delta?: string;

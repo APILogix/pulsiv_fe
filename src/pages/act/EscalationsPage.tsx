@@ -30,7 +30,7 @@ export default function EscalationsPage() {
         queryKey={["escalations"]}
         getKey={(p) => p.id}
         renderCard={(p) => (
-          <div onClick={() => navigate(`/alerts/escalations/${p.id}`)} className="cursor-pointer rounded-[12px] border border-[var(--border)] bg-[var(--bg1)] p-4 hover:border-[var(--input)]">
+          <div role="button" tabIndex={0} onClick={() => navigate(`/alerts/escalations/${p.id}`)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(`/alerts/escalations/${p.id}`); } }} className="cursor-pointer rounded-[12px] border border-[var(--border)] bg-[var(--bg1)] p-4 hover:border-[var(--input)]">
             <div className="flex items-center justify-between">
               <span className="font-semibold text-[var(--text)]">{p.name}</span>
               <StatusBadge status={p.status} />

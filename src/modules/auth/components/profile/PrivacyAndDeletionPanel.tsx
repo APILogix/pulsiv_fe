@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation , useQueryClient} from '@tanstack/react-query';
 import { AlertTriangle, Download, FileJson, Loader2, Mail, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { authApi } from '../../api/auth.api';
@@ -30,6 +30,7 @@ function downloadJson(data: UserDataExport): void {
 }
 
 export function PrivacyAndDeletionPanel() {
+  const queryClient = useQueryClient();
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [reason, setReason] = useState('');
   const [deleteRequested, setDeleteRequested] = useState(false);
@@ -37,6 +38,7 @@ export function PrivacyAndDeletionPanel() {
   const exportData = useMutation({
     mutationFn: authApi.exportUserData,
     onSuccess: (data: UserDataExport) => {
+      queryClient.invalidateQueries({ queryKey: ['auth'] });
       downloadJson(data);
       toast.success('Account export downloaded');
     },
@@ -46,6 +48,7 @@ export function PrivacyAndDeletionPanel() {
   const requestDeletion = useMutation({
     mutationFn: () => authApi.requestAccountDeletion({ reason: reason.trim() || undefined }),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['auth'] });
       setDeleteRequested(true);
       toast.success('Deletion confirmation email sent');
     },

@@ -41,7 +41,7 @@ export default function CreateReportPage() {
           </Field>
 
           <Field label="Frequency">
-            <select className={inputClass}>
+            <select aria-label="Frequency" className={inputClass}>
               <option value="daily">Daily digest</option>
               <option value="weekly">Weekly digest</option>
               <option value="monthly">Monthly digest</option>
@@ -49,9 +49,10 @@ export default function CreateReportPage() {
           </Field>
 
           <div>
-            <label className="text-[12px] font-semibold text-[var(--text2)] uppercase tracking-wider block mb-2">Recipients</label>
+            <label htmlFor="report-recipient-email" className="text-[12px] font-semibold text-[var(--text2)] uppercase tracking-wider block mb-2">Recipients</label>
             <div className="flex gap-2">
               <input 
+                id="report-recipient-email"
                 type="email" 
                 placeholder="colleague@company.com" 
                 className={inputClass} 
@@ -63,9 +64,9 @@ export default function CreateReportPage() {
             
             <div className="flex flex-wrap gap-2 mt-3">
               {emails.map((email, idx) => (
-                <div key={idx} className="flex items-center gap-1.5 bg-[var(--bg3)] px-2.5 py-1 rounded-full text-xs text-[var(--text2)] border border-[var(--border)]">
+                <div key={email} className="flex items-center gap-1.5 bg-[var(--bg3)] px-2.5 py-1 rounded-full text-xs text-[var(--text2)] border border-[var(--border)]">
                   <span>{email}</span>
-                  <button type="button" onClick={() => removeEmail(idx)} className="text-[var(--text3)] hover:text-[var(--text)]">
+                  <button type="button" aria-label={`Remove ${email}`} onClick={() => removeEmail(idx)} className="text-[var(--text3)] hover:text-[var(--text)]">
                     <X className="size-3" />
                   </button>
                 </div>

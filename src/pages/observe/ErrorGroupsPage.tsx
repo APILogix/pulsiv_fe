@@ -56,7 +56,10 @@ export default function ErrorGroupsPage() {
         gridClassName="flex flex-col gap-2"
         renderCard={(g) => (
           <div
+            role="button"
+            tabIndex={0}
             onClick={() => navigate(`/observability/errors/${encodeURIComponent(g.fingerprint)}`)}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(`/observability/errors/${encodeURIComponent(g.fingerprint)}`); } }}
             className="cursor-pointer rounded-[12px] border border-[var(--border)] bg-[var(--bg1)] p-4 transition-colors hover:border-[var(--input)]"
           >
             <div className="flex items-start gap-3">

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation , useQueryClient} from '@tanstack/react-query';
 import { HelpCircle, Loader2, ShieldAlert } from 'lucide-react';
 import { toast } from 'sonner';
 import { authApi } from '../../api/auth.api';
@@ -9,12 +9,14 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 
 export function MfaRecoveryPanel() {
+  const queryClient = useQueryClient();
   const [reason, setReason] = useState('');
   const [submitted, setSubmitted] = useState(false);
 
   const requestRecovery = useMutation({
     mutationFn: () => authApi.requestMfaRecovery({ reason: reason.trim() }),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['auth'] });
       setSubmitted(true);
       toast.success('MFA recovery request submitted');
     },

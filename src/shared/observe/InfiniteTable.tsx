@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useRef, useEffect } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -40,7 +40,9 @@ export function InfiniteTable<T>({
   loading = false,
 }: InfiniteTableProps<T>) {
   const itemsRef = useRef(items);
-  itemsRef.current = items;
+  useEffect(() => {
+    itemsRef.current = items;
+  }, [items]);
 
   const query = useInfiniteQuery({
     // `items.length` is part of the key so the list refetches once the page's
@@ -108,7 +110,10 @@ export function InfiniteTable<T>({
           }}
           renderRow={(item) => (
             <div
+              role={onRowClick ? "button" : undefined}
+              tabIndex={onRowClick ? 0 : undefined}
               onClick={onRowClick ? () => onRowClick(item) : undefined}
+              onKeyDown={onRowClick ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onRowClick(item); } } : undefined}
               className={cn(
                 "grid h-full w-full items-center gap-3 border-b border-[var(--border)] px-4 text-[13px] text-[var(--text)]",
                 onRowClick && "cursor-pointer transition-colors hover:bg-[var(--bg2)]"

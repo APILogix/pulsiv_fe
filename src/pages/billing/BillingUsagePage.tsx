@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { orgApi } from "@/modules/organizations/api/org.api";
 import { orgQueryKeys, useOrganizations } from "@/modules/organizations/hooks/useOrganizations";
@@ -37,7 +36,7 @@ export default function BillingUsagePage() {
     enabled: !!activeOrgId,
   });
 
-  const usageOverview = useMemo(() => {
+  const usageOverview = (() => {
     if (!currentUsage || !dailyUsage) return null;
     const today = new Date().toISOString().slice(0, 10);
     const todayEvents = dailyUsage.find((d) => d.date.startsWith(today))?.eventsCount ?? 0;
@@ -59,7 +58,7 @@ export default function BillingUsagePage() {
       },
       activity: dailyUsage.map((d) => ({ date: d.date, events: d.eventsCount })),
     };
-  }, [currentUsage, dailyUsage]);
+  })();
 
   const { data: limits, isLoading: isLimitsLoading } = useQuery({
     queryKey: [...orgQueryKeys.billing(activeOrgId!), "usageLimits"],
@@ -67,15 +66,8 @@ export default function BillingUsagePage() {
     enabled: !!activeOrgId,
   });
 
-  const eventSeries = useMemo(
-    () => usageOverview?.activity.map((day) => day.events) ?? [],
-    [usageOverview],
-  );
-
-  const heatmapRows = useMemo(
-    () => buildHeatmapRows(usageOverview?.activity ?? []),
-    [usageOverview],
-  );
+  const eventSeries = usageOverview?.activity.map((day) => day.events) ?? [];
+  const heatmapRows = buildHeatmapRows(usageOverview?.activity ?? []);
 
   if (isUsageLoading || isDailyLoading || isLimitsLoading) {
     return <div className="flex h-32 items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-[var(--brand)]" /></div>;

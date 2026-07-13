@@ -1,4 +1,4 @@
-import { useActionState, useEffect, useMemo } from 'react';
+import { useActionState, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Code2, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -21,7 +21,7 @@ export default function SdkConfigPage() {
     enabled: !!activeOrgId,
   });
 
-  const configs = useMemo(() => data ?? [], [data]);
+  const configs = data ?? [];
 
   const [state, action] = useActionState(
     async (_: PublishState, form: FormData): Promise<PublishState> => {

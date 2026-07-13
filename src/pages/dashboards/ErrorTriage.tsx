@@ -82,7 +82,7 @@ export default function ErrorTriage() {
         tone="amber"
         icon={TrendingUp}
         title={<>Regression detected — <strong>TypeError: Cannot read properties of undefined</strong> volume anomalous (spike +450% above 7-day baseline).</>}
-        action={<button onClick={() => navigate("/dashboards/releases")} className="rounded-[6px] border border-current px-2 py-1 text-[12px]">View affected release</button>}
+        action={<button type="button" onClick={() => navigate("/dashboards/releases")} className="rounded-[6px] border border-current px-2 py-1 text-[12px]">View affected release</button>}
       />
 
       <HeroBand
@@ -147,7 +147,7 @@ function ErrorGroupCard({ group, onOpen }: { group: ErrorGroup; onOpen: () => vo
         <StatusIcon className="mt-0.5 size-4 shrink-0" style={{ color: statusTone }} />
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <button onClick={onOpen} className="truncate text-left text-[14px] font-semibold text-[var(--text)] hover:text-[var(--brand)]">{group.name}</button>
+            <button type="button" onClick={onOpen} className="truncate text-left text-[14px] font-semibold text-[var(--text)] hover:text-[var(--brand)]">{group.name}</button>
             <SeverityBadge severity={group.severity} />
             <span className="rounded-[5px] bg-[var(--bg2)] px-2 py-0.5 text-[11px] text-[var(--text2)]">{group.mechanism}</span>
             <MonospaceText value={group.fingerprint.slice(0, 8)} className="text-[var(--text3)]" />
@@ -157,8 +157,8 @@ function ErrorGroupCard({ group, onOpen }: { group: ErrorGroup; onOpen: () => vo
           {/* Stack preview */}
           {topFrames.length > 0 && (
             <div className="mt-2 flex flex-col gap-0.5 rounded-[8px] bg-[var(--bg2)] p-2 font-[family-name:var(--mono)] text-[11px]">
-              {topFrames.map((f, i) => (
-                <div key={i} className={f.inApp ? "border-l-2 border-[var(--amber)] pl-2 font-medium text-[var(--text)]" : "pl-2 text-[var(--text3)]"}>
+              {topFrames.map((f) => (
+                <div key={`${f.filename}-${f.lineno}-${f.colno}-${f.function}`} className={f.inApp ? "border-l-2 border-[var(--amber)] pl-2 font-medium text-[var(--text)]" : "pl-2 text-[var(--text3)]"}>
                   {f.function} <span className="text-[var(--text3)]">({f.filename}:{f.lineno})</span>
                 </div>
               ))}
@@ -177,13 +177,13 @@ function ErrorGroupCard({ group, onOpen }: { group: ErrorGroup; onOpen: () => vo
         <div className="flex shrink-0 flex-col items-end gap-2">
           <MetricSparkline data={trend} color="var(--red)" width={120} height={28} />
           <div className="flex items-center gap-1.5">
-            <button onClick={() => setStatus(status === "resolved" ? "unresolved" : "resolved")} className="rounded-[6px] border border-[var(--border)] px-2 py-1 text-[11px] text-[var(--text2)] hover:text-[var(--green)]">
+            <button type="button" onClick={() => setStatus(status === "resolved" ? "unresolved" : "resolved")} className="rounded-[6px] border border-[var(--border)] px-2 py-1 text-[11px] text-[var(--text2)] hover:text-[var(--green)]">
               {status === "resolved" ? "Unresolve" : "Resolve"}
             </button>
-            <button onClick={() => setStatus(status === "ignored" ? "unresolved" : "ignored")} className="rounded-[6px] border border-[var(--border)] px-2 py-1 text-[11px] text-[var(--text2)] hover:text-[var(--text)]">
+            <button type="button" onClick={() => setStatus(status === "ignored" ? "unresolved" : "ignored")} className="rounded-[6px] border border-[var(--border)] px-2 py-1 text-[11px] text-[var(--text2)] hover:text-[var(--text)]">
               {status === "ignored" ? "Unignore" : "Ignore"}
             </button>
-            <button onClick={onOpen} className="rounded-[6px] border border-[var(--border)] px-2 py-1 text-[11px] text-[var(--brand)]">Details</button>
+            <button type="button" onClick={onOpen} className="rounded-[6px] border border-[var(--border)] px-2 py-1 text-[11px] text-[var(--brand)]">Details</button>
           </div>
         </div>
       </div>

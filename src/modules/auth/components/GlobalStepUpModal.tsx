@@ -60,9 +60,9 @@ export function GlobalStepUpModal() {
     try {
       await authApi.resendEmailMfaOtp(challenge.device_id);
       toast.success('Verification code sent');
+      setIsResending(false);
     } catch (error: any) {
       toast.error(error.response?.data?.error?.message || 'Failed to send verification code');
-    } finally {
       setIsResending(false);
     }
   };
@@ -86,23 +86,21 @@ export function GlobalStepUpModal() {
       await stepUpWithPasskey(challenge.challenge_id);
       resolveStepUp();
       toast.success('Identity verified');
+      setPasskeyBusy(false);
     } catch (err) {
       const msg = err instanceof WebAuthnCeremonyError ? err.message : 'Security key verification failed';
       toast.error(msg);
-    } finally {
-      setPasskeyBusy(false);
-    }
-  }
-
-  const handleOpenChange = (open: boolean) => {
-    if (!open) {
-      rejectStepUp(new Error('MFA verification cancelled'));
     }
   };
 
   const onSubmit = handleSubmit((data) => {
     verifyMutation.mutate(data);
   });
+
+  function handleOpenChange(nextOpen: boolean) {
+    if (nextOpen) return;
+    rejectStepUp(new Error('Step-up challenge cancelled'));
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>

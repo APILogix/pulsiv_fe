@@ -16,11 +16,3 @@ export function RequireGuest() {
   }
   return <Outlet />;
 }
-
-export function RequireAdmin() {
-  const isAdmin = useAuthStore((state) => state.isAdmin);
-  if (!isAdmin) {
-    return <Navigate to="/dashboard" replace />;
-  }
-  return <Outlet />;
-}

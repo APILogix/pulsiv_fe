@@ -1,9 +1,10 @@
 import { useParams } from "react-router";
 import { useProjectMembers, useProjectMutations } from "@/modules/projects/hooks/useProjects";
 import { PageHeader, FillPage, InfiniteTable, Button } from "@/shared/observe";
-import { Plus, Trash, Shield, ShieldAlert, User } from "lucide-react";
+import { Plus, Trash, Shield, ShieldAlert, User, MoreHorizontal } from "lucide-react";
 import { toast } from "sonner";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 export default function ProjectMembersPage() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -60,13 +61,24 @@ export default function ProjectMembersPage() {
     {
       key: "actions",
       header: "",
-      width: "100px",
+      width: "60px",
       align: "right" as const,
       cell: (m: any) => (
-        <div className="flex justify-end">
-          <Button variant="ghost" onClick={() => handleRemove(m.userId)}>
-            <Trash className="size-4 text-[var(--red)]" />
-          </Button>
+        <div className="flex justify-end" onClick={(e) => e.stopPropagation()}>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="h-8 w-8 p-0">
+                <span className="sr-only">Open menu</span>
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => handleRemove(m.userId)} className="text-[var(--red)] focus:text-[var(--red)] focus:bg-[var(--red-bg)]">
+                <Trash className="mr-2 h-4 w-4" />
+                Remove Member
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       ),
     },

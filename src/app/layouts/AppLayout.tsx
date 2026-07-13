@@ -7,12 +7,14 @@ import { useSearchShortcuts } from '@/modules/search/hooks/useSearchShortcuts';
 import { AppHeader } from './AppHeader';
 import { AppDualSidebar } from './AppDualSidebar';
 import { PostLoginSetup } from '@/modules/auth/components/PostLoginSetup';
+const handleMenuClick = () => {
+  window.dispatchEvent(new CustomEvent('toggle-mobile-sidebar'));
+};
+
 export function AppLayout() {
   useSearchShortcuts();
 
-  const handleMenuClick = () => {
-    window.dispatchEvent(new CustomEvent('toggle-mobile-sidebar'));
-  };
+
 
   return (
     <div className="flex min-h-screen w-full bg-[var(--bg)] font-sans">

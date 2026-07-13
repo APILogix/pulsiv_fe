@@ -28,7 +28,7 @@ export function SearchInput({ placeholder = "Search…", onSearch, defaultValue 
         className="h-9 w-full rounded-[8px] border border-[var(--border)] bg-[var(--bg2)] pl-9 pr-9 text-sm text-[var(--text)] outline-none placeholder:text-[var(--text3)] focus:border-[var(--brand)]"
       />
       {defaultValue && (
-        <button type="button" onClick={handleClear} className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text3)] hover:text-[var(--text)]">
+        <button type="button" onClick={handleClear} aria-label="Clear search" className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text3)] hover:text-[var(--text)]">
           <X className="size-4" />
         </button>
       )}
@@ -63,7 +63,7 @@ export function FilterBar({ children, onClear }: { children: React.ReactNode; on
     <div className="flex flex-wrap items-center gap-2 rounded-[10px] border border-[var(--border)] bg-[var(--bg1)] p-2">
       {children}
       {onClear && (
-        <button onClick={onClear} className="ml-auto text-[12px] text-[var(--text3)] hover:text-[var(--text)]">
+        <button type="button" onClick={onClear} className="ml-auto text-[12px] text-[var(--text3)] hover:text-[var(--text)]">
           Clear all
         </button>
       )}
@@ -102,11 +102,15 @@ export function Table({
   );
 }
 
-export function Tr({ children, onClick }: { children: React.ReactNode; onClick?: () => void }) {
+export function Tr({ children, onClick, className }: { children: React.ReactNode; onClick?: () => void; className?: string }) {
+  const interactive = !!onClick;
   return (
     <tr
       onClick={onClick}
-      className={cn("border-b border-[var(--border)] last:border-0 transition-colors", onClick && "cursor-pointer hover:bg-[var(--bg2)]")}
+      onKeyDown={interactive ? (e) => { if (e.key === 'Enter' || e.key === ' ') onClick?.(); } : undefined}
+      role={interactive ? 'button' : undefined}
+      tabIndex={interactive ? 0 : undefined}
+      className={cn("border-b border-[var(--border)] last:border-0 transition-colors", interactive && "cursor-pointer hover:bg-[var(--bg2)]", className)}
     >
       {children}
     </tr>
@@ -117,12 +121,13 @@ export function Td({ children, className }: { children: React.ReactNode; classNa
   return <td className={cn("truncate px-4 py-2.5 align-middle text-[var(--text)]", className)}>{children}</td>;
 }
 
-export function Button({ children, variant = "secondary", onClick, type = "button", disabled }: {
+export function Button({ children, variant = "secondary", onClick, type = "button", disabled, className }: {
   children: React.ReactNode;
-  variant?: "primary" | "secondary" | "danger" | "ghost";
+  variant?: "primary" | "secondary" | "danger" | "ghost" | "outline";
   onClick?: () => void;
   type?: "button" | "submit";
   disabled?: boolean;
+  className?: string;
 }) {
   const tone =
     variant === "primary" ? "bg-[var(--brand)] text-[var(--brand-fg)] hover:bg-[var(--brand-d)]"
@@ -130,7 +135,7 @@ export function Button({ children, variant = "secondary", onClick, type = "butto
     : variant === "ghost" ? "text-[var(--text2)] hover:bg-[var(--bg2)] hover:text-[var(--text)]"
     : "border border-[var(--border)] bg-[var(--bg2)] text-[var(--text)] hover:border-[var(--input)]";
   return (
-    <button type={type} onClick={onClick} disabled={disabled} className={cn("inline-flex h-9 items-center gap-1.5 rounded-[8px] px-3 text-sm font-medium transition-colors disabled:opacity-50", tone)}>
+    <button type={type} onClick={onClick} disabled={disabled} className={cn("inline-flex h-9 items-center gap-1.5 rounded-[8px] px-3 text-sm font-medium transition-colors disabled:opacity-50", tone, className)}>
       {children}
     </button>
   );

@@ -56,13 +56,17 @@ export default function InvitationsPage() {
 
   const resendMutation = useMutation({
     mutationFn: (id: string) => orgApi.resendInvitation(activeOrgId!, id),
-    onSuccess: () => toast.success("Invitation resent"),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['auth'] });
+      toast.success("Invitation resent")
+    },
     onError: (err: any) => toast.error(err.response?.data?.message || "Failed to resend")
   });
 
   const revokeMutation = useMutation({
     mutationFn: (id: string) => orgApi.revokeInvitation(activeOrgId!, id),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['auth'] });
       toast.success("Invitation revoked");
       queryClient.invalidateQueries({ queryKey: orgQueryKeys.invitations(activeOrgId!) });
     },

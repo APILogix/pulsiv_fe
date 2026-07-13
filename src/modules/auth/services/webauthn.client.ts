@@ -13,15 +13,11 @@ import {
   startAuthentication,
   startRegistration,
   browserSupportsWebAuthn,
-  platformAuthenticatorIsAvailable,
 } from '@simplewebauthn/browser';
 import { authApi } from '../api/auth.api';
 import type { AuthSession } from '../types/auth.types';
 
 export const webauthnSupported = (): boolean => browserSupportsWebAuthn();
-
-export const platformAuthenticatorAvailable = (): Promise<boolean> =>
-  platformAuthenticatorIsAvailable().catch(() => false);
 
 /**
  * Thrown when the user cancels or the authenticator ceremony fails. Callers

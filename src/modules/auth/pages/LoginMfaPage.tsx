@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Navigate, useLocation, useNavigate, Link } from 'react-router';
 import { useForm } from 'react-hook-form';
@@ -50,13 +50,8 @@ export default function LoginMfaPage() {
       availableMethods?: LoginMfaMethod[];
     };
 
-  const methods = useMemo<LoginMfaMethod[]>(
-    () => availableMethods ?? [],
-    [availableMethods],
-  );
+  const methods: LoginMfaMethod[] = availableMethods ?? [];
 
-  // The currently selected method. Falls back to a synthetic entry when the
-  // backend did not return an available_methods list.
   const [current, setCurrent] = useState<LoginMfaMethod>(() => {
     const primary =
       methods.find((m) => m.is_primary) ||
@@ -90,7 +85,6 @@ export default function LoginMfaPage() {
     loginMfa({ ...data, challenge_id: challengeId! });
   });
 
-  // Complete login once a passkey assertion succeeds.
   async function runPasskey() {
     if (!challengeId) return;
     setPasskeyBusy(true);
@@ -100,22 +94,13 @@ export default function LoginMfaPage() {
       setAuth(user);
       queryClient.setQueryData(authQueryKeys.currentUser, user);
       navigate('/dashboard', { replace: true });
+      setPasskeyBusy(false);
     } catch (err) {
       const msg = err instanceof WebAuthnCeremonyError ? err.message : getErrorMessage(err);
       toast.error(msg);
-    } finally {
       setPasskeyBusy(false);
     }
   }
-
-  // Auto-trigger the passkey ceremony when the primary method is a security key.
-  useEffect(() => {
-    if (isPasskey && challengeId) {
-      void runPasskey();
-    }
-    // Only on first mount for the initial method.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   async function selectMethod(method: LoginMfaMethod) {
     if (method.id === current.id) {
@@ -141,9 +126,9 @@ export default function LoginMfaPage() {
       } else if (method.type === 'hardware_key') {
         await runPasskey();
       }
+      setIsSwitching(false);
     } catch (err) {
       toast.error(getErrorMessage(err));
-    } finally {
       setIsSwitching(false);
     }
   }
@@ -161,9 +146,9 @@ export default function LoginMfaPage() {
       await authApi.resendEmailMfaOtp(current.id);
       setResendCooldown(30);
       toast.success('Verification code sent');
+      setIsResending(false);
     } catch (err) {
       toast.error(getErrorMessage(err));
-    } finally {
       setIsResending(false);
     }
   }
@@ -190,7 +175,6 @@ export default function LoginMfaPage() {
       </div>
 
       <div className="rounded-xl border border-[#262626] bg-[#111111]/80 backdrop-blur-sm p-6 sm:p-8">
-        {/* Active method banner */}
         <div className="flex items-center gap-3 mb-6 rounded-lg border border-[#1f1f1f] bg-[#161616] px-3 py-2.5">
           <div className="w-9 h-9 rounded-md bg-[#0c0c0c] border border-[#262626] flex items-center justify-center text-[#34d399] shrink-0">
             <CurrentIcon size={18} className="stroke-[1.5]" />
@@ -259,7 +243,6 @@ export default function LoginMfaPage() {
         )}
       </div>
 
-      {/* Try another way */}
       {alternativeMethods.length > 0 && (
         <div className="space-y-2">
           {!showPicker ? (

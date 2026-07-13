@@ -45,7 +45,7 @@ export default function IncidentsPage() {
         actions={
           <div className="flex gap-1 rounded-[8px] border border-[var(--border)] p-0.5">
             {VIEWS.map((v) => (
-              <button key={v} onClick={() => setView(v)} className={cn("rounded-[6px] px-3 py-1 text-[12px] capitalize", view === v ? "bg-[var(--brand-bg)] text-[var(--brand)]" : "text-[var(--text3)]")}>{v}</button>
+              <button type="button" key={v} onClick={() => setView(v)} className={cn("rounded-[6px] px-3 py-1 text-[12px] capitalize", view === v ? "bg-[var(--brand-bg)] text-[var(--brand)]" : "text-[var(--text3)]")}>{v}</button>
             ))}
           </div>
         }
@@ -77,13 +77,13 @@ export default function IncidentsPage() {
             <div key={col} className="rounded-[12px] border border-[var(--border)] bg-[var(--bg1)] p-3">
               <div className="mb-2 text-sm font-semibold capitalize text-[var(--text)]">{col} ({(data ?? []).filter((i) => i.status === col).length})</div>
               <div className="flex flex-col gap-2">
-                {(data ?? []).filter((i) => i.status === col).map((inc) => (
-                  <div key={inc.id} onClick={() => navigate(`/alerts/${inc.id}`)} className="cursor-pointer rounded-[8px] border border-[var(--border)] bg-[var(--bg2)] p-3 hover:border-[var(--input)]">
+                {(data ?? []).flatMap((inc) => inc.status === col ? [(
+                  <div key={inc.id} role="button" tabIndex={0} onClick={() => navigate(`/alerts/${inc.id}`)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(`/alerts/${inc.id}`); } }} className="cursor-pointer rounded-[8px] border border-[var(--border)] bg-[var(--bg2)] p-3 hover:border-[var(--input)]">
                     <div className="flex items-center justify-between"><SeverityBadge severity={inc.severity} /><Timestamp value={inc.startedAt} /></div>
                     <div className="mt-1.5 text-[13px] font-medium text-[var(--text)]">{inc.title}</div>
                     <div className="text-[12px] text-[var(--text3)]">{inc.service}</div>
                   </div>
-                ))}
+                )] : [])}
               </div>
             </div>
           ))}

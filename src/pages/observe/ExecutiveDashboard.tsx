@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Activity, AlertTriangle, Gauge, Globe, Timer, Users } from "lucide-react";
 import { useErrorEvents, useRequestEvents } from "@/hooks/useDummyData";
 import { useTimeRangeStore, TIME_RANGES } from "@/stores/timeRangeStore";
@@ -21,10 +22,10 @@ export default function ExecutiveDashboard() {
   const errorRate = total ? ((errorReqs / total) * 100).toFixed(2) : "0";
   const avgLatency = total ? Math.round(reqList.reduce((s, r) => s + r.latency, 0) / total) : 0;
   const p95 = percentile(reqList.map((r) => r.latency), 95);
-  const affectedUsers = new Set(errList.filter((e) => e.user).map((e) => e.user!.id)).size;
+  const affectedUsers = new Set(errList.flatMap((e) => e.user ? [e.user.id] : [])).size;
 
   const services = ["api-gateway", "user-service", "payment-service", "notification-service", "analytics-service"];
-  const sparkData = Array.from({ length: 24 }, (_, i) => 40 + Math.round(Math.sin(i / 3) * 20 + Math.random() * 15));
+  const [sparkData] = useState(() => Array.from({ length: 24 }, (_, i) => 40 + Math.round(Math.sin(i / 3) * 20 + Math.random() * 15)));
 
   const topErrors = errList.slice(0, 6);
   const slowest = [...reqList].sort((a, b) => b.latency - a.latency).slice(0, 6);

@@ -7,14 +7,16 @@ import { orgQueryKeys, useOrganizations } from "@/modules/organizations/hooks/us
 import type { UpdateOrganizationBody } from "@/modules/organizations/types/org.types";
 import { toast } from "sonner"; // Or however toasts are done
 
+const normalizeOptional = (value: FormDataEntryValue | null) => {
+  const text = typeof value === "string" ? value.trim() : "";
+  return text.length > 0 ? text : undefined;
+};
+
 export default function OrgProfilePage() {
   const { activeOrgId } = useOrganizations();
   const queryClient = useQueryClient();
 
-  const normalizeOptional = (value: FormDataEntryValue | null) => {
-    const text = typeof value === "string" ? value.trim() : "";
-    return text.length > 0 ? text : undefined;
-  };
+
 
   const { data: org, isLoading } = useQuery({
     queryKey: orgQueryKeys.detail(activeOrgId!),
@@ -147,13 +149,13 @@ export default function OrgProfilePage() {
               <Field label="New owner">
                 <select name="newOwnerUserId" className={inputClass} defaultValue="">
                   <option value="" disabled>Select an active member</option>
-                  {(members?.data || [])
-                    .filter((member) => member.userId !== me.userId)
-                    .map((member) => (
+                  {(members?.data || []).flatMap((member) => 
+                    member.userId !== me.userId ? [(
                       <option key={member.userId} value={member.userId}>
                         {member.fullName || member.email} ({member.role})
                       </option>
-                    ))}
+                    )] : []
+                  )}
                 </select>
               </Field>
             </div>

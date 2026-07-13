@@ -122,34 +122,11 @@ export const useMetricEvents = () =>
   useSuspenseQuery({ queryKey: ["metrics"], queryFn: async () => { await delay(300); return dummy.dummyMetricEvents; }, staleTime: STALE });
 
 // ---- Profiles / Replays / Cron ----
-export const useProfileEvents = () =>
-  useSuspenseQuery({ queryKey: ["profiles"], queryFn: async () => { await delay(300); return dummy.dummyProfileEvents; }, staleTime: STALE_SLOW });
-
-export const useReplayEvents = () =>
-  useSuspenseQuery({ queryKey: ["replays"], queryFn: async () => { await delay(300); return dummy.dummyReplayEvents; }, staleTime: STALE_SLOW });
-
-export const useCronEvents = () =>
-  useSuspenseQuery({ queryKey: ["cronEvents"], queryFn: async () => { await delay(300); return dummy.dummyCronEvents; }, staleTime: STALE });
 
 // ---- Projects ----
 export const useProjects = () =>
   useSuspenseQuery({ queryKey: ["projects"], queryFn: async () => { await delay(400); return dummy.dummyProjects; }, staleTime: STALE_SLOW });
 
-export const useProject = (projectId: string) =>
-  useSuspenseQuery({
-    queryKey: ["project", projectId],
-    queryFn: async () => { await delay(300); return dummy.dummyProjects.find((p) => p.id === projectId) ?? null; },
-  });
-
-// ---- Members ----
-export const useMembers = () =>
-  useSuspenseQuery({ queryKey: ["members"], queryFn: async () => { await delay(300); return dummy.dummyMembers; }, staleTime: STALE_SLOW });
-
-export const useMember = (userId: string) =>
-  useSuspenseQuery({
-    queryKey: ["member", userId],
-    queryFn: async () => { await delay(200); return dummy.dummyMembers.find((m) => m.id === userId) ?? null; },
-  });
 
 // ---- Incidents ----
 export const useIncidents = () =>
@@ -195,21 +172,11 @@ export const useChannel = (channelId: string) =>
 export const useApiKeys = () =>
   useSuspenseQuery({ queryKey: ["apiKeys"], queryFn: async () => { await delay(300); return dummy.dummyApiKeys; }, staleTime: STALE_SLOW });
 
-export const useApiKey = (keyId: string) =>
-  useSuspenseQuery({
-    queryKey: ["apiKey", keyId],
-    queryFn: async () => { await delay(200); return dummy.dummyApiKeys.find((k) => k.id === keyId) ?? null; },
-  });
 
 // ---- Invoices ----
 export const useInvoices = () =>
   useSuspenseQuery({ queryKey: ["invoices"], queryFn: async () => { await delay(300); return dummy.dummyInvoices; }, staleTime: STALE_SLOW });
 
-export const useInvoice = (invoiceId: string) =>
-  useSuspenseQuery({
-    queryKey: ["invoice", invoiceId],
-    queryFn: async () => { await delay(200); return dummy.dummyInvoices.find((inv) => inv.id === invoiceId) ?? null; },
-  });
 
 // ---- Audit logs ----
 export const useAuditLogs = () =>
@@ -226,41 +193,11 @@ export const useWebhook = (webhookId: string) =>
   });
 
 // ---- Integrations ----
-export const useIntegrations = () =>
-  useSuspenseQuery({ queryKey: ["integrations"], queryFn: async () => { await delay(300); return dummy.dummyIntegrations; }, staleTime: STALE_SLOW });
-
 export const useIntegration = (integrationId: string) =>
   useSuspenseQuery({
     queryKey: ["integration", integrationId],
     queryFn: async () => { await delay(200); return dummy.dummyIntegrations.find((int) => int.id === integrationId) ?? null; },
   });
-
-// ---- Environments ----
-export const useEnvironments = () =>
-  useSuspenseQuery({ queryKey: ["environments"], queryFn: async () => { await delay(300); return dummy.dummyEnvironments; }, staleTime: STALE_SLOW });
-
-export const useEnvironment = (envId: string) =>
-  useSuspenseQuery({
-    queryKey: ["environment", envId],
-    queryFn: async () => { await delay(200); return dummy.dummyEnvironments.find((e) => e.id === envId) ?? null; },
-  });
-
-// ---- Security / Invitations / Quotas ----
-export const useSecurityEvents = () =>
-  useSuspenseQuery({ queryKey: ["securityEvents"], queryFn: async () => { await delay(400); return dummy.dummySecurityEvents; }, staleTime: STALE });
-
-export const useInvitations = () =>
-  useSuspenseQuery({ queryKey: ["invitations"], queryFn: async () => { await delay(300); return dummy.dummyInvitations; }, staleTime: STALE_SLOW });
-
-export const useQuotaRequests = () =>
-  useSuspenseQuery({ queryKey: ["quotaRequests"], queryFn: async () => { await delay(300); return dummy.dummyQuotaRequests; }, staleTime: STALE_SLOW });
-
-// ---- Billing extras ----
-export const usePaymentMethods = () =>
-  useSuspenseQuery({ queryKey: ["paymentMethods"], queryFn: async () => { await delay(300); return dummy.dummyPaymentMethods; }, staleTime: STALE_SLOW });
-
-export const usePromotions = () =>
-  useSuspenseQuery({ queryKey: ["promotions"], queryFn: async () => { await delay(300); return dummy.dummyPromotions; }, staleTime: STALE_SLOW });
 
 // ---- Connections / Insights ----
 export const useEndpoints = () =>

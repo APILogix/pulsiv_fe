@@ -13,6 +13,7 @@ export function useLoginBackupCode() {
   return useMutation({
     mutationFn: authApi.loginBackupCode,
     onSuccess: (session) => {
+      queryClient.invalidateQueries({ queryKey: ['auth'] });
       completeLogin(session, { setAuth, queryClient, navigate });
     },
     onError: (error: any) => {

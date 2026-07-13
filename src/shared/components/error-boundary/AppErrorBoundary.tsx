@@ -48,14 +48,14 @@ function AppErrorFallback({ error, resetErrorBoundary }: FallbackProps) {
 
         {/* Actions */}
         <div className="flex items-center gap-4 mt-8 w-full border-t border-[var(--border)] pt-8">
-          <button 
+          <button type="button" 
             onClick={resetErrorBoundary} 
             className="flex items-center gap-2 px-6 py-3 bg-[var(--red-bg)] text-[var(--red)] border border-[var(--red)] hover:bg-[var(--red)] hover:text-white transition-colors font-[family-name:var(--mono)] text-sm uppercase tracking-wider font-semibold cursor-pointer"
           >
             <RefreshCcw className="h-4 w-4" />
             Reload_System
           </button>
-          <button 
+          <button type="button" 
             onClick={() => window.location.href = '/'}
             className="flex items-center gap-2 px-6 py-3 bg-transparent text-[var(--text2)] border border-[var(--border)] hover:bg-[var(--bg2)] hover:text-[var(--text)] transition-colors font-[family-name:var(--mono)] text-sm uppercase tracking-wider font-semibold cursor-pointer"
           >

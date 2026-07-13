@@ -26,6 +26,7 @@ export function useLogin() {
   const loginMutation = useMutation({
     mutationFn: authApi.login,
     onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['auth'] });
       if ('mfa_required' in data) {
         setChallengeData({
           challengeId: data.challenge_id,
@@ -46,6 +47,7 @@ export function useLogin() {
   const mfaMutation = useMutation({
     mutationFn: authApi.loginMfa,
     onSuccess: (session) => {
+      queryClient.invalidateQueries({ queryKey: ['auth'] });
       handleSuccess(session);
     },
     onError: (error: any) => {
@@ -57,6 +59,7 @@ export function useLogin() {
   const backupMutation = useMutation({
     mutationFn: authApi.loginBackupCode,
     onSuccess: (session) => {
+      queryClient.invalidateQueries({ queryKey: ['auth'] });
       handleSuccess(session);
     },
     onError: (error: any) => {

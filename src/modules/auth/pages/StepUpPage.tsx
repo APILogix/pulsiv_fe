@@ -27,21 +27,18 @@ export default function StepUpPage() {
     navigate(from, { replace: true });
   };
 
-  const createChallenge = async () => {
-    setError('');
-    setIsLoading(true);
-    try {
-      const data = await authApi.requestMFAChallenge();
-      setChallenge(data);
-    } catch (err) {
-      setError(getErrorMessage(err));
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   useEffect(() => {
-    createChallenge();
+    const fetchChallenge = async () => {
+      try {
+        const data = await authApi.requestMFAChallenge();
+        setChallenge(data);
+        setIsLoading(false);
+      } catch (err) {
+        setError(getErrorMessage(err));
+        setIsLoading(false);
+      }
+    };
+    fetchChallenge();
   }, []);
 
   const handleVerify = async () => {
@@ -52,9 +49,9 @@ export default function StepUpPage() {
       await authApi.verifyMFAChallenge({ challenge_id: challenge.challenge_id, code });
       setStepUpFresh(true);
       goBack();
+      setIsVerifying(false);
     } catch (err) {
       setError(getErrorMessage(err));
-    } finally {
       setIsVerifying(false);
     }
   };
@@ -67,9 +64,9 @@ export default function StepUpPage() {
       await stepUpWithPasskey(challenge.challenge_id);
       setStepUpFresh(true);
       goBack();
+      setIsVerifying(false);
     } catch (err) {
       setError(err instanceof WebAuthnCeremonyError ? err.message : getErrorMessage(err));
-    } finally {
       setIsVerifying(false);
     }
   };
@@ -80,9 +77,9 @@ export default function StepUpPage() {
     setError('');
     try {
       await authApi.resendEmailMfaOtp(challenge.device_id);
+      setIsResending(false);
     } catch (err) {
       setError(getErrorMessage(err));
-    } finally {
       setIsResending(false);
     }
   };

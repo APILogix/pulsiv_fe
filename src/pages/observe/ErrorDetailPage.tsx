@@ -14,7 +14,10 @@ export default function ErrorDetailPage() {
   if (!group) return <div className="p-8 text-[var(--text2)]">Error group not found.</div>;
 
   const sample = group.occurrences[0];
-  const occurrenceSeries = Array.from({ length: 24 }, (_, i) => Math.round(group.count / 24 + Math.sin(i / 2) * (group.count / 30) + Math.random() * 3));
+  const occurrenceSeries = Array.from(
+    { length: 24 },
+    (_, i) => Math.round(group.count / 24 + Math.sin(i / 2) * (group.count / 30) + ((i % 4) + 1)),
+  );
 
   return (
     <div className="flex flex-col gap-5">
@@ -81,8 +84,8 @@ function Stat({ label, value, extra }: { label: string; value: string; extra?: R
 function StackTrace({ frames }: { frames: StackFrame[] }) {
   return (
     <div className="overflow-hidden rounded-[12px] border border-[var(--border)] bg-[var(--bg1)]">
-      {frames.map((f, i) => (
-        <div key={`${f.filename}-${i}`} className={f.inApp ? "" : "opacity-60"}>
+      {frames.map((f) => (
+        <div key={`${f.filename}-${f.lineno}-${f.colno}-${f.function}`} className={f.inApp ? "" : "opacity-60"}>
           <div className="flex items-center gap-2 border-b border-[var(--border)] bg-[var(--bg2)] px-4 py-2 font-[family-name:var(--mono)] text-[12px]">
             <span className="text-[var(--brand)]">{f.function}</span>
             <span className="text-[var(--text3)]">{f.filename}:{f.lineno}:{f.colno}</span>
@@ -105,8 +108,8 @@ function BreadcrumbTimeline({ crumbs }: { crumbs: Breadcrumb[] }) {
   if (crumbs.length === 0) return <div className="p-6 text-center text-[var(--text3)]">No breadcrumbs captured.</div>;
   return (
     <div className="relative ml-3 border-l border-[var(--border)] pl-5">
-      {crumbs.map((c, i) => (
-        <div key={i} className="relative pb-4 last:pb-0">
+      {crumbs.map((c) => (
+        <div key={`${c.timestamp}-${c.category}-${c.message}`} className="relative pb-4 last:pb-0">
           <span className="absolute -left-[26px] top-1 size-2.5 rounded-full bg-[var(--brand)]" />
           <div className="flex items-center gap-2">
             <span className="rounded bg-[var(--bg2)] px-1.5 py-0.5 text-[11px] text-[var(--text2)]">{c.category}</span>

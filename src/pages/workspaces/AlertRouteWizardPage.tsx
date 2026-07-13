@@ -13,7 +13,7 @@ import { toast } from "sonner";
 import { ChevronRight, Save } from "lucide-react";
 
 import { useAlertRouteMutations, useAlertRoute } from "@/modules/projects/hooks/useAlertRoutes";
-import { useEffect } from "react";
+
 
 // Mock connectors until we have useConnectors hook
 const mockConnectors: Connector[] = [
@@ -47,16 +47,17 @@ export default function AlertRouteWizardPage() {
   const [selectedConnectors, setSelectedConnectors] = useState<string[]>([]);
   const [priority, setPriority] = useState(100);
 
-  useEffect(() => {
-    if (isEditing && routeData) {
-      setName(routeData.name);
-      setDescription(routeData.description || "");
-      setIsActive(routeData.isActive);
-      if (routeData.conditions) setCondition(routeData.conditions);
-      if (routeData.targets) setSelectedConnectors(routeData.targets);
-      if (routeData.priority) setPriority(routeData.priority);
-    }
-  }, [routeData, isEditing]);
+  const [loadedRouteId, setLoadedRouteId] = useState<string | null>(null);
+
+  if (isEditing && routeData && loadedRouteId !== routeId) {
+    setLoadedRouteId(routeId!);
+    setName(routeData.name);
+    setDescription(routeData.description || "");
+    setIsActive(routeData.isActive);
+    if (routeData.conditions) setCondition(routeData.conditions);
+    if (routeData.targets) setSelectedConnectors(routeData.targets);
+    if (routeData.priority) setPriority(routeData.priority);
+  }
 
   const handleSubmit = async () => {
     setLoading(true);

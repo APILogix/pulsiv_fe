@@ -1,4 +1,4 @@
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { useParams, useNavigate } from "react-router";
 import { ArrowLeft, Send } from "lucide-react";
 import { useChannel } from "@/hooks/useDummyData";
@@ -8,6 +8,9 @@ export default function ChannelDetailPage() {
   const { channelId = "" } = useParams();
   const navigate = useNavigate();
   const { data: c, isLoading } = useChannel(channelId);
+  const [deliveries] = useState(() => Array.from({ length: 8 }, (_, i) => ({
+    id: i, ts: Date.now() - i * 5400000, code: i === 2 ? 500 : 200, event: "notification"
+  })));
 
   const [, saveAction] = useActionState(async () => {
     await new Promise((r) => setTimeout(r, 600));
@@ -18,9 +21,6 @@ export default function ChannelDetailPage() {
   if (isLoading) return <DetailSkeleton />;
   if (!c) return <div className="p-8 text-[var(--text2)]">Channel not found.</div>;
 
-  const deliveries = Array.from({ length: 8 }, (_, i) => ({
-    id: i, ts: Date.now() - i * 5400000, code: i === 2 && c.status === "failed" ? 500 : 200, event: c.events[i % c.events.length],
-  }));
 
   return (
     <div className="flex flex-col gap-5">

@@ -45,7 +45,7 @@ export default function ReleaseQuality() {
         tone="red"
         icon={AlertTriangle}
         title={<>Consider rollback — <strong>{release}</strong> error rate increased 341% (0.12% → 0.53%) and P95 latency up 238%.</>}
-        action={<div className="flex gap-2"><button className="rounded-[6px] border border-current px-2 py-1 text-[12px]">Initiate rollback</button><button onClick={() => navigate("/dashboards/errors")} className="rounded-[6px] border border-current px-2 py-1 text-[12px]">View errors</button></div>}
+        action={<div className="flex gap-2"><button type="button" className="rounded-[6px] border border-current px-2 py-1 text-[12px]">Initiate rollback</button><button type="button" onClick={() => navigate("/dashboards/errors")} className="rounded-[6px] border border-current px-2 py-1 text-[12px]">View errors</button></div>}
       />
 
       <HeroBand

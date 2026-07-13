@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { ShieldAlert } from "lucide-react";
 import { useRequestEvents, useErrorEvents } from "@/hooks/useDummyData";
 import { useTimeRangeStore, TIME_RANGES } from "@/stores/timeRangeStore";
@@ -24,6 +25,10 @@ export default function SecurityThreat() {
   const rateLimited = reqList.filter((r) => r.statusCode === 429);
   const securityScore = Math.max(0, Math.min(100, 92 - authFails.length * 2 - rateLimited.length));
 
+  const [now] = useState(() => Date.now());
+  const [randomCounts] = useState(() => Array.from({ length: SENSITIVE.length }, () => Math.floor(Math.random() * 40)));
+  const [randomJWT] = useState(() => Array.from({ length: 4 }, () => Math.floor(Math.random() * 5)));
+
   // Failed auth by IP
   const byIp = Object.entries(groupBy(authFails, (r) => r.clientIp))
     .map(([ip, rs]) => ({ ip, count: rs.length, country: countryForIp(ip), endpoint: rs[0]?.route ?? "—" }))
@@ -31,12 +36,12 @@ export default function SecurityThreat() {
     .slice(0, 8);
 
   // Sensitive endpoint access
-  const sensitiveAccess = SENSITIVE.map((path) => {
+  const sensitiveAccess = SENSITIVE.map((path, i) => {
     const matched = reqList.filter((r) => r.route.includes(path) || r.url.includes(path));
     return {
       path,
-      count: matched.length || Math.floor(Math.random() * 40),
-      users: new Set(matched.map((r) => r.userId).filter(Boolean)).size || 3,
+      count: matched.length || randomCounts[i],
+      users: new Set(matched.flatMap((r) => r.userId ? [r.userId] : [])).size || 3,
       failed: matched.filter((r) => r.statusCode === 403).length,
     };
   });
@@ -64,7 +69,7 @@ export default function SecurityThreat() {
       />
 
       {byIp[0]?.count > 10 && (
-        <Banner tone="red" icon={ShieldAlert} title={<>Brute force suspected — <strong>{byIp[0].count} failed auth attempts</strong> from <span className="font-[family-name:var(--mono)]">{byIp[0].ip}</span>.</>} action={<button className="rounded-[6px] border border-current px-2 py-1 text-[12px]">Block IP</button>} />
+        <Banner tone="red" icon={ShieldAlert} title={<>Brute force suspected — <strong>{byIp[0].count} failed auth attempts</strong> from <span className="font-[family-name:var(--mono)]">{byIp[0].ip}</span>.</>} action={<button type="button" className="rounded-[6px] border border-current px-2 py-1 text-[12px]">Block IP</button>} />
       )}
 
       <HeroBand
@@ -134,7 +139,7 @@ export default function SecurityThreat() {
                   <div className="truncate font-[family-name:var(--mono)] text-[11px] text-[var(--text3)]">{a.endpoint}</div>
                 </div>
                 <span className="shrink-0 text-[11px] text-[var(--text3)]">{a.conf}% conf</span>
-                <button className="shrink-0 rounded-[6px] border border-[var(--border)] px-2 py-1 text-[11px] text-[var(--brand)]">Investigate</button>
+                <button type="button" className="shrink-0 rounded-[6px] border border-[var(--border)] px-2 py-1 text-[11px] text-[var(--brand)]">Investigate</button>
               </div>
             ))}
           </div>
@@ -150,9 +155,8 @@ export default function SecurityThreat() {
               <Td><MonospaceText value={s.path} /></Td>
               <Td className="tabular-nums">{s.count}</Td>
               <Td className="tabular-nums">{s.users}</Td>
-              <Td><span style={{ color: s.failed > 0 ? "var(--amber)" : "var(--text)" }} className="tabular-nums">{s.failed}</span></Td>
               <Td className="tabular-nums">{Math.round((s.count % 30))}%</Td>
-              <Td><Timestamp value={Date.now() - s.count * 60000} /></Td>
+              <Td><Timestamp value={now - s.count * 60000} /></Td>
             </Tr>
           ))}
         </Table>
@@ -190,10 +194,10 @@ export default function SecurityThreat() {
             </div>
           ) : (
             <div className="flex flex-col gap-2">
-              {["Token replay (same JWT, different IPs)", "Expired token attempts", "Malformed JWT signatures", "Privilege escalation attempts"].map((d) => (
+              {["Token replay (same JWT, different IPs)", "Expired token attempts", "Malformed JWT signatures", "Privilege escalation attempts"].map((d, i) => (
                 <div key={d} className="flex items-center justify-between rounded-[8px] bg-[var(--bg2)] px-3 py-2 text-[12px]">
                   <span className="text-[var(--text2)]">{d}</span>
-                  <span className="tabular-nums text-[var(--text3)]">{Math.floor(Math.random() * 5)}</span>
+                  <span className="tabular-nums text-[var(--text3)]">{randomJWT[i]}</span>
                 </div>
               ))}
             </div>

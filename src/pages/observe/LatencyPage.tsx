@@ -77,7 +77,7 @@ export default function LatencyPage() {
         action={
           <div className="flex gap-1">
             {DIMENSIONS.map((d) => (
-              <button key={d} onClick={() => setDimension(d)}
+              <button type="button" key={d} onClick={() => setDimension(d)}
                 className={cn("rounded-[6px] px-2.5 py-1 text-[12px] capitalize", dimension === d ? "bg-[var(--brand-bg)] text-[var(--brand)]" : "text-[var(--text3)] hover:text-[var(--text)]")}>
                 {d}
               </button>

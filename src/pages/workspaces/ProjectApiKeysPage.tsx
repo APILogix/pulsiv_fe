@@ -65,7 +65,7 @@ export default function ProjectApiKeysPage() {
       width: "1fr",
       cell: (k) => (
         <ApiKeyDetailsSheet apiKey={k}>
-          <button className="truncate cursor-pointer text-left font-medium text-[var(--text)] outline-none hover:underline">
+          <button type="button" className="truncate cursor-pointer text-left font-medium text-[var(--text)] outline-none hover:underline">
             {k.name}
           </button>
         </ApiKeyDetailsSheet>

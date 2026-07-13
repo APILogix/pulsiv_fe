@@ -25,7 +25,8 @@ export function OrgSwitcher() {
     try {
       await orgApi.switchOrganization(orgId);
       setActiveOrgId(orgId);
-    } finally {
+      setSwitchingOrgId(null);
+    } catch {
       setSwitchingOrgId(null);
     }
   };

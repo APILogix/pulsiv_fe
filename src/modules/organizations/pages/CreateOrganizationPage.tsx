@@ -1,4 +1,4 @@
-import { useActionState, useEffect, useMemo, useState } from 'react';
+import { useActionState, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getAllCountries, getAllTimezones } from 'countries-and-timezones';
@@ -82,15 +82,15 @@ export default function CreateOrganizationPage() {
   const setActiveOrgId = useOrgStore((s) => s.setActiveOrgId);
   const [orgName, setOrgName] = useState('');
   const [countryName, setCountryName] = useState('');
-  const derivedSlug = useMemo(() => slugify(orgName), [orgName]);
-  const timezones = useMemo(() => {
+  const derivedSlug = slugify(orgName);
+  const timezones = (() => {
     const selectedCountry = COUNTRIES.find((country) => country.name === countryName);
 
     if (!selectedCountry) return ALL_TIMEZONES;
 
     const allowedTimezones = new Set(selectedCountry.timezones);
     return ALL_TIMEZONES.filter((timezone) => allowedTimezones.has(timezone.name));
-  }, [countryName]);
+  })();
 
   const { data: slugAvailability } = useQuery({
     queryKey: [...orgQueryKeys.lists(), 'slug-availability', derivedSlug],
@@ -209,7 +209,7 @@ export default function CreateOrganizationPage() {
 
             <div className="space-y-2">
               <Label htmlFor="industry" className="text-[var(--text2)]">Industry</Label>
-              <select id="industry" name="industry" disabled={isPending} defaultValue="" className="h-10 w-full rounded-lg border border-input bg-[var(--bg2)] px-2.5 text-sm text-[var(--text)] outline-none transition-colors focus:border-ring focus:ring-3 focus:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50">
+              <select id="industry" name="industry" disabled={isPending} defaultValue="" aria-label="Industry" className="h-10 w-full rounded-lg border border-input bg-[var(--bg2)] px-2.5 text-sm text-[var(--text)] outline-none transition-colors focus:border-ring focus:ring-3 focus:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50">
                 <option value="" disabled>Select an industry</option>
                 {INDUSTRIES.map((industry) => <option key={industry} value={industry}>{industry}</option>)}
               </select>
@@ -217,7 +217,7 @@ export default function CreateOrganizationPage() {
 
             <div className="space-y-2">
               <Label htmlFor="companySize" className="text-[var(--text2)]">Company size</Label>
-              <select id="companySize" name="companySize" disabled={isPending} defaultValue="" className="h-10 w-full rounded-lg border border-input bg-[var(--bg2)] px-2.5 text-sm text-[var(--text)] outline-none transition-colors focus:border-ring focus:ring-3 focus:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50">
+              <select id="companySize" name="companySize" disabled={isPending} defaultValue="" aria-label="Company size" className="h-10 w-full rounded-lg border border-input bg-[var(--bg2)] px-2.5 text-sm text-[var(--text)] outline-none transition-colors focus:border-ring focus:ring-3 focus:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50">
                 <option value="" disabled>Select team size</option>
                 {COMPANY_SIZES.map((size) => <option key={size} value={size}>{size} people</option>)}
               </select>
@@ -232,6 +232,7 @@ export default function CreateOrganizationPage() {
                 disabled={isPending}
                 value={countryName}
                 onChange={(event) => setCountryName(event.target.value)}
+                aria-label="Country"
                 className="h-10 w-full rounded-lg border border-input bg-[var(--bg2)] px-2.5 text-sm text-[var(--text)] outline-none transition-colors focus:border-ring focus:ring-3 focus:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <option value="" disabled>Select a country</option>
@@ -244,9 +245,9 @@ export default function CreateOrganizationPage() {
               <select
                 id="timezone"
                 name="timezone"
-                autoComplete="time-zone"
                 disabled={isPending}
                 defaultValue=""
+                aria-label="Timezone"
                 className="h-10 w-full rounded-lg border border-input bg-[var(--bg2)] px-2.5 text-sm text-[var(--text)] outline-none transition-colors focus:border-ring focus:ring-3 focus:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <option value="" disabled>{countryName ? 'Select a timezone' : 'Select a country first'}</option>

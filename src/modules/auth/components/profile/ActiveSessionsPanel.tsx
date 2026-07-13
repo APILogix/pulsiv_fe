@@ -35,6 +35,7 @@ export function ActiveSessionsPanel() {
           <p className="text-[14px] text-[#8A8F98] leading-relaxed">Manage the devices currently logged into your account.</p>
         </div>
         <button
+          type="button"
           onClick={() => revokeOthers.mutate()}
           disabled={!hasOthers || revokeOthers.isPending}
           className="px-4 py-2 border border-[#ef4444]/20 bg-[#2a1313] text-[#ef4444] text-[13px] font-medium rounded-md hover:bg-[#3f1919] transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
@@ -83,6 +84,7 @@ export function ActiveSessionsPanel() {
                     </span>
                   ) : (
                     <button
+                      type="button"
                       onClick={() => revoke.mutate(s.id)}
                       disabled={revoke.isPending}
                       className="px-4 py-1.5 border border-[#2a2a2a] bg-[#1a1a1a] text-[#e8e8e8] text-[13px] font-medium rounded-md hover:border-[rgba(239,68,68,0.2)] hover:text-[#ef4444] transition-all disabled:opacity-40"

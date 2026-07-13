@@ -1,8 +1,9 @@
 import { useParams } from "react-router";
 import { PageHeader, FillPage, InfiniteTable, Button } from "@/shared/observe";
-import { RotateCcw, Trash } from "lucide-react";
+import { RotateCcw, Trash, MoreHorizontal } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 import { useDeadLetterQueue, useDeadLetterMutations } from "@/modules/projects/hooks/useDeadLetters";
 
@@ -45,22 +46,38 @@ export default function DeadLetterQueuePage() {
     {
       key: "actions",
       header: "",
-      width: "100px",
+      width: "60px",
       align: "right" as const,
       cell: (d: any) => (
-        <div className="flex justify-end gap-1">
-          <Button variant="ghost" onClick={async () => {
-            await mutations.reprocessDeadLetter.mutateAsync(d.id);
-            toast.success("Replayed successfully");
-          }}>
-            <RotateCcw className="size-4 text-[var(--text)]" />
-          </Button>
-          <Button variant="ghost" onClick={async () => {
-            await mutations.discardDeadLetter.mutateAsync(d.id);
-            toast.success("Message discarded");
-          }}>
-            <Trash className="size-4 text-[var(--red)]" />
-          </Button>
+        <div className="flex justify-end" onClick={(e) => e.stopPropagation()}>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="h-8 w-8 p-0">
+                <span className="sr-only">Open menu</span>
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={async () => {
+                await mutations.reprocessDeadLetter.mutateAsync(d.id);
+                toast.success("Replayed successfully");
+              }}>
+                <RotateCcw className="mr-2 h-4 w-4" />
+                Replay Message
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={async () => {
+                  await mutations.discardDeadLetter.mutateAsync(d.id);
+                  toast.success("Message discarded");
+                }}
+                className="text-[var(--red)] focus:text-[var(--red)] focus:bg-[var(--red-bg)]"
+              >
+                <Trash className="mr-2 h-4 w-4" />
+                Discard Message
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       ),
     },

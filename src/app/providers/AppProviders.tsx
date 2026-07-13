@@ -12,21 +12,18 @@ export function AppProviders({ children }: { children: ReactNode }) {
           {children}
         </TooltipProvider>
         <Toaster
-          position="top-right"
-          richColors
-          closeButton
-          expand
+          position="bottom-right"
           toastOptions={{
             classNames: {
-              toast: 'group rounded-lg border border-border bg-popover text-popover-foreground shadow-lg',
-              title: 'text-sm font-medium text-foreground',
-              description: 'text-sm text-muted-foreground',
-              actionButton: 'bg-primary text-primary-foreground',
-              cancelButton: 'bg-muted text-muted-foreground',
-              success: 'border-[var(--green)]/30 bg-[var(--green-bg)] text-foreground',
-              error: 'border-[var(--red)]/30 bg-[var(--red-bg)] text-foreground',
-              warning: 'border-[var(--amber)]/30 bg-[var(--amber-bg)] text-foreground',
-              info: 'border-[var(--blue)]/30 bg-[var(--blue-bg)] text-foreground',
+              toast: 'group flex items-center gap-3 rounded-[12px] border border-[var(--border)] bg-[var(--bg1)] px-4 py-3 shadow-md text-[13px] font-medium text-[var(--text)]',
+              title: 'text-[13px] font-medium tracking-tight text-[var(--text)]',
+              description: 'text-[12px] text-[var(--text2)] mt-0.5',
+              actionButton: 'bg-[var(--brand)] text-white rounded-[6px] px-3 py-1.5 text-[12px]',
+              cancelButton: 'bg-[var(--bg2)] text-[var(--text2)] rounded-[6px] px-3 py-1.5 text-[12px]',
+              success: 'border-[var(--border)] bg-[var(--bg1)] text-[var(--text)]',
+              error: 'border-[var(--red)]/30 bg-[var(--red)]/5 text-[var(--red)]',
+              warning: 'border-[var(--amber)]/30 bg-[var(--amber)]/5 text-[var(--amber)]',
+              info: 'border-[var(--blue)]/30 bg-[var(--blue)]/5 text-[var(--blue)]',
             },
           }}
         />

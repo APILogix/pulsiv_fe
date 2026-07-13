@@ -27,7 +27,9 @@ export function InfiniteCards<T>({
   loading = false,
 }: InfiniteCardsProps<T>) {
   const itemsRef = useRef(items);
-  itemsRef.current = items;
+  useEffect(() => {
+    itemsRef.current = items;
+  }, [items]);
 
   const query = useInfiniteQuery({
     queryKey: ["infinite-cards", ...queryKey, items.length],

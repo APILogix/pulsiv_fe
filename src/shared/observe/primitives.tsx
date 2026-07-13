@@ -1,8 +1,8 @@
 import { useState } from "react";
 import type { LucideIcon } from "lucide-react";
 import {
-  AlertOctagon, AlertTriangle, Bug, Check, Copy, FileText, Gauge, Globe, Info,
-  Timer, Activity, ScrollText, GitBranch, Clock, ChevronRight,
+  Bug, Check, Copy, FileText, Gauge, Globe,
+  Activity, ScrollText, GitBranch, Clock, ChevronRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatRelativeTime, formatAbsoluteTime } from "./format";
@@ -124,7 +124,7 @@ export function Timestamp({ value }: { value: number }) {
   );
 }
 
-export function CopyButton({ value, label }: { value: string; label?: string }) {
+export function CopyButton({ value, label, className }: { value: string; label?: string; className?: string }) {
   const [copied, setCopied] = useState(false);
   const handleCopy = () => {
     navigator.clipboard?.writeText(value).then(() => {
@@ -134,8 +134,9 @@ export function CopyButton({ value, label }: { value: string; label?: string }) 
   };
   return (
     <button
+      type="button"
       onClick={handleCopy}
-      className="inline-flex items-center gap-1.5 rounded-[6px] border border-[var(--border)] bg-[var(--bg2)] px-2 py-1 text-[12px] text-[var(--text2)] transition-colors hover:text-[var(--text)] hover:border-[var(--input)]"
+      className={cn("inline-flex items-center gap-1.5 rounded-[6px] border border-[var(--border)] bg-[var(--bg2)] px-2 py-1 text-[12px] text-[var(--text2)] transition-colors hover:text-[var(--text)] hover:border-[var(--input)]", className)}
     >
       {copied ? <Check className="size-3.5 text-[var(--green)]" /> : <Copy className="size-3.5" />}
       {label ?? (copied ? "Copied" : "Copy")}
@@ -261,4 +262,3 @@ export function LatencyBar({ value, max = 2000 }: { value: number; max?: number 
   );
 }
 
-export const STATUS_ICONS = { AlertOctagon, AlertTriangle, Info, Timer };

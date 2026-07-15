@@ -1,0 +1,8 @@
+0000000000000000000000000000000000000000 705b591c1073b496d065b7a20daeb4207fec98db vikasfixel <vikasbaplawat1@gmail.com> 1783232404 +0530	clone: from https://github.com/APILogix/pulsiv_fe.git
+705b591c1073b496d065b7a20daeb4207fec98db 226f1d6b5a7459d994f2bfd0b2a40bea7e0f4ec5 vikasfixel <vikasbaplawat1@gmail.com> 1783358072 +0530	commit: project module implmentation
+226f1d6b5a7459d994f2bfd0b2a40bea7e0f4ec5 c2efc40b56c040a677861a19e1112f6a260a4541 vikasfixel <vikasbaplawat1@gmail.com> 1783701275 +0530	commit: code chanegs
+c2efc40b56c040a677861a19e1112f6a260a4541 c2efc40b56c040a677861a19e1112f6a260a4541 vikasfixel <vikasbaplawat1@gmail.com> 1783701302 +0530	checkout: moving from main to module/auth
+c2efc40b56c040a677861a19e1112f6a260a4541 678c663df74e9a5a9e92f19ae054ad3cbf347f9d vikasfixel <vikasbaplawat1@gmail.com> 1783860022 +0530	commit: code updated
+678c663df74e9a5a9e92f19ae054ad3cbf347f9d c2efc40b56c040a677861a19e1112f6a260a4541 vikasfixel <vikasbaplawat1@gmail.com> 1783917242 +0530	checkout: moving from module/auth to main
+c2efc40b56c040a677861a19e1112f6a260a4541 678c663df74e9a5a9e92f19ae054ad3cbf347f9d vikasfixel <vikasbaplawat1@gmail.com> 1783917292 +0530	checkout: moving from main to module/auth
+678c663df74e9a5a9e92f19ae054ad3cbf347f9d b4e64af4f6e20b8b554d8648714ceadd468bb7cc vikasfixel <vikasbaplawat1@gmail.com> 1783940355 +0530	commit: ui code for org

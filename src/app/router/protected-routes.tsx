@@ -1,0 +1,359 @@
+import { lazy } from "react";
+import { RouteObject, Navigate } from "react-router";
+import { RequireAuth } from "./route-guards";
+
+const AppLayout = lazy(() => import("../layouts/AppLayout").then((m) => ({ default: m.AppLayout })));
+
+const DashboardPage = lazy(() => import("@/modules/dashboard/index").then((m) => ({ default: m.DashboardPage ?? (() => null) })));
+const SecurityCenterPage = lazy(() => import("@/modules/auth/pages/SecurityCenterPage").then((m) => ({ default: m.default })));
+const SessionsPage = lazy(() => import("@/modules/auth/pages/SessionsPage").then((m) => ({ default: m.default })));
+const StepUpPage = lazy(() => import("@/modules/auth/pages/StepUpPage").then((m) => ({ default: m.default })));
+const CreateOrganizationPage = lazy(() => import("@/modules/organizations/pages/CreateOrganizationPage"));
+const CheckoutSuccessPage = lazy(() => import("@/modules/billing/pages/CheckoutSuccessPage"));
+const CheckoutCancelPage = lazy(() => import("@/modules/billing/pages/CheckoutCancelPage"));
+
+const SettingsLayout = lazy(() => import("../layouts/SettingsLayout"));
+const ModuleLayout = lazy(() => import("../layouts/ModuleLayout").then((m) => ({ default: m.ModuleLayout })));
+const EmailVerificationStatusPage = lazy(() => import("@/modules/auth/pages/EmailVerificationStatusPage"));
+const EffectiveAuthPolicyPage = lazy(() => import("@/modules/auth/pages/EffectiveAuthPolicyPage"));
+
+const PersonalDetailsPanel = lazy(() => import("@/modules/auth/components/profile/PersonalDetailsPanel").then(m => ({ default: m.PersonalDetailsPanel })));
+const ChangePasswordPanel = lazy(() => import("@/modules/auth/components/profile/ChangePasswordPanel").then(m => ({ default: m.ChangePasswordPanel })));
+const MfaSecurityPanel = lazy(() => import("@/modules/auth/components/profile/MfaSecurityPanel").then(m => ({ default: m.MfaSecurityPanel })));
+const ActiveSessionsPanel = lazy(() => import("@/modules/auth/components/profile/ActiveSessionsPanel").then(m => ({ default: m.ActiveSessionsPanel })));
+const BackupCodesPanel = lazy(() => import("@/modules/auth/components/profile/BackupCodesPanel").then(m => ({ default: m.BackupCodesPanel })));
+const AuditLogsPanel = lazy(() => import("@/modules/auth/components/profile/AuditLogsPanel").then(m => ({ default: m.AuditLogsPanel })));
+const TrustedDevicesPanel = lazy(() => import("@/modules/auth/components/profile/TrustedDevicesPanel").then(m => ({ default: m.TrustedDevicesPanel })));
+const MfaRecoveryPanel = lazy(() => import("@/modules/auth/components/profile/MfaRecoveryPanel").then(m => ({ default: m.MfaRecoveryPanel })));
+const PrivacyAndDeletionPanel = lazy(() => import("@/modules/auth/components/profile/PrivacyAndDeletionPanel").then(m => ({ default: m.PrivacyAndDeletionPanel })));
+const LinkedAccountsPanel = lazy(() => import("@/modules/auth/components/profile/LinkedAccountsPanel").then(m => ({ default: m.LinkedAccountsPanel })));
+
+// ── Custom dashboards ──
+const DashboardsOverview = lazy(() => import("@/pages/dashboards/DashboardsOverview"));
+const ExecutiveCommandCenter = lazy(() => import("@/pages/dashboards/ExecutiveCommandCenter"));
+const PerformanceDeepDive = lazy(() => import("@/pages/dashboards/PerformanceDeepDive"));
+const ErrorTriage = lazy(() => import("@/pages/dashboards/ErrorTriage"));
+const GeoAnalytics = lazy(() => import("@/pages/dashboards/GeoAnalytics"));
+const RealtimeTraffic = lazy(() => import("@/pages/dashboards/RealtimeTraffic"));
+const TracingDependencyMap = lazy(() => import("@/pages/dashboards/TracingDependencyMap"));
+const InfrastructureCost = lazy(() => import("@/pages/dashboards/InfrastructureCost"));
+const SecurityThreat = lazy(() => import("@/pages/dashboards/SecurityThreat"));
+const ReleaseQuality = lazy(() => import("@/pages/dashboards/ReleaseQuality"));
+const BusinessMetrics = lazy(() => import("@/pages/dashboards/BusinessMetrics"));
+const ScheduledReportsPage = lazy(() => import("@/pages/dashboards/ScheduledReportsPage"));
+const CreateReportPage = lazy(() => import("@/pages/dashboards/CreateReportPage"));
+
+// ── Services ──
+const ServiceCatalogPage = lazy(() => import("@/pages/services/ServiceCatalogPage"));
+const ServiceDependenciesPage = lazy(() => import("@/pages/services/ServiceDependenciesPage"));
+const ServiceSlosPage = lazy(() => import("@/pages/services/ServiceSlosPage"));
+
+// ── Pulse observability surfaces ──
+// Observe
+const ExecutiveDashboard = lazy(() => import("@/pages/observe/ExecutiveDashboard"));
+const RequestsPage = lazy(() => import("@/pages/observe/RequestsPage"));
+const RequestDetailPage = lazy(() => import("@/pages/observe/RequestDetailPage"));
+const EventsExplorer = lazy(() => import("@/pages/observe/EventsExplorer"));
+const EventDetailPage = lazy(() => import("@/pages/observe/EventDetailPage"));
+const ErrorGroupsPage = lazy(() => import("@/pages/observe/ErrorGroupsPage"));
+const ErrorDetailPage = lazy(() => import("@/pages/observe/ErrorDetailPage"));
+const ServiceHealthPage = lazy(() => import("@/pages/observe/ServiceHealthPage"));
+const LatencyPage = lazy(() => import("@/pages/observe/LatencyPage"));
+const TracesPage = lazy(() => import("@/pages/observe/TracesPage"));
+const TraceDetailPage = lazy(() => import("@/pages/observe/TraceDetailPage"));
+const LogsPage = lazy(() => import("@/pages/observe/LogsPage"));
+const LogDetailPage = lazy(() => import("@/pages/observe/LogDetailPage"));
+
+// Workspaces
+const ProjectsPage = lazy(() => import("@/pages/workspaces/ProjectsPage"));
+const CreateProjectWizardPage = lazy(() => import("@/pages/workspaces/CreateProjectWizardPage"));
+const ProjectOverviewPage = lazy(() => import("@/pages/workspaces/ProjectOverviewPage"));
+
+// Project Shell
+const ProjectShellPage = lazy(() => import("@/pages/workspaces/ProjectShellPage").then(m => ({ default: m.ProjectShellPage })));
+const ProjectUsagePage = lazy(() => import("@/pages/workspaces/ProjectUsagePage"));
+const ProjectSettingsPage = lazy(() => import("@/pages/workspaces/ProjectSettingsPage"));
+const ProjectApiKeysPage = lazy(() => import("@/pages/workspaces/ProjectApiKeysPage"));
+const ProjectActivityPage = lazy(() => import("@/pages/workspaces/ProjectActivityPage"));
+const RemoteConfigPage = lazy(() => import("@/pages/workspaces/RemoteConfigPage"));
+const ProjectAlertRoutesPage = lazy(() => import("@/pages/workspaces/ProjectAlertRoutesPage"));
+
+// Mock pages (kept imported but can be hidden from routing for now)
+const ProjectMembersPage = lazy(() => import("@/pages/workspaces/ProjectMembersPage"));
+const AlertRouteWizardPage = lazy(() => import("@/pages/workspaces/AlertRouteWizardPage"));
+const MemberAlertPreferencesPage = lazy(() => import("@/pages/workspaces/MemberAlertPreferencesPage"));
+const AlertDeliveryLogsPage = lazy(() => import("@/pages/workspaces/AlertDeliveryLogsPage"));
+const DeadLetterQueuePage = lazy(() => import("@/pages/workspaces/DeadLetterQueuePage"));
+
+// Act
+const IncidentsPage = lazy(() => import("@/pages/act/IncidentsPage"));
+const IncidentDetailPage = lazy(() => import("@/pages/act/IncidentDetailPage"));
+const AlertRulesPage = lazy(() => import("@/pages/act/AlertRulesPage"));
+const AlertRuleDetailPage = lazy(() => import("@/pages/act/AlertRuleDetailPage"));
+const EscalationsPage = lazy(() => import("@/pages/act/EscalationsPage"));
+const EscalationDetailPage = lazy(() => import("@/pages/act/EscalationDetailPage"));
+const ChannelsPage = lazy(() => import("@/pages/act/ChannelsPage"));
+const ChannelDetailPage = lazy(() => import("@/pages/act/ChannelDetailPage"));
+
+// Connections
+const ConnectionsOverview = lazy(() => import("@/pages/connections/ConnectionsOverview"));
+const ApiEndpointsPage = lazy(() => import("@/pages/connections/ApiEndpointsPage"));
+const ConnectionHealthPage = lazy(() => import("@/pages/connections/ConnectionHealthPage"));
+const KeysTokensPage = lazy(() => import("@/pages/connections/KeysTokensPage"));
+const PipelinePage = lazy(() => import("@/pages/connections/PipelinePage"));
+const RateLimitsPage = lazy(() => import("@/pages/connections/RateLimitsPage"));
+
+// Insights
+const AiOverviewPage = lazy(() => import("@/pages/insights/AiOverviewPage"));
+const RootCausePage = lazy(() => import("@/pages/insights/RootCausePage"));
+const AnomaliesPage = lazy(() => import("@/pages/insights/AnomaliesPage"));
+const ReleaseImpactPage = lazy(() => import("@/pages/insights/ReleaseImpactPage"));
+const CostUsagePage = lazy(() => import("@/pages/insights/CostUsagePage"));
+const PoliciesPage = lazy(() => import("@/pages/insights/PoliciesPage"));
+
+// Team
+const OrgProfilePage = lazy(() => import("@/pages/team/OrgProfilePage"));
+const MembersPage = lazy(() => import("@/pages/team/MembersPage"));
+const MemberDetailPage = lazy(() => import("@/pages/team/MemberDetailPage"));
+const InvitationsPage = lazy(() => import("@/pages/team/InvitationsPage"));
+const SsoPage = lazy(() => import("@/pages/team/SsoPage"));
+const ScimPage = lazy(() => import("@/pages/team/ScimPage"));
+const SecurityEventsPage = lazy(() => import("@/pages/team/SecurityEventsPage"));
+const AuditLogsPage = lazy(() => import("@/pages/team/AuditLogsPage"));
+const DomainsPage = lazy(() => import("@/pages/team/DomainsPage"));
+const OrgSettingsPage = lazy(() => import("@/pages/team/OrgSettingsPage"));
+const SdkConfigPage = lazy(() => import("@/pages/team/SdkConfigPage"));
+const CompliancePage = lazy(() => import("@/pages/team/CompliancePage"));
+
+// Billing
+const PlanPage = lazy(() => import("@/pages/billing/PlanPage"));
+const BillingUsagePage = lazy(() => import("@/pages/billing/BillingUsagePage"));
+const InvoicesPage = lazy(() => import("@/pages/billing/InvoicesPage"));
+const InvoiceDetailPage = lazy(() => import("@/pages/billing/InvoiceDetailPage"));
+const PaymentMethodsPage = lazy(() => import("@/pages/billing/PaymentMethodsPage"));
+
+// Settings (new surfaces — others reuse existing module components)
+const WebhooksPage = lazy(() => import("@/pages/settings/WebhooksPage"));
+const WebhookDetailPage = lazy(() => import("@/pages/settings/WebhookDetailPage"));
+const IntegrationsPage = lazy(() => import("@/pages/settings/IntegrationsPage"));
+const IntegrationDetailPage = lazy(() => import("@/pages/settings/IntegrationDetailPage"));
+const SlackSuccessPage = lazy(() => import("@/pages/settings/SlackSuccessPage"));
+const SlackErrorPage = lazy(() => import("@/pages/settings/SlackErrorPage"));
+const DataRetentionPage = lazy(() => import("@/pages/settings/DataRetentionPage"));
+const IntegrationsAuditPage = lazy(() => import("@/pages/settings/IntegrationsAuditPage"));
+
+export const protectedRoutes: RouteObject[] = [
+  {
+    element: <RequireAuth />,
+    children: [
+      {
+        element: <AppLayout />,
+        children: [
+          { index: true, element: <DashboardPage /> },
+          { path: "dashboard", element: <DashboardPage /> },
+
+          {
+            path: "dashboards",
+            element: <ModuleLayout />,
+            children: [
+              { index: true, element: <DashboardsOverview /> },
+              { path: "overview", element: <DashboardsOverview /> },
+              { path: "executive", element: <ExecutiveCommandCenter /> },
+              { path: "performance", element: <PerformanceDeepDive /> },
+              { path: "errors", element: <ErrorTriage /> },
+              { path: "geo", element: <GeoAnalytics /> },
+              { path: "realtime", element: <RealtimeTraffic /> },
+              { path: "tracing", element: <TracingDependencyMap /> },
+              { path: "infrastructure", element: <InfrastructureCost /> },
+              { path: "security", element: <SecurityThreat /> },
+              { path: "releases", element: <ReleaseQuality /> },
+              { path: "business", element: <BusinessMetrics /> },
+              { path: "reports", element: <ScheduledReportsPage /> },
+              { path: "reports/new", element: <CreateReportPage /> },
+            ],
+          },
+
+          {
+            path: "observability",
+            element: <ModuleLayout />,
+            children: [
+              { index: true, element: <ExecutiveDashboard /> },
+              { path: "requests", element: <RequestsPage /> },
+              { path: "requests/:requestId", element: <RequestDetailPage /> },
+              { path: "events", element: <EventsExplorer /> },
+              { path: "events/:eventId", element: <EventDetailPage /> },
+              { path: "errors", element: <ErrorGroupsPage /> },
+              { path: "errors/:fingerprint", element: <ErrorDetailPage /> },
+              { path: "errors/:fingerprint/occurrences/:eventId", element: <ErrorDetailPage /> },
+              { path: "service-health", element: <ServiceHealthPage /> },
+              { path: "latency", element: <LatencyPage /> },
+              { path: "traces", element: <TracesPage /> },
+              { path: "traces/:traceId", element: <TraceDetailPage /> },
+              { path: "traces/:traceId/spans/:spanId", element: <TraceDetailPage /> },
+              { path: "logs", element: <LogsPage /> },
+              { path: "logs/:eventId", element: <LogDetailPage /> },
+            ],
+          },
+
+          {
+            path: "services",
+            element: <ModuleLayout />,
+            children: [
+              { index: true, element: <ServiceCatalogPage /> },
+              { path: "dependencies", element: <ServiceDependenciesPage /> },
+              { path: "slos", element: <ServiceSlosPage /> },
+            ],
+          },
+
+          {
+            path: "projects",
+            children: [
+              {
+                element: <ModuleLayout />,
+                children: [
+                  { index: true, element: <ProjectsPage /> },
+                  { path: "new", element: <CreateProjectWizardPage /> },
+                ]
+              },
+              {
+                path: ":projectId",
+                element: <ProjectShellPage />,
+                children: [
+                  { index: true, element: <Navigate to="overview" replace /> },
+                  { path: "overview", element: <ProjectOverviewPage /> },
+                  { path: "usage", element: <ProjectUsagePage /> },
+                  { path: "api-keys", element: <ProjectApiKeysPage /> },
+                  { path: "activity", element: <ProjectActivityPage /> },
+                  { path: "remote-config", element: <RemoteConfigPage /> },
+                  { path: "routes", element: <ProjectAlertRoutesPage /> },
+                  { path: "settings/general", element: <ProjectSettingsPage /> },
+                  { path: "members", element: <ProjectMembersPage /> },
+                  { path: "routes/:routeId", element: <AlertRouteWizardPage /> },
+                  { path: "preferences", element: <MemberAlertPreferencesPage /> },
+                  { path: "deliveries", element: <AlertDeliveryLogsPage /> },
+                  { path: "dlq", element: <DeadLetterQueuePage /> },
+                ]
+              }
+            ],
+          },
+          {
+            path: "alerts",
+            element: <ModuleLayout />,
+            children: [
+              { index: true, element: <IncidentsPage /> },
+              { path: ":incidentId", element: <IncidentDetailPage /> },
+              { path: "rules", element: <AlertRulesPage /> },
+              { path: "rules/:ruleId", element: <AlertRuleDetailPage /> },
+              { path: "escalations", element: <EscalationsPage /> },
+              { path: "escalations/:policyId", element: <EscalationDetailPage /> },
+              { path: "channels", element: <ChannelsPage /> },
+              { path: "channels/:channelId", element: <ChannelDetailPage /> },
+            ],
+          },
+          {
+            path: "ingestion",
+            element: <ModuleLayout />,
+            children: [
+              { index: true, element: <ConnectionsOverview /> },
+              { path: "endpoints", element: <ApiEndpointsPage /> },
+              { path: "health", element: <ConnectionHealthPage /> },
+              { path: "keys", element: <KeysTokensPage /> },
+              { path: "replay", element: <PipelinePage /> },
+              { path: "rate-limits", element: <RateLimitsPage /> },
+            ],
+          },
+          {
+            path: "ai",
+            element: <ModuleLayout />,
+            children: [
+              { index: true, element: <AiOverviewPage /> },
+              { path: "root-cause", element: <RootCausePage /> },
+              { path: "anomalies", element: <AnomaliesPage /> },
+              { path: "release-impact", element: <ReleaseImpactPage /> },
+              { path: "costs", element: <CostUsagePage /> },
+              { path: "policies", element: <PoliciesPage /> },
+            ],
+          },
+          {
+            path: "admin",
+            element: <ModuleLayout />,
+            children: [
+              { index: true, element: <OrgProfilePage /> },
+              { path: "settings", element: <OrgSettingsPage /> },
+              { path: "domains", element: <DomainsPage /> },
+              { path: "members", element: <MembersPage /> },
+              { path: "members/:userId", element: <MemberDetailPage /> },
+              { path: "invitations", element: <InvitationsPage /> },
+              { path: "sso", element: <SsoPage /> },
+              { path: "scim", element: <ScimPage /> },
+              { path: "security-events", element: <SecurityEventsPage /> },
+              { path: "audit-logs", element: <AuditLogsPage /> },
+              { path: "sdk-config", element: <SdkConfigPage /> },
+              { path: "compliance", element: <CompliancePage /> },
+            ],
+          },
+          {
+            path: "billing",
+            element: <ModuleLayout />,
+            children: [
+              { index: true, element: <PlanPage /> },
+              { path: "usage", element: <BillingUsagePage /> },
+              { path: "invoices", element: <InvoicesPage /> },
+              { path: "invoices/:invoiceId", element: <InvoiceDetailPage /> },
+              { path: "payment-methods", element: <PaymentMethodsPage /> },
+            ],
+          },
+
+          {
+            path: "connectors",
+            element: <ModuleLayout />,
+            children: [
+              { path: "webhooks", element: <WebhooksPage /> },
+              { path: "webhooks/:webhookId", element: <WebhookDetailPage /> },
+              { path: "integrations", element: <IntegrationsPage /> },
+              { path: "integrations/slack/success", element: <SlackSuccessPage /> },
+              { path: "integrations/slack/error", element: <SlackErrorPage /> },
+              { path: "integrations/:integrationId", element: <IntegrationDetailPage /> },
+              { path: "audit", element: <IntegrationsAuditPage /> },
+            ],
+          },
+          {
+            path: "developer",
+            element: <ModuleLayout />,
+            children: [
+              { path: "data-retention", element: <DataRetentionPage /> },
+              { path: "custom-settings", element: <SdkConfigPage /> },
+            ],
+          },
+          {
+            path: "settings",
+            element: <SettingsLayout />,
+            children: [
+              { index: true, element: <SecurityCenterPage /> },
+              { path: "profile", element: <PersonalDetailsPanel /> },
+              { path: "password", element: <ChangePasswordPanel /> },
+              { path: "mfa", element: <MfaSecurityPanel /> },
+              { path: "sessions", element: <ActiveSessionsPanel /> },
+              { path: "backup-codes", element: <BackupCodesPanel /> },
+              { path: "trusted-devices", element: <TrustedDevicesPanel /> },
+              { path: "linked-accounts", element: <LinkedAccountsPanel /> },
+              { path: "email-verification", element: <EmailVerificationStatusPage /> },
+              { path: "authentication-policy", element: <EffectiveAuthPolicyPage /> },
+              { path: "mfa-recovery", element: <MfaRecoveryPanel /> },
+              { path: "privacy", element: <PrivacyAndDeletionPanel /> },
+              { path: "personal-logs", element: <AuditLogsPanel /> },
+              { path: "security", element: <SecurityCenterPage /> },
+            ],
+          },
+
+          { path: "auth/security", element: <SecurityCenterPage /> },
+          { path: "auth/sessions", element: <SessionsPage /> },
+          { path: "auth/step-up", element: <StepUpPage /> },
+        ],
+      },
+      { path: "onboarding/organization", element: <CreateOrganizationPage /> },
+      { path: "billing/checkout/success", element: <CheckoutSuccessPage /> },
+      { path: "billing/checkout/cancel", element: <CheckoutCancelPage /> },
+    ],
+  },
+];

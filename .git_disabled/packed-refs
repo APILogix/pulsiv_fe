@@ -1,0 +1,6 @@
+# pack-refs with: peeled fully-peeled sorted 
+bc1843b5069997131716297b06f49132b9cabe5a refs/remotes/origin/feat/pages-creation
+705b591c1073b496d065b7a20daeb4207fec98db refs/remotes/origin/main
+c789e78b327b2c19ae5d0c9d7a0ac05f73aed287 refs/remotes/origin/theme-switcher
+d0bed07cb3ad378e9a79d283aba67e8a4e8ec6d3 refs/remotes/origin/v0/pirivaf540-5035-f1608d5a
+705b591c1073b496d065b7a20daeb4207fec98db refs/remotes/origin/v0/vikassharma2004-0a5448f6

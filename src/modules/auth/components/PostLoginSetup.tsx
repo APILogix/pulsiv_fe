@@ -103,10 +103,10 @@ export function PostLoginSetup() {
                             transition={{ type: "spring", stiffness: 500, damping: 26 }}
                             className="flex size-5 items-center justify-center rounded-full bg-[#10b981]/15"
                           >
-                            <Check className="size-3 text-[#10b981]" strokeWidth={3} />
+                            <Check className="size-3 text-primary" strokeWidth={3} />
                           </m.span>
                         ) : state === "active" ? (
-                          <Loader2 className="size-4 animate-spin text-[#10b981]" />
+                          <Loader2 className="size-4 animate-spin text-primary" />
                         ) : (
                           <span className="size-1.5 rounded-full bg-[#333333]" />
                         )}
@@ -114,7 +114,7 @@ export function PostLoginSetup() {
                       <span
                         className={
                           state === "active"
-                            ? "font-mono text-[13px] tracking-wide text-white"
+                            ? "font-mono text-[13px] tracking-wide text-foreground"
                             : state === "done"
                               ? "font-mono text-[13px] tracking-wide text-[#8a8a8a] line-through decoration-[#333333]"
                               : "font-mono text-[13px] tracking-wide text-[#555555]"

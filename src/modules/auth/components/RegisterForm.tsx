@@ -35,20 +35,20 @@ export function RegisterForm() {
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       <div className="space-y-2">
-        <Label htmlFor="full_name" className="block text-[13px] font-medium text-[#8A8F98]">Full Name</Label>
+        <Label htmlFor="full_name" className="block text-[13px] font-medium text-muted-foreground">Full Name</Label>
         <Input
           id="full_name"
           placeholder="Jane Doe"
           autoComplete="name"
           {...register('full_name')}
           disabled={isPending}
-          className="w-full h-auto bg-[#141414] border border-[#1f1f1f] text-white text-[14px] px-4 py-3 rounded-lg outline-none transition-all placeholder:text-[#5C5F66] focus:border-[#10b981] focus:ring-1 focus:ring-[#10b981]/20"
+          className="w-full h-auto bg-card border border-border text-foreground text-[14px] px-4 py-3 rounded-lg outline-none transition-all placeholder:text-muted-foreground focus:border-primary focus:ring-1 focus:ring-primary/20"
         />
         {errors.full_name && <p className="text-[#ef4444] text-xs mt-1">{errors.full_name.message}</p>}
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="email" className="block text-[13px] font-medium text-[#8A8F98]">Work Email</Label>
+        <Label htmlFor="email" className="block text-[13px] font-medium text-muted-foreground">Work Email</Label>
         <Input
           id="email"
           type="email"
@@ -56,13 +56,13 @@ export function RegisterForm() {
           autoComplete="email"
           {...register('email')}
           disabled={isPending}
-          className="w-full h-auto bg-[#141414] border border-[#1f1f1f] text-white text-[14px] px-4 py-3 rounded-lg outline-none transition-all placeholder:text-[#5C5F66] focus:border-[#10b981] focus:ring-1 focus:ring-[#10b981]/20"
+          className="w-full h-auto bg-card border border-border text-foreground text-[14px] px-4 py-3 rounded-lg outline-none transition-all placeholder:text-muted-foreground focus:border-primary focus:ring-1 focus:ring-primary/20"
         />
         {errors.email && <p className="text-[#ef4444] text-xs mt-1">{errors.email.message}</p>}
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="password" className="block text-[13px] font-medium text-[#8A8F98]">Password</Label>
+        <Label htmlFor="password" className="block text-[13px] font-medium text-muted-foreground">Password</Label>
         <div className="relative">
           <Input
             id="password"
@@ -75,13 +75,13 @@ export function RegisterForm() {
               setPasswordValue(e.target.value);
             }}
             disabled={isPending}
-            className="w-full h-auto pr-10 bg-[#141414] border border-[#1f1f1f] text-white text-[14px] px-4 py-3 rounded-lg outline-none transition-all placeholder:text-[#5C5F66] focus:border-[#10b981] focus:ring-1 focus:ring-[#10b981]/20"
+            className="w-full h-auto pr-10 bg-card border border-border text-foreground text-[14px] px-4 py-3 rounded-lg outline-none transition-all placeholder:text-muted-foreground focus:border-primary focus:ring-1 focus:ring-primary/20"
           />
           <button
             type="button"
             tabIndex={-1}
             onClick={() => setShowPassword((v) => !v)}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-[#5C5F66] hover:text-[#8A8F98] transition-colors"
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-muted-foreground transition-colors"
             aria-label={showPassword ? 'Hide password' : 'Show password'}
           >
             {showPassword ? (
@@ -106,10 +106,10 @@ export function RegisterForm() {
             type="checkbox"
             id="accept_terms"
             {...register('accept_terms')}
-            className="h-3.5 w-3.5 mt-0.5 rounded border-[#1f1f1f] bg-[#141414] accent-[#10b981] cursor-pointer"
+            className="h-3.5 w-3.5 mt-0.5 rounded border-border bg-card accent-primary cursor-pointer"
           />
-          <label htmlFor="accept_terms" className="text-xs text-[#8A8F98] cursor-pointer leading-relaxed">
-            I agree to the <a href="#" className="text-[#10b981] hover:underline">Terms of Service</a>
+          <label htmlFor="accept_terms" className="text-xs text-muted-foreground cursor-pointer leading-relaxed">
+            I agree to the <a href="#" className="text-primary hover:underline">Terms of Service</a>
           </label>
         </div>
         {errors.accept_terms && <p className="text-[#ef4444] text-xs">{errors.accept_terms.message}</p>}
@@ -119,10 +119,10 @@ export function RegisterForm() {
             type="checkbox"
             id="accept_privacy"
             {...register('accept_privacy')}
-            className="h-3.5 w-3.5 mt-0.5 rounded border-[#1f1f1f] bg-[#141414] accent-[#10b981] cursor-pointer"
+            className="h-3.5 w-3.5 mt-0.5 rounded border-border bg-card accent-primary cursor-pointer"
           />
-          <label htmlFor="accept_privacy" className="text-xs text-[#8A8F98] cursor-pointer leading-relaxed">
-            I agree to the <a href="#" className="text-[#10b981] hover:underline">Privacy Policy</a>
+          <label htmlFor="accept_privacy" className="text-xs text-muted-foreground cursor-pointer leading-relaxed">
+            I agree to the <a href="#" className="text-primary hover:underline">Privacy Policy</a>
           </label>
         </div>
         {errors.accept_privacy && <p className="text-[#ef4444] text-xs">{errors.accept_privacy.message}</p>}
@@ -130,7 +130,7 @@ export function RegisterForm() {
 
       <Button
         type="submit"
-        className="w-full h-auto mt-2 bg-[#10b981] hover:bg-[#10b981]/90 text-black text-[14px] font-semibold py-3 rounded-lg transition-opacity disabled:opacity-50 border-none"
+        className="w-full h-auto mt-2 bg-primary hover:bg-primary/90 text-primary-foreground text-[14px] font-semibold py-3 rounded-lg transition-opacity disabled:opacity-50 border-none"
         disabled={isPending}
       >
         {isPending ? (

@@ -31,8 +31,8 @@ export function ActiveSessionsPanel() {
     <div className="flex flex-col gap-6 animate-in fade-in duration-300 w-full max-w-[1200px]">
       <div className="mb-2 flex items-start justify-between">
         <div>
-          <h1 className="text-[24px] font-semibold text-white mb-2 tracking-[-0.5px]">Active Sessions</h1>
-          <p className="text-[14px] text-[#8A8F98] leading-relaxed">Manage the devices currently logged into your account.</p>
+          <h1 className="text-[24px] font-semibold text-foreground mb-2 tracking-[-0.5px]">Active Sessions</h1>
+          <p className="text-[14px] text-muted-foreground leading-relaxed">Manage the devices currently logged into your account.</p>
         </div>
         <button
           type="button"
@@ -45,8 +45,8 @@ export function ActiveSessionsPanel() {
         </button>
       </div>
 
-      <div className="bg-[#141414] border border-[#1f1f1f] rounded-lg overflow-hidden">
-        <div className="grid grid-cols-[2.5fr_2fr_1.5fr_1fr] px-6 py-4 border-b border-[#1f1f1f] text-[13px] font-medium text-[#8A8F98]">
+      <div className="bg-card border border-border rounded-lg overflow-hidden">
+        <div className="grid grid-cols-[2.5fr_2fr_1.5fr_1fr] px-6 py-4 border-b border-border text-[13px] font-medium text-muted-foreground">
           <div>Device / Browser</div>
           <div>Location &amp; IP</div>
           <div>Status</div>
@@ -54,32 +54,32 @@ export function ActiveSessionsPanel() {
         </div>
 
         {isLoading ? (
-          <div className="flex justify-center py-12"><Loader2 className="animate-spin text-[#10b981]" size={22} /></div>
+          <div className="flex justify-center py-12"><Loader2 className="animate-spin text-primary" size={22} /></div>
         ) : sessions.length === 0 ? (
-          <div className="px-6 py-12 text-center text-[#8A8F98] text-[14px] flex flex-col items-center gap-2">
+          <div className="px-6 py-12 text-center text-muted-foreground text-[14px] flex flex-col items-center gap-2">
             <Monitor size={22} className="opacity-50" />
             No active sessions found.
           </div>
         ) : (
           <div className="flex flex-col">
             {sessions.map((s, i) => (
-              <div key={s.id} className={`grid grid-cols-[2.5fr_2fr_1.5fr_1fr] px-6 py-5 items-center hover:bg-[rgba(255,255,255,0.02)] transition-colors ${i !== sessions.length - 1 ? 'border-b border-[#1f1f1f]' : ''}`}>
+              <div key={s.id} className={`grid grid-cols-[2.5fr_2fr_1.5fr_1fr] px-6 py-5 items-center hover:bg-[rgba(255,255,255,0.02)] transition-colors ${i !== sessions.length - 1 ? 'border-b border-border' : ''}`}>
                 <div className="flex flex-col gap-1 min-w-0">
-                  <h4 className="text-[14px] font-medium text-white truncate">{deviceLabel(s)}</h4>
-                  <p className="text-[12px] text-[#8A8F98]">Last active: {relativeTime(s.last_active_at)}</p>
+                  <h4 className="text-[14px] font-medium text-foreground truncate">{deviceLabel(s)}</h4>
+                  <p className="text-[12px] text-muted-foreground">Last active: {relativeTime(s.last_active_at)}</p>
                 </div>
                 <div className="flex flex-col gap-1 min-w-0">
-                  <p className="text-[14px] text-[#e8e8e8] truncate">{s.ip_geo_country || 'Unknown location'}</p>
-                  <p className="text-[12px] font-mono text-[#8A8F98] truncate">{s.ip_address}</p>
+                  <p className="text-[14px] text-foreground truncate">{s.ip_geo_country || 'Unknown location'}</p>
+                  <p className="text-[12px] font-mono text-muted-foreground truncate">{s.ip_address}</p>
                 </div>
                 <div>
                   {s.is_current && (
-                    <span className="px-2.5 py-1 bg-[rgba(16,185,129,0.1)] text-[#10b981] text-[11px] font-semibold rounded uppercase tracking-wider">Current Session</span>
+                    <span className="px-2.5 py-1 bg-[rgba(16,185,129,0.1)] text-primary text-[11px] font-semibold rounded uppercase tracking-wider">Current Session</span>
                   )}
                 </div>
                 <div>
                   {s.is_current ? (
-                    <span className="px-4 py-1.5 border border-[#2a2a2a] bg-[#1a1a1a] text-[#8A8F98] text-[13px] font-medium rounded-md inline-block">
+                    <span className="px-4 py-1.5 border border-border bg-[#1a1a1a] text-muted-foreground text-[13px] font-medium rounded-md inline-block">
                       Active
                     </span>
                   ) : (
@@ -87,7 +87,7 @@ export function ActiveSessionsPanel() {
                       type="button"
                       onClick={() => revoke.mutate(s.id)}
                       disabled={revoke.isPending}
-                      className="px-4 py-1.5 border border-[#2a2a2a] bg-[#1a1a1a] text-[#e8e8e8] text-[13px] font-medium rounded-md hover:border-[rgba(239,68,68,0.2)] hover:text-[#ef4444] transition-all disabled:opacity-40"
+                      className="px-4 py-1.5 border border-border bg-[#1a1a1a] text-foreground text-[13px] font-medium rounded-md hover:border-[rgba(239,68,68,0.2)] hover:text-[#ef4444] transition-all disabled:opacity-40"
                     >
                       Revoke
                     </button>

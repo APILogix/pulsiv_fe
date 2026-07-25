@@ -3,6 +3,7 @@ import { OrgSwitcher } from './OrgSwitcher';
 import { GlobalSearch } from './GlobalSearch';
 import { NotificationCenter } from './NotificationCenter';
 import { HelpMenu } from './HelpMenu';
+import { UserAvatarMenu } from './UserAvatarMenu';
 import { useSidebarStore } from '@/stores/sidebarStore';
 
 interface AppHeaderProps {
@@ -49,6 +50,7 @@ export function AppHeader({ onMenuClick }: AppHeaderProps) {
       <div className="flex items-center gap-1 md:gap-2 flex-1 justify-end">
         <NotificationCenter />
         <HelpMenu />
+        <UserAvatarMenu />
       </div>
     </header>
   );

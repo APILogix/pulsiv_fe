@@ -22,7 +22,7 @@ export default function AccountUnlockConfirmPage() {
     <div className="w-full space-y-6">
       <div className="text-center space-y-4">
         <div>
-          <h2 className="text-xl font-semibold tracking-tight text-[#e8e8e8]">
+          <h2 className="text-xl font-semibold tracking-tight text-foreground">
             {isPending ? 'Unlocking account...' : 'Account unlocked'}
           </h2>
           <p className="text-sm text-[#999999] mt-1">
@@ -31,7 +31,7 @@ export default function AccountUnlockConfirmPage() {
         </div>
       </div>
 
-      <div className="rounded-xl border border-[#262626] bg-[#111111]/80 backdrop-blur-sm p-6 sm:p-8 space-y-4">
+      <div className="rounded-xl border border-input bg-[#111111]/80 backdrop-blur-sm p-6 sm:p-8 space-y-4">
         {isPending ? (
           <div className="flex justify-center py-4">
             <span className="flex items-center gap-2 text-[#999999] text-sm">
@@ -46,7 +46,7 @@ export default function AccountUnlockConfirmPage() {
               Account unlocked successfully.
             </div>
             <Link to="/auth/login">
-              <Button className="w-full h-10 bg-[#34d399] text-[#04140d] font-semibold hover:bg-[#10b981] transition-colors">
+              <Button className="w-full h-10 bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-colors">
                 Sign in to your account
               </Button>
             </Link>

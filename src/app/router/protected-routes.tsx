@@ -14,16 +14,15 @@ const CheckoutCancelPage = lazy(() => import("@/modules/billing/pages/CheckoutCa
 
 const SettingsLayout = lazy(() => import("../layouts/SettingsLayout"));
 const ModuleLayout = lazy(() => import("../layouts/ModuleLayout").then((m) => ({ default: m.ModuleLayout })));
-const EmailVerificationStatusPage = lazy(() => import("@/modules/auth/pages/EmailVerificationStatusPage"));
 const EffectiveAuthPolicyPage = lazy(() => import("@/modules/auth/pages/EffectiveAuthPolicyPage"));
 
 const PersonalDetailsPanel = lazy(() => import("@/modules/auth/components/profile/PersonalDetailsPanel").then(m => ({ default: m.PersonalDetailsPanel })));
+const AccountOverviewPanel = lazy(() => import("@/modules/auth/components/profile/AccountOverviewPanel").then(m => ({ default: m.AccountOverviewPanel })));
 const ChangePasswordPanel = lazy(() => import("@/modules/auth/components/profile/ChangePasswordPanel").then(m => ({ default: m.ChangePasswordPanel })));
 const MfaSecurityPanel = lazy(() => import("@/modules/auth/components/profile/MfaSecurityPanel").then(m => ({ default: m.MfaSecurityPanel })));
 const ActiveSessionsPanel = lazy(() => import("@/modules/auth/components/profile/ActiveSessionsPanel").then(m => ({ default: m.ActiveSessionsPanel })));
 const BackupCodesPanel = lazy(() => import("@/modules/auth/components/profile/BackupCodesPanel").then(m => ({ default: m.BackupCodesPanel })));
 const AuditLogsPanel = lazy(() => import("@/modules/auth/components/profile/AuditLogsPanel").then(m => ({ default: m.AuditLogsPanel })));
-const TrustedDevicesPanel = lazy(() => import("@/modules/auth/components/profile/TrustedDevicesPanel").then(m => ({ default: m.TrustedDevicesPanel })));
 const MfaRecoveryPanel = lazy(() => import("@/modules/auth/components/profile/MfaRecoveryPanel").then(m => ({ default: m.MfaRecoveryPanel })));
 const PrivacyAndDeletionPanel = lazy(() => import("@/modules/auth/components/profile/PrivacyAndDeletionPanel").then(m => ({ default: m.PrivacyAndDeletionPanel })));
 const LinkedAccountsPanel = lazy(() => import("@/modules/auth/components/profile/LinkedAccountsPanel").then(m => ({ default: m.LinkedAccountsPanel })));
@@ -329,20 +328,37 @@ export const protectedRoutes: RouteObject[] = [
             path: "settings",
             element: <SettingsLayout />,
             children: [
-              { index: true, element: <SecurityCenterPage /> },
-              { path: "profile", element: <PersonalDetailsPanel /> },
-              { path: "password", element: <ChangePasswordPanel /> },
-              { path: "mfa", element: <MfaSecurityPanel /> },
-              { path: "sessions", element: <ActiveSessionsPanel /> },
-              { path: "backup-codes", element: <BackupCodesPanel /> },
-              { path: "trusted-devices", element: <TrustedDevicesPanel /> },
-              { path: "linked-accounts", element: <LinkedAccountsPanel /> },
-              { path: "email-verification", element: <EmailVerificationStatusPage /> },
+              { index: true, element: <Navigate to="/account/overview" replace /> },
+              { path: "profile", element: <Navigate to="/account/profile" replace /> },
+              { path: "password", element: <Navigate to="/account/security/password" replace /> },
+              { path: "mfa", element: <Navigate to="/account/security/mfa" replace /> },
+              { path: "sessions", element: <Navigate to="/account/activity/active-sessions" replace /> },
+              { path: "backup-codes", element: <Navigate to="/account/security/recovery-codes" replace /> },
+              { path: "trusted-devices", element: <Navigate to="/account/activity/active-sessions" replace /> },
+              { path: "linked-accounts", element: <Navigate to="/account/connected/linked-accounts" replace /> },
+              { path: "email-verification", element: <Navigate to="/account/profile" replace /> },
               { path: "authentication-policy", element: <EffectiveAuthPolicyPage /> },
               { path: "mfa-recovery", element: <MfaRecoveryPanel /> },
               { path: "privacy", element: <PrivacyAndDeletionPanel /> },
-              { path: "personal-logs", element: <AuditLogsPanel /> },
-              { path: "security", element: <SecurityCenterPage /> },
+              { path: "personal-logs", element: <Navigate to="/account/activity/login-history" replace /> },
+              { path: "security", element: <Navigate to="/account/overview" replace /> },
+            ],
+          },
+          {
+            path: "account",
+            element: <SettingsLayout />,
+            children: [
+              { index: true, element: <Navigate to="overview" replace /> },
+              { path: "overview", element: <AccountOverviewPanel /> },
+              { path: "profile", element: <PersonalDetailsPanel /> },
+              { path: "email", element: <Navigate to="/account/profile" replace /> },
+              { path: "security/password", element: <ChangePasswordPanel /> },
+              { path: "security/mfa", element: <MfaSecurityPanel /> },
+              { path: "security/passkeys", element: <MfaSecurityPanel /> },
+              { path: "security/recovery-codes", element: <BackupCodesPanel /> },
+              { path: "activity/active-sessions", element: <ActiveSessionsPanel /> },
+              { path: "activity/login-history", element: <AuditLogsPanel /> },
+              { path: "connected/linked-accounts", element: <LinkedAccountsPanel /> },
             ],
           },
 

@@ -46,7 +46,7 @@ export default function SsoLoginPage() {
     <div className="w-full space-y-6">
       <div className="text-center space-y-4">
         <div>
-          <h2 className="text-xl font-semibold tracking-tight text-[#e8e8e8]">
+          <h2 className="text-xl font-semibold tracking-tight text-foreground">
             Sign in with SSO
           </h2>
           <p className="text-sm text-[#999999] mt-1">
@@ -55,7 +55,7 @@ export default function SsoLoginPage() {
         </div>
       </div>
 
-      <div className="rounded-xl border border-[#262626] bg-[#111111]/80 backdrop-blur-sm p-6 sm:p-8">
+      <div className="rounded-xl border border-input bg-[#111111]/80 backdrop-blur-sm p-6 sm:p-8">
         <form onSubmit={onSubmit} className="space-y-5">
           <div className="space-y-1.5">
             <Label htmlFor="email" className="text-xs text-[#999999]">Work email</Label>
@@ -65,7 +65,7 @@ export default function SsoLoginPage() {
               placeholder="you@company.com"
               autoComplete="email"
               {...register('email')}
-              className="h-10 bg-[#161616] border-[#262626] text-[#e8e8e8] placeholder:text-[#555555] focus:border-[#34d399] focus:ring-1 focus:ring-[#34d399]/30 transition-colors"
+              className="h-10 bg-[#161616] border-input text-foreground placeholder:text-[#555555] focus:border-[#34d399] focus:ring-1 focus:ring-[#34d399]/30 transition-colors"
             />
             {errors.email && <p className="text-[#ef4444] text-xs mt-1">{errors.email.message}</p>}
           </div>
@@ -76,13 +76,13 @@ export default function SsoLoginPage() {
             </div>
           )}
           {discovery ? (
-            <div className="rounded-lg border border-[#262626] bg-[#161616] p-4 text-sm text-[#c9c9c9]">
+            <div className="rounded-lg border border-input bg-[#161616] p-4 text-sm text-[#c9c9c9]">
               <div className="text-xs uppercase tracking-[0.24em] text-[#777777]">Detected domain</div>
               <div className="mt-1 font-medium text-[#f2f2f2]">{discovery.domain}</div>
               <div className="mt-3 space-y-2">
                 {discovery.providers.map((provider) => {
                   return (
-                    <div key={provider.provider_id} className="rounded-md border border-[#262626] bg-[#111111] px-3 py-2">
+                    <div key={provider.provider_id} className="rounded-md border border-input bg-[#111111] px-3 py-2">
                       <div className="font-medium text-[#f2f2f2]">{provider.provider_name}</div>
                       <div className="mt-1 text-xs text-[#8b8b8b]">
                         {provider.provider_type.toUpperCase()} for {provider.org_name}
@@ -95,7 +95,7 @@ export default function SsoLoginPage() {
           ) : null}
           <Button
             type="submit"
-            className="w-full h-10 bg-[#34d399] text-[#04140d] font-semibold hover:bg-[#10b981] transition-colors disabled:opacity-50"
+            className="w-full h-10 bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50"
             disabled={loading}
           >
             {loading ? (

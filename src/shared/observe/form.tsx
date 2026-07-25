@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 export function SubmitButton({ children, variant = "primary", className }: { children?: React.ReactNode; variant?: "primary" | "danger"; className?: string }) {
   const { pending } = useFormStatus();
   const tone = variant === "danger"
-    ? "bg-[var(--red)] text-white hover:opacity-90"
+    ? "bg-[var(--red)] text-foreground hover:opacity-90"
     : "bg-[var(--brand)] text-[var(--brand-fg)] hover:bg-[var(--brand-d)]";
   return (
     <button type="submit" disabled={pending} aria-busy={pending} className={cn("inline-flex h-9 items-center justify-center gap-1.5 rounded-[8px] px-4 text-sm font-medium transition-colors disabled:opacity-60", tone, className)}>

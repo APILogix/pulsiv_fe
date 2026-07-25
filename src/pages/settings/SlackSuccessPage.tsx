@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate, useSearchParams, useParams } from "react-router";
+import { useNavigate, useSearchParams } from "react-router";
 import { useConnector, useSlackChannels, useConnectorMutations } from "@/modules/organizations/hooks/useConnectors";
 import { PageHeader, FillPage } from "@/shared/observe";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
@@ -11,7 +11,6 @@ import { CheckCircle2 } from "lucide-react";
 export default function SlackSuccessPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { orgId } = useParams();
   const connectorId = searchParams.get("connectorId");
   
   const { data: connector, isLoading: loadingConnector } = useConnector(connectorId || "");
@@ -68,7 +67,7 @@ export default function SlackSuccessPage() {
               <ConnectorIcon type="slack" className="size-8" />
             </div>
             <div className="absolute -bottom-2 -right-2 bg-green-500 rounded-full border-2 border-[var(--bg1)]">
-              <CheckCircle2 className="size-6 text-white" />
+              <CheckCircle2 className="size-6 text-foreground" />
             </div>
           </div>
           <CardTitle className="text-2xl">Slack Connected!</CardTitle>

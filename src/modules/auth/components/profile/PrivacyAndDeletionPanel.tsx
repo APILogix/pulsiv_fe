@@ -58,21 +58,21 @@ export function PrivacyAndDeletionPanel() {
   return (
     <div className="flex w-full max-w-[900px] flex-col gap-6 animate-in fade-in duration-300">
       <div>
-        <h1 className="mb-2 text-[24px] font-semibold text-white tracking-normal">Privacy & deletion</h1>
-        <p className="text-[14px] leading-relaxed text-[#8A8F98]">
+        <h1 className="mb-2 text-[24px] font-semibold text-foreground tracking-normal">Privacy & deletion</h1>
+        <p className="text-[14px] leading-relaxed text-muted-foreground">
           Export your account data or start the verified account deletion process.
         </p>
       </div>
 
-      <section className="rounded-lg border border-[#1f1f1f] bg-[#141414]">
-        <div className="flex items-start justify-between gap-4 border-b border-[#1f1f1f] px-6 py-5">
+      <section className="rounded-lg border border-border bg-card">
+        <div className="flex items-start justify-between gap-4 border-b border-border px-6 py-5">
           <div className="flex gap-4">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-[#262626] bg-[#0c0c0c] text-[#10b981]">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-input bg-background text-primary">
               <FileJson size={18} />
             </div>
             <div>
-              <h2 className="text-[16px] font-semibold text-white">Account data export</h2>
-              <p className="mt-1 text-[13px] leading-relaxed text-[#8A8F98]">
+              <h2 className="text-[16px] font-semibold text-foreground">Account data export</h2>
+              <p className="mt-1 text-[13px] leading-relaxed text-muted-foreground">
                 Download your profile, MFA devices, and active session history as JSON.
               </p>
             </div>
@@ -95,7 +95,7 @@ export function PrivacyAndDeletionPanel() {
               <Trash2 size={18} />
             </div>
             <div>
-              <h2 className="text-[16px] font-semibold text-white">Delete account</h2>
+              <h2 className="text-[16px] font-semibold text-foreground">Delete account</h2>
               <p className="mt-1 text-[13px] leading-relaxed text-[#b78b8b]">
                 Deletion starts only after you confirm the email link. Until then, your account remains active.
               </p>
@@ -122,13 +122,13 @@ export function PrivacyAndDeletionPanel() {
           setDeleteRequested(false);
         }
       }}>
-        <DialogContent className="sm:max-w-lg bg-[#141414] border-[#1f1f1f] text-white">
+        <DialogContent className="sm:max-w-lg bg-card border-border text-foreground">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              {deleteRequested ? <Mail size={18} className="text-[#10b981]" /> : <AlertTriangle size={18} className="text-[#ef4444]" />}
+              {deleteRequested ? <Mail size={18} className="text-primary" /> : <AlertTriangle size={18} className="text-[#ef4444]" />}
               {deleteRequested ? 'Check your email' : 'Confirm account deletion request'}
             </DialogTitle>
-            <DialogDescription className="text-[#8A8F98]">
+            <DialogDescription className="text-muted-foreground">
               {deleteRequested
                 ? 'A confirmation link was sent to your email. Your account is not scheduled for deletion until that link is confirmed.'
                 : 'This sends a confirmation email. The backend schedules deletion only after the email link is confirmed.'}
@@ -137,24 +137,24 @@ export function PrivacyAndDeletionPanel() {
 
           {!deleteRequested && (
             <div className="space-y-2">
-              <Label htmlFor="deletion-reason" className="text-[#8A8F98]">Reason, optional</Label>
+              <Label htmlFor="deletion-reason" className="text-muted-foreground">Reason, optional</Label>
               <Textarea
                 id="deletion-reason"
                 value={reason}
                 onChange={(event) => setReason(event.target.value.slice(0, 500))}
                 maxLength={500}
                 placeholder="Tell us why you are deleting the account"
-                className="min-h-[96px] resize-none bg-[#0c0c0c] border-[#262626] text-white"
+                className="min-h-[96px] resize-none bg-background border-input text-foreground"
               />
-              <p className="text-right text-xs text-[#5C5F66]">{reason.length}/500</p>
+              <p className="text-right text-xs text-muted-foreground">{reason.length}/500</p>
             </div>
           )}
 
-          <DialogFooter className="bg-[#111111] border-[#1f1f1f]">
+          <DialogFooter className="bg-[#111111] border-border">
             <Button
               variant="outline"
               onClick={() => setDeleteOpen(false)}
-              className="border-[#2a2a2a] bg-transparent text-[#e8e8e8] hover:bg-[#1a1a1a]"
+              className="border-border bg-transparent text-foreground hover:bg-[#1a1a1a]"
             >
               {deleteRequested ? 'Close' : 'Cancel'}
             </Button>

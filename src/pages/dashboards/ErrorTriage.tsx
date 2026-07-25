@@ -177,7 +177,7 @@ function ErrorGroupCard({ group, onOpen }: { group: ErrorGroup; onOpen: () => vo
         <div className="flex shrink-0 flex-col items-end gap-2">
           <MetricSparkline data={trend} color="var(--red)" width={120} height={28} />
           <div className="flex items-center gap-1.5">
-            <button type="button" onClick={() => setStatus(status === "resolved" ? "unresolved" : "resolved")} className="rounded-[6px] border border-[var(--border)] px-2 py-1 text-[11px] text-[var(--text2)] hover:text-[var(--green)]">
+            <button type="button" onClick={() => setStatus(status === "resolved" ? "unresolved" : "resolved")} className="rounded-[6px] border border-[var(--border)] px-2 py-1 text-[11px] text-[var(--text2)] hover:text-[var(--brand)]">
               {status === "resolved" ? "Unresolve" : "Resolve"}
             </button>
             <button type="button" onClick={() => setStatus(status === "ignored" ? "unresolved" : "ignored")} className="rounded-[6px] border border-[var(--border)] px-2 py-1 text-[11px] text-[var(--text2)] hover:text-[var(--text)]">

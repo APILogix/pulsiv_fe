@@ -102,26 +102,26 @@ export function MfaSecurityPanel() {
   return (
     <div className="flex flex-col gap-6 animate-in fade-in duration-300 w-full max-w-[800px]">
       <div className="mb-2">
-        <h1 className="text-[24px] font-semibold text-white mb-2 tracking-[-0.5px]">Two-Factor Authentication</h1>
-        <p className="text-[14px] text-[#8A8F98] leading-relaxed">
+        <h1 className="text-[24px] font-semibold text-foreground mb-2 tracking-[-0.5px]">Two-Factor Authentication</h1>
+        <p className="text-[14px] text-muted-foreground leading-relaxed">
           Protect your account with an extra verification step. Add an authenticator app, a security key or passkey, or email codes.
         </p>
       </div>
 
       {/* Status banner */}
-      <div className="bg-[#141414] border border-[#1f1f1f] rounded-lg p-6 flex items-center justify-between gap-4">
+      <div className="bg-card border border-border rounded-lg p-6 flex items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-3 mb-1">
-            <h3 className="text-[16px] font-semibold text-white">MFA Status</h3>
+            <h3 className="text-[16px] font-semibold text-foreground">MFA Status</h3>
           </div>
-          <p className="text-[14px] text-[#8A8F98]">
+          <p className="text-[14px] text-muted-foreground">
             {mfaEnabled
               ? `Your account is protected. ${verifiedDevices.length} active ${verifiedDevices.length === 1 ? 'method' : 'methods'}.`
               : 'Add a verification method to enable two-factor authentication.'}
           </p>
         </div>
         <div className="flex items-center gap-3 shrink-0">
-          <span className={`text-[12px] font-semibold uppercase tracking-[0.2em] ${mfaEnabled ? 'text-[#10b981]' : 'text-[#8A8F98]'}`}>
+          <span className={`text-[12px] font-semibold uppercase tracking-[0.2em] ${mfaEnabled ? 'text-primary' : 'text-muted-foreground'}`}>
             {mfaEnabled ? 'On' : 'Off'}
           </span>
           <Switch
@@ -135,11 +135,11 @@ export function MfaSecurityPanel() {
       </div>
 
       {/* Device list */}
-      <div className="bg-[#141414] border border-[#1f1f1f] rounded-lg overflow-hidden">
-        <div className="px-6 py-5 border-b border-[#1f1f1f] flex items-center justify-between">
+      <div className="bg-card border border-border rounded-lg overflow-hidden">
+        <div className="px-6 py-5 border-b border-border flex items-center justify-between">
           <div>
-            <h3 className="text-[16px] font-semibold text-white">Authentication Devices</h3>
-            <p className="text-[13px] text-[#8A8F98] mt-1">Manage your authenticator apps and security keys.</p>
+            <h3 className="text-[16px] font-semibold text-foreground">Authentication Devices</h3>
+            <p className="text-[13px] text-muted-foreground mt-1">Manage your authenticator apps and security keys.</p>
           </div>
           <button
             type="button"
@@ -151,9 +151,9 @@ export function MfaSecurityPanel() {
         </div>
 
         {isLoading ? (
-          <div className="flex justify-center py-12"><Loader2 className="animate-spin text-[#10b981]" size={22} /></div>
+          <div className="flex justify-center py-12"><Loader2 className="animate-spin text-primary" size={22} /></div>
         ) : devices.length === 0 ? (
-          <div className="px-6 py-12 text-center text-[#8A8F98] text-[14px]">
+          <div className="px-6 py-12 text-center text-muted-foreground text-[14px]">
             No devices yet. Add your first verification method to get started.
           </div>
         ) : (
@@ -161,22 +161,22 @@ export function MfaSecurityPanel() {
             {devices.map((d, i) => {
               const Icon = TYPE_ICON[d.type] ?? ShieldCheck;
               return (
-                <div key={d.id} className={`px-6 py-5 flex items-center justify-between hover:bg-[rgba(255,255,255,0.02)] transition-colors ${i !== devices.length - 1 ? 'border-b border-[#1f1f1f]' : ''}`}>
+                <div key={d.id} className={`px-6 py-5 flex items-center justify-between hover:bg-[rgba(255,255,255,0.02)] transition-colors ${i !== devices.length - 1 ? 'border-b border-border' : ''}`}>
                   <div className="flex items-center gap-5 min-w-0">
-                    <div className="w-[48px] h-[48px] rounded-lg bg-[#0c0c0c] border border-[#1f1f1f] flex items-center justify-center text-[#8A8F98] shrink-0">
+                    <div className="w-[48px] h-[48px] rounded-lg bg-background border border-border flex items-center justify-center text-muted-foreground shrink-0">
                       <Icon size={20} className="stroke-[1.5]" />
                     </div>
                     <div className="flex flex-col gap-1 min-w-0">
                       <div className="flex items-center gap-3">
-                        <h4 className="text-[15px] font-medium text-white truncate">{d.name}</h4>
+                        <h4 className="text-[15px] font-medium text-foreground truncate">{d.name}</h4>
                         {d.is_primary && (
-                          <span className="px-2 py-0.5 bg-[#1d4ed8] text-white text-[10px] font-semibold uppercase tracking-wider rounded shrink-0">Default</span>
+                          <span className="px-2 py-0.5 bg-[#1d4ed8] text-foreground text-[10px] font-semibold uppercase tracking-wider rounded shrink-0">Default</span>
                         )}
                         {!d.verified && (
                           <span className="px-2 py-0.5 border border-[#a16207] text-[#eab308] text-[10px] font-semibold uppercase tracking-wider rounded shrink-0">Pending</span>
                         )}
                       </div>
-                      <p className="text-[13px] text-[#8A8F98] truncate">
+                      <p className="text-[13px] text-muted-foreground truncate">
                         {TYPE_LABEL[d.type]}{d.display_hint ? ` • ${d.display_hint}` : ''} • Added {formatDate(d.created_at)}
                       </p>
                     </div>
@@ -188,7 +188,7 @@ export function MfaSecurityPanel() {
                         onClick={() => setPrimary.mutate(d.id)}
                         disabled={setPrimary.isPending}
                         title="Set as default"
-                        className="px-3 py-2 border border-[#2a2a2a] bg-[#1a1a1a] text-[#e8e8e8] text-[13px] font-medium rounded-md hover:bg-[#2a2a2a] transition-all flex items-center gap-1.5"
+                        className="px-3 py-2 border border-border bg-[#1a1a1a] text-foreground text-[13px] font-medium rounded-md hover:bg-[#2a2a2a] transition-all flex items-center gap-1.5"
                       >
                         <Star size={14} /> Make Default
                       </button>
@@ -198,7 +198,7 @@ export function MfaSecurityPanel() {
                       onClick={() => { setRenameTarget(d); setRenameValue(d.name); }}
                       title="Rename"
                       aria-label={`Rename ${d.name}`}
-                      className="p-2 border border-[#2a2a2a] bg-[#1a1a1a] text-[#8A8F98] rounded-md hover:text-white hover:bg-[#2a2a2a] transition-all"
+                      className="p-2 border border-border bg-[#1a1a1a] text-muted-foreground rounded-md hover:text-foreground hover:bg-[#2a2a2a] transition-all"
                     >
                       <Pencil size={16} />
                     </button>
@@ -207,7 +207,7 @@ export function MfaSecurityPanel() {
                       onClick={() => setRemoveTarget(d)}
                       title="Remove"
                       aria-label={`Remove ${d.name}`}
-                      className="p-2 border border-[#2a2a2a] bg-[#1a1a1a] text-[#8A8F98] rounded-md hover:border-[rgba(239,68,68,0.3)] hover:text-[#ef4444] transition-all"
+                      className="p-2 border border-border bg-[#1a1a1a] text-muted-foreground rounded-md hover:border-[rgba(239,68,68,0.3)] hover:text-[#ef4444] transition-all"
                     >
                       <Trash2 size={16} />
                     </button>
@@ -223,23 +223,23 @@ export function MfaSecurityPanel() {
 
       {/* Rename dialog */}
       <Dialog open={!!renameTarget} onOpenChange={(o) => !o && setRenameTarget(null)}>
-        <DialogContent className="sm:max-w-md bg-[#141414] border-[#1f1f1f] text-white">
+        <DialogContent className="sm:max-w-md bg-card border-border text-foreground">
           <DialogHeader>
             <DialogTitle>Rename device</DialogTitle>
-            <DialogDescription className="text-[#8A8F98]">Give this verification method a recognizable name.</DialogDescription>
+            <DialogDescription className="text-muted-foreground">Give this verification method a recognizable name.</DialogDescription>
           </DialogHeader>
           <div className="space-y-2 pt-2">
-            <Label htmlFor="rename" className="text-[#8A8F98]">Device name</Label>
+            <Label htmlFor="rename" className="text-muted-foreground">Device name</Label>
             <Input
               id="rename"
               value={renameValue}
               onChange={(e) => setRenameValue(e.target.value)}
               maxLength={255}
-              className="bg-[#0c0c0c] border-[#262626] text-white"
+              className="bg-background border-input text-foreground"
             />
           </div>
           <DialogFooter className="pt-4">
-            <Button variant="outline" onClick={() => setRenameTarget(null)} className="border-[#2a2a2a] bg-transparent text-[#e8e8e8] hover:bg-[#1a1a1a]">Cancel</Button>
+            <Button variant="outline" onClick={() => setRenameTarget(null)} className="border-border bg-transparent text-foreground hover:bg-[#1a1a1a]">Cancel</Button>
             <Button
               onClick={() => renameTarget && rename.mutate({ id: renameTarget.id, name: renameValue.trim() })}
               disabled={rename.isPending || renameValue.trim().length === 0}
@@ -253,30 +253,30 @@ export function MfaSecurityPanel() {
 
       {/* Remove dialog (requires password + fresh step-up via interceptor) */}
       <Dialog open={!!removeTarget} onOpenChange={(o) => { if (!o) { setRemoveTarget(null); setRemovePassword(''); } }}>
-        <DialogContent className="sm:max-w-md bg-[#141414] border-[#1f1f1f] text-white">
+        <DialogContent className="sm:max-w-md bg-card border-border text-foreground">
           <DialogHeader>
             <DialogTitle>Remove device</DialogTitle>
-            <DialogDescription className="text-[#8A8F98]">
-              Remove <span className="text-white font-medium">{removeTarget?.name}</span>? Confirm your password to continue. You may also be asked to verify your identity.
+            <DialogDescription className="text-muted-foreground">
+              Remove <span className="text-foreground font-medium">{removeTarget?.name}</span>? Confirm your password to continue. You may also be asked to verify your identity.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2 pt-2">
-            <Label htmlFor="remove-pw" className="text-[#8A8F98]">Current password</Label>
+            <Label htmlFor="remove-pw" className="text-muted-foreground">Current password</Label>
             <Input
               id="remove-pw"
               type="password"
               value={removePassword}
               onChange={(e) => setRemovePassword(e.target.value)}
               autoComplete="current-password"
-              className="bg-[#0c0c0c] border-[#262626] text-white"
+              className="bg-background border-input text-foreground"
             />
           </div>
           <DialogFooter className="pt-4">
-            <Button variant="outline" onClick={() => { setRemoveTarget(null); setRemovePassword(''); }} className="border-[#2a2a2a] bg-transparent text-[#e8e8e8] hover:bg-[#1a1a1a]">Cancel</Button>
+            <Button variant="outline" onClick={() => { setRemoveTarget(null); setRemovePassword(''); }} className="border-border bg-transparent text-foreground hover:bg-[#1a1a1a]">Cancel</Button>
             <Button
               onClick={() => removeTarget && remove.mutate({ id: removeTarget.id, password: removePassword })}
               disabled={remove.isPending || removePassword.length === 0}
-              className="bg-[#ef4444] text-white font-semibold hover:bg-[#dc2626]"
+              className="bg-[#ef4444] text-foreground font-semibold hover:bg-[#dc2626]"
             >
               {remove.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Remove
             </Button>
@@ -285,21 +285,21 @@ export function MfaSecurityPanel() {
       </Dialog>
 
       <Dialog open={disableOpen} onOpenChange={setDisableOpen}>
-        <DialogContent className="sm:max-w-md bg-[#141414] border-[#1f1f1f] text-white">
+        <DialogContent className="sm:max-w-md bg-card border-border text-foreground">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <ShieldOff size={18} className="text-[#ef4444]" />
               Disable MFA
             </DialogTitle>
-            <DialogDescription className="text-[#8A8F98]">
+            <DialogDescription className="text-muted-foreground">
               This removes MFA protection from your account. You may be asked to verify your identity before the change is accepted.
             </DialogDescription>
           </DialogHeader>
           <div className="rounded-lg border border-[#3a1d1d] bg-[#171111] p-3 text-[13px] leading-relaxed text-[#b78b8b]">
             Your account will be less secure. Re-enable MFA as soon as possible if this is temporary.
           </div>
-          <DialogFooter className="pt-4 bg-[#111111] border-[#1f1f1f]">
-            <Button variant="outline" onClick={() => setDisableOpen(false)} className="border-[#2a2a2a] bg-transparent text-[#e8e8e8] hover:bg-[#1a1a1a]">
+          <DialogFooter className="pt-4 bg-[#111111] border-border">
+            <Button variant="outline" onClick={() => setDisableOpen(false)} className="border-border bg-transparent text-foreground hover:bg-[#1a1a1a]">
               Cancel
             </Button>
             <Button

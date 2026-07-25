@@ -34,11 +34,21 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   );
 
   useEffect(() => {
+    const appRoot = document.getElementById('sentinel-root');
+    if (appRoot) {
+      if (resolvedTheme === 'dark') {
+        appRoot.removeAttribute('data-theme');
+      } else {
+        appRoot.setAttribute('data-theme', resolvedTheme);
+      }
+    }
     const root = document.documentElement;
     if (resolvedTheme === 'dark') {
       root.classList.add('dark');
+      root.setAttribute('data-theme', 'dark');
     } else {
       root.classList.remove('dark');
+      root.setAttribute('data-theme', 'light');
     }
   }, [resolvedTheme]);
 

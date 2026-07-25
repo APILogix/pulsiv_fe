@@ -34,27 +34,27 @@ export default function AuthCallbackPage() {
   }, [callbackError, navigate, params, queryClient, setAuth]);
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] px-4 py-12 text-white">
+    <div className="min-h-screen bg-[#0a0a0a] px-4 py-12 text-foreground">
       <div className="mx-auto flex min-h-[70vh] max-w-md flex-col justify-center">
-        <div className="rounded-lg border border-[#1f1f1f] bg-[#111111] p-6 text-center">
+        <div className="rounded-lg border border-border bg-[#111111] p-6 text-center">
           {error ? (
             <>
               <div className="mx-auto mb-5 flex h-12 w-12 items-center justify-center rounded-full bg-[#ef4444]/10 text-[#ef4444]">
                 <AlertTriangle size={22} />
               </div>
               <h1 className="mb-2 text-[22px] font-semibold tracking-normal">Sign-in failed</h1>
-              <p className="mb-6 text-[14px] leading-relaxed text-[#8A8F98]">{error}</p>
-              <Button onClick={() => navigate('/auth/login', { replace: true })} className="w-full bg-[#10b981] text-black hover:bg-[#0ea271]">
+              <p className="mb-6 text-[14px] leading-relaxed text-muted-foreground">{error}</p>
+              <Button onClick={() => navigate('/auth/login', { replace: true })} className="w-full bg-primary text-primary-foreground hover:bg-primary/90">
                 Back to sign in
               </Button>
             </>
           ) : (
             <>
-              <div className="mx-auto mb-5 flex h-12 w-12 items-center justify-center rounded-full bg-[#262626] text-[#8A8F98]">
+              <div className="mx-auto mb-5 flex h-12 w-12 items-center justify-center rounded-full bg-[#262626] text-muted-foreground">
                 <Loader2 className="animate-spin" size={22} />
               </div>
               <h1 className="mb-2 text-[22px] font-semibold tracking-normal">Completing sign-in</h1>
-              <p className="text-[14px] leading-relaxed text-[#8A8F98]">Please wait while we finish your session.</p>
+              <p className="text-[14px] leading-relaxed text-muted-foreground">Please wait while we finish your session.</p>
             </>
           )}
         </div>

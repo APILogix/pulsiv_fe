@@ -18,11 +18,95 @@ import {
   type MainNavItem,
   type ModuleNavItem,
 } from '@/app/navigation/navigation';
-import { useAuth } from '@/modules/auth/hooks/useAuth';
-import { useLogout } from '@/modules/auth/hooks/useLogout';
 import { useOrganizations } from '@/modules/organizations/hooks/useOrganizations';
 import { useSidebarStore } from '@/stores/sidebarStore';
-import { useTheme } from '@/theme';
+
+import { PrimaryRail } from './PrimaryRail';
+
+function getDynamicChildren(
+  item: MainNavItem | null,
+  pathname: string,
+): ModuleNavItem[] {
+  let children = item?.children || [];
+  if (item?.label === 'Workspaces') {
+    const projectMatch = pathname.match(/^\/projects\/([a-zA-Z0-9_-]+)(?:\/|$)/);
+    if (projectMatch) {
+      const possibleId = projectMatch[1];
+      if (
+        possibleId !== 'overview' &&
+        possibleId !== 'usage' &&
+        possibleId !== 'new'
+      ) {
+        children = [
+          ...children,
+          {
+            label: 'Overview',
+            path: `/projects/${possibleId}/overview`,
+            icon: LayoutDashboard,
+            status: 'live',
+            description: '',
+            group: 'Active Project',
+          },
+          {
+            label: 'Usage',
+            path: `/projects/${possibleId}/usage`,
+            icon: LineChart,
+            status: 'live',
+            description: '',
+            group: 'Active Project',
+          },
+          {
+            label: 'API Keys',
+            path: `/projects/${possibleId}/api-keys`,
+            icon: KeyRound,
+            status: 'live',
+            description: '',
+            group: 'Active Project',
+          },
+          {
+            label: 'Activity',
+            path: `/projects/${possibleId}/activity`,
+            icon: Activity,
+            status: 'live',
+            description: '',
+            group: 'Active Project',
+          },
+          {
+            label: 'Remote Config',
+            path: `/projects/${possibleId}/remote-config`,
+            icon: Cable,
+            status: 'live',
+            description: '',
+            group: 'Active Project',
+          },
+          {
+            label: 'Alert Routes',
+            path: `/projects/${possibleId}/routes`,
+            icon: FileText,
+            status: 'live',
+            description: '',
+            group: 'Active Project',
+          },
+          {
+            label: 'Members',
+            path: `/projects/${possibleId}/members`,
+            icon: Users,
+            status: 'live',
+            description: '',
+            group: 'Active Project',
+          },
+          {
+            label: 'General Settings',
+            path: `/projects/${possibleId}/settings/general`,
+            icon: Settings,
+            status: 'live',
+            description: '',
+            group: 'Active Project',
+          },
+        ];
+      }
+    }
+  }
 
 import { PrimaryRail } from './PrimaryRail';
 
@@ -116,14 +200,18 @@ function getDynamicChildren(
 export function AppDualSidebar() {
   const { setHasInnerItems, isFlyoutOpen, setIsFlyoutOpen } = useSidebarStore();
   const location = useLocation();
-  const derivedActive =
-    mainNavigation.find(
-      (item) =>
-        location.pathname === item.path ||
-        location.pathname.startsWith(`${item.path}/`),
-    ) ??
-    mainNavigation[0] ??
-    null;
+  const accountRoute = 
+    location.pathname === '/account' || location.pathname.startsWith('/account/') ||
+    location.pathname === '/settings' || location.pathname.startsWith('/settings/');
+  const derivedActive = accountRoute
+    ? null
+    : mainNavigation.find(
+        (item) =>
+          location.pathname === item.path ||
+          location.pathname.startsWith(`${item.path}/`),
+      ) ??
+      mainNavigation[0] ??
+      null;
 
   const [selectedRailItemLabel, setSelectedRailItemLabel] = useState<string | null>(
     () => sessionStorage.getItem('pulsiv_selected_rail')
@@ -132,7 +220,6 @@ export function AppDualSidebar() {
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>(
     {},
   );
-  const [isProfileOpen, setIsProfileOpen] = useState(false);
 
   if (previousPathname !== location.pathname) {
     setPreviousPathname(location.pathname);
@@ -144,25 +231,11 @@ export function AppDualSidebar() {
     ? mainNavigation.find(item => item.label === selectedRailItemLabel) ?? null 
     : null;
 
-  const activeRailItem = selectedRailItem ?? derivedActive;
+  const activeRailItem = accountRoute ? null : selectedRailItem ?? derivedActive;
 
-  const { user } = useAuth();
   const { organizations, activeOrgId } = useOrganizations();
-  const logout = useLogout();
-  const { resolvedTheme, toggleTheme } = useTheme();
 
   const flyoutRef = useRef<HTMLDivElement>(null);
-  const profileRef = useRef<HTMLDivElement>(null);
-  const railRef = useRef<HTMLElement>(null);
-
-  useEffect(() => {
-    if (!activeRailItem) return;
-
-    const currentChildren = getDynamicChildren(activeRailItem, location.pathname);
-    setExpandedGroups((prev) => {
-      const next = { ...prev };
-      let changed = false;
-
       if (currentChildren.length > 0) {
         currentChildren.forEach((child) => {
           const group = child.group || activeRailItem.label;
@@ -189,25 +262,6 @@ export function AppDualSidebar() {
   useEffect(() => {
     setHasInnerItems(navItemsToRender.length > 0);
   }, [navItemsToRender.length, setHasInnerItems]);
-
-  useEffect(() => {
-    if (!isProfileOpen) return;
-
-    function handleClickOutside(event: MouseEvent) {
-      const target = event.target as Node;
-      if (
-        profileRef.current &&
-        !profileRef.current.contains(target) &&
-        railRef.current &&
-        !railRef.current.contains(target)
-      ) {
-        setIsProfileOpen(false);
-      }
-    }
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [isProfileOpen]);
 
   useEffect(() => {
     const handleToggleMobileSidebar = () => {
@@ -265,12 +319,6 @@ export function AppDualSidebar() {
       <PrimaryRail
         activeRailItem={activeRailItem}
         handleRailClick={handleRailClick}
-        isProfileOpen={isProfileOpen}
-        setIsProfileOpen={setIsProfileOpen}
-        user={user}
-        resolvedTheme={resolvedTheme}
-        toggleTheme={toggleTheme}
-        logout={logout}
       />
 
       <div
@@ -364,6 +412,23 @@ export function AppDualSidebar() {
           ) : (
             <div className="p-4 text-[13px] text-[var(--text2)] text-center mt-4" />
           )}
+        </div>
+
+        {/* Fixed Ingest Quota Widget at the bottom */}
+        <div className="shrink-0 p-3 mt-auto border-t border-[var(--border)]">
+          <div className="rounded-[8px] border border-[var(--border)] bg-transparent p-3 flex flex-col gap-2.5">
+            <div className="flex justify-between items-center font-mono">
+              <span className="text-[10px] tracking-widest text-[var(--text3)] uppercase">Ingest Quota</span>
+              <span className="text-[12px] font-bold text-[var(--text)]">68%</span>
+            </div>
+            <div className="h-1.5 w-full bg-[var(--bg3)] rounded-full overflow-hidden">
+              <div className="h-full bg-[var(--brand)] rounded-full" style={{ width: '68%' }} />
+            </div>
+            <div className="text-[11px] font-mono text-[var(--text3)] flex justify-between items-center">
+              <span>6.8 / 10 GB</span>
+              <span>&middot; resets in 9d</span>
+            </div>
+          </div>
         </div>
       </div>
     </>

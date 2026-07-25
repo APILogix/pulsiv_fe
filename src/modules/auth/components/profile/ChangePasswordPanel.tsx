@@ -18,52 +18,52 @@ export function ChangePasswordPanel() {
   return (
     <div className="flex flex-col gap-6 animate-in fade-in duration-300 w-full max-w-[800px]">
       <div className="mb-2">
-        <h1 className="text-[24px] font-semibold text-white mb-2 tracking-[-0.5px]">Change Password</h1>
-        <p className="text-[14px] text-[#8A8F98] leading-relaxed">Ensure your account is using a long, random password to stay secure.</p>
+        <h1 className="text-[24px] font-semibold text-foreground mb-2 tracking-[-0.5px]">Change Password</h1>
+        <p className="text-[14px] text-muted-foreground leading-relaxed">Ensure your account is using a long, random password to stay secure.</p>
       </div>
 
-      <div className="bg-[#141414] border border-[#1f1f1f] rounded-lg overflow-hidden">
-        <div className="px-6 py-5 border-b border-[#1f1f1f]">
-          <h3 className="text-[16px] font-semibold text-white">Update Password</h3>
+      <div className="bg-card border border-border rounded-lg overflow-hidden">
+        <div className="px-6 py-5 border-b border-border">
+          <h3 className="text-[16px] font-semibold text-foreground">Update Password</h3>
         </div>
         <div className="p-6">
           <form id="password-form" onSubmit={handleSubmit(onSubmit)} className="space-y-5 max-w-[400px]">
             <div className="flex flex-col gap-2">
-              <label htmlFor="current-password" className="text-[13px] font-medium text-[#8A8F98]">Current Password</label>
+              <label htmlFor="current-password" className="text-[13px] font-medium text-muted-foreground">Current Password</label>
               <Input 
                 id="current-password"
                 type="password" 
                 placeholder="Enter your current password"
                 {...register('current_password')} 
-                className="bg-[#0c0c0c] border-[#1f1f1f] text-white text-[14px] px-3.5 py-2.5 rounded-md focus:border-[#10b981] h-auto" 
+                className="bg-background border-border text-foreground text-[14px] px-3.5 py-2.5 rounded-md focus:border-primary h-auto" 
               />
               {errors.current_password && <p className="text-[#ef4444] text-xs mt-1">{errors.current_password.message}</p>}
             </div>
             <div className="flex flex-col gap-2">
-              <label htmlFor="new-password" className="text-[13px] font-medium text-[#8A8F98]">New Password</label>
+              <label htmlFor="new-password" className="text-[13px] font-medium text-muted-foreground">New Password</label>
               <Input 
                 id="new-password"
                 type="password" 
                 placeholder="Enter a new password"
                 {...register('new_password')} 
-                className="bg-[#0c0c0c] border-[#1f1f1f] text-white text-[14px] px-3.5 py-2.5 rounded-md focus:border-[#10b981] h-auto" 
+                className="bg-background border-border text-foreground text-[14px] px-3.5 py-2.5 rounded-md focus:border-primary h-auto" 
               />
               {errors.new_password && <p className="text-[#ef4444] text-xs mt-1">{errors.new_password.message}</p>}
             </div>
             <div className="flex flex-col gap-2">
-              <label htmlFor="confirm-new-password" className="text-[13px] font-medium text-[#8A8F98]">Confirm New Password</label>
+              <label htmlFor="confirm-new-password" className="text-[13px] font-medium text-muted-foreground">Confirm New Password</label>
               <Input 
                 id="confirm-new-password"
                 type="password" 
                 placeholder="Confirm your new password"
                 {...register('confirm_new_password')} 
-                className="bg-[#0c0c0c] border-[#1f1f1f] text-white text-[14px] px-3.5 py-2.5 rounded-md focus:border-[#10b981] h-auto" 
+                className="bg-background border-border text-foreground text-[14px] px-3.5 py-2.5 rounded-md focus:border-primary h-auto" 
               />
               {errors.confirm_new_password && <p className="text-[#ef4444] text-xs mt-1">{errors.confirm_new_password.message}</p>}
             </div>
           </form>
         </div>
-        <div className="px-6 py-4 bg-[#111111] border-t border-[#1f1f1f] flex justify-end">
+        <div className="px-6 py-4 bg-[#111111] border-t border-border flex justify-end">
           <button 
             type="submit" 
             form="password-form"

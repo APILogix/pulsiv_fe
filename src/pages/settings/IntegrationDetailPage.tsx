@@ -1,7 +1,7 @@
 import { useParams, useNavigate } from "react-router";
 import { ArrowLeft, Play, Power, PowerOff, CheckCircle2, Clock, MessageSquare, Trash2 } from "lucide-react";
 import { useConnector, useConnectorMutations, useConnectorTestRuns } from "@/modules/organizations/hooks/useConnectors";
-import { PageHeader, StatusBadge, Timestamp, demoSuccess, DetailSkeleton } from "@/shared/observe";
+import { StatusBadge, Timestamp, demoSuccess, DetailSkeleton } from "@/shared/observe";
 import { useState } from "react";
 import { ConnectorIcon } from "@/shared/ui/connector-icon";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";

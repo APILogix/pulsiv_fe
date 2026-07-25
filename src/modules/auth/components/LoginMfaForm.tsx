@@ -195,7 +195,7 @@ export function LoginMfaForm({ challengeData, loginMfa, isPending, onSelectBacku
   return (
     <div className="w-full space-y-6">
       <div className="text-center space-y-2">
-        <h2 className="text-xl font-semibold tracking-tight text-[#e8e8e8]">
+        <h2 className="text-xl font-semibold tracking-tight text-foreground">
           Two-factor verification
         </h2>
         <p className="text-sm text-[#999999]">
@@ -206,14 +206,14 @@ export function LoginMfaForm({ challengeData, loginMfa, isPending, onSelectBacku
         </p>
       </div>
 
-      <div className="rounded-xl border border-[#262626] bg-[#111111]/80 backdrop-blur-sm p-6 sm:p-8">
+      <div className="rounded-xl border border-input bg-[#111111]/80 backdrop-blur-sm p-6 sm:p-8">
         {/* Active method banner */}
-        <div className="flex items-center gap-3 mb-6 rounded-lg border border-[#1f1f1f] bg-[#161616] px-3 py-2.5">
-          <div className="w-9 h-9 rounded-md bg-[#0c0c0c] border border-[#262626] flex items-center justify-center text-[#34d399] shrink-0">
+        <div className="flex items-center gap-3 mb-6 rounded-lg border border-border bg-[#161616] px-3 py-2.5">
+          <div className="w-9 h-9 rounded-md bg-background border border-input flex items-center justify-center text-[#34d399] shrink-0">
             <CurrentIcon size={18} className="stroke-[1.5]" />
           </div>
           <div className="min-w-0">
-            <p className="text-sm text-[#e8e8e8] truncate">{current.name || methodTitle(current.type)}</p>
+            <p className="text-sm text-foreground truncate">{current.name || methodTitle(current.type)}</p>
             <p className="text-xs text-[#777777] truncate">
               {current.display_hint || methodTitle(current.type)}
             </p>
@@ -233,14 +233,14 @@ export function LoginMfaForm({ challengeData, loginMfa, isPending, onSelectBacku
                 autoComplete="one-time-code"
                 inputMode="numeric"
                 autoFocus
-                className="h-12 font-mono text-center tracking-[0.3em] text-lg bg-[#161616] border-[#262626] text-[#e8e8e8] placeholder:text-[#555555] focus:border-[#34d399] focus:ring-1 focus:ring-[#34d399]/30 transition-colors"
+                className="h-12 font-mono text-center tracking-[0.3em] text-lg bg-[#161616] border-input text-foreground placeholder:text-[#555555] focus:border-[#34d399] focus:ring-1 focus:ring-[#34d399]/30 transition-colors"
               />
               {errors.code && <p className="text-[#ef4444] text-xs mt-1">{errors.code.message}</p>}
             </div>
             <Button
               type="submit"
               disabled={isPending || isSwitching}
-              className="w-full h-10 bg-[#34d399] text-[#04140d] font-semibold hover:bg-[#10b981] transition-colors"
+              className="w-full h-10 bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-colors"
             >
               {isPending ? 'Verifying...' : 'Verify identity'}
             </Button>
@@ -249,7 +249,7 @@ export function LoginMfaForm({ challengeData, loginMfa, isPending, onSelectBacku
                 type="button"
                 onClick={resendEmailCode}
                 disabled={isResending || resendCooldown > 0}
-                className="w-full text-center text-sm text-[#34d399] hover:text-[#10b981] transition-colors disabled:text-[#555555]"
+                className="w-full text-center text-sm text-primary hover:text-primary/80 transition-colors disabled:text-[#555555]"
               >
                 {isResending
                   ? 'Sending...'
@@ -265,7 +265,7 @@ export function LoginMfaForm({ challengeData, loginMfa, isPending, onSelectBacku
           <Button
             onClick={runPasskey}
             disabled={passkeyBusy || isSwitching}
-            className="w-full h-11 bg-[#34d399] text-[#04140d] font-semibold hover:bg-[#10b981] transition-colors flex items-center justify-center gap-2"
+            className="w-full h-11 bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-colors flex items-center justify-center gap-2"
           >
             {passkeyBusy ? (
               <><Loader2 size={16} className="animate-spin" /> Waiting for security key…</>
@@ -283,12 +283,12 @@ export function LoginMfaForm({ challengeData, loginMfa, isPending, onSelectBacku
             <button
               type="button"
               onClick={() => setShowPicker(true)}
-              className="w-full text-center text-sm text-[#34d399] hover:text-[#10b981] transition-colors"
+              className="w-full text-center text-sm text-primary hover:text-primary/80 transition-colors"
             >
               Try another way
             </button>
           ) : (
-            <div className="space-y-2 rounded-xl border border-[#262626] bg-[#111111]/80 p-3">
+            <div className="space-y-2 rounded-xl border border-input bg-[#111111]/80 p-3">
               <p className="text-xs text-[#777777] px-1 pb-1">Choose how to verify your identity</p>
               {alternativeMethods.map((m) => {
                 const Icon = METHOD_ICON[m.type] ?? ShieldCheck;
@@ -298,13 +298,13 @@ export function LoginMfaForm({ challengeData, loginMfa, isPending, onSelectBacku
                     type="button"
                     disabled={isSwitching || passkeyBusy}
                     onClick={() => selectMethod(m)}
-                    className="w-full flex items-center gap-3 rounded-lg border border-[#1f1f1f] bg-[#161616] px-3 py-2.5 text-left hover:border-[#34d399]/40 hover:bg-[#1a1a1a] transition-colors disabled:opacity-50"
+                    className="w-full flex items-center gap-3 rounded-lg border border-border bg-[#161616] px-3 py-2.5 text-left hover:border-[#34d399]/40 hover:bg-[#1a1a1a] transition-colors disabled:opacity-50"
                   >
-                    <div className="w-9 h-9 rounded-md bg-[#0c0c0c] border border-[#262626] flex items-center justify-center text-[#8A8F98] shrink-0">
+                    <div className="w-9 h-9 rounded-md bg-background border border-input flex items-center justify-center text-muted-foreground shrink-0">
                       <Icon size={18} className="stroke-[1.5]" />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm text-[#e8e8e8] truncate">
+                      <p className="text-sm text-foreground truncate">
                         {m.name || methodTitle(m.type)}
                         {m.is_primary && (
                           <span className="ml-2 text-[10px] uppercase tracking-wider text-[#34d399]">Primary</span>

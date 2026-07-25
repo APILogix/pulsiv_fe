@@ -19,7 +19,7 @@ export default function BackupCodesPage() {
     <div className="w-full space-y-6">
       <div className="text-center space-y-4">
         <div>
-          <h2 className="text-xl font-semibold tracking-tight text-[#e8e8e8]">
+          <h2 className="text-xl font-semibold tracking-tight text-foreground">
             Use a backup code
           </h2>
           <p className="text-sm text-[#999999] mt-1">
@@ -28,7 +28,7 @@ export default function BackupCodesPage() {
         </div>
       </div>
 
-      <div className="rounded-xl border border-[#262626] bg-[#111111]/80 backdrop-blur-sm p-6 sm:p-8">
+      <div className="rounded-xl border border-input bg-[#111111]/80 backdrop-blur-sm p-6 sm:p-8">
         <form onSubmit={handleSubmit} className="space-y-5">
           <div className="space-y-1.5">
             <Input
@@ -39,12 +39,12 @@ export default function BackupCodesPage() {
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCode(e.target.value.toLowerCase())}
               required
               maxLength={20}
-              className="h-12 font-mono text-center tracking-[0.3em] text-lg bg-[#161616] border-[#262626] text-[#e8e8e8] placeholder:text-[#555555] focus:border-[#34d399] focus:ring-1 focus:ring-[#34d399]/30 transition-colors"
+              className="h-12 font-mono text-center tracking-[0.3em] text-lg bg-[#161616] border-input text-foreground placeholder:text-[#555555] focus:border-[#34d399] focus:ring-1 focus:ring-[#34d399]/30 transition-colors"
             />
           </div>
           <Button
             type="submit"
-            className="w-full h-10 bg-[#34d399] text-[#04140d] font-semibold hover:bg-[#10b981] transition-colors disabled:opacity-50"
+            className="w-full h-10 bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50"
             disabled={isPending || code.length !== 20}
           >
             {isPending ? (

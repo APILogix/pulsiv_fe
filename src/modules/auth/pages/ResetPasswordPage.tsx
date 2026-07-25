@@ -49,7 +49,7 @@ export default function ResetPasswordPage() {
     <div className="w-full space-y-6">
       <div className="text-center space-y-4">
         <div>
-          <h2 className="text-xl font-semibold tracking-tight text-[#e8e8e8]">
+          <h2 className="text-xl font-semibold tracking-tight text-foreground">
             Set a new password
           </h2>
           <p className="text-sm text-[#999999] mt-1">
@@ -58,7 +58,7 @@ export default function ResetPasswordPage() {
         </div>
       </div>
 
-      <div className="rounded-xl border border-[#262626] bg-[#111111]/80 backdrop-blur-sm p-6 sm:p-8">
+      <div className="rounded-xl border border-input bg-[#111111]/80 backdrop-blur-sm p-6 sm:p-8">
         <form className="space-y-5" onSubmit={onSubmit}>
           <div className="space-y-1.5">
             <Label htmlFor="password" className="text-xs text-[#999999]">New password</Label>
@@ -69,7 +69,7 @@ export default function ResetPasswordPage() {
                 {...register('new_password')}
                 placeholder="••••••••"
                 autoComplete="new-password"
-                className="h-10 pr-10 bg-[#161616] border-[#262626] text-[#e8e8e8] placeholder:text-[#555555] focus:border-[#34d399] focus:ring-1 focus:ring-[#34d399]/30 transition-colors"
+                className="h-10 pr-10 bg-[#161616] border-input text-foreground placeholder:text-[#555555] focus:border-[#34d399] focus:ring-1 focus:ring-[#34d399]/30 transition-colors"
               />
               <PasswordToggle showPassword={showPassword} onToggle={() => setShowPassword((v) => !v)} />
             </div>
@@ -84,13 +84,13 @@ export default function ResetPasswordPage() {
                 {...register('confirm_password')}
                 placeholder="••••••••"
                 autoComplete="new-password"
-                className="h-10 pr-10 bg-[#161616] border-[#262626] text-[#e8e8e8] placeholder:text-[#555555] focus:border-[#34d399] focus:ring-1 focus:ring-[#34d399]/30 transition-colors"
+                className="h-10 pr-10 bg-[#161616] border-input text-foreground placeholder:text-[#555555] focus:border-[#34d399] focus:ring-1 focus:ring-[#34d399]/30 transition-colors"
               />
               <PasswordToggle showPassword={showPassword} onToggle={() => setShowPassword((v) => !v)} />
             </div>
             {errors.confirm_password && <p className="text-[#ef4444] text-xs mt-1">{errors.confirm_password.message}</p>}
           </div>
-          <Button type="submit" disabled={isPending} className="w-full h-10 bg-[#34d399] text-[#04140d] font-semibold hover:bg-[#10b981] transition-colors">
+          <Button type="submit" disabled={isPending} className="w-full h-10 bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-colors">
             {isPending ? 'Resetting...' : 'Reset password'}
           </Button>
         </form>

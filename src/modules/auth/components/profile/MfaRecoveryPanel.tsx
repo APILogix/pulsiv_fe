@@ -26,21 +26,21 @@ export function MfaRecoveryPanel() {
   return (
     <div className="flex w-full max-w-[800px] flex-col gap-6 animate-in fade-in duration-300">
       <div>
-        <h1 className="mb-2 text-[24px] font-semibold text-white tracking-normal">MFA recovery</h1>
-        <p className="text-[14px] leading-relaxed text-[#8A8F98]">
+        <h1 className="mb-2 text-[24px] font-semibold text-foreground tracking-normal">MFA recovery</h1>
+        <p className="text-[14px] leading-relaxed text-muted-foreground">
           Request recovery review if you cannot use your configured MFA methods or backup codes.
         </p>
       </div>
 
-      <section className="rounded-lg border border-[#1f1f1f] bg-[#141414]">
-        <div className="border-b border-[#1f1f1f] px-6 py-5">
+      <section className="rounded-lg border border-border bg-card">
+        <div className="border-b border-border px-6 py-5">
           <div className="flex items-start gap-4">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-[#3a2e16] bg-[#211a0f] text-[#eab308]">
               <ShieldAlert size={18} />
             </div>
             <div>
-              <h2 className="text-[16px] font-semibold text-white">Recovery review</h2>
-              <p className="mt-1 text-[13px] leading-relaxed text-[#8A8F98]">
+              <h2 className="text-[16px] font-semibold text-foreground">Recovery review</h2>
+              <p className="mt-1 text-[13px] leading-relaxed text-muted-foreground">
                 This is for account recovery, not a shortcut around MFA. Provide enough context for support review.
               </p>
             </div>
@@ -49,7 +49,7 @@ export function MfaRecoveryPanel() {
 
         {submitted ? (
           <div className="p-6">
-            <div className="flex items-start gap-3 rounded-lg border border-[#10b981]/20 bg-[#10b981]/10 p-4 text-[#10b981]">
+            <div className="flex items-start gap-3 rounded-lg border border-[#10b981]/20 bg-[#10b981]/10 p-4 text-primary">
               <HelpCircle size={18} className="mt-0.5 shrink-0" />
               <p className="text-[14px] leading-relaxed">
                 Recovery request submitted. Watch your verified email for next steps.
@@ -65,7 +65,7 @@ export function MfaRecoveryPanel() {
             }}
           >
             <div className="space-y-2">
-              <Label htmlFor="mfa-recovery-reason" className="text-[#8A8F98]">Recovery details</Label>
+              <Label htmlFor="mfa-recovery-reason" className="text-muted-foreground">Recovery details</Label>
               <Textarea
                 id="mfa-recovery-reason"
                 value={reason}
@@ -73,9 +73,9 @@ export function MfaRecoveryPanel() {
                 minLength={20}
                 maxLength={1000}
                 placeholder="Explain what happened and which MFA methods you can no longer access"
-                className="min-h-[160px] resize-none bg-[#0c0c0c] border-[#262626] text-white"
+                className="min-h-[160px] resize-none bg-background border-input text-foreground"
               />
-              <div className="flex justify-between text-xs text-[#5C5F66]">
+              <div className="flex justify-between text-xs text-muted-foreground">
                 <span>Minimum 20 characters</span>
                 <span>{reason.length}/1000</span>
               </div>

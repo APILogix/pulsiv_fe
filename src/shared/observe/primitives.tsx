@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router";
 import type { LucideIcon } from "lucide-react";
 import {
   Bug, Check, Copy, FileText, Gauge, Globe,
@@ -136,7 +137,7 @@ export function CopyButton({ value, label, className }: { value: string; label?:
     <button
       type="button"
       onClick={handleCopy}
-      className={cn("inline-flex items-center gap-1.5 rounded-[6px] border border-[var(--border)] bg-[var(--bg2)] px-2 py-1 text-[12px] text-[var(--text2)] transition-colors hover:text-[var(--text)] hover:border-[var(--input)]", className)}
+      className={cn("inline-flex cursor-pointer items-center gap-1.5 rounded-[6px] border border-[var(--border)] bg-[var(--bg2)] px-2 py-1 text-[12px] text-[var(--text2)] transition-colors hover:text-[var(--text)] hover:border-[var(--input)]", className)}
     >
       {copied ? <Check className="size-3.5 text-[var(--green)]" /> : <Copy className="size-3.5" />}
       {label ?? (copied ? "Copied" : "Copy")}
@@ -160,12 +161,21 @@ export function PageHeader({ title, description, breadcrumbs, actions }: {
       <div>
         {breadcrumbs && breadcrumbs.length > 0 && (
           <div className="mb-1.5 flex items-center gap-1 text-[12px] text-[var(--text3)]">
-            {breadcrumbs.map((b, i) => (
-              <span key={b.label} className="flex items-center gap-1">
-                {i > 0 && <ChevronRight className="size-3" />}
-                <span className={i === breadcrumbs.length - 1 ? "text-[var(--text2)]" : ""}>{b.label}</span>
-              </span>
-            ))}
+            {breadcrumbs.map((b, i) => {
+              const isLast = i === breadcrumbs.length - 1;
+              return (
+                <span key={b.label} className="flex items-center gap-1">
+                  {i > 0 && <ChevronRight className="size-3" />}
+                  {b.to ? (
+                    <Link to={b.to} className="cursor-pointer transition-colors hover:text-[var(--text2)] focus-visible:outline-none focus-visible:underline">
+                      {b.label}
+                    </Link>
+                  ) : (
+                    <span className={isLast ? "text-[var(--text2)]" : ""}>{b.label}</span>
+                  )}
+                </span>
+              );
+            })}
           </div>
         )}
         <h1 className="text-2xl font-semibold text-[var(--text)]">{title}</h1>

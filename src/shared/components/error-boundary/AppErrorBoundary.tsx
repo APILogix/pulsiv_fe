@@ -5,7 +5,7 @@ import NotFoundPage from '@/shared/components/NotFoundPage';
 
 function AppErrorFallback({ error, resetErrorBoundary }: FallbackProps) {
   return (
-    <div className="min-h-screen w-full bg-[var(--bg)] flex flex-col items-start justify-start p-8 relative overflow-hidden font-[family-name:var(--sans)] text-[var(--text)] selection:bg-[var(--red)] selection:text-white">
+    <div className="min-h-screen w-full bg-[var(--bg)] flex flex-col items-start justify-start p-8 relative overflow-hidden font-[family-name:var(--sans)] text-[var(--text)] selection:bg-[var(--red)] selection:text-foreground">
       {/* Top red bar indicating system panic */}
       <div className="absolute top-0 left-0 w-full h-1 bg-[var(--red)]" />
       
@@ -50,7 +50,7 @@ function AppErrorFallback({ error, resetErrorBoundary }: FallbackProps) {
         <div className="flex items-center gap-4 mt-8 w-full border-t border-[var(--border)] pt-8">
           <button type="button" 
             onClick={resetErrorBoundary} 
-            className="flex items-center gap-2 px-6 py-3 bg-[var(--red-bg)] text-[var(--red)] border border-[var(--red)] hover:bg-[var(--red)] hover:text-white transition-colors font-[family-name:var(--mono)] text-sm uppercase tracking-wider font-semibold cursor-pointer"
+            className="flex items-center gap-2 px-6 py-3 bg-[var(--red-bg)] text-[var(--red)] border border-[var(--red)] hover:bg-[var(--red)] hover:text-foreground transition-colors font-[family-name:var(--mono)] text-sm uppercase tracking-wider font-semibold cursor-pointer"
           >
             <RefreshCcw className="h-4 w-4" />
             Reload_System

@@ -34,11 +34,11 @@ export default function AccountDeletionConfirmPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] px-4 py-12 text-white">
+    <div className="min-h-screen bg-[#0a0a0a] px-4 py-12 text-foreground">
       <div className="mx-auto flex min-h-[70vh] max-w-md flex-col justify-center">
-        <div className="rounded-lg border border-[#1f1f1f] bg-[#111111] p-6">
+        <div className="rounded-lg border border-border bg-[#111111] p-6">
           <div className="mb-5 flex justify-center">
-            <div className={`flex h-12 w-12 items-center justify-center rounded-full ${status === 'success' ? 'bg-[#10b981]/10 text-[#10b981]' : status === 'error' ? 'bg-[#ef4444]/10 text-[#ef4444]' : 'bg-[#262626] text-[#8A8F98]'}`}>
+            <div className={`flex h-12 w-12 items-center justify-center rounded-full ${status === 'success' ? 'bg-[#10b981]/10 text-primary' : status === 'error' ? 'bg-[#ef4444]/10 text-[#ef4444]' : 'bg-[#262626] text-muted-foreground'}`}>
               {status === 'loading' && <Loader2 className="animate-spin" size={22} />}
               {status === 'success' && <CheckCircle2 size={22} />}
               {status === 'error' && <AlertTriangle size={22} />}
@@ -49,12 +49,12 @@ export default function AccountDeletionConfirmPage() {
             {status === 'success' && 'Deletion scheduled'}
             {status === 'error' && 'Confirmation failed'}
           </h1>
-          <p className="text-center text-[14px] leading-relaxed text-[#8A8F98]">
+          <p className="text-center text-[14px] leading-relaxed text-muted-foreground">
             {status === 'loading' ? 'Please wait while we verify the confirmation link.' : message}
           </p>
           <div className="mt-6">
             <Link to="/auth/login">
-              <Button className="w-full bg-[#10b981] text-black hover:bg-[#0ea271]">
+              <Button className="w-full bg-primary text-primary-foreground hover:bg-primary/90">
                 Back to sign in
               </Button>
             </Link>

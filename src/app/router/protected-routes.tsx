@@ -1,6 +1,7 @@
-import { lazy } from "react";
+import { lazy, type ReactNode } from "react";
 import { RouteObject, Navigate } from "react-router";
 import { RequireAuth } from "./route-guards";
+import { MetricRouteBoundary } from "@/shared/ui/loading";
 
 const AppLayout = lazy(() => import("../layouts/AppLayout").then((m) => ({ default: m.AppLayout })));
 
@@ -146,6 +147,10 @@ const BillingPlansPage = lazy(() => import("@/pages/admin/BillingPlansPage"));
 // New Roles Page
 const RolesPermissionsPage = lazy(() => import("@/pages/team/RolesPermissionsPage"));
 
+const withMetricLoading = (content: ReactNode) => (
+  <MetricRouteBoundary>{content}</MetricRouteBoundary>
+);
+
 export const protectedRoutes: RouteObject[] = [
   {
     element: <RequireAuth />,
@@ -153,25 +158,25 @@ export const protectedRoutes: RouteObject[] = [
       {
         element: <AppLayout />,
         children: [
-          { index: true, element: <DashboardPage /> },
-          { path: "dashboard", element: <DashboardPage /> },
+          { index: true, element: withMetricLoading(<DashboardPage />) },
+          { path: "dashboard", element: withMetricLoading(<DashboardPage />) },
 
           {
             path: "dashboards",
             element: <ModuleLayout />,
             children: [
-              { index: true, element: <DashboardsOverview /> },
-              { path: "overview", element: <DashboardsOverview /> },
-              { path: "executive", element: <ExecutiveCommandCenter /> },
-              { path: "performance", element: <PerformanceDeepDive /> },
-              { path: "errors", element: <ErrorTriage /> },
-              { path: "geo", element: <GeoAnalytics /> },
-              { path: "realtime", element: <RealtimeTraffic /> },
-              { path: "tracing", element: <TracingDependencyMap /> },
-              { path: "infrastructure", element: <InfrastructureCost /> },
-              { path: "security", element: <SecurityThreat /> },
-              { path: "releases", element: <ReleaseQuality /> },
-              { path: "business", element: <BusinessMetrics /> },
+              { index: true, element: withMetricLoading(<DashboardsOverview />) },
+              { path: "overview", element: withMetricLoading(<DashboardsOverview />) },
+              { path: "executive", element: withMetricLoading(<ExecutiveCommandCenter />) },
+              { path: "performance", element: withMetricLoading(<PerformanceDeepDive />) },
+              { path: "errors", element: withMetricLoading(<ErrorTriage />) },
+              { path: "geo", element: withMetricLoading(<GeoAnalytics />) },
+              { path: "realtime", element: withMetricLoading(<RealtimeTraffic />) },
+              { path: "tracing", element: withMetricLoading(<TracingDependencyMap />) },
+              { path: "infrastructure", element: withMetricLoading(<InfrastructureCost />) },
+              { path: "security", element: withMetricLoading(<SecurityThreat />) },
+              { path: "releases", element: withMetricLoading(<ReleaseQuality />) },
+              { path: "business", element: withMetricLoading(<BusinessMetrics />) },
               { path: "reports", element: <ScheduledReportsPage /> },
               { path: "reports/new", element: <CreateReportPage /> },
             ],

@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { useParams } from "react-router";
-import { Loader2, Plus, RotateCcw } from "lucide-react";
+import { Plus, RotateCcw } from "lucide-react";
 import {
   PageHeader, FillPage, SectionCard, StatusBadge, Field, SubmitButton, inputClass, Button, Tabs,
 } from "@/shared/observe";
+import { RouteLoadingRegion } from "@/shared/ui/loading";
 import { toast } from "sonner";
 import { useOrganizations } from "@/modules/organizations/hooks/useOrganizations";
 import { useSdkConfigs, useSdkConfigVersions, useSdkConfigDeployments, useSdkConfigMutations, useResolveSdkConfig } from "@/modules/projects/hooks/useSdkConfigs";
@@ -354,7 +355,7 @@ export default function RemoteConfigPage() {
   };
 
   if (isLoading) {
-    return <FillPage><div className="flex h-32 items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-[var(--brand)]" /></div></FillPage>;
+    return <FillPage><RouteLoadingRegion className="p-0" label="Loading remote configuration" /></FillPage>;
   }
 
   return (

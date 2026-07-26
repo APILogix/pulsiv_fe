@@ -7,6 +7,7 @@ import { useSearchShortcuts } from '@/modules/search/hooks/useSearchShortcuts';
 import { AppHeader } from './AppHeader';
 import { AppDualSidebar } from './AppDualSidebar';
 import { PostLoginSetup } from '@/modules/auth/components/PostLoginSetup';
+import { LoginMetricsTransition } from '@/modules/auth/components/LoginMetricsTransition';
 const handleMenuClick = () => {
   window.dispatchEvent(new CustomEvent('toggle-mobile-sidebar'));
 };
@@ -31,6 +32,7 @@ export function AppLayout() {
         </div>
       </main>
       <PulseCommandPalette />
+      <LoginMetricsTransition />
       <PostLoginSetup />
     </div>
   );

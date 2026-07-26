@@ -8,10 +8,12 @@ interface AuthState {
   isAdmin: boolean;
   mfaVerified: boolean;
   stepUpFresh: boolean;
+  hasHydrated: boolean;
 
   setAuth: (user: UserProfile) => void;
   setMfaVerified: (v: boolean) => void;
   setStepUpFresh: (v: boolean) => void;
+  setHasHydrated: (v: boolean) => void;
   clearAuth: () => void;
 
   // Global Step-Up State
@@ -29,10 +31,12 @@ export const useAuthStore = create<AuthState>()(
       isAdmin: false,
       mfaVerified: false,
       stepUpFresh: false,
+      hasHydrated: false,
       stepUpPromise: null,
       setAuth: (user) => set({ user, isAuthenticated: true, isAdmin: user.is_admin }),
       setMfaVerified: (mfaVerified) => set({ mfaVerified }),
       setStepUpFresh: (stepUpFresh) => set({ stepUpFresh }),
+      setHasHydrated: (hasHydrated) => set({ hasHydrated }),
       clearAuth: () => set({
         user: null,
         isAuthenticated: false,
@@ -68,6 +72,7 @@ export const useAuthStore = create<AuthState>()(
         isAdmin: state.isAdmin,
         mfaVerified: state.mfaVerified,
       }),
+      onRehydrateStorage: () => (state) => state?.setHasHydrated(true),
     }
   )
 );

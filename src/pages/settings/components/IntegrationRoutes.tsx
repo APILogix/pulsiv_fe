@@ -13,7 +13,7 @@ import {
   fieldInputClass,
 } from "@/shared/ui/pulse";
 import { Button, Field, SubmitButton, Timestamp, demoSuccess } from "@/shared/observe";
-import { Skeleton } from "@/components/ui/skeleton";
+import { TableLoadingRows } from "@/shared/ui/loading";
 
 // ── module-level constants (rules.md §1.2) ──
 
@@ -32,28 +32,13 @@ const ENVIRONMENT_OPTIONS = [
   { value: "production", label: "Production" },
 ];
 
-const SKELETON_ROWS = ["r1", "r2", "r3"];
-
 interface RouteFormState {
   error: string | null;
 }
 
 const INITIAL_ROUTE_STATE: RouteFormState = { error: null };
 
-// ── one-off local components ─────────────────────────────────
-
-function RoutesSkeleton() {
-  return (
-    <div className="divide-y divide-[var(--border)] rounded-[12px] border border-[var(--border)] bg-[var(--bg1)]">
-      {SKELETON_ROWS.map((row) => (
-        <div key={row} className="flex items-center gap-4 px-5 py-4">
-          <Skeleton className="h-4 w-40" />
-          <Skeleton className="ml-auto h-5 w-9 rounded-full" />
-        </div>
-      ))}
-    </div>
-  );
-}
+// ── local components ─────────────────────────────────────────
 
 function ConditionSummary({ route }: { route: any }) {
   return (
@@ -184,7 +169,7 @@ export function IntegrationRoutes({ integrationId, type }: IntegrationRoutesProp
       </Panel>
 
       {loadingRoutes ? (
-        <RoutesSkeleton />
+        <TableLoadingRows rows={3} label="Loading connector routing rules" />
       ) : routes.length === 0 ? (
         <EmptyPanel
           icon={Route}

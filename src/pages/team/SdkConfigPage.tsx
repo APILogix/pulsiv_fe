@@ -1,10 +1,11 @@
 import { useActionState, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Code2, Loader2 } from 'lucide-react';
+import { Code2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { orgApi } from '@/modules/organizations/api/org.api';
 import { orgQueryKeys, useOrganizations } from '@/modules/organizations/hooks/useOrganizations';
 import { Field, PageHeader, SectionCard, SubmitButton, inputClass, textareaClass } from '@/shared/observe';
+import { RouteLoadingRegion } from '@/shared/ui/loading';
 
 type PublishState = {
   ok: boolean;
@@ -55,11 +56,7 @@ export default function SdkConfigPage() {
   }, [state]);
 
   if (isLoading) {
-    return (
-      <div className="flex h-32 items-center justify-center">
-        <Loader2 className="size-6 animate-spin text-[var(--brand)]" />
-      </div>
-    );
+    return <RouteLoadingRegion label="Loading SDK configuration" />;
   }
 
   return (

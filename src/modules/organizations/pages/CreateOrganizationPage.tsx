@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { PulsivLogo } from '@/shared/components/PulsivLogo';
+import { markOrganizationSetup } from '@/modules/auth/services/post-login-setup-flag';
 
 interface OrgFormState {
   error: string | null;
@@ -145,6 +146,7 @@ export default function CreateOrganizationPage() {
     if (state.success && state.orgId) {
       toast.success('Organization created');
       setActiveOrgId(state.orgId);
+      markOrganizationSetup();
       navigate('/dashboard');
     }
   }, [state, navigate, setActiveOrgId]);

@@ -405,3 +405,65 @@ body.flyout-overlay-active #main-content {
   }
   .pulse-lift:hover { transform: none; }
 }
+
+/* Standardized loading system: bootstrap, route region, metric telemetry, auth handoff. */
+.app-bootstrap-loader::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(to right, color-mix(in srgb, var(--border) 42%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in srgb, var(--border) 42%, transparent) 1px, transparent 1px),
+    radial-gradient(60% 70% at 50% 35%, var(--brand-bg), transparent 72%);
+  background-size: 40px 40px, 40px 40px, 100% 100%;
+  mask-image: linear-gradient(to bottom, #000, transparent 88%);
+}
+
+@keyframes app-loader-scan {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(400%); }
+}
+.app-loader-scan {
+  background: linear-gradient(90deg, transparent, var(--violet), transparent);
+  animation: app-loader-scan 1.4s linear infinite;
+}
+
+@keyframes loading-skeleton-shift {
+  0%, 100% { background-color: var(--bg2); }
+  50% { background-color: var(--bg3); }
+}
+.loading-skeleton { animation: loading-skeleton-shift 1.6s ease-in-out infinite; }
+
+.metric-loader-grid { stroke: var(--border); stroke-width: 1; }
+.metric-loader-trace {
+  fill: none;
+  stroke: var(--brand);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-dasharray: 18 10;
+  animation: metric-trace-flow 1.1s linear infinite;
+}
+.metric-loader-node { fill: var(--bg1); stroke: var(--ai); stroke-width: 2; animation: metric-node-pulse 1.4s ease-in-out infinite; }
+.metric-loader-bar { fill: var(--violet); opacity: 0.18; transform-box: fill-box; transform-origin: center bottom; animation: metric-bar-breathe 1.2s ease-in-out infinite; }
+@keyframes metric-trace-flow { to { stroke-dashoffset: -28; } }
+@keyframes metric-node-pulse { 50% { r: 6px; opacity: 0.55; } }
+@keyframes metric-bar-breathe { 50% { transform: scaleY(0.45); opacity: 0.42; } }
+
+.auth-transition-progress {
+  width: 100%;
+  transform-origin: left center;
+  animation: auth-transition-fill 1.25s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@keyframes auth-transition-fill { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .app-loader-scan,
+  .loading-skeleton,
+  .metric-loader-trace,
+  .metric-loader-node,
+  .metric-loader-bar,
+  .auth-transition-progress {
+    animation: none !important;
+  }
+}

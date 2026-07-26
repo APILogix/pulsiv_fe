@@ -14,15 +14,13 @@ import {
   formatLatency,
   formatNumber,
 } from "@/shared/observe";
-import { Skeleton } from "@/components/ui/skeleton";
+import { TableLoadingRows } from "@/shared/ui/loading";
 
 // ── module-level constants (rules.md §1.2) ──
 
 const PAGE_SIZE = 20;
 
 const TABLE_HEADERS = ["Status", "Event", "Severity", "Response", "Latency", "Attempts", "Time", ""];
-
-const SKELETON_ROWS = ["r1", "r2", "r3", "r4", "r5"];
 
 const DELIVERY_TONE: Record<string, SurfaceTone> = {
   sent: "green",
@@ -38,21 +36,7 @@ function deliveryTone(status: string): SurfaceTone {
   return DELIVERY_TONE[status] ?? "neutral";
 }
 
-// ── one-off local components ─────────────────────────────────
-
-function DeliverySkeleton() {
-  return (
-    <div className="divide-y divide-[var(--border)] rounded-[12px] border border-[var(--border)] bg-[var(--bg1)]">
-      {SKELETON_ROWS.map((row) => (
-        <div key={row} className="flex items-center gap-4 px-4 py-3">
-          <Skeleton className="h-4 w-20" />
-          <Skeleton className="h-4 w-32" />
-          <Skeleton className="ml-auto h-4 w-24" />
-        </div>
-      ))}
-    </div>
-  );
-}
+// ── component ────────────────────────────────────────────────
 
 interface IntegrationDeliveriesProps {
   integrationId: string;
@@ -103,7 +87,7 @@ export function IntegrationDeliveries({ integrationId }: IntegrationDeliveriesPr
       </Toolbar>
 
       {isLoading && page === 0 ? (
-        <DeliverySkeleton />
+        <TableLoadingRows label="Loading connector deliveries" />
       ) : deliveries.length === 0 ? (
         <EmptyPanel
           icon={Send}

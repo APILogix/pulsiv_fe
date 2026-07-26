@@ -1,11 +1,12 @@
 import { useMemo } from "react";
 import { Link } from "react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Activity, CheckCircle2, Clock, Loader2, ShieldAlert, UserPlus } from "lucide-react";
+import { Activity, CheckCircle2, Clock, ShieldAlert, UserPlus } from "lucide-react";
 
 import { orgApi } from "@/modules/organizations/api/org.api";
 import { orgQueryKeys, useOrganizations } from "@/modules/organizations/hooks/useOrganizations";
 import { Button, KpiCard, PageHeader, SectionCard, StatusBadge, Timestamp } from "@/shared/observe";
+import { RouteLoadingRegion } from "@/shared/ui/loading";
 
 function initials(name?: string | null) {
   return (name || "?").trim().charAt(0).toUpperCase();
@@ -57,11 +58,7 @@ export default function OrgOverviewPage() {
   const activeSso = useMemo(() => (sso || []).find((provider) => provider.isActive), [sso]);
 
   if (orgLoading || !org) {
-    return (
-      <div className="flex h-32 items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-[var(--text2)]" />
-      </div>
-    );
+    return <RouteLoadingRegion label="Loading organization overview" />;
   }
 
   return (

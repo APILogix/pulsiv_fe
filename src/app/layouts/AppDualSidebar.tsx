@@ -68,9 +68,20 @@ export function AppDualSidebar() {
   const derivedActive = accountRoute
     ? null
     : mainNavigation.find(
-        (item) =>
-          location.pathname === item.path ||
-          location.pathname.startsWith(`${item.path}/`),
+        (item) => {
+          if (location.pathname === item.path || location.pathname.startsWith(`${item.path}/`)) {
+            return true;
+          }
+          return item.children?.some((child) => {
+            if (child.exact) {
+              return location.pathname === child.path;
+            }
+            return (
+              location.pathname === child.path ||
+              location.pathname.startsWith(`${child.path}/`)
+            );
+          });
+        }
       ) ??
       mainNavigation[0] ??
       null;

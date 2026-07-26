@@ -137,7 +137,7 @@ export function CopyButton({ value, label, className }: { value: string; label?:
     <button
       type="button"
       onClick={handleCopy}
-      className={cn("inline-flex cursor-pointer items-center gap-1.5 rounded-[6px] border border-[var(--border)] bg-[var(--bg2)] px-2 py-1 text-[12px] text-[var(--text2)] transition-colors hover:text-[var(--text)] hover:border-[var(--input)]", className)}
+      className={cn("inline-flex shrink-0 whitespace-nowrap cursor-pointer items-center gap-1.5 rounded-[6px] border border-[var(--border)] bg-[var(--bg2)] px-2 py-1 text-[12px] text-[var(--text2)] transition-colors hover:text-[var(--text)] hover:border-[var(--input)]", className)}
     >
       {copied ? <Check className="size-3.5 text-[var(--green)]" /> : <Copy className="size-3.5" />}
       {label ?? (copied ? "Copied" : "Copy")}

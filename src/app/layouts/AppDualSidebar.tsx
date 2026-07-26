@@ -28,6 +28,7 @@ function getDynamicChildren(
   pathname: string,
 ): ModuleNavItem[] {
   let children = item?.children || [];
+
   if (item?.label === 'Workspaces') {
     const projectMatch = pathname.match(/^\/projects\/([a-zA-Z0-9_-]+)(?:\/|$)/);
     if (projectMatch) {
@@ -39,170 +40,31 @@ function getDynamicChildren(
       ) {
         children = [
           ...children,
-          {
-            label: 'Overview',
-            path: `/projects/${possibleId}/overview`,
-            icon: LayoutDashboard,
-            status: 'live',
-            description: '',
-            group: 'Active Project',
-          },
-          {
-            label: 'Usage',
-            path: `/projects/${possibleId}/usage`,
-            icon: LineChart,
-            status: 'live',
-            description: '',
-            group: 'Active Project',
-          },
-          {
-            label: 'API Keys',
-            path: `/projects/${possibleId}/api-keys`,
-            icon: KeyRound,
-            status: 'live',
-            description: '',
-            group: 'Active Project',
-          },
-          {
-            label: 'Activity',
-            path: `/projects/${possibleId}/activity`,
-            icon: Activity,
-            status: 'live',
-            description: '',
-            group: 'Active Project',
-          },
-          {
-            label: 'Remote Config',
-            path: `/projects/${possibleId}/remote-config`,
-            icon: Cable,
-            status: 'live',
-            description: '',
-            group: 'Active Project',
-          },
-          {
-            label: 'Alert Routes',
-            path: `/projects/${possibleId}/routes`,
-            icon: FileText,
-            status: 'live',
-            description: '',
-            group: 'Active Project',
-          },
-          {
-            label: 'Members',
-            path: `/projects/${possibleId}/members`,
-            icon: Users,
-            status: 'live',
-            description: '',
-            group: 'Active Project',
-          },
-          {
-            label: 'General Settings',
-            path: `/projects/${possibleId}/settings/general`,
-            icon: Settings,
-            status: 'live',
-            description: '',
-            group: 'Active Project',
-          },
+          { label: 'Overview', path: `/projects/${possibleId}/overview`, icon: LayoutDashboard, status: 'live', description: '', group: 'Active Project' },
+          { label: 'Usage', path: `/projects/${possibleId}/usage`, icon: LineChart, status: 'live', description: '', group: 'Active Project' },
+          { label: 'API Keys', path: `/projects/${possibleId}/api-keys`, icon: KeyRound, status: 'live', description: '', group: 'Active Project' },
+          { label: 'Activity', path: `/projects/${possibleId}/activity`, icon: Activity, status: 'live', description: '', group: 'Active Project' },
+          { label: 'Remote Config', path: `/projects/${possibleId}/remote-config`, icon: Cable, status: 'live', description: '', group: 'Active Project' },
+          { label: 'Alert Routes', path: `/projects/${possibleId}/routes`, icon: FileText, status: 'live', description: '', group: 'Active Project' },
+          { label: 'Members', path: `/projects/${possibleId}/members`, icon: Users, status: 'live', description: '', group: 'Active Project' },
+          { label: 'General Settings', path: `/projects/${possibleId}/settings/general`, icon: Settings, status: 'live', description: '', group: 'Active Project' },
         ];
       }
     }
   }
 
-import { PrimaryRail } from './PrimaryRail';
-
-function getDynamicChildren(
-  item: MainNavItem | null,
-  pathname: string,
-): ModuleNavItem[] {
-  let children = item?.children || [];
-  if (item?.label === 'Workspaces') {
-    const projectMatch = pathname.match(/^\/projects\/([a-zA-Z0-9_-]+)(?:\/|$)/);
-    if (projectMatch) {
-      const possibleId = projectMatch[1];
-      if (
-        possibleId !== 'overview' &&
-        possibleId !== 'usage' &&
-        possibleId !== 'new'
-      ) {
-        children = [
-          ...children,
-          {
-            label: 'Overview',
-            path: `/projects/${possibleId}/overview`,
-            icon: LayoutDashboard,
-            status: 'live',
-            description: '',
-            group: 'Active Project',
-          },
-          {
-            label: 'Usage',
-            path: `/projects/${possibleId}/usage`,
-            icon: LineChart,
-            status: 'live',
-            description: '',
-            group: 'Active Project',
-          },
-          {
-            label: 'API Keys',
-            path: `/projects/${possibleId}/api-keys`,
-            icon: KeyRound,
-            status: 'live',
-            description: '',
-            group: 'Active Project',
-          },
-          {
-            label: 'Activity',
-            path: `/projects/${possibleId}/activity`,
-            icon: Activity,
-            status: 'live',
-            description: '',
-            group: 'Active Project',
-          },
-          {
-            label: 'Remote Config',
-            path: `/projects/${possibleId}/remote-config`,
-            icon: Cable,
-            status: 'live',
-            description: '',
-            group: 'Active Project',
-          },
-          {
-            label: 'Alert Routes',
-            path: `/projects/${possibleId}/routes`,
-            icon: FileText,
-            status: 'live',
-            description: '',
-            group: 'Active Project',
-          },
-          {
-            label: 'Members',
-            path: `/projects/${possibleId}/members`,
-            icon: Users,
-            status: 'live',
-            description: '',
-            group: 'Active Project',
-          },
-          {
-            label: 'General Settings',
-            path: `/projects/${possibleId}/settings/general`,
-            icon: Settings,
-            status: 'live',
-            description: '',
-            group: 'Active Project',
-          },
-        ];
-      }
-    }
-  }
   return children;
 }
 
 export function AppDualSidebar() {
   const { setHasInnerItems, isFlyoutOpen, setIsFlyoutOpen } = useSidebarStore();
   const location = useLocation();
-  const accountRoute = 
-    location.pathname === '/account' || location.pathname.startsWith('/account/') ||
-    location.pathname === '/settings' || location.pathname.startsWith('/settings/');
+  const accountRoute =
+    location.pathname === '/account' ||
+    location.pathname.startsWith('/account/') ||
+    location.pathname === '/settings' ||
+    location.pathname.startsWith('/settings/');
+
   const derivedActive = accountRoute
     ? null
     : mainNavigation.find(
@@ -214,12 +76,10 @@ export function AppDualSidebar() {
       null;
 
   const [selectedRailItemLabel, setSelectedRailItemLabel] = useState<string | null>(
-    () => sessionStorage.getItem('pulsiv_selected_rail')
+    () => sessionStorage.getItem('pulsiv_selected_rail'),
   );
   const [previousPathname, setPreviousPathname] = useState(location.pathname);
-  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>(
-    {},
-  );
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
 
   if (previousPathname !== location.pathname) {
     setPreviousPathname(location.pathname);
@@ -227,15 +87,26 @@ export function AppDualSidebar() {
     sessionStorage.removeItem('pulsiv_selected_rail');
   }
 
-  const selectedRailItem = selectedRailItemLabel 
-    ? mainNavigation.find(item => item.label === selectedRailItemLabel) ?? null 
+  const selectedRailItem = selectedRailItemLabel
+    ? mainNavigation.find((item) => item.label === selectedRailItemLabel) ?? null
     : null;
-
   const activeRailItem = accountRoute ? null : selectedRailItem ?? derivedActive;
+  const navItemsToRender = getDynamicChildren(activeRailItem, location.pathname);
 
   const { organizations, activeOrgId } = useOrganizations();
-
   const flyoutRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!activeRailItem) {
+      setIsFlyoutOpen(false);
+      return;
+    }
+
+    const currentChildren = getDynamicChildren(activeRailItem, location.pathname);
+    setExpandedGroups((prev) => {
+      const next = { ...prev };
+      let changed = false;
+
       if (currentChildren.length > 0) {
         currentChildren.forEach((child) => {
           const group = child.group || activeRailItem.label;
@@ -257,8 +128,6 @@ export function AppDualSidebar() {
     }
   }, [activeRailItem, location.pathname, setIsFlyoutOpen]);
 
-  const navItemsToRender = getDynamicChildren(activeRailItem, location.pathname);
-
   useEffect(() => {
     setHasInnerItems(navItemsToRender.length > 0);
   }, [navItemsToRender.length, setHasInnerItems]);
@@ -270,10 +139,7 @@ export function AppDualSidebar() {
 
     window.addEventListener('toggle-mobile-sidebar', handleToggleMobileSidebar);
     return () =>
-      window.removeEventListener(
-        'toggle-mobile-sidebar',
-        handleToggleMobileSidebar,
-      );
+      window.removeEventListener('toggle-mobile-sidebar', handleToggleMobileSidebar);
   }, [setIsFlyoutOpen]);
 
   const handleRailClick = (item: MainNavItem) => {
@@ -310,9 +176,7 @@ export function AppDualSidebar() {
       ? activeOrg.name
       : activeRailItem?.label;
   const flyoutContext =
-    activeRailItem?.label === 'Organization' && activeOrg
-      ? 'Organization'
-      : undefined;
+    activeRailItem?.label === 'Organization' && activeOrg ? 'Organization' : undefined;
 
   return (
     <>
@@ -347,8 +211,7 @@ export function AppDualSidebar() {
               {Object.entries(
                 navItemsToRender.reduce(
                   (acc, child) => {
-                    const groupName =
-                      child.group || activeRailItem?.label || 'Navigation';
+                    const groupName = child.group || activeRailItem?.label || 'Navigation';
                     if (!acc[groupName]) acc[groupName] = [];
                     acc[groupName].push(child);
                     return acc;
@@ -415,21 +278,23 @@ export function AppDualSidebar() {
         </div>
 
         {/* Fixed Ingest Quota Widget at the bottom */}
-        <div className="shrink-0 p-3 mt-auto border-t border-[var(--border)]">
-          <div className="rounded-[8px] border border-[var(--border)] bg-transparent p-3 flex flex-col gap-2.5">
-            <div className="flex justify-between items-center font-mono">
-              <span className="text-[10px] tracking-widest text-[var(--text3)] uppercase">Ingest Quota</span>
-              <span className="text-[12px] font-bold text-[var(--text)]">68%</span>
-            </div>
-            <div className="h-1.5 w-full bg-[var(--bg3)] rounded-full overflow-hidden">
-              <div className="h-full bg-[var(--brand)] rounded-full" style={{ width: '68%' }} />
-            </div>
-            <div className="text-[11px] font-mono text-[var(--text3)] flex justify-between items-center">
-              <span>6.8 / 10 GB</span>
-              <span>&middot; resets in 9d</span>
+        {navItemsToRender.length > 0 && (
+          <div className="shrink-0 p-3 mt-auto border-t border-[var(--border)]">
+            <div className="rounded-[8px] border border-[var(--border)] bg-transparent p-3 flex flex-col gap-2.5">
+              <div className="flex justify-between items-center font-mono">
+                <span className="text-[10px] tracking-widest text-[var(--text3)] uppercase">Ingest Quota</span>
+                <span className="text-[12px] font-bold text-[var(--text)]">68%</span>
+              </div>
+              <div className="h-1.5 w-full bg-[var(--bg3)] rounded-full overflow-hidden">
+                <div className="h-full bg-[var(--brand)] rounded-full" style={{ width: '68%' }} />
+              </div>
+              <div className="text-[11px] font-mono text-[var(--text3)] flex justify-between items-center">
+                <span>6.8 / 10 GB</span>
+                <span>&middot; resets in 9d</span>
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
     </>
   );

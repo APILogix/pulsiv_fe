@@ -112,9 +112,8 @@ const PoliciesPage = lazy(() => import("@/pages/insights/PoliciesPage"));
 
 // Team
 const OrgProfilePage = lazy(() => import("@/pages/team/OrgProfilePage"));
-const MembersPage = lazy(() => import("@/pages/team/MembersPage"));
+const TeamPage = lazy(() => import("@/pages/team/TeamPage"));
 const MemberDetailPage = lazy(() => import("@/pages/team/MemberDetailPage"));
-const InvitationsPage = lazy(() => import("@/pages/team/InvitationsPage"));
 const SsoPage = lazy(() => import("@/pages/team/SsoPage"));
 const ScimPage = lazy(() => import("@/pages/team/ScimPage"));
 const SecurityEventsPage = lazy(() => import("@/pages/team/SecurityEventsPage"));
@@ -140,6 +139,12 @@ const SlackSuccessPage = lazy(() => import("@/pages/settings/SlackSuccessPage"))
 const SlackErrorPage = lazy(() => import("@/pages/settings/SlackErrorPage"));
 const DataRetentionPage = lazy(() => import("@/pages/settings/DataRetentionPage"));
 const IntegrationsAuditPage = lazy(() => import("@/pages/settings/IntegrationsAuditPage"));
+
+// Super Admin / Billing Plans
+const BillingPlansPage = lazy(() => import("@/pages/admin/BillingPlansPage"));
+
+// New Roles Page
+const RolesPermissionsPage = lazy(() => import("@/pages/team/RolesPermissionsPage"));
 
 export const protectedRoutes: RouteObject[] = [
   {
@@ -280,15 +285,25 @@ export const protectedRoutes: RouteObject[] = [
               { index: true, element: <OrgProfilePage /> },
               { path: "settings", element: <OrgSettingsPage /> },
               { path: "domains", element: <DomainsPage /> },
-              { path: "members", element: <MembersPage /> },
+              { path: "team", element: <TeamPage /> },
+              { path: "teams", element: <Navigate to="/admin/team" replace /> },
+              { path: "members", element: <Navigate to="/admin/team" replace /> },
               { path: "members/:userId", element: <MemberDetailPage /> },
-              { path: "invitations", element: <InvitationsPage /> },
+              { path: "invitations", element: <Navigate to="/admin/team" replace /> },
               { path: "sso", element: <SsoPage /> },
               { path: "scim", element: <ScimPage /> },
+              { path: "roles", element: <RolesPermissionsPage /> },
               { path: "security-events", element: <SecurityEventsPage /> },
               { path: "audit-logs", element: <AuditLogsPage /> },
               { path: "sdk-config", element: <SdkConfigPage /> },
               { path: "compliance", element: <CompliancePage /> },
+            ],
+          },
+          {
+            path: "super-admin",
+            element: <ModuleLayout />,
+            children: [
+              { path: "billing", element: <BillingPlansPage /> },
             ],
           },
           {

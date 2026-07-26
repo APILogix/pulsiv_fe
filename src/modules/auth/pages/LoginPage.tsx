@@ -8,27 +8,7 @@ import { useLogin } from '../hooks/useLogin';
 import { authApi } from '../api/auth.api';
 import { getErrorMessage } from '@/infrastructure/api-client/error.interceptor';
 
-function PulsivWordmark() {
-  return (
-    <svg viewBox="0 0 260 64" aria-label="Pulsiv" className="h-11 w-auto">
-      <text
-        x="0"
-        y="44"
-        fontFamily='ui-monospace, "SF Mono", "JetBrains Mono", Consolas, monospace'
-        fontWeight="700"
-        fontSize="34"
-        letterSpacing="4"
-      >
-        <tspan fill="var(--text)">P</tspan>
-        <tspan fill="var(--text)">U</tspan>
-        <tspan fill="var(--text)">L</tspan>
-        <tspan fill="var(--text)">S</tspan>
-        <tspan fill="var(--brand)">I</tspan>
-        <tspan fill="var(--text)">V</tspan>
-      </text>
-    </svg>
-  );
-}
+
 
 function GoogleIcon() {
   return (
@@ -72,16 +52,7 @@ export default function LoginPage() {
 
   return (
     <div className="w-full">
-      <div className="mb-6 text-center">
-        <p className="mb-6 text-[13px] text-[var(--text3)]">
-          Don&apos;t have an account?{' '}
-          <Link to="/auth/register" className="font-medium text-[var(--brand)] transition-colors hover:text-[var(--brand-d)]">
-            Create one
-          </Link>
-        </p>
-        <div className="mb-5 flex items-center justify-center">
-          <PulsivWordmark />
-        </div>
+      <div className="mb-8 text-center">
         <h1 className="mb-2 text-[28px] font-semibold tracking-[-0.04em] text-[var(--text)]">Sign in to Pulsiv</h1>
         <p className="text-[15px] text-[var(--text2)]">Continue with Google or sign in with your work email.</p>
       </div>
@@ -114,6 +85,13 @@ export default function LoginPage() {
           </Link>
         </div>
       </div>
+
+      <p className="mt-8 text-center text-[13.5px] text-[var(--text3)]">
+        Don&apos;t have an account?{' '}
+        <Link to="/auth/register" className="font-medium text-[var(--brand)] transition-colors hover:text-[var(--brand-d)]">
+          Create one
+        </Link>
+      </p>
     </div>
   );
 }

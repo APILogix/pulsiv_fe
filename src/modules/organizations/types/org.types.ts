@@ -73,6 +73,7 @@ export interface Member {
   userId: string;
   email: string;
   fullName: string;
+  mfaEnabled: boolean;
   role: OrgRole;
   status: MemberStatus;
   joinedAt: string | null;
@@ -278,6 +279,17 @@ export interface BillingUsageOverview {
     events: number;
     aiAnalyses: number;
   }[];
+}
+
+export interface CurrentBillingUsage {
+  eventsUsed: number;
+  eventLimit: number;
+  remainingEvents: number;
+  aiCreditsUsed: number;
+  aiCreditLimit: number;
+  remainingAiCredits: number;
+  projectsUsed: number;
+  membersUsed: number;
 }
 
 export interface Invoice {

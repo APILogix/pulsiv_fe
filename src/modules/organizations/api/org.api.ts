@@ -36,6 +36,24 @@ function mapPaymentMethod(paymentMethod: any): t.PaymentMethod {
   };
 }
 
+function toNumber(value: unknown): number {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function mapCurrentBillingUsage(usage: any): t.CurrentBillingUsage {
+  return {
+    eventsUsed: toNumber(usage?.eventsUsed),
+    eventLimit: toNumber(usage?.eventLimit),
+    remainingEvents: toNumber(usage?.remainingEvents),
+    aiCreditsUsed: toNumber(usage?.aiCreditsUsed),
+    aiCreditLimit: toNumber(usage?.aiCreditLimit),
+    remainingAiCredits: toNumber(usage?.remainingAiCredits),
+    projectsUsed: toNumber(usage?.projectsUsed),
+    membersUsed: toNumber(usage?.membersUsed),
+  };
+}
+
 export const orgApi = {
   // Core
   createOrganization: (data: t.CreateOrganizationBody) => apiClient.post('/organizations', data).then(r => r.data.data as t.Organization),
@@ -81,7 +99,7 @@ export const orgApi = {
   // Billing Summary
   getBillingSummary: (orgId: string) => apiClient.get(`/organizations/${orgId}/billing-summary`).then(r => r.data.data as t.OrganizationBillingSummary),
   getUsageLimits: (orgId: string) => apiClient.get(`/organizations/${orgId}/usage-limits`).then(r => r.data.data as t.UsageLimitsResponse),
-  getCurrentUsage: (orgId: string) => apiClient.get('/billing/usage/current', withOrgHeaders(orgId)).then(r => r.data.data),
+  getCurrentUsage: (orgId: string) => apiClient.get('/billing/usage/current', withOrgHeaders(orgId)).then(r => mapCurrentBillingUsage(r.data.data)),
   getDailyUsage: (orgId: string) => apiClient.get('/billing/usage/daily', withOrgHeaders(orgId)).then(r => r.data.data as { date: string, eventsCount: number }[]),
   
   // Billing - Invoices

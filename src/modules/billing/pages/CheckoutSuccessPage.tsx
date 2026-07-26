@@ -1,6 +1,7 @@
 import { useNavigate, useSearchParams } from 'react-router';
 import { CheckCircle2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+
+import { AuthButton, AuthCard, AuthResult, SecretField } from '@/shared/ui/pulse';
 
 export default function CheckoutSuccessPage() {
   const [searchParams] = useSearchParams();
@@ -11,30 +12,31 @@ export default function CheckoutSuccessPage() {
   // or refetch the user's billing status.
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-[var(--bg)] p-4">
-      <div className="w-full max-w-[440px] space-y-6 rounded-[10px] border border-border bg-[var(--bg1)] p-8 shadow-2xl text-center">
-        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[var(--green-bg)] text-[var(--green)]">
-          <CheckCircle2 size={32} />
-        </div>
-        
-        <div className="space-y-2">
-          <h1 className="text-2xl font-semibold tracking-tight text-[var(--text)]">
-            Payment Successful!
-          </h1>
-          <p className="text-[var(--text2)]">
-            Thank you for your purchase. Your subscription has been activated.
-          </p>
-          {sessionId && (
-            <p className="text-xs text-[var(--text3)] font-mono mt-2">
-              Order ID: {sessionId.slice(0, 12)}...
-            </p>
-          )}
-        </div>
+    <div className="relative flex min-h-[100dvh] items-center justify-center overflow-hidden bg-[var(--bg)] p-4">
+      <div className="pulse-grid pulse-aurora pointer-events-none absolute inset-0" aria-hidden="true" />
 
-        <Button onClick={() => navigate('/dashboard')} className="w-full">
-          Go to Dashboard
-        </Button>
-      </div>
+      <main className="pulse-rise relative z-10 w-full max-w-[440px]">
+        <AuthCard>
+          <AuthResult
+            icon={CheckCircle2}
+            tone="green"
+            title="Payment complete"
+            description="Your subscription is active. New entitlements apply to this organization right away."
+            actions={
+              <>
+                <AuthButton type="button" onClick={() => navigate('/dashboard')}>
+                  Go to dashboard
+                </AuthButton>
+                <AuthButton type="button" variant="ghost" onClick={() => navigate('/billing')}>
+                  Review plan and entitlements
+                </AuthButton>
+              </>
+            }
+          >
+            {sessionId && <SecretField label="Checkout session" value={sessionId} />}
+          </AuthResult>
+        </AuthCard>
+      </main>
     </div>
   );
 }

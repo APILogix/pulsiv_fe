@@ -2,19 +2,58 @@ import { useState } from 'react';
 import { Link } from 'react-router';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { Check } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { loginSchema, type LoginFormData } from '../schemas/auth.schema';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { AuthButton, AuthField, PasswordInput, fieldInputClass } from '@/shared/ui/pulse';
 
 interface LoginFormProps {
   login: (data: LoginFormData) => void;
   isPending: boolean;
 }
 
+const STEPS = [
+  { id: 'email', label: 'Email' },
+  { id: 'password', label: 'Password' },
+] as const;
+
+function StepIndicator({ step }: { step: 'email' | 'password' }) {
+  const activeIndex = step === 'email' ? 0 : 1;
+  return (
+    <ol className="mb-1 flex items-center gap-2" aria-label={`Step ${activeIndex + 1} of 2`}>
+      {STEPS.map((item, index) => {
+        const done = index < activeIndex;
+        const active = index === activeIndex;
+        return (
+          <li key={item.id} className="flex items-center gap-2">
+            {index > 0 && <span className="h-px w-5 bg-[var(--border)]" aria-hidden="true" />}
+            <span
+              className={cn(
+                'inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.1em] ring-1 ring-inset transition-colors',
+                active
+                  ? 'bg-[var(--brand-bg)] text-[var(--brand)] ring-[var(--brand)]/30'
+                  : done
+                    ? 'bg-[var(--green-bg)] text-[var(--green)] ring-[var(--green)]/25'
+                    : 'bg-[var(--bg2)] text-[var(--text3)] ring-[var(--border)]'
+              )}
+              aria-current={active ? 'step' : undefined}
+            >
+              {done ? (
+                <Check className="size-3" aria-hidden="true" />
+              ) : (
+                <span className="font-[family-name:var(--mono)] tabular-nums">{index + 1}</span>
+              )}
+              {item.label}
+            </span>
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
 export function LoginForm({ login, isPending }: LoginFormProps) {
   const [step, setStep] = useState<'email' | 'password'>('email');
-  const [showPassword, setShowPassword] = useState(false);
   const { register, handleSubmit, trigger, getValues, formState: { errors } } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
     mode: 'onSubmit',
@@ -25,54 +64,82 @@ export function LoginForm({ login, isPending }: LoginFormProps) {
   };
 
   return (
-    <form onSubmit={handleSubmit(login)} className="space-y-4">
+    <form onSubmit={handleSubmit(login)} className="flex flex-col gap-4">
+      <StepIndicator step={step} />
+
       {step === 'email' ? (
         <>
-          <div className="space-y-2">
-            <Label htmlFor="email" className="text-[12px] font-medium uppercase tracking-wider text-[var(--text3)]">Email</Label>
-            <Input id="email" type="email" placeholder="you@company.com" autoComplete="email" autoFocus {...register('email')} disabled={isPending} className="h-12 rounded-[8px] border-[var(--border)] bg-[var(--bg2)] px-4 text-[var(--text)] placeholder:text-[var(--text3)] focus-visible:border-[var(--brand)] focus-visible:ring-[color:color-mix(in_srgb,var(--ring)_35%,transparent)]" />
-            <p className="text-[13px] text-[var(--text2)]">Enter your work email to continue.</p>
-            {errors.email && <p className="text-xs text-[var(--red)]">Enter a valid email address.</p>}
-          </div>
+          <AuthField
+            label="Work email"
+            htmlFor="email"
+            hint="We use this to find your workspace."
+            error={errors.email ? 'Enter a valid email address.' : undefined}
+          >
+            <input
+              id="email"
+              type="email"
+              placeholder="you@company.com"
+              autoComplete="email"
+              autoFocus
+              {...register('email')}
+              disabled={isPending}
+              className={cn(fieldInputClass, 'h-11 font-[family-name:var(--mono)] text-[13px]')}
+            />
+          </AuthField>
 
-          <p className="border-t border-[var(--border)] pt-4 text-left text-[12px] leading-5 text-[var(--text3)]">
+          <p className="border-t border-[var(--border)] pt-4 text-[12px] leading-5 text-[var(--text3)]">
             By continuing, you agree to Pulsiv&apos;s Terms and Conditions and Privacy Policy.
           </p>
 
-          <Button type="button" onClick={continueToPassword} disabled={isPending} className="mt-2 h-12 w-full rounded-[8px] bg-[var(--brand)] font-semibold text-[var(--brand-fg)] hover:bg-[var(--brand-d)] disabled:opacity-50">Continue</Button>
+          <AuthButton type="button" onClick={continueToPassword} disabled={isPending}>
+            Continue
+          </AuthButton>
         </>
       ) : (
         <>
-          <div className="rounded-[8px] border border-[var(--border)] bg-[var(--bg2)] px-4 py-3">
-            <p className="text-[11px] font-medium uppercase tracking-wider text-[var(--text3)]">Email</p>
-            <div className="mt-1 flex items-center justify-between gap-3">
-              <span className="min-w-0 truncate text-sm text-[var(--text)]">{getValues('email')}</span>
-              <button type="button" onClick={() => setStep('email')} disabled={isPending} className="shrink-0 text-[13px] font-medium text-[var(--brand)] transition-colors hover:text-[var(--brand-d)] disabled:opacity-50">Change</button>
+          <div className="flex items-center justify-between gap-3 rounded-[9px] border border-[var(--border)] bg-[var(--bg2)] px-3 py-2.5">
+            <div className="min-w-0">
+              <p className="text-[10.5px] font-semibold uppercase tracking-[0.14em] text-[var(--text3)]">Signing in as</p>
+              <span className="mt-0.5 block min-w-0 truncate font-[family-name:var(--mono)] text-[12.5px] text-[var(--text)]">
+                {getValues('email')}
+              </span>
             </div>
+            <button
+              type="button"
+              onClick={() => setStep('email')}
+              disabled={isPending}
+              className="shrink-0 rounded-sm text-[12.5px] font-medium text-[var(--brand)] transition-colors hover:text-[var(--brand-d)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] disabled:opacity-50"
+            >
+              Change
+            </button>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="password" className="text-[12px] font-medium uppercase tracking-wider text-[var(--text3)]">Password</Label>
-            <div className="relative">
-              <Input id="password" type={showPassword ? 'text' : 'password'} placeholder="Enter your password" autoComplete="current-password" autoFocus {...register('password')} disabled={isPending} className="h-12 rounded-[8px] border-[var(--border)] bg-[var(--bg2)] px-4 pr-12 text-[var(--text)] placeholder:text-[var(--text3)] focus-visible:border-[var(--brand)] focus-visible:ring-[color:color-mix(in_srgb,var(--ring)_35%,transparent)]" />
-              <button type="button" onClick={() => setShowPassword((value) => !value)} className="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--text3)] transition-colors hover:text-[var(--text2)]" aria-label={showPassword ? 'Hide password' : 'Show password'}>
-                {showPassword ? (
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
-                ) : (
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                )}
-              </button>
-            </div>
-            <p className="text-[13px] text-[var(--text2)]">Enter your password to sign in.</p>
-            {errors.password && <p className="text-xs text-[var(--red)]">Enter your password.</p>}
-            <div>
-              <Link to="/auth/forgot-password" className="text-[13px] text-[var(--text3)] transition-colors hover:text-[var(--text)]">Forgot password?</Link>
-            </div>
-          </div>
+          <AuthField
+            label="Password"
+            htmlFor="password"
+            error={errors.password ? 'Enter your password.' : undefined}
+            trailing={
+              <Link
+                to="/auth/forgot-password"
+                className="rounded-sm text-[12px] font-medium text-[var(--text3)] transition-colors hover:text-[var(--text2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
+              >
+                Forgot password?
+              </Link>
+            }
+          >
+            <PasswordInput
+              id="password"
+              placeholder="Enter your password"
+              autoComplete="current-password"
+              autoFocus
+              {...register('password')}
+              disabled={isPending}
+            />
+          </AuthField>
 
-          <Button type="submit" disabled={isPending} className="mt-2 h-12 w-full rounded-[8px] bg-[var(--brand)] font-semibold text-[var(--brand-fg)] hover:bg-[var(--brand-d)] disabled:opacity-50">
-            {isPending ? 'Signing in...' : 'Sign in'}
-          </Button>
+          <AuthButton type="submit" pending={isPending}>
+            Sign in
+          </AuthButton>
         </>
       )}
     </form>

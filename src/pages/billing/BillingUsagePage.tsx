@@ -1,13 +1,87 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { Activity, CalendarDays, Gauge, LineChart, TrendingUp, TriangleAlert } from "lucide-react";
+
+import { Skeleton } from "@/components/ui/skeleton";
 import { orgApi } from "@/modules/organizations/api/org.api";
 import { orgQueryKeys, useOrganizations } from "@/modules/organizations/hooks/useOrganizations";
-import { PageHeader, KpiCard, SectionCard, formatCompact } from "@/shared/observe";
 import { AreaChart, Heatmap } from "@/pages/dashboards/widgets";
-import { Loader2 } from "lucide-react";
+import { formatCompact, formatDate, formatNumber } from "@/shared/observe";
+import {
+  HeroFacts,
+  Meter,
+  Notice,
+  PageHero,
+  Panel,
+  Ring,
+  SegmentedControl,
+  StatCard,
+  type HeroFact,
+  type SegmentOption,
+} from "@/shared/ui/pulse";
+
+/* ── Local read-shape for the usage-limits payload ─────────────────
+   The API layer is untouched; the endpoint returns more buckets than the
+   shared type declares, so the page reads them defensively. */
+interface LimitBucket {
+  used?: number | null;
+  pending?: number | null;
+  limit?: number | null;
+  remaining?: number | null;
+  enabled?: boolean;
+}
+
+type LimitKey =
+  | "members"
+  | "projects"
+  | "apiKeys"
+  | "connectors"
+  | "alertRules"
+  | "dashboards"
+  | "ssoProviders"
+  | "scimTokens";
+
+interface UsageLimits {
+  limits?: Partial<Record<LimitKey | "eventsMonthly" | "aiCredits", LimitBucket>>;
+}
+
+type RangeKey = "28" | "56" | "84";
+
+const RANGE_OPTIONS: SegmentOption<RangeKey>[] = [
+  { value: "28", label: "28 days" },
+  { value: "56", label: "56 days" },
+  { value: "84", label: "84 days" },
+];
+
+const DIMENSIONS: { key: LimitKey; label: string }[] = [
+  { key: "members", label: "Team seats" },
+  { key: "projects", label: "Projects" },
+  { key: "apiKeys", label: "API keys" },
+  { key: "connectors", label: "Connectors" },
+  { key: "alertRules", label: "Alert rules" },
+  { key: "dashboards", label: "Dashboards" },
+  { key: "ssoProviders", label: "SSO providers" },
+  { key: "scimTokens", label: "SCIM tokens" },
+];
+
+const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const SKELETON_KEYS = ["a", "b", "c", "d"];
+const UNLIMITED_SENTINEL = 999_999_999;
+
+function normalizeLimit(limit: number | null | undefined): number | null {
+  if (limit === null || limit === undefined) return null;
+  if (limit === -1 || limit >= UNLIMITED_SENTINEL) return null;
+  return limit;
+}
+
+function formatLimit(limit: number | null | undefined): string {
+  const normalized = normalizeLimit(limit);
+  return normalized === null ? "∞" : formatCompact(normalized);
+}
 
 function buildHeatmapRows(activity: { date: string; events: number }[]) {
   const byDay = new Map(activity.map((day) => [day.date.slice(0, 10), day.events]));
-  const rows = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((label) => ({ label, cells: [] as number[] }));
+  const rows = WEEKDAYS.map((label) => ({ label, cells: [] as number[] }));
   const end = new Date();
   end.setHours(0, 0, 0, 0);
   const start = new Date(end);
@@ -21,8 +95,30 @@ function buildHeatmapRows(activity: { date: string; events: number }[]) {
   return rows;
 }
 
+function UsageSkeleton() {
+  return (
+    <div className="flex flex-col gap-6">
+      <Panel title="Usage" icon={LineChart}>
+        <div className="flex flex-col gap-3">
+          <Skeleton className="h-7 w-48" />
+          <Skeleton className="h-4 w-72" />
+        </div>
+      </Panel>
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {SKELETON_KEYS.map((key) => (
+          <Skeleton key={key} className="h-[132px] w-full rounded-[14px]" />
+        ))}
+      </div>
+      <Panel title="Events over time" icon={Activity}>
+        <Skeleton className="h-[220px] w-full rounded-[12px]" />
+      </Panel>
+    </div>
+  );
+}
+
 export default function BillingUsagePage() {
   const { activeOrgId } = useOrganizations();
+  const [range, setRange] = useState<RangeKey>("28");
 
   const { data: currentUsage, isLoading: isUsageLoading } = useQuery({
     queryKey: [...orgQueryKeys.billing(activeOrgId!), "currentUsage"],
@@ -36,89 +132,247 @@ export default function BillingUsagePage() {
     enabled: !!activeOrgId,
   });
 
-  const usageOverview = (() => {
-    if (!currentUsage || !dailyUsage) return null;
-    const today = new Date().toISOString().slice(0, 10);
-    const todayEvents = dailyUsage.find((d) => d.date.startsWith(today))?.eventsCount ?? 0;
-    const monthToDateEvents = currentUsage.eventsUsed ?? 0;
-    const eventLimitMonthly = currentUsage.eventLimit ?? -1;
-    const remainingEvents = currentUsage.remainingEvents ?? -1;
-    const percentUsed = eventLimitMonthly > 0 ? (monthToDateEvents / eventLimitMonthly) * 100 : 0;
-
-    return {
-      periodStart: new Date(new Date().setDate(1)).toISOString(),
-      periodEnd: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString(),
-      summary: {
-        todayEvents,
-        monthToDateEvents,
-        eventLimitMonthly,
-        remainingEvents,
-        percentUsed,
-        projectedMonthEndEvents: monthToDateEvents * 1.2, // Simple forecast mock
-      },
-      activity: dailyUsage.map((d) => ({ date: d.date, events: d.eventsCount })),
-    };
-  })();
-
   const { data: limits, isLoading: isLimitsLoading } = useQuery({
     queryKey: [...orgQueryKeys.billing(activeOrgId!), "usageLimits"],
     queryFn: () => orgApi.getUsageLimits(activeOrgId!),
     enabled: !!activeOrgId,
   });
 
-  const eventSeries = usageOverview?.activity.map((day) => day.events) ?? [];
-  const heatmapRows = buildHeatmapRows(usageOverview?.activity ?? []);
+  if (isUsageLoading || isDailyLoading || isLimitsLoading) return <UsageSkeleton />;
 
-  if (isUsageLoading || isDailyLoading || isLimitsLoading) {
-    return <div className="flex h-32 items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-[var(--brand)]" /></div>;
+  if (!currentUsage || !dailyUsage || !limits) {
+    return (
+      <div className="flex flex-col gap-6">
+        <PageHero
+          eyebrow="Consumption"
+          title="Usage"
+          description="Daily ingestion volume, metered dimensions, and quota headroom for this organization."
+          icon={LineChart}
+        />
+        <Notice tone="red" icon={TriangleAlert} title="Usage data unavailable">
+          We could not load consumption for this organization. Refresh the page or try again shortly.
+        </Notice>
+      </div>
+    );
   }
 
-  if (!usageOverview || !limits) {
-    return <div className="text-sm text-[var(--text2)]">Usage data unavailable.</div>;
-  }
+  const now = new Date();
+  const today = now.toISOString().slice(0, 10);
+  const periodStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const periodEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+  const dayOfMonth = now.getDate();
+  const daysInMonth = periodEnd.getDate();
 
-  const limitCards = [
-    { label: "Members", used: limits.limits?.members?.used ?? 0, limit: limits.limits?.members?.limit, pending: limits.limits?.members?.pending ?? 0 },
-    { label: "SSO Providers", used: limits.limits?.ssoProviders?.used ?? 0, limit: limits.limits?.ssoProviders?.limit },
-    { label: "SCIM tokens", used: limits.limits?.scimTokens?.used ?? 0, limit: limits.limits?.scimTokens?.limit },
+  const activity = dailyUsage.map((day) => ({ date: day.date, events: day.eventsCount }));
+  const todayEvents = activity.find((day) => day.date.startsWith(today))?.events ?? 0;
+  const monthToDateEvents = currentUsage.eventsUsed ?? 0;
+  const eventCeiling = normalizeLimit(currentUsage.eventLimit);
+  const remainingEvents = normalizeLimit(currentUsage.remainingEvents);
+  const percentUsed = eventCeiling && eventCeiling > 0 ? (monthToDateEvents / eventCeiling) * 100 : 0;
+  // Run-rate projection: month-to-date volume extrapolated across the cycle.
+  const projectedMonthEnd = Math.round((monthToDateEvents / Math.max(1, dayOfMonth)) * daysInMonth);
+
+  const eventSeries = activity.map((day) => day.events);
+  const rangeSeries = eventSeries.slice(-Number(range));
+  const recentSeries = eventSeries.slice(-14);
+  const heatmapRows = buildHeatmapRows(activity);
+
+  const bucketMap = (limits as unknown as UsageLimits).limits ?? {};
+  const meteredDimensions = DIMENSIONS.map((dimension) => ({
+    ...dimension,
+    bucket: bucketMap[dimension.key],
+  })).filter((dimension) => dimension.bucket !== undefined);
+
+  const facts: HeroFact[] = [
+    {
+      label: "Billing cycle",
+      value: `${formatDate(periodStart)} – ${formatDate(periodEnd)}`,
+      icon: CalendarDays,
+    },
+    {
+      label: "Cycle used",
+      value: eventCeiling ? `${percentUsed.toFixed(1)}%` : "Uncapped",
+      tone: percentUsed >= 90 ? "red" : percentUsed >= 75 ? "amber" : "neutral",
+      icon: Gauge,
+    },
+    { label: "Monthly cap", value: formatLimit(currentUsage.eventLimit), icon: Activity },
+    { label: "Day of cycle", value: `${dayOfMonth} / ${daysInMonth}`, icon: CalendarDays },
   ];
 
   return (
-    <div className="flex flex-col gap-5">
-      <PageHeader title="Usage" description="Daily organization usage, activity patterns, and current limits." />
+    <div className="flex flex-col gap-6">
+      <PageHero
+        eyebrow="Consumption"
+        title="Usage"
+        description="Daily ingestion volume, metered dimensions, and quota headroom for this organization."
+        icon={LineChart}
+      >
+        <HeroFacts facts={facts} />
+      </PageHero>
 
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <KpiCard label="Events today" value={formatCompact(usageOverview.summary.todayEvents)} />
-        <KpiCard label="Events MTD" value={formatCompact(usageOverview.summary.monthToDateEvents)} />
-        <KpiCard label="Remaining this month" value={usageOverview.summary.remainingEvents === null || usageOverview.summary.remainingEvents === -1 ? "∞" : formatCompact(usageOverview.summary.remainingEvents)} />
-        <KpiCard label="Month-end forecast" value={formatCompact(Math.round(usageOverview.summary.projectedMonthEndEvents))} />
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard
+          label="Events today"
+          value={formatCompact(todayEvents)}
+          icon={Activity}
+          tone="brand"
+          series={recentSeries}
+          footnote="Ingested since midnight UTC"
+        />
+        <StatCard
+          label="Events month to date"
+          value={formatCompact(monthToDateEvents)}
+          icon={Gauge}
+          tone="blue"
+          series={rangeSeries}
+          footnote={eventCeiling ? `${percentUsed.toFixed(1)}% of the monthly cap` : "No monthly cap applied"}
+        />
+        <StatCard
+          label="Remaining this cycle"
+          value={remainingEvents === null ? "∞" : formatCompact(remainingEvents)}
+          icon={TrendingUp}
+          tone={percentUsed >= 90 ? "red" : percentUsed >= 75 ? "amber" : "green"}
+          footnote={`${daysInMonth - dayOfMonth} days left in the cycle`}
+        />
+        <StatCard
+          label="Projected month end"
+          value={formatCompact(projectedMonthEnd)}
+          icon={TrendingUp}
+          tone="violet"
+          footnote="Run-rate projection from month-to-date volume"
+        />
       </div>
 
-      <SectionCard title="Events over time">
-        <div className="mb-4 grid grid-cols-1 gap-3 text-sm text-[var(--text2)] md:grid-cols-3">
-          <div>Current cycle: {new Date(usageOverview.periodStart).toLocaleDateString()} to {new Date(usageOverview.periodEnd).toLocaleDateString()}</div>
-          <div>Percent used: {usageOverview.summary.percentUsed.toFixed(1)}%</div>
-          <div>Monthly cap: {usageOverview.summary.eventLimitMonthly === null || usageOverview.summary.eventLimitMonthly === -1 ? "∞" : formatCompact(usageOverview.summary.eventLimitMonthly)}</div>
+      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1fr)_324px]">
+        <Panel
+          title="Events over time"
+          description="Daily ingestion volume for this organization."
+          icon={Activity}
+          actions={
+            <SegmentedControl value={range} onChange={setRange} options={RANGE_OPTIONS} ariaLabel="Chart range" />
+          }
+        >
+          <AreaChart data={rangeSeries} color="var(--brand)" height={220} label="billing-usage-events" />
+        </Panel>
+
+        <Panel title="Cycle consumption" description="Monthly event quota burned so far." icon={Gauge}>
+          <div className="flex flex-col items-center gap-4">
+            <Ring
+              value={eventCeiling ? Math.min(monthToDateEvents, eventCeiling) : 0}
+              max={eventCeiling ?? 100}
+              size={132}
+              label={eventCeiling ? `${percentUsed.toFixed(0)}%` : "∞"}
+              sublabel={eventCeiling ? "of cap" : "uncapped"}
+            />
+            <dl className="w-full">
+              <div className="flex items-baseline justify-between gap-3 border-t border-[var(--border)] py-2">
+                <dt className="text-[12.5px] text-[var(--text2)]">Used</dt>
+                <dd className="font-[family-name:var(--mono)] text-[12.5px] font-semibold tabular-nums text-[var(--text)]">
+                  {formatNumber(monthToDateEvents)}
+                </dd>
+              </div>
+              <div className="flex items-baseline justify-between gap-3 border-t border-[var(--border)] py-2">
+                <dt className="text-[12.5px] text-[var(--text2)]">Remaining</dt>
+                <dd className="font-[family-name:var(--mono)] text-[12.5px] font-semibold tabular-nums text-[var(--text)]">
+                  {remainingEvents === null ? "∞" : formatNumber(remainingEvents)}
+                </dd>
+              </div>
+              <div className="flex items-baseline justify-between gap-3 border-t border-[var(--border)] py-2">
+                <dt className="text-[12.5px] text-[var(--text2)]">Cap</dt>
+                <dd className="font-[family-name:var(--mono)] text-[12.5px] font-semibold tabular-nums text-[var(--text)]">
+                  {formatLimit(currentUsage.eventLimit)}
+                </dd>
+              </div>
+            </dl>
+          </div>
+        </Panel>
+      </div>
+
+      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
+        <Panel
+          title="Metered dimensions"
+          description="Resource counts against the ceilings granted by this plan."
+          icon={Gauge}
+        >
+          <div className="flex flex-col gap-5">
+            <Meter
+              label="Monthly events"
+              used={monthToDateEvents}
+              limit={eventCeiling}
+              format={formatCompact}
+              hint={remainingEvents === null ? "No monthly cap applied" : `${formatCompact(remainingEvents)} remaining`}
+            />
+            <Meter
+              label="AI credits"
+              used={currentUsage.aiCreditsUsed ?? 0}
+              limit={normalizeLimit(currentUsage.aiCreditLimit)}
+              format={formatCompact}
+              hint={
+                normalizeLimit(currentUsage.aiCreditLimit) === null
+                  ? "No credit cap applied"
+                  : `${formatCompact(currentUsage.remainingAiCredits ?? 0)} credits remaining`
+              }
+            />
+            {meteredDimensions.map((dimension) => (
+              <Meter
+                key={dimension.key}
+                label={dimension.label}
+                used={dimension.bucket?.used ?? 0}
+                limit={normalizeLimit(dimension.bucket?.limit)}
+                format={formatNumber}
+                hint={
+                  dimension.bucket?.pending
+                    ? `${formatNumber(dimension.bucket.pending)} pending`
+                    : dimension.bucket?.enabled === false
+                      ? "Not included in this plan"
+                      : undefined
+                }
+              />
+            ))}
+          </div>
+        </Panel>
+
+        <div className="flex flex-col gap-4">
+          <Panel
+            title="Activity calendar"
+            description="Last 12 weeks of ingestion, day by day."
+            icon={CalendarDays}
+          >
+            <Heatmap rows={heatmapRows} columns={12} />
+          </Panel>
+
+          <Panel title="Forecast" description="Where this cycle lands at the current run rate." icon={TrendingUp}>
+            <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="flex flex-col gap-1">
+                <dt className="text-[11px] font-medium uppercase tracking-[0.1em] text-[var(--text3)]">
+                  Projected total
+                </dt>
+                <dd className="font-[family-name:var(--display)] text-[19px] font-semibold tabular-nums text-[var(--text)]">
+                  {formatNumber(projectedMonthEnd)}
+                </dd>
+              </div>
+              <div className="flex flex-col gap-1">
+                <dt className="text-[11px] font-medium uppercase tracking-[0.1em] text-[var(--text3)]">
+                  Daily run rate
+                </dt>
+                <dd className="font-[family-name:var(--display)] text-[19px] font-semibold tabular-nums text-[var(--text)]">
+                  {formatNumber(Math.round(monthToDateEvents / Math.max(1, dayOfMonth)))}
+                </dd>
+              </div>
+            </dl>
+            {eventCeiling && projectedMonthEnd > eventCeiling ? (
+              <Notice
+                tone="amber"
+                icon={TriangleAlert}
+                title="Projected to exceed the monthly cap"
+                className="mt-4"
+              >
+                At the current run rate this cycle lands near {formatCompact(projectedMonthEnd)} events, above the{" "}
+                {formatCompact(eventCeiling)} cap.
+              </Notice>
+            ) : null}
+          </Panel>
         </div>
-        <AreaChart data={eventSeries} color="var(--brand)" height={220} label="billing-usage-events" />
-      </SectionCard>
-
-      <SectionCard title="Activity calendar">
-        <p className="mb-4 text-sm text-[var(--text2)]">Last 12 weeks of event usage, shown day-by-day like an activity graph.</p>
-        <Heatmap rows={heatmapRows} columns={12} />
-      </SectionCard>
-
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {limitCards.map((card) => (
-          <SectionCard key={card.label}>
-            <div className="text-sm font-medium text-[var(--text)]">{card.label}</div>
-            <div className="mt-2 text-2xl font-semibold text-[var(--text)]">
-              {formatCompact(card.used)}
-              <span className="ml-2 text-sm font-normal text-[var(--text3)]">/ {card.limit === null || card.limit === -1 ? "∞" : formatCompact(card.limit)}</span>
-            </div>
-            {"pending" in card && card.pending ? <div className="mt-2 text-xs text-[var(--text3)]">Pending: {formatCompact(card.pending)}</div> : null}
-          </SectionCard>
-        ))}
       </div>
     </div>
   );

@@ -1,19 +1,28 @@
 import { useState } from 'react';
-import { Link } from 'react-router';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { LockKeyhole, MailCheck } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { accountUnlockRequestSchema } from '../schemas/auth.schema';
 import type { AccountUnlockRequestFormData } from '../schemas/auth.schema';
 import { useRequestAccountUnlock } from '../hooks/useRequestAccountUnlock';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import {
+  AuthButton,
+  AuthCard,
+  AuthField,
+  AuthFooter,
+  AuthHeading,
+  AuthLink,
+  AuthResult,
+  Notice,
+  fieldInputClass,
+} from '@/shared/ui/pulse';
 
 export default function AccountUnlockRequestPage() {
   const [submitted, setSubmitted] = useState(false);
   const { mutate: requestUnlock, isPending } = useRequestAccountUnlock();
 
-  const { register, handleSubmit, formState: { errors } } = useForm<AccountUnlockRequestFormData>({
+  const { register, handleSubmit, getValues, formState: { errors } } = useForm<AccountUnlockRequestFormData>({
     resolver: zodResolver(accountUnlockRequestSchema),
   });
 
@@ -25,68 +34,70 @@ export default function AccountUnlockRequestPage() {
 
   if (submitted) {
     return (
-      <div className="w-full space-y-6">
-        <div className="text-center space-y-4">
-          <div>
-            <h2 className="text-xl font-semibold tracking-tight text-foreground">Check your email</h2>
-            <p className="text-sm text-[#999999] mt-1">
-              If your account is locked, we&apos;ve sent an unlock link.
+      <div className="w-full">
+        <AuthResult
+          icon={MailCheck}
+          tone="green"
+          title="Check your inbox"
+          description="If the account is locked, an unlock link is on its way. The link works once and expires shortly."
+        >
+          <AuthCard>
+            <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-[var(--text3)]">Sent to</p>
+            <p className="mt-1.5 truncate font-[family-name:var(--mono)] text-[13px] text-[var(--text)]">
+              {getValues('email')}
             </p>
-          </div>
-        </div>
-        <div className="rounded-xl border border-input bg-[#111111]/80 backdrop-blur-sm p-6 sm:p-8 space-y-4">
-          <div className="flex items-center gap-3 p-3 rounded-lg bg-[#34d399]/5 border border-[#34d399]/10 text-sm text-[#34d399]">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-            Unlock instructions sent. Check your inbox.
-          </div>
-          <Link to="/auth/login">
-            <Button variant="outline" className="w-full h-10 border-[#333333] bg-[#161616] text-foreground hover:bg-[#1e1e1e] hover:border-[#555555]">
-              Back to sign in
-            </Button>
-          </Link>
-        </div>
+          </AuthCard>
+        </AuthResult>
+
+        <AuthFooter>
+          <AuthLink to="/auth/login">Back to sign in</AuthLink>
+        </AuthFooter>
       </div>
     );
   }
 
   return (
-    <div className="w-full space-y-6">
-      <div className="text-center space-y-4">
-        <div>
-          <h2 className="text-xl font-semibold tracking-tight text-foreground">
-            Unlock your account
-          </h2>
-          <p className="text-sm text-[#999999] mt-1">
-            Enter your email to receive an account unlock link.
-          </p>
-        </div>
-      </div>
+    <div className="w-full">
+      <AuthHeading
+        eyebrow="Account defense"
+        icon={LockKeyhole}
+        tone="amber"
+        title="Unlock your account"
+        description="Accounts lock automatically after repeated failed sign-in attempts. We'll email you a link to lift the lock."
+      />
 
-      <div className="rounded-xl border border-input bg-[#111111]/80 backdrop-blur-sm p-6 sm:p-8">
-        <form className="space-y-5" onSubmit={onSubmit}>
-          <div className="space-y-1.5">
-            <Label htmlFor="email" className="text-xs text-[#999999]">Email</Label>
-            <Input
+      <AuthCard>
+        <form className="flex flex-col gap-4" onSubmit={onSubmit}>
+          <AuthField
+            label="Work email"
+            htmlFor="email"
+            error={errors.email ? 'Enter a valid email address.' : undefined}
+          >
+            <input
               id="email"
               type="email"
-              {...register('email')}
               placeholder="you@company.com"
               autoComplete="email"
-              className="h-10 bg-[#161616] border-input text-foreground placeholder:text-[#555555] focus:border-[#34d399] focus:ring-1 focus:ring-[#34d399]/30 transition-colors"
+              autoFocus
+              {...register('email')}
+              disabled={isPending}
+              className={cn(fieldInputClass, 'h-11 font-[family-name:var(--mono)] text-[13px]')}
             />
-            {errors.email && <p className="text-[#ef4444] text-xs mt-1">{errors.email.message}</p>}
-          </div>
-          <Button type="submit" disabled={isPending} className="w-full h-10 bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-colors">
-            {isPending ? 'Sending...' : 'Send unlock link'}
-          </Button>
-        </form>
-      </div>
+          </AuthField>
 
-      <div className="text-center text-sm text-[#555555]">
-        <Link to="/auth/login" className="hover:text-[#999999] transition-colors">
-          Back to sign in
-        </Link>
-      </div>
+          <AuthButton type="submit" pending={isPending}>
+            Send unlock link
+          </AuthButton>
+        </form>
+
+        <Notice tone="amber" className="mt-4">
+          Locks also clear on their own after the cooldown window ends.
+        </Notice>
+      </AuthCard>
+
+      <AuthFooter>
+        Password trouble instead? <AuthLink to="/auth/forgot-password">Reset your password</AuthLink>
+      </AuthFooter>
     </div>
   );
 }

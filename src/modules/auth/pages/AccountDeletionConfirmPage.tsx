@@ -1,9 +1,50 @@
 import { useEffect, useState } from 'react';
 import { Link, Navigate, useSearchParams } from 'react-router';
-import { AlertTriangle, CheckCircle2, Loader2 } from 'lucide-react';
+import { CalendarClock, Loader2, ShieldAlert, Trash2 } from 'lucide-react';
 import { authApi } from '../api/auth.api';
 import { getErrorMessage } from '@/infrastructure/api-client/error.interceptor';
-import { Button } from '@/components/ui/button';
+import {
+  AuthCard,
+  AuthFooter,
+  AuthHeading,
+  AuthLink,
+  AuthResult,
+  IconChip,
+  Notice,
+} from '@/shared/ui/pulse';
+
+// This route renders outside AuthLayout, so the shell, backdrop, and wordmark
+// live here to stay visually consistent with the rest of auth.
+function AuthShell({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="relative min-h-[100dvh] w-full bg-[var(--bg)] font-sans text-[var(--text)] antialiased">
+      <div className="pulse-grid pulse-aurora pointer-events-none absolute inset-0 z-0" aria-hidden="true" />
+      <div className="relative z-10 flex min-h-[100dvh] flex-col p-6 sm:p-10">
+        <div className="flex items-center justify-center sm:justify-start">
+          <span
+            className="font-[family-name:var(--mono)] text-[27px] font-bold tracking-[0.16em] text-[var(--text)]"
+            aria-label="Pulsiv"
+          >
+            PULS<span className="text-[var(--brand)]">I</span>V
+          </span>
+        </div>
+        <div className="pulse-rise mx-auto my-auto w-full max-w-[420px]">{children}</div>
+      </div>
+    </div>
+  );
+}
+
+// One-off: a primary action that navigates instead of submitting.
+function PrimaryLink({ to, children }: { to: string; children: React.ReactNode }) {
+  return (
+    <Link
+      to={to}
+      className="inline-flex h-11 w-full items-center justify-center rounded-[9px] bg-[var(--brand)] text-[13.5px] font-semibold text-[var(--brand-fg)] transition-colors hover:bg-[var(--brand-d)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg)]"
+    >
+      {children}
+    </Link>
+  );
+}
 
 export default function AccountDeletionConfirmPage() {
   const [params] = useSearchParams();
@@ -34,33 +75,58 @@ export default function AccountDeletionConfirmPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] px-4 py-12 text-foreground">
-      <div className="mx-auto flex min-h-[70vh] max-w-md flex-col justify-center">
-        <div className="rounded-lg border border-border bg-[#111111] p-6">
-          <div className="mb-5 flex justify-center">
-            <div className={`flex h-12 w-12 items-center justify-center rounded-full ${status === 'success' ? 'bg-[#10b981]/10 text-primary' : status === 'error' ? 'bg-[#ef4444]/10 text-[#ef4444]' : 'bg-[#262626] text-muted-foreground'}`}>
-              {status === 'loading' && <Loader2 className="animate-spin" size={22} />}
-              {status === 'success' && <CheckCircle2 size={22} />}
-              {status === 'error' && <AlertTriangle size={22} />}
+    <AuthShell>
+      {status === 'loading' && (
+        <div className="w-full">
+          <AuthHeading
+            eyebrow="Account deletion"
+            icon={Trash2}
+            tone="red"
+            title="Confirming deletion"
+            description="We're verifying the confirmation link from your email."
+          />
+          <AuthCard>
+            <div className="flex items-center gap-3">
+              <IconChip icon={Trash2} tone="red" size="sm" />
+              <p className="flex items-center gap-2 text-[13px] text-[var(--text2)]" role="status" aria-live="polite">
+                <Loader2 className="size-3.5 animate-spin text-[var(--red)]" aria-hidden="true" />
+                Validating the confirmation token…
+              </p>
             </div>
-          </div>
-          <h1 className="mb-2 text-center text-[22px] font-semibold tracking-normal">
-            {status === 'loading' && 'Confirming deletion'}
-            {status === 'success' && 'Deletion scheduled'}
-            {status === 'error' && 'Confirmation failed'}
-          </h1>
-          <p className="text-center text-[14px] leading-relaxed text-muted-foreground">
-            {status === 'loading' ? 'Please wait while we verify the confirmation link.' : message}
-          </p>
-          <div className="mt-6">
-            <Link to="/auth/login">
-              <Button className="w-full bg-primary text-primary-foreground hover:bg-primary/90">
-                Back to sign in
-              </Button>
-            </Link>
-          </div>
+          </AuthCard>
         </div>
-      </div>
-    </div>
+      )}
+
+      {status === 'success' && (
+        <div className="w-full">
+          <AuthResult
+            icon={CalendarClock}
+            tone="amber"
+            title="Deletion scheduled"
+            description={message}
+            actions={<PrimaryLink to="/auth/login">Back to sign in</PrimaryLink>}
+          >
+            <Notice tone="amber">
+              Signing in again before the scheduled date cancels the deletion and restores your workspace.
+            </Notice>
+          </AuthResult>
+        </div>
+      )}
+
+      {status === 'error' && (
+        <div className="w-full">
+          <AuthResult
+            icon={ShieldAlert}
+            tone="red"
+            title="Confirmation failed"
+            description={message}
+            actions={<PrimaryLink to="/auth/login">Back to sign in</PrimaryLink>}
+          />
+          <AuthFooter>
+            Need a hand? <AuthLink to="/auth/login">Contact your workspace owner</AuthLink>
+          </AuthFooter>
+        </div>
+      )}
+    </AuthShell>
   );
 }

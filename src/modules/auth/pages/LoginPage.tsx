@@ -1,15 +1,23 @@
 import { useState } from 'react';
-import { Link } from 'react-router';
 import { toast } from 'sonner';
+import { Building2 } from 'lucide-react';
 import { LoginForm } from '../components/LoginForm';
 import { LoginMfaForm } from '../components/LoginMfaForm';
 import { LoginBackupCodeForm } from '../components/LoginBackupCodeForm';
 import { useLogin } from '../hooks/useLogin';
 import { authApi } from '../api/auth.api';
 import { getErrorMessage } from '@/infrastructure/api-client/error.interceptor';
+import {
+  AuthCard,
+  AuthDivider,
+  AuthFooter,
+  AuthHeading,
+  AuthLink,
+  OAuthButton,
+} from '@/shared/ui/pulse';
 
-
-
+// Google's mark keeps its own brand palette — these are third-party asset
+// colours, not theme tokens.
 function GoogleIcon() {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true" className="h-[18px] w-[18px]">
@@ -52,46 +60,38 @@ export default function LoginPage() {
 
   return (
     <div className="w-full">
-      <div className="mb-8 text-center">
-        <h1 className="mb-2 text-[28px] font-semibold tracking-[-0.04em] text-[var(--text)]">Sign in to Pulsiv</h1>
-        <p className="text-[15px] text-[var(--text2)]">Continue with Google or sign in with your work email.</p>
-      </div>
+      <AuthHeading
+        eyebrow="Welcome back"
+        title="Sign in to Pulsiv"
+        description="Continue with Google or sign in with your work email."
+      />
 
-      <div className="rounded-[12px] border border-[var(--border)] bg-[var(--bg1)] p-5 shadow-[var(--pulse-surface-elevated)]">
-        <button
-          type="button"
-          disabled={socialProvider !== null}
+      <AuthCard>
+        <OAuthButton
+          icon={<GoogleIcon />}
           onClick={() => startSocialLogin('google')}
-          className="flex h-12 w-full items-center justify-center gap-3 rounded-[8px] border border-[var(--border)] bg-[var(--bg2)] text-sm font-medium text-[var(--text)] transition-colors hover:border-[var(--input)] hover:bg-[var(--bg3)] disabled:opacity-60"
+          disabled={socialProvider !== null}
+          pending={socialProvider === 'google'}
         >
-          <GoogleIcon />
-          {socialProvider === 'google' ? 'Redirecting...' : 'Continue with Google'}
-        </button>
+          Continue with Google
+        </OAuthButton>
 
-        <div className="my-5 flex items-center text-center">
-          <div className="flex-1 border-b border-[var(--border)]" />
-          <span className="px-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--text3)]">
-            or continue with email
-          </span>
-          <div className="flex-1 border-b border-[var(--border)]" />
-        </div>
+        <AuthDivider>or continue with email</AuthDivider>
 
         <LoginForm login={login} isPending={isPending} />
 
-        <div className="mt-5 flex items-center justify-between gap-3 text-[12px] text-[var(--text3)]">
-          <span>Need enterprise access?</span>
-          <Link to="/auth/login/sso" className="font-medium text-[var(--text2)] transition-colors hover:text-[var(--text)]">
-            Sign in with SSO
-          </Link>
+        <div className="mt-5 flex items-center justify-between gap-3 border-t border-[var(--border)] pt-4">
+          <span className="flex items-center gap-2 text-[12px] text-[var(--text3)]">
+            <Building2 className="size-3.5" aria-hidden="true" />
+            Enterprise access
+          </span>
+          <AuthLink to="/auth/login/sso">Sign in with SSO</AuthLink>
         </div>
-      </div>
+      </AuthCard>
 
-      <p className="mt-8 text-center text-[13.5px] text-[var(--text3)]">
-        Don&apos;t have an account?{' '}
-        <Link to="/auth/register" className="font-medium text-[var(--brand)] transition-colors hover:text-[var(--brand-d)]">
-          Create one
-        </Link>
-      </p>
+      <AuthFooter>
+        Don&apos;t have an account? <AuthLink to="/auth/register">Create one</AuthLink>
+      </AuthFooter>
     </div>
   );
 }

@@ -252,6 +252,24 @@ export function AppDualSidebar() {
                         : location.pathname === child.path ||
                           location.pathname.startsWith(`${child.path}/`);
 
+                      if (child.external) {
+                        return (
+                          <a
+                            key={child.path}
+                            href={child.path}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className={clsx(
+                              'flex items-center py-2 px-3 pl-6 my-0.5 rounded-md cursor-pointer text-[13px] no-underline relative',
+                              'text-[var(--text3)] hover:text-[var(--text2)] hover:bg-[var(--bg2)]',
+                            )}
+                          >
+                            <div className="absolute left-2 top-0 bottom-0 w-[1px] bg-[var(--border)]" />
+                            {child.label}
+                          </a>
+                        );
+                      }
+
                       return (
                         <Link
                           key={child.path}

@@ -1,11 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useActionState, useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { Navigate, useLocation, useNavigate, Link } from 'react-router';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { Smartphone, Mail, KeyRound, ShieldCheck, Loader2, ChevronRight } from 'lucide-react';
+import { Navigate, useLocation, useNavigate } from 'react-router';
+import { ChevronRight, KeyRound, Mail, ShieldCheck, Smartphone } from 'lucide-react';
 import { loginMfaSchema } from '../schemas/auth.schema';
-import type { LoginMfaFormData } from '../schemas/auth.schema';
 import type { LoginMfaMethod, MFAType } from '../types/auth.types';
 import { useLoginMfa } from '../hooks/useLoginMfa';
 import { authApi } from '../api/auth.api';
@@ -13,9 +10,18 @@ import { authQueryKeys } from '../api/auth.query';
 import { useAuthStore } from '../store/auth.store';
 import { loginWithPasskey, WebAuthnCeremonyError } from '../services/webauthn.client';
 import { getErrorMessage } from '@/infrastructure/api-client/error.interceptor';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import {
+  AuthButton,
+  AuthCard,
+  AuthField,
+  AuthFooter,
+  AuthHeading,
+  AuthLink,
+  CodeInput,
+  IconChip,
+  Pill,
+  type SurfaceTone,
+} from '@/shared/ui/pulse';
 import { toast } from 'sonner';
 
 const METHOD_ICON: Record<string, typeof Smartphone> = {
@@ -34,8 +40,80 @@ const METHOD_LABEL: Record<string, string> = {
   backup_codes: 'Backup code',
 };
 
+const METHOD_DESCRIPTION: Record<string, string> = {
+  totp: 'Enter the 6-digit code from your authenticator app.',
+  email: 'Enter the 6-digit code sent to your email.',
+  sms: 'Enter the 6-digit code sent to your phone.',
+  hardware_key: 'Use your security key or passkey to continue.',
+  backup_codes: 'Enter one of your single-use recovery codes.',
+};
+
+const METHOD_TONE: Record<string, SurfaceTone> = {
+  totp: 'brand',
+  email: 'blue',
+  sms: 'blue',
+  hardware_key: 'ai',
+  backup_codes: 'amber',
+};
+
 function methodTitle(type: MFAType): string {
   return METHOD_LABEL[type] ?? 'Verification';
+}
+
+function methodTone(type: MFAType): SurfaceTone {
+  return METHOD_TONE[type] ?? 'brand';
+}
+
+// One-off: the active-factor banner shown at the top of the challenge card.
+function ActiveMethod({ method }: { method: LoginMfaMethod }) {
+  const Icon = METHOD_ICON[method.type] ?? ShieldCheck;
+  return (
+    <div className="flex items-center gap-3 rounded-[12px] border border-[var(--border)] bg-[var(--bg2)] px-3 py-2.5">
+      <IconChip icon={Icon} tone={methodTone(method.type)} />
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-[13px] font-medium text-[var(--text)]">
+          {method.name || methodTitle(method.type)}
+        </p>
+        <p className="truncate text-[12px] text-[var(--text3)]">
+          {method.display_hint || methodTitle(method.type)}
+        </p>
+      </div>
+      <Pill tone={methodTone(method.type)}>{methodTitle(method.type)}</Pill>
+    </div>
+  );
+}
+
+// One-off: a selectable alternative factor row.
+function MethodOption({
+  method,
+  disabled,
+  onSelect,
+}: {
+  method: LoginMfaMethod;
+  disabled: boolean;
+  onSelect: () => void;
+}) {
+  const Icon = METHOD_ICON[method.type] ?? ShieldCheck;
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onSelect}
+      className="flex w-full items-center gap-3 rounded-[10px] border border-[var(--border)] bg-[var(--bg2)] px-3 py-2.5 text-left transition-colors hover:border-[var(--border2)] hover:bg-[var(--bg3)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] disabled:cursor-not-allowed disabled:opacity-55"
+    >
+      <IconChip icon={Icon} tone="neutral" size="sm" />
+      <span className="min-w-0 flex-1">
+        <span className="flex items-center gap-2">
+          <span className="truncate text-[13px] text-[var(--text)]">{method.name || methodTitle(method.type)}</span>
+          {method.is_primary && <Pill tone="green">Primary</Pill>}
+        </span>
+        <span className="mt-0.5 block truncate text-[12px] text-[var(--text3)]">
+          {method.display_hint || methodTitle(method.type)}
+        </span>
+      </span>
+      <ChevronRight className="size-4 shrink-0 text-[var(--text3)]" aria-hidden="true" />
+    </button>
+  );
 }
 
 export default function LoginMfaPage() {
@@ -73,17 +151,19 @@ export default function LoginMfaPage() {
   const [resendCooldown, setResendCooldown] = useState(0);
   const { mutate: loginMfa, isPending } = useLoginMfa();
 
-  const { register, handleSubmit, reset, formState: { errors } } = useForm<LoginMfaFormData>({
-    resolver: zodResolver(loginMfaSchema),
-    defaultValues: { challenge_id: challengeId || '', code: '' },
-  });
-
   const isCodeMethod = current.type === 'totp' || current.type === 'email' || current.type === 'sms';
   const isPasskey = current.type === 'hardware_key';
 
-  const onSubmit = handleSubmit((data) => {
-    loginMfa({ ...data, challenge_id: challengeId! });
-  });
+  // Same zod contract as before — only the form plumbing changed.
+  const [codeError, submitCode] = useActionState<string | null, FormData>((_previous, formData) => {
+    const parsed = loginMfaSchema.safeParse({
+      challenge_id: challengeId ?? '',
+      code: String(formData.get('code') ?? '').trim(),
+    });
+    if (!parsed.success) return 'Enter the 6-digit code to continue.';
+    loginMfa(parsed.data);
+    return null;
+  }, null);
 
   async function runPasskey() {
     if (!challengeId) return;
@@ -118,7 +198,6 @@ export default function LoginMfaPage() {
       await authApi.switchLoginMfaMethod(challengeId!, method.id);
       setCurrent(method);
       setShowPicker(false);
-      reset({ challenge_id: challengeId || '', code: '' });
       if (method.type === 'email') {
         toast.success('Verification code sent to your email');
       } else if (method.type === 'sms') {
@@ -157,69 +236,40 @@ export default function LoginMfaPage() {
     return <Navigate to="/auth/login" replace />;
   }
 
-  const CurrentIcon = METHOD_ICON[current.type] ?? ShieldCheck;
   const alternativeMethods = methods.filter((m) => m.id !== current.id);
+  const backupMethod = methods.find((m) => m.type === 'backup_codes');
 
   return (
-    <div className="w-full space-y-6">
-      <div className="text-center space-y-2">
-        <h2 className="text-xl font-semibold tracking-tight text-foreground">
-          Two-factor verification
-        </h2>
-        <p className="text-sm text-[#999999]">
-          {current.type === 'totp' && 'Enter the 6-digit code from your authenticator app.'}
-          {(current.type === 'email') && 'Enter the 6-digit code sent to your email.'}
-          {(current.type === 'sms') && 'Enter the 6-digit code sent to your phone.'}
-          {isPasskey && 'Use your security key or passkey to continue.'}
-        </p>
-      </div>
+    <div className="w-full">
+      <AuthHeading
+        eyebrow="Security check"
+        icon={ShieldCheck}
+        title="Two-factor verification"
+        description={METHOD_DESCRIPTION[current.type] ?? 'Confirm your identity to finish signing in.'}
+      />
 
-      <div className="rounded-xl border border-input bg-[#111111]/80 backdrop-blur-sm p-6 sm:p-8">
-        <div className="flex items-center gap-3 mb-6 rounded-lg border border-border bg-[#161616] px-3 py-2.5">
-          <div className="w-9 h-9 rounded-md bg-background border border-input flex items-center justify-center text-[#34d399] shrink-0">
-            <CurrentIcon size={18} className="stroke-[1.5]" />
-          </div>
-          <div className="min-w-0">
-            <p className="text-sm text-foreground truncate">{current.name || methodTitle(current.type)}</p>
-            <p className="text-xs text-[#777777] truncate">
-              {current.display_hint || methodTitle(current.type)}
-            </p>
-          </div>
-        </div>
+      <AuthCard>
+        <ActiveMethod method={current} />
 
         {isCodeMethod && (
-          <form onSubmit={onSubmit} className="space-y-5">
-            <input type="hidden" {...register('challenge_id')} />
-            <div className="space-y-1.5">
-              <Label htmlFor="code" className="text-xs text-[#999999]">Verification code</Label>
-              <Input
-                id="code"
-                maxLength={6}
-                {...register('code')}
-                placeholder="000000"
-                autoComplete="one-time-code"
-                inputMode="numeric"
-                autoFocus
-                className="h-12 font-mono text-center tracking-[0.3em] text-lg bg-[#161616] border-input text-foreground placeholder:text-[#555555] focus:border-[#34d399] focus:ring-1 focus:ring-[#34d399]/30 transition-colors"
-              />
-              {errors.code && <p className="text-[#ef4444] text-xs mt-1">{errors.code.message}</p>}
-            </div>
-            <Button
-              type="submit"
-              disabled={isPending || isSwitching}
-              className="w-full h-10 bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-colors"
-            >
-              {isPending ? 'Verifying...' : 'Verify identity'}
-            </Button>
+          <form action={submitCode} className="mt-5 flex flex-col gap-4">
+            <AuthField label="Verification code" error={codeError ?? undefined}>
+              <CodeInput key={current.id} name="code" autoFocus disabled={isPending || isSwitching} />
+            </AuthField>
+
+            <AuthButton type="submit" pending={isPending} disabled={isSwitching}>
+              Verify identity
+            </AuthButton>
+
             {current.type === 'email' && current.id !== 'primary' && (
               <button
                 type="button"
                 onClick={resendEmailCode}
                 disabled={isResending || resendCooldown > 0}
-                className="w-full text-center text-sm text-primary hover:text-primary/80 transition-colors disabled:text-[#555555]"
+                className="rounded-sm text-center text-[12.5px] font-medium text-[var(--brand)] transition-colors hover:text-[var(--brand-d)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] disabled:text-[var(--text3)]"
               >
                 {isResending
-                  ? 'Sending...'
+                  ? 'Sending…'
                   : resendCooldown > 0
                     ? `Resend code in ${resendCooldown}s`
                     : 'Resend code'}
@@ -229,78 +279,70 @@ export default function LoginMfaPage() {
         )}
 
         {isPasskey && (
-          <Button
-            onClick={runPasskey}
-            disabled={passkeyBusy || isSwitching}
-            className="w-full h-11 bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-colors flex items-center justify-center gap-2"
-          >
-            {passkeyBusy ? (
-              <><Loader2 size={16} className="animate-spin" /> Waiting for security key…</>
-            ) : (
-              <><KeyRound size={16} /> Use security key</>
-            )}
-          </Button>
-        )}
-      </div>
-
-      {alternativeMethods.length > 0 && (
-        <div className="space-y-2">
-          {!showPicker ? (
-            <button
+          <div className="mt-5">
+            <AuthButton
               type="button"
-              onClick={() => setShowPicker(true)}
-              className="w-full text-center text-sm text-primary hover:text-primary/80 transition-colors"
+              onClick={runPasskey}
+              pending={passkeyBusy}
+              disabled={isSwitching}
             >
-              Try another way
-            </button>
-          ) : (
-            <div className="space-y-2 rounded-xl border border-input bg-[#111111]/80 p-3">
-              <p className="text-xs text-[#777777] px-1 pb-1">Choose how to verify your identity</p>
-              {alternativeMethods.map((m) => {
-                const Icon = METHOD_ICON[m.type] ?? ShieldCheck;
-                return (
-                  <button
-                    key={m.id}
-                    type="button"
-                    disabled={isSwitching || passkeyBusy}
-                    onClick={() => selectMethod(m)}
-                    className="w-full flex items-center gap-3 rounded-lg border border-border bg-[#161616] px-3 py-2.5 text-left hover:border-[#34d399]/40 hover:bg-[#1a1a1a] transition-colors disabled:opacity-50"
-                  >
-                    <div className="w-9 h-9 rounded-md bg-background border border-input flex items-center justify-center text-muted-foreground shrink-0">
-                      <Icon size={18} className="stroke-[1.5]" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm text-foreground truncate">
-                        {m.name || methodTitle(m.type)}
-                        {m.is_primary && (
-                          <span className="ml-2 text-[10px] uppercase tracking-wider text-[#34d399]">Primary</span>
-                        )}
-                      </p>
-                      <p className="text-xs text-[#777777] truncate">
-                        {m.display_hint || methodTitle(m.type)}
-                      </p>
-                    </div>
-                    <ChevronRight size={16} className="text-[#555555] shrink-0" />
-                  </button>
-                );
-              })}
+              {passkeyBusy ? 'Waiting for security key…' : 'Use security key'}
+            </AuthButton>
+          </div>
+        )}
+
+        {(backupMethod || alternativeMethods.length > 0) && (
+          <div className="mt-5 flex flex-col gap-2.5 border-t border-[var(--border)] pt-4">
+            {backupMethod && backupMethod.id !== current.id && (
+              <AuthButton
+                type="button"
+                variant="ghost"
+                onClick={() => navigate('/auth/login/backup-code', { state: { challengeId } })}
+                disabled={isSwitching || passkeyBusy}
+              >
+                Use a backup code
+              </AuthButton>
+            )}
+
+            {alternativeMethods.length > 0 && !showPicker && (
               <button
                 type="button"
-                onClick={() => setShowPicker(false)}
-                className="w-full text-center text-xs text-[#555555] hover:text-[#999999] transition-colors pt-1"
+                onClick={() => setShowPicker(true)}
+                className="rounded-sm text-center text-[12.5px] font-medium text-[var(--brand)] transition-colors hover:text-[var(--brand-d)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
               >
-                Cancel
+                Try another way
               </button>
-            </div>
-          )}
-        </div>
-      )}
+            )}
 
-      <div className="flex flex-col items-center gap-2 text-sm text-[#555555] pt-2">
-        <Link to="/auth/login" className="hover:text-[#999999] transition-colors">
-          Back to sign in
-        </Link>
-      </div>
+            {alternativeMethods.length > 0 && showPicker && (
+              <div className="flex flex-col gap-2">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--text3)]">
+                  Choose how to verify
+                </p>
+                {alternativeMethods.map((m) => (
+                  <MethodOption
+                    key={m.id}
+                    method={m}
+                    disabled={isSwitching || passkeyBusy}
+                    onSelect={() => selectMethod(m)}
+                  />
+                ))}
+                <button
+                  type="button"
+                  onClick={() => setShowPicker(false)}
+                  className="rounded-sm pt-1 text-center text-[12px] text-[var(--text3)] transition-colors hover:text-[var(--text2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </AuthCard>
+
+      <AuthFooter>
+        Lost access to your factors? <AuthLink to="/auth/login">Back to sign in</AuthLink>
+      </AuthFooter>
     </div>
   );
 }

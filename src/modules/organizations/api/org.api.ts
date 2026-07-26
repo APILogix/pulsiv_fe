@@ -114,7 +114,9 @@ export const orgApi = {
 
 
   // Verified domains
-  listDomains: (orgId: string, params?: { cursor?: string; limit?: number; search?: string; verified?: boolean }) => apiClient.get(`/organizations/${orgId}/domains`, { params }).then(r => r.data.data as t.CursorPaginatedResponse<t.VerifiedDomain>),
+  // The domains list route replies with `{ success, data, meta }`, so the
+  // paginated envelope is the response body itself (not `data.data`).
+  listDomains: (orgId: string, params?: { cursor?: string; limit?: number; search?: string; verified?: boolean }) => apiClient.get(`/organizations/${orgId}/domains`, { params }).then(r => r.data as t.CursorPaginatedResponse<t.VerifiedDomain>),
   getDomain: (orgId: string, domainId: string) => apiClient.get(`/organizations/${orgId}/domains/${domainId}`).then(r => r.data.data as t.VerifiedDomain),
   createDomain: (orgId: string, data: { domain: string; metadata?: Record<string, unknown> }) => apiClient.post(`/organizations/${orgId}/domains`, data).then(r => r.data.data as t.CreatedVerifiedDomain),
   verifyDomain: (orgId: string, domainId: string) => apiClient.post(`/organizations/${orgId}/domains/${domainId}/verify`).then(r => r.data.data as t.VerifiedDomain & { verified: boolean }),

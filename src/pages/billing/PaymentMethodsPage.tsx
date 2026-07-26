@@ -1,10 +1,51 @@
 import { useActionState, useEffect } from "react";
-import { CreditCard, Plus, Loader2 } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { CreditCard, Plus, ShieldCheck } from "lucide-react";
+import { toast } from "sonner";
+
+import { Skeleton } from "@/components/ui/skeleton";
 import { orgApi } from "@/modules/organizations/api/org.api";
 import { orgQueryKeys, useOrganizations } from "@/modules/organizations/hooks/useOrganizations";
-import { PageHeader, SectionCard, Field, SubmitButton, inputClass, Button } from "@/shared/observe";
-import { toast } from "sonner";
+import type { PaymentMethod } from "@/modules/organizations/types/org.types";
+import { Button, Field, SubmitButton } from "@/shared/observe";
+import {
+  EmptyPanel,
+  HeroFacts,
+  IconChip,
+  PageHero,
+  Panel,
+  Pill,
+  Row,
+  RowStack,
+  SettingRow,
+  fieldInputClass,
+  type HeroFact,
+} from "@/shared/ui/pulse";
+
+interface AddCardState {
+  ok: boolean;
+  error: string | null;
+}
+
+const INITIAL_ADD_STATE: AddCardState = { ok: false, error: null };
+const SKELETON_ROWS = ["one", "two"];
+
+function titleCase(value: string) {
+  return value.replace(/[-_]/g, " ").replace(/\b\w/g, (character) => character.toUpperCase());
+}
+
+function isExpired(method: PaymentMethod) {
+  if (!method.expYear || !method.expMonth) return false;
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth() + 1;
+  return method.expYear < currentYear || (method.expYear === currentYear && method.expMonth < currentMonth);
+}
+
+function expiryLabel(method: PaymentMethod) {
+  if (!method.expYear || !method.expMonth) return "No expiry on file";
+  return `${String(method.expMonth).padStart(2, "0")}/${method.expYear}`;
+}
 
 export default function PaymentMethodsPage() {
   const queryClient = useQueryClient();
@@ -16,27 +57,24 @@ export default function PaymentMethodsPage() {
     enabled: !!activeOrgId,
   });
 
-  const [state, addAction] = useActionState(
-    async (_prevState: any, form: FormData) => {
-      if (!activeOrgId) return { ok: false, error: "No active org" };
-      try {
-        const data = {
-          type: "card",
-          billingDetails: {
-            cardNumber: form.get("cardNumber") as string,
-            expiry: form.get("expiry") as string,
-            cvc: form.get("cvc") as string,
-          },
-        };
-        await orgApi.addPaymentMethod(activeOrgId, data);
-        queryClient.invalidateQueries({ queryKey: orgQueryKeys.paymentMethods(activeOrgId) });
-        return { ok: true };
-      } catch (err: any) {
-        return { ok: false, error: err?.response?.data?.message || "Failed to add payment method" };
-      }
-    },
-    { ok: false, error: null }
-  );
+  const [state, addAction] = useActionState(async (_prevState: AddCardState, form: FormData) => {
+    if (!activeOrgId) return { ok: false, error: "No active org" };
+    try {
+      const data = {
+        type: "card",
+        billingDetails: {
+          cardNumber: form.get("cardNumber") as string,
+          expiry: form.get("expiry") as string,
+          cvc: form.get("cvc") as string,
+        },
+      };
+      await orgApi.addPaymentMethod(activeOrgId, data);
+      queryClient.invalidateQueries({ queryKey: orgQueryKeys.paymentMethods(activeOrgId) });
+      return { ok: true, error: null };
+    } catch (err: any) {
+      return { ok: false, error: err?.response?.data?.message || "Failed to add payment method" };
+    }
+  }, INITIAL_ADD_STATE);
 
   const defaultMutation = useMutation({
     mutationFn: (id: string) => orgApi.setDefaultPaymentMethod(activeOrgId!, id),
@@ -61,42 +99,143 @@ export default function PaymentMethodsPage() {
     if (state.error) toast.error(state.error);
   }, [state]);
 
+  const items = methods ?? [];
+  const defaultMethod = items.find((method) => method.isDefault);
+  const expiredCount = items.filter(isExpired).length;
+
+  const facts: HeroFact[] = [
+    { label: "Stored methods", value: items.length, icon: CreditCard },
+    {
+      label: "Default method",
+      value: defaultMethod ? `${titleCase(defaultMethod.brand)} ···· ${defaultMethod.last4}` : "None set",
+      tone: defaultMethod ? "green" : "amber",
+      icon: ShieldCheck,
+    },
+    {
+      label: "Expired cards",
+      value: expiredCount,
+      tone: expiredCount > 0 ? "red" : "neutral",
+      icon: CreditCard,
+    },
+  ];
+
   return (
-    <div className="flex flex-col gap-5">
-      <PageHeader title="Payment Methods" description="Stored payment method management." />
+    <div className="flex flex-col gap-6">
+      <PageHero
+        eyebrow="Payments"
+        title="Payment methods"
+        description="Cards and accounts this organization can be charged against."
+        icon={CreditCard}
+      >
+        {!isLoading && <HeroFacts facts={facts} />}
+      </PageHero>
 
       {isLoading ? (
-        <div className="flex h-32 items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-[var(--brand)]" /></div>
+        <Panel title="Stored methods" icon={CreditCard}>
+          <div className="flex flex-col gap-3">
+            {SKELETON_ROWS.map((row) => (
+              <Skeleton key={row} className="h-14 w-full rounded-[9px]" />
+            ))}
+          </div>
+        </Panel>
+      ) : items.length === 0 ? (
+        <EmptyPanel
+          icon={CreditCard}
+          title="No payment methods stored"
+          description="Add a card below to keep this organization's subscription active."
+        />
       ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {(methods || []).map((method) => (
-            <div key={method.id} className="rounded-[12px] border border-[var(--border)] bg-gradient-to-br from-[var(--bg1)] to-[var(--bg2)] p-5">
-              <div className="flex items-center justify-between">
-                <CreditCard className="size-6 text-[var(--text2)]" />
-                {method.isDefault ? <span className="rounded-full bg-[var(--brand-bg)] px-2 py-0.5 text-[11px] font-medium text-[var(--brand)]">Default</span> : null}
-              </div>
-              <div className="mt-4 font-[family-name:var(--mono)] text-lg tracking-widest text-[var(--text)]">**** **** **** {method.last4}</div>
-              <div className="mt-2 flex justify-between text-[12px] text-[var(--text3)]">
-                <span className="capitalize">{method.brand}</span>
-                <span>{String(method.expMonth).padStart(2, "0")}/{method.expYear}</span>
-              </div>
-              <div className="mt-4 flex gap-2">
-                {!method.isDefault ? <Button variant="secondary" disabled={defaultMutation.isPending} onClick={() => defaultMutation.mutate(method.id)}>Set default</Button> : null}
-                <Button variant="ghost" disabled={removeMutation.isPending} onClick={() => removeMutation.mutate(method.id)}>Remove</Button>
-              </div>
-            </div>
-          ))}
-        </div>
+        <Panel
+          title="Stored methods"
+          description="The default method is charged on each billing cycle."
+          icon={CreditCard}
+          bodyClassName="p-0"
+        >
+          <RowStack>
+            {items.map((method) => {
+              const expired = isExpired(method);
+              return (
+                <Row key={method.id} className="flex items-start gap-4">
+                  <IconChip icon={CreditCard} tone={expired ? "red" : method.isDefault ? "brand" : "neutral"} />
+                  <SettingRow
+                    className="flex-1"
+                    label={titleCase(method.brand)}
+                    description={
+                      <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                        <span className="font-[family-name:var(--mono)] text-[12.5px] tabular-nums text-[var(--text2)]">
+                          ···· ···· ···· {method.last4}
+                        </span>
+                        <span aria-hidden="true">·</span>
+                        <span className="tabular-nums">{expired ? "Expired" : "Expires"} {expiryLabel(method)}</span>
+                      </span>
+                    }
+                  >
+                    {method.isDefault && <Pill tone="green">Default</Pill>}
+                    {expired && <Pill tone="red">Expired</Pill>}
+                    {!method.isDefault && (
+                      <Button
+                        variant="secondary"
+                        disabled={defaultMutation.isPending}
+                        onClick={() => defaultMutation.mutate(method.id)}
+                      >
+                        Set default
+                      </Button>
+                    )}
+                    <Button
+                      variant="ghost"
+                      disabled={removeMutation.isPending}
+                      onClick={() => removeMutation.mutate(method.id)}
+                    >
+                      Remove
+                    </Button>
+                  </SettingRow>
+                </Row>
+              );
+            })}
+          </RowStack>
+        </Panel>
       )}
 
-      <SectionCard title="Add a card">
+      <Panel title="Add a card" description="Add a card that this organization's subscription can be charged to." icon={Plus}>
         <form action={addAction} className="grid max-w-xl grid-cols-1 gap-4 sm:grid-cols-2">
-          <div className="sm:col-span-2"><Field label="Card number"><input name="cardNumber" required placeholder="4242 4242 4242 4242" className={inputClass} /></Field></div>
-          <Field label="Expiry"><input name="expiry" required placeholder="MM/YY" className={inputClass} /></Field>
-          <Field label="CVC"><input name="cvc" required placeholder="123" className={inputClass} /></Field>
-          <div className="sm:col-span-2"><SubmitButton><Plus className="mr-2 size-4" /> Add card</SubmitButton></div>
+          <div className="sm:col-span-2">
+            <Field label="Card number">
+              <input
+                name="cardNumber"
+                required
+                inputMode="numeric"
+                autoComplete="cc-number"
+                placeholder="4242 4242 4242 4242"
+                className={`${fieldInputClass} font-[family-name:var(--mono)] tabular-nums`}
+              />
+            </Field>
+          </div>
+          <Field label="Expiry">
+            <input
+              name="expiry"
+              required
+              autoComplete="cc-exp"
+              placeholder="MM/YY"
+              className={`${fieldInputClass} font-[family-name:var(--mono)] tabular-nums`}
+            />
+          </Field>
+          <Field label="CVC">
+            <input
+              name="cvc"
+              required
+              inputMode="numeric"
+              autoComplete="cc-csc"
+              placeholder="123"
+              className={`${fieldInputClass} font-[family-name:var(--mono)] tabular-nums`}
+            />
+          </Field>
+          <div className="sm:col-span-2">
+            <SubmitButton>
+              <Plus className="size-4" aria-hidden="true" /> Add card
+            </SubmitButton>
+          </div>
         </form>
-      </SectionCard>
+      </Panel>
     </div>
   );
 }

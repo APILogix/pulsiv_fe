@@ -1,14 +1,50 @@
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { Building2, Info, ShieldAlert } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { ssoLoginSchema, type SsoLoginFormData } from '../schemas/auth.schema';
 import { authApi } from '../api/auth.api';
 import type { SsoDiscoveryResult } from '../types/auth.types';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { getErrorMessage } from '@/infrastructure/api-client/error.interceptor';
-import { Link } from 'react-router';
+import {
+  AuthButton,
+  AuthCard,
+  AuthField,
+  AuthFooter,
+  AuthHeading,
+  AuthLink,
+  Notice,
+  Pill,
+  fieldInputClass,
+} from '@/shared/ui/pulse';
+
+// One-off: the discovered identity provider list for a domain.
+function DiscoveryPanel({ discovery }: { discovery: SsoDiscoveryResult }) {
+  return (
+    <div className="rounded-[12px] border border-[var(--border)] bg-[var(--bg2)] p-3.5">
+      <p className="text-[10.5px] font-semibold uppercase tracking-[0.14em] text-[var(--text3)]">Detected domain</p>
+      <p className="mt-1 font-[family-name:var(--mono)] text-[13px] text-[var(--text)]">{discovery.domain}</p>
+
+      {discovery.providers.length > 0 && (
+        <div className="mt-3 flex flex-col gap-2">
+          {discovery.providers.map((provider) => (
+            <div
+              key={provider.provider_id}
+              className="flex items-center justify-between gap-3 rounded-[10px] border border-[var(--border)] bg-[var(--bg1)] px-3 py-2.5"
+            >
+              <div className="min-w-0">
+                <p className="truncate text-[13px] font-medium text-[var(--text)]">{provider.provider_name}</p>
+                <p className="mt-0.5 truncate text-[12px] text-[var(--text3)]">{provider.org_name}</p>
+              </div>
+              <Pill tone="ai">{provider.provider_type}</Pill>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function SsoLoginPage() {
   const [loading, setLoading] = useState(false);
@@ -43,76 +79,56 @@ export default function SsoLoginPage() {
   });
 
   return (
-    <div className="w-full space-y-6">
-      <div className="text-center space-y-4">
-        <div>
-          <h2 className="text-xl font-semibold tracking-tight text-foreground">
-            Sign in with SSO
-          </h2>
-          <p className="text-sm text-[#999999] mt-1">
-            Enter your work email to discover your organization&apos;s sign-in method.
-          </p>
-        </div>
-      </div>
+    <div className="w-full">
+      <AuthHeading
+        eyebrow="Enterprise access"
+        icon={Building2}
+        title="Sign in with SSO"
+        description="Enter your work email and we'll route you to your organization's identity provider."
+      />
 
-      <div className="rounded-xl border border-input bg-[#111111]/80 backdrop-blur-sm p-6 sm:p-8">
-        <form onSubmit={onSubmit} className="space-y-5">
-          <div className="space-y-1.5">
-            <Label htmlFor="email" className="text-xs text-[#999999]">Work email</Label>
-            <Input
+      <AuthCard>
+        <form onSubmit={onSubmit} className="flex flex-col gap-4">
+          <AuthField
+            label="Work email or domain"
+            htmlFor="email"
+            hint="We match the domain against configured SAML and OIDC providers."
+            error={errors.email ? 'Enter a valid work email address.' : undefined}
+          >
+            <input
               id="email"
               type="email"
               placeholder="you@company.com"
               autoComplete="email"
+              autoFocus
               {...register('email')}
-              className="h-10 bg-[#161616] border-input text-foreground placeholder:text-[#555555] focus:border-[#34d399] focus:ring-1 focus:ring-[#34d399]/30 transition-colors"
+              disabled={loading}
+              className={cn(fieldInputClass, 'h-11 font-[family-name:var(--mono)] text-[13px]')}
             />
-            {errors.email && <p className="text-[#ef4444] text-xs mt-1">{errors.email.message}</p>}
-          </div>
-          {error && (
-            <div className="flex items-center gap-2 p-3 rounded-lg bg-[#ef4444]/5 border border-[#ef4444]/10 text-sm text-[#ef4444]">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
-              {error}
-            </div>
-          )}
-          {discovery ? (
-            <div className="rounded-lg border border-input bg-[#161616] p-4 text-sm text-[#c9c9c9]">
-              <div className="text-xs uppercase tracking-[0.24em] text-[#777777]">Detected domain</div>
-              <div className="mt-1 font-medium text-[#f2f2f2]">{discovery.domain}</div>
-              <div className="mt-3 space-y-2">
-                {discovery.providers.map((provider) => {
-                  return (
-                    <div key={provider.provider_id} className="rounded-md border border-input bg-[#111111] px-3 py-2">
-                      <div className="font-medium text-[#f2f2f2]">{provider.provider_name}</div>
-                      <div className="mt-1 text-xs text-[#8b8b8b]">
-                        {provider.provider_type.toUpperCase()} for {provider.org_name}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          ) : null}
-          <Button
-            type="submit"
-            className="w-full h-10 bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50"
-            disabled={loading}
-          >
-            {loading ? (
-              <span className="flex items-center gap-2">
-                <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeDasharray="31.4" strokeLinecap="round" /></svg>
-                Redirecting...
-              </span>
-            ) : 'Continue with SSO'}
-          </Button>
-        </form>
-      </div>
+          </AuthField>
 
-      <div className="text-center text-sm text-[#555555]">
-        <Link to="/auth/login" className="hover:text-[#999999] transition-colors">
-          Sign in with email instead
-        </Link>
-      </div>
+          {error && (
+            <Notice tone="red" icon={ShieldAlert}>
+              {error}
+            </Notice>
+          )}
+
+          {discovery && <DiscoveryPanel discovery={discovery} />}
+
+          <AuthButton type="submit" pending={loading}>
+            Continue with SSO
+          </AuthButton>
+        </form>
+
+        <Notice tone="blue" icon={Info} className="mt-4">
+          You&apos;ll be redirected to your identity provider to authenticate, then returned to Pulsiv. Session policy is
+          set by your organization.
+        </Notice>
+      </AuthCard>
+
+      <AuthFooter>
+        Not using SSO? <AuthLink to="/auth/login">Sign in with email</AuthLink>
+      </AuthFooter>
     </div>
   );
 }

@@ -1,19 +1,28 @@
-import { Link } from 'react-router';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { MailCheck, ShieldQuestion } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { forgotPasswordSchema } from '../schemas/auth.schema';
 import type { ForgotPasswordFormData } from '../schemas/auth.schema';
 import { useForgotPassword } from '../hooks/useForgotPassword';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import {
+  AuthButton,
+  AuthCard,
+  AuthField,
+  AuthFooter,
+  AuthHeading,
+  AuthLink,
+  AuthResult,
+  Notice,
+  fieldInputClass,
+} from '@/shared/ui/pulse';
 
 export default function ForgotPasswordPage() {
   const [submitted, setSubmitted] = useState(false);
   const { mutate: forgotPassword, isPending } = useForgotPassword();
 
-  const { register, handleSubmit, formState: { errors } } = useForm<ForgotPasswordFormData>({
+  const { register, handleSubmit, getValues, formState: { errors } } = useForm<ForgotPasswordFormData>({
     resolver: zodResolver(forgotPasswordSchema),
   });
 
@@ -26,67 +35,68 @@ export default function ForgotPasswordPage() {
   if (submitted) {
     return (
       <div className="w-full">
-        <Link to="/auth/login" className="inline-flex items-center gap-2 text-muted-foreground text-[13px] hover:text-foreground transition-colors mb-6">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5">
-            <line x1="19" y1="12" x2="5" y2="12"></line>
-            <polyline points="12 19 5 12 12 5"></polyline>
-          </svg>
-          Back to sign in
-        </Link>
+        <AuthResult
+          icon={MailCheck}
+          tone="green"
+          title="Check your inbox"
+          description="If an account exists for that address, a password reset link is on its way. The link expires in 30 minutes."
+        >
+          <AuthCard>
+            <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-[var(--text3)]">Sent to</p>
+            <p className="mt-1.5 truncate font-[family-name:var(--mono)] text-[13px] text-[var(--text)]">
+              {getValues('email')}
+            </p>
+            <Notice tone="blue" className="mt-4">
+              Nothing yet? Check your spam folder before requesting another link.
+            </Notice>
+          </AuthCard>
+        </AuthResult>
 
-        <div className="mb-8">
-          <h1 className="text-[28px] font-bold tracking-tight text-foreground mb-2">Check your email</h1>
-          <p className="text-[14px] text-muted-foreground leading-relaxed">
-            If an account exists with that email, we've sent a password reset link.
-          </p>
-        </div>
-        
-        <div className="space-y-6">
-          <div className="flex items-center gap-3 p-4 rounded-lg bg-[#10b981]/10 border border-[#10b981]/20 text-[14px] text-primary">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-            Reset link sent. Check your inbox and spam folder.
-          </div>
-        </div>
+        <AuthFooter>
+          <AuthLink to="/auth/login">Back to sign in</AuthLink>
+        </AuthFooter>
       </div>
     );
   }
 
   return (
     <div className="w-full">
-      <Link to="/auth/login" className="inline-flex items-center gap-2 text-muted-foreground text-[13px] hover:text-foreground transition-colors mb-6">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5">
-          <line x1="19" y1="12" x2="5" y2="12"></line>
-          <polyline points="12 19 5 12 12 5"></polyline>
-        </svg>
-        Back to sign in
-      </Link>
+      <AuthHeading
+        eyebrow="Account recovery"
+        icon={ShieldQuestion}
+        title="Reset your password"
+        description="Enter the email tied to your workspace and we'll send a single-use reset link."
+      />
 
-      <div className="mb-8">
-        <h1 className="text-[28px] font-bold tracking-tight text-foreground mb-2">
-          Reset password
-        </h1>
-        <p className="text-[14px] text-muted-foreground leading-relaxed">
-          Enter your email and we'll send you instructions to reset your password.
-        </p>
-      </div>
+      <AuthCard>
+        <form className="flex flex-col gap-4" onSubmit={onSubmit}>
+          <AuthField
+            label="Work email"
+            htmlFor="email"
+            hint="We only send recovery links to verified addresses."
+            error={errors.email ? 'Enter a valid email address.' : undefined}
+          >
+            <input
+              id="email"
+              type="email"
+              placeholder="you@company.com"
+              autoComplete="email"
+              autoFocus
+              {...register('email')}
+              disabled={isPending}
+              className={cn(fieldInputClass, 'h-11 font-[family-name:var(--mono)] text-[13px]')}
+            />
+          </AuthField>
 
-      <form className="space-y-6" onSubmit={onSubmit}>
-        <div className="space-y-2">
-          <Label htmlFor="email" className="block text-[13px] font-medium text-muted-foreground">Email Address</Label>
-          <Input
-            id="email"
-            type="email"
-            {...register('email')}
-            placeholder="you@company.com"
-            autoComplete="email"
-            className="w-full h-auto bg-card border border-border text-foreground text-[14px] px-4 py-3 rounded-lg outline-none transition-all placeholder:text-muted-foreground focus:border-primary focus:ring-1 focus:ring-primary/20"
-          />
-          {errors.email && <p className="text-[#ef4444] text-xs mt-1">{errors.email.message}</p>}
-        </div>
-        <Button type="submit" disabled={isPending} className="w-full h-auto bg-primary hover:bg-primary/90 text-primary-foreground text-[14px] font-semibold py-3 rounded-lg transition-opacity disabled:opacity-50 border-none">
-          {isPending ? 'Sending...' : 'Send Recovery Link'}
-        </Button>
-      </form>
+          <AuthButton type="submit" pending={isPending}>
+            Send recovery link
+          </AuthButton>
+        </form>
+      </AuthCard>
+
+      <AuthFooter>
+        Remembered it? <AuthLink to="/auth/login">Back to sign in</AuthLink>
+      </AuthFooter>
     </div>
   );
 }

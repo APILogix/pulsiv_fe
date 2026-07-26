@@ -1,22 +1,17 @@
 import { useActionState, useEffect, useState } from "react";
+import { Link } from "react-router";
 import {
-  AlertTriangle,
   ArrowRight,
-  CheckCircle2,
   ExternalLink,
   FileCode2,
   Globe,
-  Info,
   KeySquare,
-  Loader2,
   LogIn,
   Shield,
   ShieldAlert,
   ShieldCheck,
   ShieldOff,
   Trash2,
-  Unplug,
-  User,
   Users,
 } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -25,284 +20,56 @@ import { toast } from "sonner";
 import { env } from "@/app/config/env";
 import { orgApi } from "@/modules/organizations/api/org.api";
 import { orgQueryKeys, useOrganizations } from "@/modules/organizations/hooks/useOrganizations";
+import type { SsoProvider } from "@/modules/organizations/types/org.types";
 import {
-  Button,
-  CopyButton,
-  Field,
-  inputClass,
-  PageHeader,
-  StatusBadge,
-  SubmitButton,
-  textareaClass,
-} from "@/shared/observe";
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Button, CardSkeleton, Field, StatusBadge, SubmitButton, Table, Td, Tr, inputClass, textareaClass } from "@/shared/observe";
+import {
+  HeroFacts,
+  Notice,
+  PageHero,
+  Panel,
+  Pill,
+  Row,
+  RowStack,
+  SecretField,
+  SettingRow,
+  SetupSteps,
+  SplitShell,
+  Toggle,
+  type HeroFact,
+  type SetupStepItem,
+} from "@/shared/ui/pulse";
 
-const ATTRIBUTE_MAPPINGS = [
-  { attr: "email", source: "NameID", description: "Primary user identifier / login", icon: User, required: true },
-  { attr: "firstName", source: "given_name", description: "User display name (first)", icon: User, required: false },
-  { attr: "lastName", source: "family_name", description: "User display name (last)", icon: User, required: false },
-  { attr: "role", source: "groups", description: "Group-based role assignment", icon: Users, required: false },
+interface AttributeMapping {
+  attr: string;
+  source: string;
+  description: string;
+  required: boolean;
+}
+
+const ATTRIBUTE_MAPPINGS: AttributeMapping[] = [
+  { attr: "email", source: "NameID", description: "Primary user identifier used for sign-in", required: true },
+  { attr: "firstName", source: "given_name", description: "Given name on the user profile", required: false },
+  { attr: "lastName", source: "family_name", description: "Family name on the user profile", required: false },
+  { attr: "role", source: "groups", description: "Group-based role assignment", required: false },
 ];
 
-const IDP_GUIDES = [
-  { name: "Okta", color: "#007DC1" },
-  { name: "Azure AD", color: "#0078D4" },
-  { name: "Google Workspace", color: "#4285F4" },
-  { name: "Auth0", color: "#EB5424" },
-  { name: "OneLogin", color: "#3E7BFA" },
-];
+const ATTRIBUTE_HEADERS = ["Pulse attribute", "IdP source", "Notes", "State"];
+
+const IDP_NAMES = ["Okta", "Azure AD", "Google Workspace", "Auth0", "OneLogin", "JumpCloud"];
 
 function toOptionalString(form: FormData, key: string): string | undefined {
   const value = form.get(key);
   if (typeof value !== "string") return undefined;
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : undefined;
-}
-
-function SsoDeleteConfirm({ provider, deleteProvider, setShowDeleteConfirm }: any) {
-  return (
-    <div className="animate-in fade-in slide-in-from-top-2 rounded-[16px] border border-[var(--red)]/30 bg-[var(--red)]/5 p-5">
-      <div className="flex items-start gap-4">
-        <div className="flex size-10 shrink-0 items-center justify-center rounded-[10px] bg-[var(--red)]/15">
-          <AlertTriangle className="size-5 text-[var(--red)]" />
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="text-[15px] font-semibold tracking-tight text-[var(--text)]">Delete SSO provider?</div>
-          <p className="mt-1 text-[13px] leading-relaxed text-[var(--text2)]">
-            This will permanently remove <strong className="text-[var(--text)]">{provider?.providerName}</strong>.
-            Users who rely on SSO will not be able to log in until a new provider is configured.
-          </p>
-          <div className="mt-4 flex items-center gap-3">
-            <Button variant="danger" className="h-9 px-4" onClick={deleteProvider}>
-              Yes, delete provider
-            </Button>
-            <Button variant="secondary" className="h-9 px-4" onClick={() => setShowDeleteConfirm(false)}>
-              Cancel
-            </Button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function SsoStatusRow({ isEnabled, isConfigured, provider, providerCount }: any) {
-  return (
-    <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-      <div className="rounded-[16px] border border-[var(--border)] bg-[var(--bg1)] p-5 shadow-sm transition-all hover:border-[var(--border-hover)]">
-        <div className="flex items-center justify-between mb-4">
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text3)]">Status</span>
-          <div className={`flex size-8 items-center justify-center rounded-[10px] ${isEnabled ? "bg-[var(--green)]/10" : isConfigured ? "bg-[var(--amber)]/10" : "bg-[var(--red)]/10"}`}>
-            {isEnabled ? <ShieldCheck className="size-4 text-[var(--green)]" /> : <ShieldAlert className={`size-4 ${isConfigured ? "text-[var(--amber)]" : "text-[var(--red)]"}`} />}
-          </div>
-        </div>
-        <div className={`text-xl font-medium tracking-tight ${isEnabled ? "text-[var(--green)]" : isConfigured ? "text-[var(--amber)]" : "text-[var(--text3)]"}`}>
-          {isEnabled ? "Enabled" : isConfigured ? "Disabled" : "Not set up"}
-        </div>
-        <div className="mt-1 text-[12px] text-[var(--text3)]">
-          {isEnabled ? "Users can sign in via SSO" : isConfigured ? "Provider configured but off" : "No IdP configured"}
-        </div>
-      </div>
-
-      <div className="rounded-[16px] border border-[var(--border)] bg-[var(--bg1)] p-5 shadow-sm transition-all hover:border-[var(--border-hover)]">
-        <div className="flex items-center justify-between mb-4">
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text3)]">Protocol</span>
-          <div className="flex size-8 items-center justify-center rounded-[10px] bg-[var(--brand)]/10">
-            <Shield className="size-4 text-[var(--brand)]" />
-          </div>
-        </div>
-        <div className="text-xl font-medium tracking-tight text-[var(--text)]">SAML 2.0</div>
-        <div className="mt-1 text-[12px] text-[var(--text3)]">Industry standard</div>
-      </div>
-
-      <div className="rounded-[16px] border border-[var(--border)] bg-[var(--bg1)] p-5 shadow-sm transition-all hover:border-[var(--border-hover)]">
-        <div className="flex items-center justify-between mb-4">
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text3)]">Provider</span>
-          <div className="flex size-8 items-center justify-center rounded-[10px] bg-[var(--bg2)]">
-            <Unplug className="size-4 text-[var(--text3)]" />
-          </div>
-        </div>
-        <div className="truncate text-[15px] font-medium tracking-tight text-[var(--text)]">{provider?.providerName || "—"}</div>
-        <div className="mt-1 text-[12px] text-[var(--text3)]">{providerCount} provider{providerCount !== 1 ? "s" : ""} configured</div>
-      </div>
-
-      <div className="rounded-[16px] border border-[var(--border)] bg-[var(--bg1)] p-5 shadow-sm transition-all hover:border-[var(--border-hover)]">
-        <div className="flex items-center justify-between mb-4">
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text3)]">Domain</span>
-          <div className={`flex size-8 items-center justify-center rounded-[10px] ${provider?.domain ? "bg-[var(--green)]/10" : "bg-[var(--bg2)]"}`}>
-            <Globe className={`size-4 ${provider?.domain ? "text-[var(--green)]" : "text-[var(--text3)]"}`} />
-          </div>
-        </div>
-        <div className="truncate text-[15px] font-medium tracking-tight text-[var(--text)]">{provider?.domain || "—"}</div>
-        <div className="mt-1 text-[12px] text-[var(--text3)]">{provider?.domain ? "Verified for routing" : "Not configured"}</div>
-      </div>
-    </div>
-  );
-}
-
-function SsoServiceProviderEndpoints({ entityId, acsUrl, sloUrl, ssoLoginUrl, metadataUrl, isConfigured, provider, isEnabled }: any) {
-  return (
-    <section className="rounded-[16px] border border-[var(--border)] bg-[var(--bg1)] p-6 shadow-sm">
-      <div className="mb-6">
-        <h3 className="font-semibold tracking-tight text-[var(--text)]">Service Provider Endpoints</h3>
-        <p className="mt-1 text-[13px] text-[var(--text2)]">Use these URLs to configure the Pulse app in your Identity Provider.</p>
-      </div>
-      <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
-        <div className="space-y-3">
-          {[
-            { label: "Entity ID", value: entityId, description: "Your Pulse SP identifier — paste this into the IdP", icon: KeySquare },
-            { label: "ACS URL", value: acsUrl, description: "Assertion Consumer Service — receives SAML responses", icon: LogIn },
-            { label: "Single Logout URL", value: sloUrl, description: "Back-channel logout endpoint (SLO)", icon: ShieldOff },
-            { label: "User entry route", value: ssoLoginUrl, description: "Share with users as their SSO login link", icon: ArrowRight },
-          ].map((entry) => {
-            const EntryIcon = entry.icon;
-            return (
-              <div key={entry.label} className="group flex flex-col gap-2 rounded-[12px] border border-[var(--border)] bg-[var(--bg2)] px-4 py-4 transition-all hover:border-[var(--border)]/80 hover:bg-[var(--bg3)] sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex items-start gap-4 min-w-0">
-                  <div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-[8px] bg-[var(--bg1)] group-hover:bg-[var(--bg2)]">
-                    <EntryIcon className="size-4 text-[var(--text3)]" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text3)]">{entry.label}</div>
-                    <div className="truncate font-mono text-[13px] text-[var(--text2)] mt-1">{entry.value}</div>
-                    <div className="mt-1 text-[12px] text-[var(--text3)]">{entry.description}</div>
-                  </div>
-                </div>
-                <CopyButton value={entry.value} label="Copy" className="shrink-0" />
-              </div>
-            );
-          })}
-          <div className="flex items-center gap-2 pt-2">
-            <Button variant="outline" className="h-9" onClick={() => window.open(metadataUrl, "_blank", "noopener,noreferrer")}>
-              <FileCode2 className="mr-2 size-4 text-[var(--brand)]" /> Download metadata XML <ExternalLink className="ml-1.5 size-3 opacity-50" />
-            </Button>
-          </div>
-        </div>
-        
-        <div className="rounded-[12px] border border-[var(--border)] bg-[var(--bg2)] p-5">
-          <div className="mb-5 flex items-center gap-3">
-            <div className="flex size-8 items-center justify-center rounded-[8px] bg-[var(--brand)]/10">
-              <Info className="size-4 text-[var(--brand)]" />
-            </div>
-            <span className="text-[14px] font-medium tracking-tight text-[var(--text)]">IdP Setup Guide</span>
-          </div>
-          <div className="space-y-4">
-            {[
-              { done: isConfigured, text: "Add Pulse as a SAML application in your IdP" },
-              { done: isConfigured, text: "Configure entity ID, ACS URL and SLO URL in your IdP" },
-              { done: !!provider?.domain, text: "Set a verified email domain for SSO routing" },
-              { done: isEnabled, text: "Enable the provider to allow user sign-in" },
-              { done: false, text: "Test login via the user entry route" },
-            ].map((item) => (
-              <div key={item.text} className="flex items-start gap-3">
-                {item.done ? (
-                  <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-[var(--green)]" />
-                ) : (
-                  <div className="mt-0.5 size-4 shrink-0 rounded-full border-2 border-[var(--border)] transition-colors hover:border-[var(--text3)]" />
-                )}
-                <span className="text-[13px] leading-relaxed text-[var(--text2)]">{item.text}</span>
-              </div>
-            ))}
-          </div>
-          <div className="mt-5 border-t border-[var(--border)] pt-5">
-            <div className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-[var(--text3)]">Compatible IdPs</div>
-            <div className="flex flex-wrap gap-2">
-              {IDP_GUIDES.map((idp) => (
-                <span key={idp.name} className="rounded-full border border-[var(--border)] bg-[var(--bg1)] px-2.5 py-1 text-[11px] font-medium text-[var(--text2)]">
-                  {idp.name}
-                </span>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function SsoProviderConfiguration({ provider, saveAction, state }: any) {
-  return (
-    <section className="rounded-[16px] border border-[var(--border)] bg-[var(--bg1)] p-6 shadow-sm">
-      <div className="mb-6">
-        <h3 className="font-semibold tracking-tight text-[var(--text)]">Provider Configuration</h3>
-        <p className="mt-1 text-[13px] text-[var(--text2)]">Configure Identity Provider specifics for SAML authentication.</p>
-      </div>
-      <form action={saveAction}>
-        <div className="grid max-w-[800px] grid-cols-1 gap-6 sm:grid-cols-2">
-          <Field label="Provider Name">
-            <input name="providerName" defaultValue={provider?.providerName || "Custom SAML"} className={inputClass} placeholder="Okta, Azure AD, Google Workspace…" />
-          </Field>
-          <Field label="Verified Domain" hint="Routes users from their work email domain to this IdP.">
-            <input name="domain" defaultValue={provider?.domain || ""} className={inputClass} placeholder="company.com" />
-          </Field>
-          <Field label="Entity ID">
-            <input name="entityId" defaultValue={provider?.entityId || ""} className={inputClass} placeholder="https://idp.example.com/entity" />
-          </Field>
-          <Field label="SSO URL">
-            <input name="ssoUrl" defaultValue={provider?.ssoUrl || ""} className={inputClass} placeholder="https://idp.example.com/sso" />
-          </Field>
-          <div className="sm:col-span-2">
-            <Field label="X.509 Certificate" hint="Paste a new certificate only when you want to replace the existing stored certificate.">
-              <textarea name="x509Certificate" className={textareaClass} rows={5} placeholder="-----BEGIN CERTIFICATE-----&#10;MIICpDCCAYwCCQDU...&#10;-----END CERTIFICATE-----" />
-            </Field>
-          </div>
-          <div className="sm:col-span-2 flex items-center gap-4 pt-2">
-            <SubmitButton className="h-10 px-5">Save configuration</SubmitButton>
-            {state.ok && (
-              <div className="animate-in fade-in flex items-center gap-1.5 text-[13px] font-medium text-[var(--green)]">
-                <CheckCircle2 className="size-4" /> Configuration saved
-              </div>
-            )}
-          </div>
-        </div>
-      </form>
-    </section>
-  );
-}
-
-function SsoAttributeMapping({ provider }: any) {
-  return (
-    <section className="rounded-[16px] border border-[var(--border)] bg-[var(--bg1)] p-6 shadow-sm">
-      <div className="mb-6 max-w-[800px]">
-        <h3 className="font-semibold tracking-tight text-[var(--text)]">Attribute Mapping</h3>
-        <p className="mt-1 text-[13px] text-[var(--text2)] leading-relaxed">
-          Pulse automatically maps IdP assertion attributes to user profile fields. These mappings are fixed
-          for SAML 2.0 — configure the matching attributes on your IdP side.
-        </p>
-      </div>
-      <div className="max-w-[800px] overflow-hidden rounded-[12px] border border-[var(--border)]">
-        <div className="grid grid-cols-[1fr_1fr_100px] gap-4 bg-[var(--bg2)] px-5 py-3">
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text3)]">Pulse Attribute</span>
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text3)]">IdP Source</span>
-          <span className="text-right text-[11px] font-semibold uppercase tracking-wider text-[var(--text3)]">Status</span>
-        </div>
-        <div className="divide-y divide-[var(--border)]">
-          {ATTRIBUTE_MAPPINGS.map((mapping) => {
-            const MappingIcon = mapping.icon;
-            return (
-              <div key={mapping.attr} className="grid grid-cols-[1fr_1fr_100px] items-center gap-4 bg-[var(--bg1)] px-5 py-4 transition-colors hover:bg-[var(--bg2)]">
-                <div className="flex items-center gap-3">
-                  <div className="flex size-8 shrink-0 items-center justify-center rounded-[8px] bg-[var(--bg3)]">
-                    <MappingIcon className="size-4 text-[var(--text3)]" />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <div className="truncate font-mono text-[13px] font-medium text-[var(--text)]">{mapping.attr}</div>
-                      {mapping.required && <span className="rounded-full bg-[var(--brand)]/10 px-1.5 py-px text-[10px] font-semibold uppercase tracking-wide text-[var(--brand)]">Req</span>}
-                    </div>
-                    <div className="truncate text-[11px] text-[var(--text3)] mt-0.5">{mapping.description}</div>
-                  </div>
-                </div>
-                <div className="truncate font-mono text-[13px] text-[var(--text2)]">{mapping.source}</div>
-                <div className="text-right">
-                  <StatusBadge status={provider ? "active" : "pending"} />
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    </section>
-  );
 }
 
 export default function SsoPage() {
@@ -317,7 +84,7 @@ export default function SsoPage() {
     enabled: !!activeOrgId,
   });
 
-  const provider = ssoProviders?.[0] ?? null;
+  const provider: SsoProvider | null = ssoProviders?.[0] ?? null;
   const providerCount = ssoProviders?.length ?? 0;
   const apiBaseUrl = env.VITE_API_URL.replace(/\/$/, "");
   const metadataUrl = `${apiBaseUrl}/auth/saml/metadata`;
@@ -328,7 +95,7 @@ export default function SsoPage() {
 
   const [state, saveAction] = useActionState(
     async (_prevState: { ok: boolean; error: string | null }, form: FormData) => {
-      if (!activeOrgId) return { ok: false, error: "No active org" };
+      if (!activeOrgId) return { ok: false, error: "No active organization" };
       try {
         const data = {
           providerName: toOptionalString(form, "providerName") ?? "Custom SAML",
@@ -349,7 +116,7 @@ export default function SsoPage() {
         return { ok: false, error: err.response?.data?.message || "Failed to save configuration" };
       }
     },
-    { ok: false, error: null }
+    { ok: false, error: null },
   );
 
   useEffect(() => {
@@ -364,9 +131,9 @@ export default function SsoPage() {
       await orgApi.updateSsoProvider(activeOrgId, provider.id, { isActive });
       toast.success(isActive ? "SSO provider enabled" : "SSO provider disabled");
       queryClient.invalidateQueries({ queryKey: orgQueryKeys.sso(activeOrgId) });
-      setIsTogglingState(false);
     } catch (err: any) {
       toast.error(err?.response?.data?.message || "Failed to update provider state");
+    } finally {
       setIsTogglingState(false);
     }
   }
@@ -383,47 +150,312 @@ export default function SsoPage() {
     }
   }
 
+  const isConfigured = !!provider;
+  const isEnabled = provider?.isActive ?? false;
+
+  const facts: HeroFact[] = [
+    {
+      label: "Status",
+      value: isEnabled ? "Enabled" : isConfigured ? "Disabled" : "Not set up",
+      tone: isEnabled ? "green" : isConfigured ? "amber" : "neutral",
+      icon: isEnabled ? ShieldCheck : ShieldAlert,
+    },
+    { label: "Protocol", value: "SAML 2.0", icon: Shield },
+    { label: "Providers", value: providerCount, icon: Users },
+    {
+      label: "Routing domain",
+      value: provider?.domain ?? "Not set",
+      tone: provider?.domain ? "green" : "neutral",
+      icon: Globe,
+    },
+  ];
+
+  const steps: SetupStepItem[] = [
+    { title: "Create a SAML app in your IdP", description: "Add Pulsiv as a new SAML 2.0 application.", done: isConfigured },
+    { title: "Paste the service provider URLs", description: "Entity ID, ACS URL, and single logout URL from the panel on the left.", done: isConfigured },
+    { title: "Store the IdP details here", description: "Entity ID, SSO URL, and the X.509 signing certificate.", done: !!provider?.ssoUrl },
+    { title: "Set a verified routing domain", description: "Users signing in with that email domain are sent to this IdP.", done: !!provider?.domain },
+    { title: "Enable the provider", description: "Turn on sign-in, then test the user entry route.", done: isEnabled },
+  ];
+
   if (isLoading) {
     return (
-      <div className="flex h-[400px] items-center justify-center">
-        <Loader2 className="size-6 animate-spin text-[var(--brand)]" />
+      <div className="flex flex-col gap-6">
+        <PageHero
+          eyebrow="Identity"
+          title="Single sign-on"
+          description="Configure a SAML 2.0 identity provider and publish service provider endpoints."
+          icon={Shield}
+        />
+        <div className="grid gap-4 sm:grid-cols-2">
+          <CardSkeleton />
+          <CardSkeleton />
+        </div>
       </div>
     );
   }
 
-  const isConfigured = !!provider;
-  const isEnabled = provider?.isActive ?? false;
-
   return (
-    <div className="mx-auto max-w-[1000px] w-full flex flex-col gap-10 pb-20">
-      <PageHeader
-        title="Single Sign-On"
-        description="Configure SAML 2.0 identity providers and publish service provider endpoints for your IdP."
+    <div className="flex flex-col gap-6">
+      <PageHero
+        eyebrow="Identity"
+        title="Single sign-on"
+        description="Configure a SAML 2.0 identity provider, publish service provider endpoints, and control who may sign in."
+        icon={Shield}
         actions={
-          <div className="flex items-center gap-3">
-            <Button variant="secondary" className="h-10" onClick={() => window.open(metadataUrl, "_blank", "noopener,noreferrer")}>
-              <FileCode2 className="mr-2 size-4" /> Metadata XML <ExternalLink className="ml-1.5 size-3 opacity-50" />
+          <>
+            <Pill tone={isEnabled ? "green" : isConfigured ? "amber" : "neutral"} dot>
+              {isEnabled ? "Sign-in live" : isConfigured ? "Configured, off" : "Not configured"}
+            </Pill>
+            <Button variant="secondary" onClick={() => window.open(metadataUrl, "_blank", "noopener,noreferrer")}>
+              <FileCode2 className="size-4" aria-hidden="true" />
+              Metadata XML
+              <ExternalLink className="size-3 opacity-60" aria-hidden="true" />
             </Button>
-            {provider && (
-              <>
-                <Button variant="outline" className="h-10" disabled={isTogglingState} onClick={() => setProviderState(!provider.isActive)}>
-                  {isTogglingState ? <Loader2 className="mr-2 size-4 animate-spin" /> : provider.isActive ? <ShieldOff className="mr-2 size-4 text-[var(--text2)]" /> : <ShieldCheck className="mr-2 size-4 text-[var(--green)]" />}
-                  {provider.isActive ? "Disable" : "Enable"}
-                </Button>
-                <Button variant="ghost" className="h-10 px-3 text-[var(--red)] hover:bg-[var(--red-bg)] hover:text-[var(--red)]" onClick={() => setShowDeleteConfirm(true)}>
-                  <Trash2 className="size-4" />
-                </Button>
-              </>
-            )}
-          </div>
+          </>
         }
-      />
+      >
+        <HeroFacts facts={facts} />
+      </PageHero>
 
-      {showDeleteConfirm && <SsoDeleteConfirm provider={provider} deleteProvider={deleteProvider} setShowDeleteConfirm={setShowDeleteConfirm} />}
-      <SsoStatusRow isEnabled={isEnabled} isConfigured={isConfigured} provider={provider} providerCount={providerCount} />
-      <SsoServiceProviderEndpoints entityId={entityId} acsUrl={acsUrl} sloUrl={sloUrl} ssoLoginUrl={ssoLoginUrl} metadataUrl={metadataUrl} isConfigured={isConfigured} provider={provider} isEnabled={isEnabled} />
-      <SsoProviderConfiguration provider={provider} saveAction={saveAction} state={state} />
-      <SsoAttributeMapping provider={provider} />
+      {!isConfigured && (
+        <Notice tone="blue" icon={ShieldAlert} title="No identity provider configured">
+          Members still sign in with email and password. Add your IdP details below to enable SAML sign-in.
+        </Notice>
+      )}
+
+      <SplitShell
+        rail={
+          <>
+            <Panel title="Setup guide" description="Five steps from zero to enterprise sign-in." icon={ShieldCheck} tone="ai">
+              <SetupSteps steps={steps} />
+            </Panel>
+
+            <Panel title="Domain routing" description="SSO routing requires a verified company domain." icon={Globe} tone="brand">
+              <div className="flex flex-col gap-3">
+                <p className="text-[12.5px] leading-relaxed text-[var(--text2)]">
+                  The routing domain must be verified by DNS before members can be sent to your IdP automatically.
+                </p>
+                <Link
+                  to="/admin/domains"
+                  className="inline-flex w-fit items-center gap-1.5 rounded-[8px] border border-[var(--border)] bg-[var(--bg2)] px-3 py-1.5 text-[12.5px] font-medium text-[var(--text)] transition-colors hover:border-[var(--border2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
+                >
+                  Verified domains
+                  <ArrowRight className="size-3.5" aria-hidden="true" />
+                </Link>
+              </div>
+            </Panel>
+
+            <Panel title="Tested identity providers" icon={Shield} tone="violet">
+              <div className="flex flex-wrap gap-2">
+                {IDP_NAMES.map((name) => (
+                  <Pill key={name} tone="neutral" className="normal-case tracking-normal">
+                    {name}
+                  </Pill>
+                ))}
+              </div>
+            </Panel>
+          </>
+        }
+      >
+        <Panel
+          title="Service provider endpoints"
+          description="Copy these values into the SAML application on your identity provider."
+          icon={KeySquare}
+          tone="brand"
+        >
+          <div className="flex flex-col gap-4">
+            <SecretField label="Entity ID" value={entityId} />
+            <SecretField label="Assertion consumer service URL" value={acsUrl} />
+            <SecretField label="Single logout URL" value={sloUrl} />
+            <SecretField label="User entry route" value={ssoLoginUrl} />
+            <div className="flex flex-wrap items-center gap-2 border-t border-[var(--border)] pt-4">
+              <Button variant="secondary" onClick={() => window.open(metadataUrl, "_blank", "noopener,noreferrer")}>
+                <FileCode2 className="size-4" aria-hidden="true" />
+                Download metadata XML
+                <ExternalLink className="size-3 opacity-60" aria-hidden="true" />
+              </Button>
+              <span className="text-[12px] text-[var(--text3)]">
+                Some providers can import the metadata document instead of individual URLs.
+              </span>
+            </div>
+          </div>
+        </Panel>
+
+        <Panel
+          title="Identity provider configuration"
+          description="Details Pulsiv uses to validate SAML assertions from your IdP."
+          icon={LogIn}
+          tone="brand"
+        >
+          <form action={saveAction} className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+            <Field label="Provider name">
+              <input
+                name="providerName"
+                defaultValue={provider?.providerName || "Custom SAML"}
+                placeholder="Okta, Azure AD, Google Workspace"
+                className={inputClass}
+              />
+            </Field>
+            <Field label="Routing domain" hint="Sends users with this email domain to your IdP.">
+              <input name="domain" defaultValue={provider?.domain || ""} placeholder="acme.com" className={inputClass} />
+            </Field>
+            <Field label="IdP entity ID">
+              <input
+                name="entityId"
+                defaultValue={provider?.entityId || ""}
+                placeholder="https://idp.example.com/entity"
+                className={`${inputClass} font-[family-name:var(--mono)] text-[12.5px]`}
+              />
+            </Field>
+            <Field label="IdP SSO URL">
+              <input
+                name="ssoUrl"
+                defaultValue={provider?.ssoUrl || ""}
+                placeholder="https://idp.example.com/sso"
+                className={`${inputClass} font-[family-name:var(--mono)] text-[12.5px]`}
+              />
+            </Field>
+            <div className="sm:col-span-2">
+              <Field label="X.509 certificate" hint="Paste a certificate only when replacing the stored one.">
+                <textarea
+                  name="x509Certificate"
+                  rows={5}
+                  placeholder="-----BEGIN CERTIFICATE-----"
+                  className={`${textareaClass} font-[family-name:var(--mono)] text-[12px]`}
+                />
+              </Field>
+            </div>
+            <div className="flex justify-end sm:col-span-2">
+              <SubmitButton>Save configuration</SubmitButton>
+            </div>
+          </form>
+        </Panel>
+
+        <Panel
+          title="Enforcement"
+          description="Control whether members may authenticate through this provider."
+          icon={ShieldCheck}
+          tone="green"
+          bodyClassName="p-0"
+        >
+          <RowStack>
+            <Row>
+              <SettingRow
+                label="SAML sign-in"
+                description={
+                  isConfigured
+                    ? "When on, members may sign in through the configured identity provider."
+                    : "Save an identity provider configuration before enabling sign-in."
+                }
+                htmlFor="sso-active"
+              >
+                <Toggle
+                  id="sso-active"
+                  label="Enable SAML sign-in"
+                  checked={isEnabled}
+                  disabled={!isConfigured || isTogglingState}
+                  onChange={(next) => setProviderState(next)}
+                />
+              </SettingRow>
+            </Row>
+            <Row>
+              <SettingRow
+                label="Require SSO for all members"
+                description="Organization-wide SSO enforcement is managed with the other security preferences."
+              >
+                <Link
+                  to="/admin/settings"
+                  className="inline-flex items-center gap-1.5 rounded-[8px] border border-[var(--border)] bg-[var(--bg2)] px-3 py-1.5 text-[12.5px] font-medium text-[var(--text)] transition-colors hover:border-[var(--border2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
+                >
+                  Organization settings
+                  <ArrowRight className="size-3.5" aria-hidden="true" />
+                </Link>
+              </SettingRow>
+            </Row>
+          </RowStack>
+        </Panel>
+
+        <Panel
+          title="Attribute mapping"
+          description="Assertion attributes Pulsiv reads. These mappings are fixed for SAML 2.0."
+          icon={Users}
+          tone="violet"
+          bodyClassName="p-0"
+        >
+          <Table headers={ATTRIBUTE_HEADERS} maxHeight="20rem">
+            {ATTRIBUTE_MAPPINGS.map((mapping) => (
+              <Tr key={mapping.attr}>
+                <Td className="font-[family-name:var(--mono)] text-[12.5px] text-[var(--text)]">
+                  <span className="flex items-center gap-2">
+                    {mapping.attr}
+                    {mapping.required && <Pill tone="brand">Required</Pill>}
+                  </span>
+                </Td>
+                <Td className="font-[family-name:var(--mono)] text-[12.5px] text-[var(--text2)]">{mapping.source}</Td>
+                <Td className="text-[12.5px] text-[var(--text2)]">{mapping.description}</Td>
+                <Td><StatusBadge status={isConfigured ? "active" : "pending"} /></Td>
+              </Tr>
+            ))}
+          </Table>
+        </Panel>
+
+        {provider && (
+          <Panel
+            title="Danger zone"
+            description="Removing the provider stops all SSO sign-ins for this organization."
+            icon={ShieldAlert}
+            danger
+            bodyClassName="p-0"
+          >
+            <RowStack>
+              <Row>
+                <SettingRow
+                  label="Disable SAML sign-in"
+                  description="Keeps the configuration but blocks IdP-initiated and SP-initiated sign-in."
+                >
+                  <Button variant="secondary" disabled={!isEnabled || isTogglingState} onClick={() => setProviderState(false)}>
+                    <ShieldOff className="size-4" aria-hidden="true" />
+                    Disable
+                  </Button>
+                </SettingRow>
+              </Row>
+              <Row>
+                <SettingRow
+                  label="Delete provider"
+                  description={`Permanently removes ${provider.providerName}. Members with no password will lose access.`}
+                >
+                  <Button variant="danger" onClick={() => setShowDeleteConfirm(true)}>
+                    <Trash2 className="size-4" aria-hidden="true" />
+                    Delete provider
+                  </Button>
+                </SettingRow>
+              </Row>
+            </RowStack>
+          </Panel>
+        )}
+      </SplitShell>
+
+      <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete SSO provider</DialogTitle>
+            <DialogDescription>
+              This permanently removes the provider configuration. Members who rely on SSO cannot sign in until a new
+              provider is configured.
+            </DialogDescription>
+          </DialogHeader>
+          <p className="text-[13px] text-[var(--text2)]">{provider?.providerName}</p>
+          <DialogFooter>
+            <Button variant="secondary" onClick={() => setShowDeleteConfirm(false)}>
+              Cancel
+            </Button>
+            <Button variant="danger" onClick={deleteProvider}>
+              Delete provider
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

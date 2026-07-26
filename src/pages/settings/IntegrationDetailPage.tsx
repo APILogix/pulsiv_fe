@@ -1,15 +1,81 @@
-import { useParams, useNavigate } from "react-router";
-import { ArrowLeft, Play, Power, PowerOff, CheckCircle2, Clock, MessageSquare, Trash2 } from "lucide-react";
-import { useConnector, useConnectorMutations, useConnectorTestRuns } from "@/modules/organizations/hooks/useConnectors";
-import { StatusBadge, Timestamp, demoSuccess, DetailSkeleton } from "@/shared/observe";
 import { useState } from "react";
-import { ConnectorIcon } from "@/shared/ui/connector-icon";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { useParams, useNavigate } from "react-router";
+import {
+  Activity,
+  Clock,
+  Mail,
+  MessageSquare,
+  Play,
+  Plug,
+  Settings2,
+  Slack,
+  TriangleAlert,
+  Trash2,
+  Webhook,
+} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import { useConnector, useConnectorMutations, useConnectorTestRuns } from "@/modules/organizations/hooks/useConnectors";
+import {
+  HeroFacts,
+  Notice,
+  PageHero,
+  Panel,
+  Pill,
+  Row,
+  RowStack,
+  SecretField,
+  SettingRow,
+  SetupSteps,
+  SplitShell,
+  Toggle,
+  type Crumb,
+  type HeroFact,
+  type SetupStepItem,
+} from "@/shared/ui/pulse";
+import { KeyValueGrid, type KeyValueItem } from "@/shared/ui/pulse";
+import { Button, DetailSkeleton, StatusBadge, Tabs, Timestamp, demoSuccess, formatLatency } from "@/shared/observe";
 import { IntegrationRoutes } from "./components/IntegrationRoutes";
 import { IntegrationDeliveries } from "./components/IntegrationDeliveries";
 import { IntegrationAudit } from "./components/IntegrationAudit";
+
+// ── module-level constants (rules.md §1.2) ──
+
+const CONNECTOR_GLYPH: Record<string, LucideIcon> = {
+  slack: Slack,
+  webhook: Webhook,
+  email: Mail,
+};
+
+const SECRET_KEY = /token|secret|password|credential|signing/i;
+const ENDPOINT_KEY = /url|endpoint|webhook/i;
+
+const NOT_FOUND_CRUMBS: Crumb[] = [
+  { label: "Connectors", to: "/connectors/integrations" },
+  { label: "Not found" },
+];
+
+const HEALTHY_TEST_STATUSES = new Set(["healthy", "success", "ok"]);
+
+function glyphFor(type: string): LucideIcon {
+  return CONNECTOR_GLYPH[type] ?? Plug;
+}
+
+function humanizeKey(key: string) {
+  const spaced = key.replace(/([A-Z])/g, " $1").replace(/[_-]+/g, " ").trim();
+  return spaced.charAt(0).toUpperCase() + spaced.slice(1);
+}
+
+// ── one-off local components ─────────────────────────────────
+
+function ConfigValue({ name, value }: { name: string; value: unknown }) {
+  if (typeof value === "boolean") {
+    return <Pill tone={value ? "green" : "neutral"}>{value ? "Enabled" : "Disabled"}</Pill>;
+  }
+  const text = value === null || value === undefined ? "-" : String(value);
+  if (SECRET_KEY.test(name)) return <SecretField value={text} masked />;
+  if (ENDPOINT_KEY.test(name)) return <SecretField value={text} />;
+  return <span className="font-[family-name:var(--mono)] text-[12.5px] text-[var(--text)]">{text}</span>;
+}
 
 export default function IntegrationDetailPage() {
   const { integrationId = "" } = useParams();
@@ -20,7 +86,6 @@ export default function IntegrationDetailPage() {
 
   const [isTesting, setIsTesting] = useState(false);
   const [isSending, setIsSending] = useState(false);
-  const [activeTab, setActiveTab] = useState<"overview" | "routes" | "deliveries" | "audit">("overview");
 
   const handleDelete = async () => {
     if (window.confirm("Are you sure you want to delete this integration?")) {
@@ -38,7 +103,7 @@ export default function IntegrationDetailPage() {
     setIsTesting(true);
     try {
       await testConnector.mutateAsync(integrationId);
-      demoSuccess("Test connection successful!");
+      demoSuccess("Test connection successful");
     } catch (err: any) {
       demoSuccess(`Test failed: ${err.message}`);
     } finally {
@@ -53,10 +118,10 @@ export default function IntegrationDetailPage() {
         id: integrationId,
         payload: {
           title: "Pulse Integration Test Successful",
-          body: "Hello! This is a test message from Pulse. Your integration is correctly configured and ready to receive real alerts."
-        }
+          body: "Hello! This is a test message from Pulse. Your integration is correctly configured and ready to receive real alerts.",
+        },
       });
-      demoSuccess("Test message sent successfully!");
+      demoSuccess("Test message sent successfully");
     } catch (err: any) {
       demoSuccess(`Failed to send message: ${err.message}`);
     } finally {
@@ -65,7 +130,7 @@ export default function IntegrationDetailPage() {
   };
 
   const handleToggleState = async () => {
-    const isActive = i?.status === 'active';
+    const isActive = i?.status === "active";
     if (isActive) {
       await disableConnector.mutateAsync(integrationId);
       demoSuccess("Connector disabled");
@@ -76,178 +141,234 @@ export default function IntegrationDetailPage() {
   };
 
   if (isLoading) return <DetailSkeleton />;
-  if (!i) return <div className="p-8 text-[var(--text2)]">Integration not found.</div>;
 
+  if (!i) {
+    return (
+      <div className="flex flex-col gap-6">
+        <PageHero
+          eyebrow="Connectors"
+          title="Integration not found"
+          description="This connector may have been deleted, or it belongs to a different organization."
+          icon={Plug}
+          breadcrumbs={NOT_FOUND_CRUMBS}
+          actions={<Button onClick={() => navigate("/connectors/integrations")}>Back to integrations</Button>}
+        />
+        <Notice tone="red" icon={TriangleAlert} title="Nothing to show">
+          We could not load a connector with this identifier.
+        </Notice>
+      </div>
+    );
+  }
+
+  const Glyph = glyphFor(i.type);
+  const isActive = i.status === "active";
   const testRuns = testRunsData?.data ?? [];
-  const displayConfig = i.displayConfig || {};
+  const displayConfig: Record<string, unknown> = i.displayConfig || {};
+  const configEntries = Object.entries(displayConfig);
+  const latestRun = testRuns[0];
+  const togglePending = enableConnector.isPending || disableConnector.isPending;
+
+  const crumbs: Crumb[] = [{ label: "Connectors", to: "/connectors/integrations" }, { label: i.name }];
+
+  const facts: HeroFact[] = [
+    { label: "Connection", value: <StatusBadge status={i.status} /> },
+    {
+      label: "Last delivery",
+      value: i.health?.lastSuccessfulDeliveryAt ? <Timestamp value={i.health.lastSuccessfulDeliveryAt} /> : "Never",
+      tone: i.health?.lastSuccessfulDeliveryAt ? "green" : "neutral",
+    },
+    {
+      label: "Consecutive failures",
+      value: i.health?.consecutiveFailures ?? 0,
+      tone: (i.health?.consecutiveFailures ?? 0) > 0 ? "red" : "neutral",
+      icon: TriangleAlert,
+    },
+    { label: "Last test", value: latestRun ? <Timestamp value={latestRun.createdAt} /> : "Not run", icon: Clock },
+  ];
+
+  const detailItems: KeyValueItem[] = [
+    { label: "Type", value: <span className="font-[family-name:var(--mono)] text-[12.5px] uppercase">{i.type}</span> },
+    { label: "Created", value: <Timestamp value={i.createdAt} /> },
+    {
+      label: "Last delivery",
+      value: i.health?.lastSuccessfulDeliveryAt ? <Timestamp value={i.health.lastSuccessfulDeliveryAt} /> : "Never",
+    },
+    { label: "Failure threshold", value: <span className="tabular-nums">{i.health?.failureThreshold ?? "-"}</span> },
+  ];
+
+  const setupSteps: SetupStepItem[] = [
+    { title: "Create the connector", description: "Credentials are stored encrypted for this organization.", done: true },
+    {
+      title: "Enable the connection",
+      description: "A disabled connector keeps its config but stops receiving deliveries.",
+      done: isActive,
+    },
+    {
+      title: "Verify connectivity",
+      description: "Run a test connection to confirm Pulsiv can reach the destination.",
+      done: testRuns.length > 0,
+    },
+    {
+      title: "Add routing rules",
+      description: "Scope which event types, severities, and environments reach this connector.",
+      done: false,
+    },
+  ];
+
+  const overview = (
+    <SplitShell
+      rail={
+        <>
+          <Panel title="Connector details" icon={Activity} tone="ai">
+            <KeyValueGrid items={detailItems} columns={1} />
+            <div className="mt-4 border-t border-[var(--border)] pt-4">
+              <SecretField label="Connector ID" value={i.id} />
+            </div>
+          </Panel>
+          <Panel title="Setup guide" description="Four steps to a reliable delivery path." icon={Settings2} tone="blue">
+            <SetupSteps steps={setupSteps} />
+          </Panel>
+        </>
+      }
+    >
+      <Panel
+        title="Configuration"
+        description="Public connection settings. Secrets are stored encrypted and are shown masked."
+        icon={Settings2}
+        bodyClassName="p-0"
+      >
+        {configEntries.length === 0 && !i.metadata?.teamName ? (
+          <Row>
+            <p className="text-[13px] text-[var(--text2)]">This connector has no public configuration to display.</p>
+          </Row>
+        ) : (
+          <RowStack>
+            {configEntries.map(([key, value]) => (
+              <Row key={key}>
+                <SettingRow label={humanizeKey(key)}>
+                  <ConfigValue name={key} value={value} />
+                </SettingRow>
+              </Row>
+            ))}
+            {i.metadata?.teamName && (
+              <Row>
+                <SettingRow label="Workspace">
+                  <Pill tone="ai">{i.metadata.teamName}</Pill>
+                </SettingRow>
+              </Row>
+            )}
+          </RowStack>
+        )}
+      </Panel>
+
+      <Panel title="Connection state" description="Pause deliveries without losing this configuration." icon={Activity}>
+        <SettingRow
+          label={isActive ? "Connector enabled" : "Connector disabled"}
+          description={
+            isActive
+              ? "Pulsiv is delivering matching events to this connector."
+              : "Deliveries are paused. Existing configuration and routes are preserved."
+          }
+          htmlFor="connector-enabled"
+        >
+          <Toggle
+            id="connector-enabled"
+            checked={isActive}
+            disabled={togglePending}
+            onChange={handleToggleState}
+            label="Connector enabled"
+          />
+        </SettingRow>
+      </Panel>
+
+      <Panel
+        title="Recent test runs"
+        description="Connectivity checks and the latency Pulsiv measured."
+        icon={Clock}
+        bodyClassName={testRuns.length === 0 ? undefined : "p-0"}
+        actions={
+          <Button disabled={isTesting} onClick={handleTest}>
+            <Play className="size-4" aria-hidden="true" />
+            {isTesting ? "Testing…" : "Test connection"}
+          </Button>
+        }
+      >
+        {testRuns.length === 0 ? (
+          <p className="text-[13px] text-[var(--text2)]">
+            No test runs yet. Run a test connection to record latency and confirm credentials.
+          </p>
+        ) : (
+          <RowStack>
+            {testRuns.map((run: any) => (
+              <Row key={run.id} className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5">
+                  <Pill tone={HEALTHY_TEST_STATUSES.has(run.status) ? "green" : "red"} dot>
+                    {run.status}
+                  </Pill>
+                </div>
+                <div className="flex items-center gap-5 text-[12.5px]">
+                  <span className="font-[family-name:var(--mono)] tabular-nums text-[var(--text2)]">
+                    {run.durationMs ? formatLatency(run.durationMs) : "-"}
+                  </span>
+                  <Timestamp value={run.createdAt} />
+                </div>
+              </Row>
+            ))}
+          </RowStack>
+        )}
+      </Panel>
+
+      <Panel
+        danger
+        title="Delete this integration"
+        description="Removes the connector, its routing rules, and its stored credentials. Delivery history is retained in the audit log."
+        icon={Trash2}
+        footer={
+          <Button variant="danger" disabled={deleteConnector.isPending} onClick={handleDelete}>
+            <Trash2 className="size-4" aria-hidden="true" />
+            {deleteConnector.isPending ? "Deleting…" : "Delete integration"}
+          </Button>
+        }
+      />
+    </SplitShell>
+  );
+
+  const tabs = [
+    { id: "overview", label: "Overview", content: overview },
+    {
+      id: "routes",
+      label: i.type === "slack" ? "Channels and routing" : "Routing",
+      content: <IntegrationRoutes integrationId={i.id} type={i.type} />,
+    },
+    { id: "deliveries", label: "Deliveries", content: <IntegrationDeliveries integrationId={i.id} /> },
+    { id: "audit", label: "Audit", content: <IntegrationAudit integrationId={i.id} /> },
+  ];
 
   return (
     <div className="flex flex-col gap-6">
-      <button type="button" onClick={() => navigate(-1)} className="flex items-center gap-1.5 text-sm text-[var(--text2)] hover:text-[var(--text)] transition-colors">
-        <ArrowLeft className="size-4" /> Back to integrations
-      </button>
-      
-      <div className="flex items-start justify-between">
-        <div className="flex items-center gap-4">
-          <div className="flex size-14 items-center justify-center rounded-xl bg-[var(--bg2)] text-[var(--text)] border border-[var(--border)] shadow-sm">
-            <ConnectorIcon type={i.type} className="size-7" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight text-[var(--text)] flex items-center gap-3">
-              {i.name}
-              <StatusBadge status={i.status} />
-            </h1>
-            <p className="text-sm text-[var(--text2)] mt-1 capitalize">{i.type} Integration</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
-          <Button variant="outline" onClick={handleSendMessage} disabled={isSending || i.status !== 'active'}>
-            <MessageSquare className="size-4 mr-2" />
-            {isSending ? "Sending..." : "Send Message"}
-          </Button>
-          <Button variant="outline" onClick={handleTest} disabled={isTesting}>
-            <Play className="size-4 mr-2" />
-            {isTesting ? "Testing..." : "Test Connection"}
-          </Button>
-          <Button variant={i.status === 'active' ? 'secondary' : 'default'} onClick={handleToggleState}>
-            {i.status === 'active' ? <><PowerOff className="size-4 mr-2" /> Disable</> : <><Power className="size-4 mr-2" /> Enable</>}
-          </Button>
-          <Button variant="destructive" onClick={handleDelete} disabled={deleteConnector.isPending}>
-            <Trash2 className="size-4 mr-2" /> {deleteConnector.isPending ? "Deleting..." : "Delete"}
-          </Button>
-        </div>
-      </div>
+      <PageHero
+        eyebrow={`${i.type} connector`}
+        title={i.name}
+        description="Configuration, routing rules, delivery history, and the audit trail for this connector."
+        icon={Glyph}
+        breadcrumbs={crumbs}
+        actions={
+          <>
+            <Button disabled={isSending || !isActive} onClick={handleSendMessage}>
+              <MessageSquare className="size-4" aria-hidden="true" />
+              {isSending ? "Sending…" : "Send test message"}
+            </Button>
+            <Button variant="primary" disabled={isTesting} onClick={handleTest}>
+              <Play className="size-4" aria-hidden="true" />
+              {isTesting ? "Testing…" : "Test connection"}
+            </Button>
+          </>
+        }
+      >
+        <HeroFacts facts={facts} />
+      </PageHero>
 
-      <div className="flex items-center border-b border-[var(--border)] mt-2">
-        {(["overview", "routes", "deliveries", "audit"] as const).map(tab => (
-          <button
-            key={tab}
-            className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors capitalize ${
-              activeTab === tab 
-                ? "border-[var(--primary)] text-[var(--primary)]" 
-                : "border-transparent text-[var(--text2)] hover:text-[var(--text)]"
-            }`}
-            onClick={() => setActiveTab(tab)}
-          >
-            {tab === "routes" && i.type === "slack" ? "Channels & Routing" : tab}
-          </button>
-        ))}
-      </div>
-
-      <div className="pt-2">
-        {activeTab === "overview" && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
-            <div className="lg:col-span-2 flex flex-col gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Configuration Settings</CardTitle>
-                  <CardDescription>
-                    Public connection settings for this integration. Sensitive tokens are stored encrypted and are not displayed.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex flex-col gap-4">
-                    {Object.keys(displayConfig).length === 0 ? (
-                      <div className="text-sm text-[var(--text2)] py-4 border-t border-[var(--border)]">
-                        No public configuration details to display.
-                      </div>
-                    ) : (
-                      Object.entries(displayConfig).map(([key, value]) => (
-                        <div key={key} className="flex flex-col sm:flex-row sm:items-center justify-between py-3 border-t border-[var(--border)]">
-                          <div className="text-sm font-medium text-[var(--text)] capitalize">
-                            {key.replace(/([A-Z])/g, ' $1').trim()}
-                          </div>
-                          <div className="text-sm text-[var(--text2)] mt-1 sm:mt-0">
-                            {typeof value === 'boolean' ? (value ? 'Yes' : 'No') : String(value)}
-                          </div>
-                        </div>
-                      ))
-                    )}
-                    
-                    {i.metadata?.teamName && (
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between py-3 border-t border-[var(--border)]">
-                        <div className="text-sm font-medium text-[var(--text)]">Workspace</div>
-                        <div className="text-sm text-[var(--text2)] mt-1 sm:mt-0 flex items-center gap-2">
-                          <Badge variant="outline">{i.metadata.teamName}</Badge>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Recent Test Runs</CardTitle>
-                  <CardDescription>History of connection tests and their latency.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {testRuns.length === 0 ? (
-                    <div className="py-8 text-center text-[var(--text2)] flex flex-col items-center">
-                      <Clock className="size-8 mb-3 text-[var(--text3)]" />
-                      <p>No test runs executed yet.</p>
-                      <p className="text-xs mt-1">Click 'Test Connection' above to verify connectivity.</p>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col">
-                      {testRuns.map((run: any, idx: number) => (
-                        <div key={run.id} className={`flex items-center justify-between py-3 ${idx > 0 ? 'border-t border-[var(--border)]' : ''}`}>
-                          <div className="flex items-center gap-3">
-                            {run.status === 'healthy' || run.status === 'success' ? (
-                              <CheckCircle2 className="size-4 text-green-500" />
-                            ) : (
-                              <div className="size-2 rounded-full bg-red-500 ml-1 mr-1" />
-                            )}
-                            <span className="text-sm text-[var(--text)] capitalize">{run.status}</span>
-                          </div>
-                          <div className="flex items-center gap-6 text-sm text-[var(--text2)]">
-                            <span>{run.durationMs ? `${run.durationMs}ms` : '-'}</span>
-                            <Timestamp value={run.createdAt} />
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-
-            <div className="lg:col-span-1 flex flex-col gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Integration Details</CardTitle>
-                </CardHeader>
-                <CardContent className="flex flex-col gap-4 text-sm">
-                  <div>
-                    <div className="text-[var(--text3)] mb-1 text-xs uppercase tracking-wider font-semibold">Created At</div>
-                    <div className="font-medium text-[var(--text)]"><Timestamp value={i.createdAt} /></div>
-                  </div>
-                  <div>
-                    <div className="text-[var(--text3)] mb-1 text-xs uppercase tracking-wider font-semibold">Last Delivery</div>
-                    <div className="font-medium text-[var(--text)]">{i.health?.lastSuccessfulDeliveryAt ? <Timestamp value={i.health.lastSuccessfulDeliveryAt} /> : 'Never'}</div>
-                  </div>
-                  <div>
-                    <div className="text-[var(--text3)] mb-1 text-xs uppercase tracking-wider font-semibold">Connector ID</div>
-                    <div className="font-mono text-xs text-[var(--text2)] break-all bg-[var(--bg2)] p-1.5 rounded">{i.id}</div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-        )}
-
-        {activeTab === "routes" && (
-          <IntegrationRoutes integrationId={i.id} type={i.type} />
-        )}
-
-        {activeTab === "deliveries" && (
-          <IntegrationDeliveries integrationId={i.id} />
-        )}
-
-        {activeTab === "audit" && (
-          <IntegrationAudit integrationId={i.id} />
-        )}
-      </div>
+      <Tabs tabs={tabs} />
     </div>
   );
 }

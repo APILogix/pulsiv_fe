@@ -1,67 +1,79 @@
-import { useState } from 'react';
-import { Link, useLocation } from 'react-router';
+import { useActionState } from 'react';
+import { useLocation } from 'react-router';
+import { LifeBuoy, ShieldCheck } from 'lucide-react';
 import { useLoginBackupCode } from '../hooks/useLoginBackupCode';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import {
+  AuthButton,
+  AuthCard,
+  AuthField,
+  AuthFooter,
+  AuthHeading,
+  AuthLink,
+  CodeInput,
+  IconChip,
+  Notice,
+  Pill,
+} from '@/shared/ui/pulse';
+
+const CODE_LENGTH = 20;
 
 export default function BackupCodesPage() {
-  const [code, setCode] = useState('');
   const location = useLocation();
   const challengeId = location.state?.challengeId || '';
   const { mutate: loginBackupCode, isPending } = useLoginBackupCode();
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const [codeError, submitCode] = useActionState<string | null, FormData>((_previous, formData) => {
+    const code = String(formData.get('code') ?? '').toLowerCase();
+    if (code.length !== CODE_LENGTH) return `Backup codes are ${CODE_LENGTH} characters long.`;
     loginBackupCode({ code, challenge_id: challengeId });
-  };
+    return null;
+  }, null);
 
   return (
-    <div className="w-full space-y-6">
-      <div className="text-center space-y-4">
-        <div>
-          <h2 className="text-xl font-semibold tracking-tight text-foreground">
-            Use a backup code
-          </h2>
-          <p className="text-sm text-[#999999] mt-1">
-            Enter one of your 20-character emergency recovery codes.
-          </p>
-        </div>
-      </div>
+    <div className="w-full">
+      <AuthHeading
+        eyebrow="Security check"
+        icon={LifeBuoy}
+        tone="amber"
+        title="Use a backup code"
+        description="Enter one of the recovery codes you saved when you set up two-factor authentication."
+      />
 
-      <div className="rounded-xl border border-input bg-[#111111]/80 backdrop-blur-sm p-6 sm:p-8">
-        <form onSubmit={handleSubmit} className="space-y-5">
-          <div className="space-y-1.5">
-            <Input
-              id="code"
-              type="text"
-              placeholder="XXXXXXXXXXXXXXXXXXXX"
-              value={code}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCode(e.target.value.toLowerCase())}
-              required
-              maxLength={20}
-              className="h-12 font-mono text-center tracking-[0.3em] text-lg bg-[#161616] border-input text-foreground placeholder:text-[#555555] focus:border-[#34d399] focus:ring-1 focus:ring-[#34d399]/30 transition-colors"
-            />
+      <AuthCard>
+        <div className="flex items-center gap-3 rounded-[12px] border border-[var(--border)] bg-[var(--bg2)] px-3 py-2.5">
+          <IconChip icon={ShieldCheck} tone="amber" />
+          <div className="min-w-0 flex-1">
+            <p className="text-[13px] font-medium text-[var(--text)]">Recovery factor</p>
+            <p className="text-[12px] text-[var(--text3)]">Single-use code, {CODE_LENGTH} characters</p>
           </div>
-          <Button
-            type="submit"
-            className="w-full h-10 bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50"
-            disabled={isPending || code.length !== 20}
-          >
-            {isPending ? (
-              <span className="flex items-center gap-2">
-                <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeDasharray="31.4" strokeLinecap="round" /></svg>
-                Verifying...
-              </span>
-            ) : 'Verify backup code'}
-          </Button>
-        </form>
-      </div>
+          <Pill tone="amber">Backup code</Pill>
+        </div>
 
-      <div className="text-center text-sm text-[#555555]">
-        <Link to="/auth/login" className="hover:text-[#999999] transition-colors">
-          Back to sign in
-        </Link>
-      </div>
+        <form action={submitCode} className="mt-5 flex flex-col gap-4">
+          <AuthField label="Backup code" error={codeError ?? undefined}>
+            <CodeInput
+              name="code"
+              length={CODE_LENGTH}
+              inputMode="text"
+              autoFocus
+              disabled={isPending}
+              className="text-[15px] tracking-[0.22em]"
+            />
+          </AuthField>
+
+          <AuthButton type="submit" pending={isPending}>
+            Verify backup code
+          </AuthButton>
+        </form>
+
+        <Notice tone="amber" className="mt-4">
+          Each code works once. Generate a new set from security settings after you sign in.
+        </Notice>
+      </AuthCard>
+
+      <AuthFooter>
+        Have your authenticator? <AuthLink to="/auth/login">Back to sign in</AuthLink>
+      </AuthFooter>
     </div>
   );
 }

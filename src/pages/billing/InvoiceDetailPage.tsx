@@ -1,10 +1,43 @@
-import { useParams, useNavigate } from "react-router";
-import { ArrowLeft, Download } from "lucide-react";
+import { useNavigate, useParams } from "react-router";
 import { useQuery } from "@tanstack/react-query";
+import { ArrowLeft, Download, FileText, Receipt, TriangleAlert } from "lucide-react";
+import { toast } from "sonner";
+
 import { orgApi } from "@/modules/organizations/api/org.api";
 import { orgQueryKeys, useOrganizations } from "@/modules/organizations/hooks/useOrganizations";
-import { PageHeader, SectionCard, StatusBadge, Table, Tr, Td, Button, formatDate, DetailSkeleton } from "@/shared/observe";
-import { toast } from "sonner";
+import type { Invoice } from "@/modules/organizations/types/org.types";
+import {
+  Button,
+  CopyButton,
+  DetailSkeleton,
+  StatusBadge,
+  Table,
+  Td,
+  Tr,
+  formatDate,
+} from "@/shared/observe";
+import {
+  EmptyPanel,
+  KeyValueGrid,
+  Notice,
+  PageHero,
+  Panel,
+  type Crumb,
+  type KeyValueItem,
+} from "@/shared/ui/pulse";
+
+const CRUMBS: Crumb[] = [
+  { label: "Billing", to: "/billing" },
+  { label: "Invoices", to: "/billing/invoices" },
+];
+
+const LINE_ITEM_HEADERS = ["Description", "Amount"];
+
+const CURRENCY = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
+
+function isOverdue(invoice: Invoice) {
+  return invoice.status === "open" && new Date(invoice.dueDate).getTime() < Date.now();
+}
 
 export default function InvoiceDetailPage() {
   const { invoiceId = "" } = useParams();
@@ -18,48 +51,147 @@ export default function InvoiceDetailPage() {
   });
 
   if (isLoading) return <DetailSkeleton />;
-  if (!inv) return <div className="p-8 text-[var(--text2)]">Invoice not found.</div>;
+
+  if (!inv) {
+    return (
+      <div className="flex flex-col gap-6">
+        <PageHero eyebrow="Invoice" title="Invoice not found" icon={Receipt} breadcrumbs={CRUMBS} />
+        <Notice tone="red" icon={TriangleAlert} title="We could not load this invoice">
+          The invoice may have been removed, or it belongs to another organization.
+        </Notice>
+      </div>
+    );
+  }
+
+  const status = isOverdue(inv) ? "overdue" : inv.status;
+  const lineItems = inv.items ?? [];
+  const lineItemTotal = lineItems.reduce((total, item) => total + item.amount, 0);
+  const crumbs: Crumb[] = [...CRUMBS, { label: inv.number }];
+
+  const summaryItems: KeyValueItem[] = [
+    {
+      label: "Invoice number",
+      value: (
+        <span className="flex items-center gap-2">
+          <span className="font-[family-name:var(--mono)] text-[12.5px] text-[var(--text)]">{inv.number}</span>
+          <CopyButton value={inv.number} label="Copy" />
+        </span>
+      ),
+    },
+    { label: "Status", value: <StatusBadge status={status} /> },
+    {
+      label: "Issued",
+      value: <span className="tabular-nums">{formatDate(inv.issueDate)}</span>,
+    },
+    {
+      label: "Due",
+      value: <span className="tabular-nums">{formatDate(inv.dueDate)}</span>,
+    },
+    {
+      label: "Amount due",
+      value: (
+        <span className="font-[family-name:var(--mono)] text-[13px] font-semibold tabular-nums text-[var(--text)]">
+          {CURRENCY.format(inv.amount)}
+        </span>
+      ),
+    },
+    {
+      label: "Receipt",
+      value: inv.pdfUrl ? (
+        <span className="text-[var(--text)]">PDF available</span>
+      ) : (
+        <span className="text-[var(--text3)]">No PDF issued</span>
+      ),
+    },
+  ];
 
   return (
-    <div className="flex flex-col gap-5">
-      <div className="flex items-start">
-        <Button variant="ghost" onClick={() => navigate(-1)}><ArrowLeft className="size-4 mr-2" /> Back to invoices</Button>
-      </div>
-      <PageHeader
+    <div className="flex flex-col gap-6">
+      <PageHero
+        eyebrow="Invoice"
         title={inv.number}
-        breadcrumbs={[{ label: "Billing" }, { label: "Invoices" }, { label: inv.number }]}
-        actions={<><StatusBadge status={inv.status as any} /><Button variant="secondary" onClick={() => { if (inv.pdfUrl) { window.open(inv.pdfUrl, '_blank'); } else { toast.info("PDF not available"); } }}><Download className="size-4 mr-2" /> Download PDF</Button></>}
+        description={`Issued ${formatDate(inv.issueDate)} · due ${formatDate(inv.dueDate)}`}
+        icon={Receipt}
+        breadcrumbs={crumbs}
+        actions={
+          <>
+            <Button variant="ghost" onClick={() => navigate(-1)}>
+              <ArrowLeft className="size-4" aria-hidden="true" />
+              Back
+            </Button>
+            <StatusBadge status={status} />
+            <Button
+              variant="primary"
+              onClick={() => {
+                if (inv.pdfUrl) {
+                  window.open(inv.pdfUrl, "_blank");
+                  return;
+                }
+                toast.info("PDF not available");
+              }}
+            >
+              <Download className="size-4" aria-hidden="true" />
+              Download PDF
+            </Button>
+          </>
+        }
       />
 
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <Meta label="Issued" value={formatDate(new Date(inv.issueDate).getTime())} />
-        <Meta label="Due" value={formatDate(new Date(inv.dueDate).getTime())} />
-        <Meta label="Payment" value="—" />
-        <Meta label="Total" value={`$${inv.amount.toFixed(2)}`} />
-      </div>
+      <Panel title="Summary" description="Billing details recorded for this invoice." icon={FileText}>
+        <KeyValueGrid items={summaryItems} columns={3} />
+      </Panel>
 
-      <SectionCard title="Line items" className="p-0">
-        <Table headers={["Description", "Amount"]}>
-          {(inv.items || []).map((li) => (
-            <Tr key={li.description}>
-              <Td>{li.description}</Td>
-              <Td className="font-semibold tabular-nums">${li.amount.toFixed(2)}</Td>
-            </Tr>
-          ))}
-        </Table>
-        <div className="flex flex-col items-end gap-1 border-t border-[var(--border)] p-4 text-[13px]">
-          <div className="flex w-48 justify-between border-t border-[var(--border)] pt-1 font-semibold"><span>Total</span><span className="tabular-nums">${inv.amount.toFixed(2)}</span></div>
-        </div>
-      </SectionCard>
-    </div>
-  );
-}
-
-function Meta({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-[10px] border border-[var(--border)] bg-[var(--bg1)] p-3">
-      <div className="text-[11px] uppercase tracking-wider text-[var(--text3)]">{label}</div>
-      <div className="mt-1 text-[13px] font-medium text-[var(--text)]">{value}</div>
+      <Panel
+        title="Line items"
+        description="Charges that make up this invoice."
+        icon={Receipt}
+        bodyClassName="p-0"
+        footer={
+          <span className="flex items-baseline gap-6">
+            <span className="text-[12px] uppercase tracking-[0.1em] text-[var(--text3)]">Total</span>
+            <span className="font-[family-name:var(--mono)] text-[14px] font-semibold tabular-nums text-[var(--text)]">
+              {CURRENCY.format(inv.amount)}
+            </span>
+          </span>
+        }
+      >
+        {lineItems.length === 0 ? (
+          <div className="p-5">
+            <EmptyPanel
+              icon={Receipt}
+              title="No line items"
+              description="This invoice was issued without itemised charges."
+            />
+          </div>
+        ) : (
+          <>
+            <Table headers={LINE_ITEM_HEADERS} maxHeight="40vh">
+              {lineItems.map((item) => (
+                <Tr key={item.description}>
+                  <Td className="text-[13px]">{item.description}</Td>
+                  <Td className="font-[family-name:var(--mono)] text-[12.5px] font-semibold tabular-nums text-[var(--text)]">
+                    {CURRENCY.format(item.amount)}
+                  </Td>
+                </Tr>
+              ))}
+            </Table>
+            <dl className="flex flex-col gap-2 border-t border-[var(--border)] px-5 py-4">
+              <div className="flex items-baseline justify-end gap-6">
+                <dt className="text-[12.5px] text-[var(--text2)]">Line items</dt>
+                <dd className="w-32 text-right font-[family-name:var(--mono)] text-[12.5px] tabular-nums text-[var(--text2)]">
+                  {CURRENCY.format(lineItemTotal)}
+                </dd>
+              </div>
+              <div className="flex items-baseline justify-end gap-6 border-t border-[var(--border)] pt-2">
+                <dt className="text-[12.5px] font-semibold text-[var(--text)]">Total</dt>
+                <dd className="w-32 text-right font-[family-name:var(--mono)] text-[13px] font-semibold tabular-nums text-[var(--text)]">
+                  {CURRENCY.format(inv.amount)}
+                </dd>
+              </div>
+            </dl>
+          </>
+        )}
+      </Panel>
     </div>
   );
 }

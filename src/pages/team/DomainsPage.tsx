@@ -1,33 +1,44 @@
 import { useActionState, useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  CheckCircle2,
+  Eye,
   Globe2,
-  Loader2,
+  MoreHorizontal,
+  PencilLine,
+  Plus,
   RefreshCw,
+  Server,
   ShieldCheck,
   Star,
   Trash2,
-  MoreHorizontal,
-  CheckCircle2,
-  Server,
-  Plus,
-  AlertCircle,
-  Eye,
-  PencilLine
+  TriangleAlert,
+  UserPlus,
 } from "lucide-react";
 import { toast } from "sonner";
 
+import { getErrorCode, getErrorMessage } from "@/infrastructure/api-client/error.interceptor";
 import { orgApi } from "@/modules/organizations/api/org.api";
 import { orgQueryKeys, useOrganizations } from "@/modules/organizations/hooks/useOrganizations";
 import type { CreatedVerifiedDomain, VerifiedDomain } from "@/modules/organizations/types/org.types";
+import { Button, CardSkeleton, CopyButton, Field, StatusBadge, SubmitButton, Timestamp, inputClass } from "@/shared/observe";
 import {
-  Button,
-  CopyButton,
-  Field,
-  PageHeader,
-  SubmitButton,
-  inputClass,
-} from "@/shared/observe";
+  EmptyPanel,
+  HeroFacts,
+  Notice,
+  PageHero,
+  Panel,
+  Pill,
+  Row,
+  RowStack,
+  SecretField,
+  SettingRow,
+  SetupSteps,
+  SplitShell,
+  Toggle,
+  type HeroFact,
+  type SetupStepItem,
+} from "@/shared/ui/pulse";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -49,137 +60,169 @@ import { DomainVerificationAnimation } from "@/shared/components/animations/Doma
 
 type DomainDialogMode = "view" | "edit";
 
+type DomainActionType = "verify" | "recheck" | "primary" | "auto" | "delete" | "edit";
+
+interface DomainActionInput {
+  type: DomainActionType;
+  id: string;
+  enabled?: boolean;
+  metadata?: Record<string, unknown>;
+  domainName?: string;
+}
+
+const ACTION_SUCCESS: Record<DomainActionType, string> = {
+  verify: "Domain verification checked",
+  recheck: "DNS record rechecked",
+  primary: "Primary domain updated",
+  auto: "Auto-join updated",
+  delete: "Domain removed",
+  edit: "Domain metadata saved",
+};
+
+const STEP_UP_MESSAGE =
+  "This action needs a fresh multi-factor check. Complete the verification prompt, then try again.";
+
+function safeJson(value: Record<string, unknown>) {
+  return JSON.stringify(value ?? {}, null, 2);
+}
+
+// ── one-off local component: full-screen DNS verification overlay ──
 function DnsVerificationOverlay({ domain }: { domain: string }) {
   useEffect(() => {
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      e.preventDefault();
-      e.returnValue = "";
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
     };
     window.addEventListener("beforeunload", handleBeforeUnload);
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, []);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--bg)]/80 backdrop-blur-sm">
-      <div className="flex flex-col items-center gap-8">
+    <div
+      role="status"
+      aria-live="polite"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--bg)]/80 backdrop-blur-sm"
+    >
+      <div className="flex flex-col items-center gap-7">
         <DomainVerificationAnimation isVerified={false} />
-
-        {/* Text */}
         <div className="flex flex-col items-center gap-2 text-center">
-          <h2 className="text-lg font-semibold text-[var(--text)]">Verifying DNS</h2>
-          <p className="max-w-[300px] text-[14px] text-[var(--text2)]">
-            Checking TXT records for <span className="font-medium text-[var(--text)]">{domain}</span>...
+          <h2 className="font-[family-name:var(--display)] text-[19px] font-semibold text-[var(--text)]">Checking DNS</h2>
+          <p className="max-w-[320px] text-[13px] text-[var(--text2)]">
+            Looking up the TXT record for{" "}
+            <span className="font-[family-name:var(--mono)] text-[12.5px] text-[var(--text)]">{domain}</span>
           </p>
         </div>
-
-        {/* Progress bar */}
-        <div className="h-1 w-[200px] overflow-hidden rounded-full bg-[var(--border)]">
-          <div className="h-full rounded-full bg-[var(--brand)]" style={{ width: "60%", animation: "pulse-fast 1s ease-in-out infinite" }} />
-        </div>
-
-        <p className="text-[12px] text-[var(--text3)]">
-          Please wait — this may take a few seconds
-        </p>
+        <div className="pulse-sweep relative h-1 w-[220px] overflow-hidden rounded-full bg-[var(--bg3)]" aria-hidden="true" />
+        <p className="text-[12px] text-[var(--text3)]">DNS propagation can take a few minutes</p>
       </div>
     </div>
   );
 }
 
-function DomainCard({
+// ── one-off local component: one domain row inside the list panel ──
+function DomainRow({
   domain,
+  pending,
   onVerify,
+  onRecheck,
   onPrimary,
   onAutoJoin,
   onDelete,
   onView,
   onEdit,
-  pending,
 }: {
   domain: VerifiedDomain;
+  pending: boolean;
   onVerify: () => void;
+  onRecheck: () => void;
   onPrimary: () => void;
-  onAutoJoin: () => void;
+  onAutoJoin: (next: boolean) => void;
   onDelete: () => void;
   onView: () => void;
   onEdit: () => void;
-  pending: boolean;
 }) {
   return (
-    <article className="group relative flex flex-col justify-between overflow-hidden rounded-[16px] border border-[var(--border)] bg-[var(--bg1)] transition-all hover:border-[var(--border-hover)] hover:shadow-sm">
-      <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-start sm:justify-between">
-        <div className="flex items-start gap-4">
-          <div className="mt-0.5 flex size-10 shrink-0 items-center justify-center rounded-[10px] bg-[var(--bg2)] text-[var(--text2)] transition-colors group-hover:bg-[var(--brand)]/10 group-hover:text-[var(--brand)]">
-            <Globe2 className="size-5" />
-          </div>
+    <Row className="flex flex-col gap-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex min-w-0 items-start gap-3">
+          <span
+            aria-hidden="true"
+            className="mt-0.5 inline-flex size-9 shrink-0 items-center justify-center rounded-[10px] bg-[var(--bg2)] text-[var(--text2)] ring-1 ring-inset ring-[var(--border)]"
+          >
+            <Globe2 className="size-4" />
+          </span>
           <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <h2 className="truncate text-[15px] font-medium tracking-tight text-[var(--text)]">
+            <div className="flex flex-wrap items-center gap-2">
+              <h3 className="truncate font-[family-name:var(--mono)] text-[13.5px] font-medium text-[var(--text)]">
                 {domain.domain}
-              </h2>
-              {domain.isPrimary && (
-                <span className="inline-flex items-center rounded-full bg-[var(--brand)]/10 px-2 py-0.5 text-[10px] font-medium tracking-wide text-[var(--brand)] uppercase">
-                  Primary
-                </span>
-              )}
+              </h3>
+              {domain.isPrimary && <Pill tone="brand">Primary</Pill>}
+              <StatusBadge status={domain.isVerified ? "verified" : "pending"} />
             </div>
-            <p className="mt-1 flex items-center gap-1.5 text-[13px] text-[var(--text2)]">
+            <p className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[12.5px] text-[var(--text2)]">
               {domain.isVerified ? (
                 <>
-                  <CheckCircle2 className="size-3.5 text-[var(--green)]" />
-                  Verified {domain.verifiedAt ? new Date(domain.verifiedAt).toLocaleDateString() : ""}
+                  <CheckCircle2 className="size-3.5 text-[var(--green)]" aria-hidden="true" />
+                  Verified {domain.verifiedAt ? <Timestamp value={domain.verifiedAt} /> : null}
                 </>
               ) : (
                 <>
-                  <AlertCircle className="size-3.5 text-[var(--amber)]" />
-                  Awaiting DNS verification
+                  <TriangleAlert className="size-3.5 text-[var(--amber)]" aria-hidden="true" />
+                  Awaiting the DNS TXT record
                 </>
               )}
+              {domain.lastVerificationCheckAt && (
+                <span className="text-[var(--text3)]">
+                  · last checked <Timestamp value={domain.lastVerificationCheckAt} />
+                </span>
+              )}
             </p>
-            {domain.isVerified && domain.autoJoinEnabled && (
-              <p className="mt-2 text-[12px] text-[var(--text3)]">
-                Auto-join is active for users signing up with this domain.
-              </p>
-            )}
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2">
           {domain.isVerified && !domain.isPrimary && (
-            <Button variant="outline" className="h-8" disabled={pending} onClick={onPrimary}>
-              <Star className="mr-1.5 size-3.5" />
+            <Button variant="secondary" disabled={pending} onClick={onPrimary}>
+              <Star className="size-3.5" aria-hidden="true" />
               Make primary
             </Button>
           )}
-          {!domain.isVerified && (
-            <Button variant="secondary" className="h-8" disabled={pending} onClick={onVerify}>
-              <RefreshCw className="mr-1.5 size-3.5" />
+          {domain.isVerified ? (
+            <Button variant="secondary" disabled={pending} onClick={onRecheck}>
+              <RefreshCw className="size-3.5" aria-hidden="true" />
+              Recheck DNS
+            </Button>
+          ) : (
+            <Button variant="primary" disabled={pending} onClick={onVerify}>
+              <ShieldCheck className="size-3.5" aria-hidden="true" />
               Verify DNS
             </Button>
           )}
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="h-8 w-8 p-0">
-                <span className="sr-only">Open menu</span>
-                <MoreHorizontal className="size-4" />
+              <Button variant="ghost" className="w-9 px-0">
+                <span className="sr-only">Domain actions</span>
+                <MoreHorizontal className="size-4" aria-hidden="true" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-[180px]">
+            <DropdownMenuContent align="end" className="w-[190px]">
               <DropdownMenuItem disabled={pending} onClick={onView}>
-                <Eye className="mr-2 size-4" />
+                <Eye className="mr-2 size-4" aria-hidden="true" />
                 View details
               </DropdownMenuItem>
               <DropdownMenuItem disabled={pending} onClick={onEdit}>
-                <PencilLine className="mr-2 size-4" />
-                Edit details
+                <PencilLine className="mr-2 size-4" aria-hidden="true" />
+                Edit metadata
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem disabled={pending} onClick={onVerify}>
-                <RefreshCw className="mr-2 size-4" />
+              <DropdownMenuItem disabled={pending} onClick={domain.isVerified ? onRecheck : onVerify}>
+                <RefreshCw className="mr-2 size-4" aria-hidden="true" />
                 {domain.isVerified ? "Recheck DNS" : "Verify DNS"}
               </DropdownMenuItem>
               {domain.isVerified && (
-                <DropdownMenuItem disabled={pending} onClick={onAutoJoin}>
+                <DropdownMenuItem disabled={pending} onClick={() => onAutoJoin(!domain.autoJoinEnabled)}>
+                  <UserPlus className="mr-2 size-4" aria-hidden="true" />
                   {domain.autoJoinEnabled ? "Disable auto-join" : "Enable auto-join"}
                 </DropdownMenuItem>
               )}
@@ -189,19 +232,33 @@ function DomainCard({
                 onClick={onDelete}
                 className="text-[var(--red)] focus:bg-[var(--red-bg)] focus:text-[var(--red)]"
               >
-                <Trash2 className="mr-2 size-4" />
+                <Trash2 className="mr-2 size-4" aria-hidden="true" />
                 Remove domain
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
       </div>
-    </article>
-  );
-}
 
-function safeJson(value: Record<string, unknown>) {
-  return JSON.stringify(value ?? {}, null, 2);
+      {domain.isVerified && (
+        <div className="rounded-[12px] border border-[var(--border)] bg-[var(--bg2)] px-4 py-3">
+          <SettingRow
+            label="Auto-join"
+            description="New users signing up with this email domain join the organization automatically."
+            htmlFor={`auto-join-${domain.id}`}
+          >
+            <Toggle
+              id={`auto-join-${domain.id}`}
+              label={`Auto-join for ${domain.domain}`}
+              checked={domain.autoJoinEnabled}
+              disabled={pending}
+              onChange={onAutoJoin}
+            />
+          </SettingRow>
+        </div>
+      )}
+    </Row>
+  );
 }
 
 export default function DomainsPage() {
@@ -212,6 +269,8 @@ export default function DomainsPage() {
   const [selectedDomainId, setSelectedDomainId] = useState<string | null>(null);
   const [dialogMode, setDialogMode] = useState<DomainDialogMode | null>(null);
   const [metadataDraft, setMetadataDraft] = useState("{}");
+  const [deleteTarget, setDeleteTarget] = useState<VerifiedDomain | null>(null);
+  const [stepUpBlocked, setStepUpBlocked] = useState(false);
 
   const { data, isLoading, isError, error } = useQuery({
     queryKey: orgQueryKeys.domains(activeOrgId!),
@@ -228,48 +287,44 @@ export default function DomainsPage() {
   const invalidate = () => qc.invalidateQueries({ queryKey: orgQueryKeys.domains(activeOrgId!) });
 
   const action = useMutation({
-    mutationFn: async ({
-      type,
-      id,
-      enabled,
-      metadata,
-      domainName: _domainName,
-    }: {
-      type: "verify" | "primary" | "auto" | "delete" | "edit";
-      id: string;
-      enabled?: boolean;
-      metadata?: Record<string, unknown>;
-      domainName?: string;
-    }) => {
+    mutationFn: async ({ type, id, enabled, metadata }: DomainActionInput) => {
       if (!activeOrgId) throw new Error("No active organization");
       if (type === "verify") return orgApi.verifyDomain(activeOrgId, id);
+      if (type === "recheck") return orgApi.recheckDomain(activeOrgId, id);
       if (type === "primary") return orgApi.makePrimaryDomain(activeOrgId, id);
       if (type === "auto") return orgApi.setDomainAutoJoin(activeOrgId, id, !!enabled);
       if (type === "edit") return orgApi.updateDomain(activeOrgId, id, { metadata: metadata ?? {} });
       return orgApi.deleteDomain(activeOrgId, id);
     },
     onMutate: ({ type, domainName }) => {
-      if (type === "verify" && domainName) {
+      setStepUpBlocked(false);
+      if ((type === "verify" || type === "recheck") && domainName) {
         setVerifyingDomain(domainName);
       }
     },
-    onSuccess: (_, v) => {
+    onSuccess: (_result, variables) => {
       setVerifyingDomain(null);
-      if (v.type === "edit") {
+      if (variables.type === "edit") {
         setDialogMode(null);
         setSelectedDomainId(null);
       }
-      toast.success(v.type === "delete" ? "Domain removed" : "Domain updated");
+      if (variables.type === "delete") setDeleteTarget(null);
+      toast.success(ACTION_SUCCESS[variables.type]);
       invalidate();
     },
-    onError: (e: any) => {
+    onError: (err: unknown) => {
       setVerifyingDomain(null);
-      toast.error(e?.response?.data?.error?.message ?? e?.message ?? "Domain action failed");
+      if (getErrorCode(err) === "STEP_UP_REQUIRED") {
+        setStepUpBlocked(true);
+        toast.error(STEP_UP_MESSAGE);
+        return;
+      }
+      toast.error(getErrorMessage(err));
     },
   });
 
   const [state, createAction] = useActionState(
-    async (_: unknown, form: FormData) => {
+    async (_prev: { error: string | null }, form: FormData) => {
       if (!activeOrgId) return { error: "No active organization" };
       try {
         const domain = String(form.get("domain") ?? "")
@@ -278,15 +333,12 @@ export default function DomainsPage() {
         const result = await orgApi.createDomain(activeOrgId, { domain });
         setCreated(result);
         invalidate();
-        form.set("domain", ""); // clear input
         return { error: null };
-      } catch (e: any) {
-        return {
-          error: e?.response?.data?.error?.message ?? "Unable to add domain",
-        };
+      } catch (err: unknown) {
+        return { error: getErrorMessage(err) };
       }
     },
-    { error: null as string | null }
+    { error: null as string | null },
   );
 
   useEffect(() => {
@@ -300,6 +352,24 @@ export default function DomainsPage() {
   }, [dialogMode, selectedDomain]);
 
   const domains = data?.data ?? [];
+  const verified = domains.filter((domain) => domain.isVerified).length;
+  const autoJoin = domains.filter((domain) => domain.autoJoinEnabled).length;
+  const pendingCount = domains.length - verified;
+
+  const facts: HeroFact[] = [
+    { label: "Domains", value: domains.length, icon: Globe2 },
+    { label: "Verified", value: verified, tone: verified > 0 ? "green" : "neutral", icon: CheckCircle2 },
+    { label: "Pending DNS", value: pendingCount, tone: pendingCount > 0 ? "amber" : "neutral", icon: TriangleAlert },
+    { label: "Auto-join enabled", value: autoJoin, tone: autoJoin > 0 ? "blue" : "neutral", icon: UserPlus },
+  ];
+
+  const steps: SetupStepItem[] = [
+    { title: "Add the domain", description: "Enter the company domain you control, for example acme.com.", done: domains.length > 0 },
+    { title: "Publish the TXT record", description: "Copy the host and value into your DNS provider.", done: verified > 0 },
+    { title: "Run verification", description: "Select Verify DNS. Propagation can take a few minutes.", done: verified > 0 },
+    { title: "Choose a primary domain", description: "The primary domain is used for SSO discovery.", done: domains.some((domain) => domain.isPrimary) },
+    { title: "Enable auto-join", description: "Optional. Signups on a verified domain join automatically.", done: autoJoin > 0 },
+  ];
 
   const openDialog = (mode: DomainDialogMode, domainId: string) => {
     setSelectedDomainId(domainId);
@@ -321,191 +391,208 @@ export default function DomainsPage() {
     }
   };
 
-  if (isLoading)
+  if (isLoading) {
     return (
-      <div className="flex h-[400px] items-center justify-center">
-        <Loader2 className="size-6 animate-spin text-[var(--brand)]" />
-      </div>
-    );
-
-  if (isError) {
-    const message =
-      (error as any)?.response?.data?.error?.message ??
-      (error as Error)?.message ??
-      "Unable to load domains";
-    return (
-      <div className="mx-auto flex w-full max-w-[800px] flex-col gap-4 rounded-[16px] border border-[var(--border)] bg-[var(--bg1)] p-6">
-        <PageHeader
-          title="Verified Domains"
+      <div className="flex flex-col gap-6">
+        <PageHero
+          eyebrow="Identity"
+          title="Verified domains"
           description="Prove company-domain ownership before enabling SSO discovery or automatic membership."
+          icon={Globe2}
         />
-        <div className="rounded-[12px] border border-[var(--red)]/20 bg-[var(--red-bg)] p-4 text-[13px] text-[var(--text2)]">
-          {message}
+        <div className="grid gap-4 sm:grid-cols-2">
+          <CardSkeleton />
+          <CardSkeleton />
         </div>
       </div>
     );
   }
 
   return (
-    <div className="mx-auto max-w-[800px] w-full flex flex-col gap-10 pb-20">
-      <PageHeader
-        title="Verified Domains"
+    <div className="flex flex-col gap-6">
+      <PageHero
+        eyebrow="Identity"
+        title="Verified domains"
         description="Prove company-domain ownership before enabling SSO discovery or automatic membership."
-      />
+        icon={Globe2}
+      >
+        <HeroFacts facts={facts} />
+      </PageHero>
 
-      {/* Add Domain Section */}
-      <section className="rounded-[16px] border border-[var(--border)] bg-[var(--bg1)] p-6 shadow-sm">
-        <div className="mb-6 flex items-center gap-3">
-          <div className="flex size-8 items-center justify-center rounded-[8px] bg-[var(--brand)]/10 text-[var(--brand)]">
-            <Plus className="size-4" />
-          </div>
-          <div>
-            <h3 className="font-semibold text-[var(--text)]">Add a company domain</h3>
-            <p className="text-[13px] text-[var(--text2)]">
-              Verify ownership to claim this domain for your organization.
-            </p>
-          </div>
-        </div>
+      {isError && (
+        <Notice tone="red" icon={TriangleAlert} title="Unable to load domains">
+          {getErrorMessage(error)}
+        </Notice>
+      )}
 
-        <form action={createAction} className="flex flex-col gap-4 sm:flex-row sm:items-end">
-          <div className="min-w-0 flex-1">
-            <Field label="Domain Name">
-              <input
-                name="domain"
-                required
-                placeholder="acme.com"
-                autoCapitalize="none"
-                autoCorrect="off"
-                className={inputClass}
-              />
-            </Field>
-          </div>
-          <SubmitButton className="h-10 w-full sm:w-auto">
-            <ShieldCheck className="mr-2 size-4" />
-            Create verification
-          </SubmitButton>
-        </form>
+      {stepUpBlocked && (
+        <Notice tone="amber" icon={ShieldCheck} title="Additional verification required">
+          {STEP_UP_MESSAGE} Auto-join, primary domain, and domain removal are all step-up protected.
+        </Notice>
+      )}
 
-        {created && (
-          <div className="mt-8 animate-in fade-in slide-in-from-top-2 rounded-[12px] border border-[var(--border)] bg-[var(--bg2)] p-5">
-            <div className="mb-4 flex items-center gap-2">
-              <Server className="size-4 text-[var(--brand)]" />
-              <h4 className="font-semibold text-[var(--text)]">Publish DNS TXT record</h4>
-            </div>
-            <p className="mb-5 text-[13px] leading-relaxed text-[var(--text2)]">
-              Add this record at your DNS provider, then select “Verify DNS” on the domain card below.
-              <br />
-              <span className="font-medium text-[var(--amber)]">
-                Important: This token is shown only for this creation session.
-              </span>
-            </p>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="rounded-[8px] border border-[var(--border)] bg-[var(--bg1)] p-3">
-                <div className="mb-2 text-[11px] font-medium uppercase tracking-wider text-[var(--text3)]">
-                  Host / Name
+      <SplitShell
+        rail={
+          <>
+            <Panel title="Verification guide" description="What to expect while claiming a domain." icon={ShieldCheck} tone="ai">
+              <SetupSteps steps={steps} />
+            </Panel>
+            <Panel title="Record type" description="Pulsiv verifies ownership with a single DNS TXT record." icon={Server} tone="brand">
+              <dl className="flex flex-col gap-3">
+                <div className="flex items-center justify-between gap-3">
+                  <dt className="text-[12.5px] text-[var(--text2)]">Record type</dt>
+                  <dd className="font-[family-name:var(--mono)] text-[12.5px] text-[var(--text)]">TXT</dd>
                 </div>
+                <div className="flex items-center justify-between gap-3">
+                  <dt className="text-[12.5px] text-[var(--text2)]">Propagation</dt>
+                  <dd className="text-[12.5px] text-[var(--text)]">Usually under 5 minutes</dd>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <dt className="text-[12.5px] text-[var(--text2)]">Re-checks</dt>
+                  <dd className="text-[12.5px] text-[var(--text)]">On demand, any time</dd>
+                </div>
+              </dl>
+            </Panel>
+          </>
+        }
+      >
+        <Panel
+          title="Add a company domain"
+          description="Claim a domain you control, then publish the DNS record we generate."
+          icon={Plus}
+          tone="brand"
+        >
+          <form action={createAction} className="flex flex-col gap-4 sm:flex-row sm:items-end">
+            <div className="min-w-0 flex-1">
+              <Field label="Domain name" hint="Root domain without protocol, for example acme.com.">
+                <input
+                  name="domain"
+                  required
+                  placeholder="acme.com"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  className={`${inputClass} font-[family-name:var(--mono)] text-[12.5px]`}
+                />
+              </Field>
+            </div>
+            <SubmitButton className="h-10 w-full sm:w-auto">Create verification</SubmitButton>
+          </form>
+
+          {created && (
+            <div className="mt-6 flex flex-col gap-4">
+              <Notice tone="amber" icon={TriangleAlert} title="Copy this record now">
+                The verification value is shown for this creation session only. Publish it at your DNS provider, then run
+                Verify DNS on {created.domain}.
+              </Notice>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <SecretField label="Host / name" value={created.dnsInstructions.host} />
+                <SecretField label="TXT value" value={created.dnsInstructions.value} />
+              </div>
+              <div className="flex flex-wrap items-center gap-2 text-[12px] text-[var(--text3)]">
+                <span className="font-[family-name:var(--mono)]">
+                  {created.dnsInstructions.recordType} {created.dnsInstructions.host}
+                </span>
                 <CopyButton
-                  value={created.dnsInstructions.host}
-                  label={created.dnsInstructions.host}
+                  value={`${created.dnsInstructions.recordType} ${created.dnsInstructions.host} ${created.dnsInstructions.value}`}
+                  label="Copy full record"
                 />
               </div>
-              <div className="rounded-[8px] border border-[var(--border)] bg-[var(--bg1)] p-3">
-                <div className="mb-2 text-[11px] font-medium uppercase tracking-wider text-[var(--text3)]">
-                  TXT Value
-                </div>
-                <CopyButton
-                  value={created.dnsInstructions.value}
-                  label="Copy verification value"
+            </div>
+          )}
+        </Panel>
+
+        <Panel
+          title="Your domains"
+          description="Verified domains unlock SSO routing and optional auto-join."
+          icon={Globe2}
+          tone="brand"
+          bodyClassName="p-0"
+        >
+          {domains.length === 0 ? (
+            <EmptyPanel
+              className="rounded-none border-0 border-t border-dashed"
+              icon={Globe2}
+              title="No domains claimed yet"
+              description="Add a company domain above to start DNS verification."
+            />
+          ) : (
+            <RowStack>
+              {domains.map((domain) => (
+                <DomainRow
+                  key={domain.id}
+                  domain={domain}
+                  pending={action.isPending}
+                  onVerify={() => action.mutate({ type: "verify", id: domain.id, domainName: domain.domain })}
+                  onRecheck={() => action.mutate({ type: "recheck", id: domain.id, domainName: domain.domain })}
+                  onPrimary={() => action.mutate({ type: "primary", id: domain.id })}
+                  onAutoJoin={(next) => action.mutate({ type: "auto", id: domain.id, enabled: next })}
+                  onView={() => openDialog("view", domain.id)}
+                  onEdit={() => openDialog("edit", domain.id)}
+                  onDelete={() => setDeleteTarget(domain)}
                 />
-              </div>
-            </div>
-          </div>
-        )}
-      </section>
+              ))}
+            </RowStack>
+          )}
+        </Panel>
+      </SplitShell>
 
-      {/* Domain List Section */}
-      <section className="flex flex-col gap-4">
-        <h3 className="font-semibold text-[var(--text)]">Your Domains</h3>
-        
-        {domains.length > 0 ? (
-          <div className="grid gap-4">
-            {domains.map((d) => (
-              <DomainCard
-                key={d.id}
-                domain={d}
-                pending={action.isPending}
-                onVerify={() => action.mutate({ type: "verify", id: d.id, domainName: d.domain })}
-                onPrimary={() => action.mutate({ type: "primary", id: d.id })}
-                onAutoJoin={() =>
-                  action.mutate({ type: "auto", id: d.id, enabled: !d.autoJoinEnabled })
-                }
-                onView={() => openDialog("view", d.id)}
-                onEdit={() => openDialog("edit", d.id)}
-                onDelete={() => {
-                  if (confirm(`Are you sure you want to remove ${d.domain}?`)) {
-                    action.mutate({ type: "delete", id: d.id });
-                  }
-                }}
-              />
-            ))}
-          </div>
-        ) : (
-          <div className="flex flex-col items-center justify-center rounded-[16px] border border-dashed border-[var(--border)] bg-[var(--bg1)] py-16 text-center">
-            <div className="mb-4 flex size-12 items-center justify-center rounded-full bg-[var(--bg2)] text-[var(--text3)]">
-              <Globe2 className="size-6" />
-            </div>
-            <h4 className="font-medium text-[var(--text)]">No domains added</h4>
-            <p className="mt-1 text-[13px] text-[var(--text2)] max-w-[280px]">
-              Add a company domain above to start the verification process.
-            </p>
-          </div>
-        )}
-      </section>
-
-      {/* DNS Verification Overlay */}
       {verifyingDomain && <DnsVerificationOverlay domain={verifyingDomain} />}
 
       <Dialog open={dialogMode !== null} onOpenChange={(open) => { if (!open) closeDialog(); }}>
-        <DialogContent className="max-w-[640px]">
+        <DialogContent className="sm:max-w-[640px]">
           <DialogHeader>
-            <DialogTitle>{dialogMode === "edit" ? "Edit domain details" : "Domain details"}</DialogTitle>
-            <DialogDescription>
-              {selectedDomain?.domain ?? "Loading domain information"}
-            </DialogDescription>
+            <DialogTitle>{dialogMode === "edit" ? "Edit domain metadata" : "Domain details"}</DialogTitle>
+            <DialogDescription>{selectedDomain?.domain ?? "Loading domain information"}</DialogDescription>
           </DialogHeader>
 
           {isSelectedDomainLoading || !selectedDomain ? (
-            <div className="flex min-h-[160px] items-center justify-center">
-              <Loader2 className="size-5 animate-spin text-[var(--brand)]" />
+            <div className="flex min-h-[160px] flex-col gap-3">
+              <CardSkeleton />
             </div>
           ) : dialogMode === "edit" ? (
             <div className="grid gap-4">
               <Field label="Domain">
-                <input value={selectedDomain.domain} disabled className={inputClass} />
+                <input value={selectedDomain.domain} disabled readOnly className={`${inputClass} font-[family-name:var(--mono)] text-[12.5px]`} />
               </Field>
-              <Field label="Metadata (JSON)">
+              <Field label="Metadata (JSON)" hint="Stored alongside the domain record and returned by the API.">
                 <Textarea
                   rows={12}
                   value={metadataDraft}
-                  onChange={(e) => setMetadataDraft(e.target.value)}
-                  className="font-mono text-sm"
+                  onChange={(event) => setMetadataDraft(event.target.value)}
+                  className="font-[family-name:var(--mono)] text-[12.5px]"
                 />
               </Field>
             </div>
           ) : (
-            <div className="grid gap-3 text-[13px] text-[var(--text2)]">
-              <div className="rounded-[12px] border border-[var(--border)] bg-[var(--bg1)] p-4">
-                <div className="grid gap-2 sm:grid-cols-2">
-                  <div><span className="text-[var(--text3)]">Domain:</span> {selectedDomain.domain}</div>
-                  <div><span className="text-[var(--text3)]">Verified:</span> {selectedDomain.isVerified ? "Yes" : "No"}</div>
-                  <div><span className="text-[var(--text3)]">Primary:</span> {selectedDomain.isPrimary ? "Yes" : "No"}</div>
-                  <div><span className="text-[var(--text3)]">Auto-join:</span> {selectedDomain.autoJoinEnabled ? "Enabled" : "Disabled"}</div>
-                  <div><span className="text-[var(--text3)]">Created:</span> {new Date(selectedDomain.createdAt).toLocaleString()}</div>
-                  <div><span className="text-[var(--text3)]">Updated:</span> {new Date(selectedDomain.updatedAt).toLocaleString()}</div>
+            <div className="flex flex-col gap-4">
+              <dl className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2">
+                <div className="flex flex-col gap-1">
+                  <dt className="text-[11px] font-medium uppercase tracking-[0.1em] text-[var(--text3)]">Domain</dt>
+                  <dd className="font-[family-name:var(--mono)] text-[12.5px] text-[var(--text)]">{selectedDomain.domain}</dd>
                 </div>
-              </div>
+                <div className="flex flex-col gap-1">
+                  <dt className="text-[11px] font-medium uppercase tracking-[0.1em] text-[var(--text3)]">State</dt>
+                  <dd><StatusBadge status={selectedDomain.isVerified ? "verified" : "pending"} /></dd>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <dt className="text-[11px] font-medium uppercase tracking-[0.1em] text-[var(--text3)]">Primary</dt>
+                  <dd className="text-[13px] text-[var(--text)]">{selectedDomain.isPrimary ? "Yes" : "No"}</dd>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <dt className="text-[11px] font-medium uppercase tracking-[0.1em] text-[var(--text3)]">Auto-join</dt>
+                  <dd className="text-[13px] text-[var(--text)]">{selectedDomain.autoJoinEnabled ? "Enabled" : "Disabled"}</dd>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <dt className="text-[11px] font-medium uppercase tracking-[0.1em] text-[var(--text3)]">Created</dt>
+                  <dd className="text-[13px] text-[var(--text)]"><Timestamp value={selectedDomain.createdAt} /></dd>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <dt className="text-[11px] font-medium uppercase tracking-[0.1em] text-[var(--text3)]">Updated</dt>
+                  <dd className="text-[13px] text-[var(--text)]"><Timestamp value={selectedDomain.updatedAt} /></dd>
+                </div>
+              </dl>
               <Field label="Metadata">
-                <Textarea rows={12} value={safeJson(selectedDomain.metadata)} readOnly className="font-mono text-sm" />
+                <Textarea rows={10} value={safeJson(selectedDomain.metadata)} readOnly className="font-[family-name:var(--mono)] text-[12.5px]" />
               </Field>
             </div>
           )}
@@ -513,12 +600,37 @@ export default function DomainsPage() {
           <DialogFooter showCloseButton={dialogMode === "view"}>
             {dialogMode === "edit" && (
               <>
-                <Button variant="outline" onClick={closeDialog}>Cancel</Button>
-                <Button onClick={submitMetadataUpdate} disabled={action.isPending || isSelectedDomainLoading}>
+                <Button variant="secondary" onClick={closeDialog}>Cancel</Button>
+                <Button variant="primary" onClick={submitMetadataUpdate} disabled={action.isPending || isSelectedDomainLoading}>
                   Save changes
                 </Button>
               </>
             )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={deleteTarget !== null} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Remove domain</DialogTitle>
+            <DialogDescription>
+              SSO routing and auto-join stop working for this domain immediately. Removal requires a fresh multi-factor
+              check.
+            </DialogDescription>
+          </DialogHeader>
+          <p className="font-[family-name:var(--mono)] text-[13px] text-[var(--text)]">{deleteTarget?.domain}</p>
+          <DialogFooter>
+            <Button variant="secondary" onClick={() => setDeleteTarget(null)}>Cancel</Button>
+            <Button
+              variant="danger"
+              disabled={action.isPending}
+              onClick={() => {
+                if (deleteTarget) action.mutate({ type: "delete", id: deleteTarget.id });
+              }}
+            >
+              Remove domain
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

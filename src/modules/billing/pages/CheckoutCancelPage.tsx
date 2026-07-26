@@ -1,35 +1,39 @@
 import { useNavigate } from 'react-router';
-import { XCircle } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { CircleSlash } from 'lucide-react';
+
+import { AuthButton, AuthCard, AuthResult, Notice } from '@/shared/ui/pulse';
 
 export default function CheckoutCancelPage() {
   const navigate = useNavigate();
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-[var(--bg)] p-4">
-      <div className="w-full max-w-[440px] space-y-6 rounded-[10px] border border-border bg-[var(--bg1)] p-8 shadow-2xl text-center">
-        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[var(--red-bg)] text-[var(--red)]">
-          <XCircle size={32} />
-        </div>
-        
-        <div className="space-y-2">
-          <h1 className="text-2xl font-semibold tracking-tight text-[var(--text)]">
-            Checkout Cancelled
-          </h1>
-          <p className="text-[var(--text2)]">
-            Your payment process was cancelled. You have not been charged.
-          </p>
-        </div>
+    <div className="relative flex min-h-[100dvh] items-center justify-center overflow-hidden bg-[var(--bg)] p-4">
+      <div className="pulse-grid pulse-aurora pointer-events-none absolute inset-0" aria-hidden="true" />
 
-        <div className="flex gap-4">
-          <Button variant="ghost" onClick={() => navigate('/dashboard')} className="w-full">
-            Go to Dashboard
-          </Button>
-          <Button onClick={() => navigate('/settings/billing')} className="w-full">
-            Try Again
-          </Button>
-        </div>
-      </div>
+      <main className="pulse-rise relative z-10 w-full max-w-[440px]">
+        <AuthCard>
+          <AuthResult
+            icon={CircleSlash}
+            tone="amber"
+            title="Checkout cancelled"
+            description="You were not charged. Your organization stays on its current plan."
+            actions={
+              <>
+                <AuthButton type="button" onClick={() => navigate('/billing')}>
+                  Back to plan and subscription
+                </AuthButton>
+                <AuthButton type="button" variant="ghost" onClick={() => navigate('/dashboard')}>
+                  Go to dashboard
+                </AuthButton>
+              </>
+            }
+          >
+            <Notice tone="neutral">
+              Nothing changed on this organization. Start checkout again whenever you are ready.
+            </Notice>
+          </AuthResult>
+        </AuthCard>
+      </main>
     </div>
   );
 }

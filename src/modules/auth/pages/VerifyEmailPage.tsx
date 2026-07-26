@@ -1,8 +1,31 @@
 import { useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router';
-import { Button } from '@/components/ui/button';
+import { CheckCircle2, Loader2, MailCheck } from 'lucide-react';
 import { useVerifyEmail } from '../hooks/useVerifyEmail';
 import { useResendVerification } from '../hooks/useResendVerification';
+import {
+  AuthButton,
+  AuthCard,
+  AuthFooter,
+  AuthHeading,
+  AuthLink,
+  AuthResult,
+  IconChip,
+  Notice,
+} from '@/shared/ui/pulse';
+
+// One-off: a primary action that navigates instead of submitting. Mirrors
+// AuthButton's primary tone, which is button-only in the kit.
+function PrimaryLink({ to, children }: { to: string; children: React.ReactNode }) {
+  return (
+    <Link
+      to={to}
+      className="inline-flex h-11 w-full items-center justify-center rounded-[9px] bg-[var(--brand)] text-[13.5px] font-semibold text-[var(--brand-fg)] transition-colors hover:bg-[var(--brand-d)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg1)]"
+    >
+      {children}
+    </Link>
+  );
+}
 
 export default function VerifyEmailPage() {
   const [params] = useSearchParams();
@@ -19,77 +42,84 @@ export default function VerifyEmailPage() {
     }
   }, [token, status, verifyEmail]);
 
-  return (
-    <div className="w-full space-y-6">
-      <div className="text-center space-y-4">
-        <div>
-          <h2 className="text-xl font-semibold tracking-tight text-foreground">
-            {status === 'success' ? 'Email verified' : 'Verify your email'}
-          </h2>
-          <p className="text-sm text-[#999999] mt-1">
-            {status === 'success'
-              ? 'Your email has been confirmed. You can now sign in.'
-              : 'We sent a verification link to your email address.'}
-          </p>
-        </div>
+  if (status === 'success') {
+    return (
+      <div className="w-full">
+        <AuthResult
+          icon={CheckCircle2}
+          tone="green"
+          title="Email verified"
+          description="Your address is confirmed. Sign in to finish setting up your workspace."
+          actions={<PrimaryLink to="/auth/login">Sign in to your account</PrimaryLink>}
+        />
       </div>
+    );
+  }
 
-      <div className="rounded-xl border border-input bg-[#111111]/80 backdrop-blur-sm p-6 sm:p-8 space-y-4">
-        {status === 'success' ? (
-          <div className="space-y-4">
-            <div className="flex items-center gap-3 p-3 rounded-lg bg-[#34d399]/5 border border-[#34d399]/10 text-sm text-[#34d399]">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-              Email successfully verified.
-            </div>
-            <Link to="/auth/login">
-              <Button className="w-full h-10 bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-colors">
-                Sign in to your account
-              </Button>
-            </Link>
+  if (token && isVerifying) {
+    return (
+      <div className="w-full">
+        <AuthHeading
+          eyebrow="Email verification"
+          icon={MailCheck}
+          tone="ai"
+          title="Verifying your email"
+          description="Hold on while we confirm the link you opened."
+        />
+        <AuthCard>
+          <div className="flex items-center gap-3">
+            <IconChip icon={MailCheck} tone="ai" size="sm" />
+            <p className="flex items-center gap-2 text-[13px] text-[var(--text2)]" role="status" aria-live="polite">
+              <Loader2 className="size-3.5 animate-spin text-[var(--ai)]" aria-hidden="true" />
+              Checking the verification token…
+            </p>
           </div>
-        ) : (
-          <div className="space-y-4">
-            <div className="flex items-center gap-3 p-3 rounded-lg bg-[#6366f1]/5 border border-[#6366f1]/10 text-sm text-[#818cf8]">
-              {isVerifying ? (
-                 <span className="flex items-center gap-2">
-                   <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeDasharray="31.4" strokeLinecap="round" /></svg>
-                   Verifying your email...
-                 </span>
-              ) : (
-                <>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 7l-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
-                  Check your inbox and click the verification link.
-                </>
-              )}
-            </div>
-            {!isVerifying && (
-              <>
-                <p className="text-xs text-[#555555] text-center">
-                  Didn&apos;t receive the email? Check your spam folder or request a new link.
-                </p>
-                <Button 
-                  variant="outline" 
-                  onClick={() => {
-                    if (email) {
-                      resendEmail({ email });
-                    }
-                  }}
-                  disabled={isResending || !email}
-                  className="w-full h-10 border-input bg-transparent text-foreground hover:bg-[#262626]/50 transition-colors"
-                >
-                  {isResending ? 'Sending...' : email ? 'Resend Email' : 'Resend Email (Email required)'}
-                </Button>
-              </>
-            )}
+        </AuthCard>
+      </div>
+    );
+  }
+
+  return (
+    <div className="w-full">
+      <AuthHeading
+        eyebrow="Email verification"
+        icon={MailCheck}
+        title="Verify your email"
+        description="We sent a verification link to your inbox. Open it to activate your account."
+      />
+
+      <AuthCard>
+        {email && (
+          <div className="mb-4 rounded-[10px] border border-[var(--border)] bg-[var(--bg2)] px-3.5 py-3">
+            <p className="text-[10.5px] font-semibold uppercase tracking-[0.14em] text-[var(--text3)]">Sent to</p>
+            <p className="mt-0.5 truncate font-[family-name:var(--mono)] text-[12.5px] text-[var(--text)]">{email}</p>
           </div>
         )}
-      </div>
 
-      <div className="text-center text-sm text-[#555555]">
-        <Link to="/auth/login" className="hover:text-[#999999] transition-colors">
-          Back to sign in
-        </Link>
-      </div>
+        <Notice tone="blue">
+          Links expire after 24 hours. Check your spam folder if it hasn&apos;t arrived.
+        </Notice>
+
+        <div className="mt-4">
+          <AuthButton
+            type="button"
+            variant="ghost"
+            onClick={() => {
+              if (email) {
+                resendEmail({ email });
+              }
+            }}
+            disabled={!email}
+            pending={isResending}
+          >
+            {email ? 'Resend verification email' : 'Resend needs your email address'}
+          </AuthButton>
+        </div>
+      </AuthCard>
+
+      <AuthFooter>
+        <AuthLink to="/auth/login">Back to sign in</AuthLink>
+      </AuthFooter>
     </div>
   );
 }

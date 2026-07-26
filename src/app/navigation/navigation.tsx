@@ -40,6 +40,8 @@ import {
 
 export type NavStatus = "live" | "partial" | "coming-soon";
 
+
+
 export interface ModuleNavItem {
   label: string;
   path: string;
@@ -48,6 +50,7 @@ export interface ModuleNavItem {
   exact?: boolean;
   description: string;
   group?: string; // Added for flyout grouping
+  external?: boolean;
 }
 
 export interface MainNavItem extends ModuleNavItem {
@@ -198,27 +201,16 @@ export const mainNavigation: MainNavItem[] = [
     ],
   },
   {
-    label: "Connectors",
-    path: "/connectors",
-    icon: Cable,
-    status: "live",
-    description: "External integrations, webhooks, and communication channels.",
-    children: [
-      { label: 'Integrations', path: '/connectors/integrations', icon: Globe, status: "live", description: "Slack, Email, and other 3rd-party connectors.", group: "Connectors" },
-      { label: 'Webhooks', path: '/connectors/webhooks', icon: Webhook, status: "live", description: "Outgoing event notifications.", group: "Connectors" },
-      { label: 'Audit logs', path: '/connectors/audit', icon: Activity, status: "live", description: "Audit trail for all connectors.", group: "Connectors" },
-    ],
-  },
-  {
     label: "Developer",
     path: "/developer",
     icon: Terminal,
     status: "live",
-    description: "API keys, remote config, and SDK configurations.",
+    description: "API keys, connectors, delivery logs, and documentation.",
     children: [
       { label: 'API Keys', path: '/projects', icon: KeyRound, status: "live", description: "Select a project to manage its supported ingestion API keys.", group: "Developer" },
-      { label: 'Data retention policy', path: '/developer/data-retention', icon: Database, status: "live", description: "Configure how long data is retained.", group: "SDK Settings" },
-      { label: 'SDK configuration', path: '/developer/custom-settings', icon: Settings, status: "live", description: "Manage custom SDK settings.", group: "SDK Settings" },
+      { label: 'Connectors', path: '/connectors/integrations', icon: Cable, status: "live", description: "Slack, Teams, Webhooks, etc.", group: "Developer" },
+      { label: 'Delivery Logs', path: '/connectors/audit', icon: Activity, status: "live", description: "Audit trail for all connectors.", group: "Developer" },
+      { label: 'API Reference', path: 'https://docs.pulsiv.com', icon: FolderOpen, status: "live", description: "External API documentation.", external: true, group: "Developer" },
     ],
   },
 ];

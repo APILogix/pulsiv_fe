@@ -1,12 +1,32 @@
 import { useEffect } from 'react';
 import { Link, useSearchParams, Navigate } from 'react-router';
-import { Button } from '@/components/ui/button';
+import { CheckCircle2, Loader2, LockKeyhole, ShieldAlert } from 'lucide-react';
 import { useConfirmAccountUnlock } from '../hooks/useConfirmAccountUnlock';
+import {
+  AuthCard,
+  AuthFooter,
+  AuthHeading,
+  AuthLink,
+  AuthResult,
+  IconChip,
+} from '@/shared/ui/pulse';
+
+// One-off: a primary action that navigates instead of submitting.
+function PrimaryLink({ to, children }: { to: string; children: React.ReactNode }) {
+  return (
+    <Link
+      to={to}
+      className="inline-flex h-11 w-full items-center justify-center rounded-[9px] bg-[var(--brand)] text-[13.5px] font-semibold text-[var(--brand-fg)] transition-colors hover:bg-[var(--brand-d)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg1)]"
+    >
+      {children}
+    </Link>
+  );
+}
 
 export default function AccountUnlockConfirmPage() {
   const [params] = useSearchParams();
   const token = params.get('token');
-  const { mutate: confirmUnlock, isPending } = useConfirmAccountUnlock();
+  const { mutate: confirmUnlock, isPending, isError, isSuccess } = useConfirmAccountUnlock();
 
   useEffect(() => {
     if (token) {
@@ -18,41 +38,61 @@ export default function AccountUnlockConfirmPage() {
     return <Navigate to="/auth/login" replace />;
   }
 
+  if (isError) {
+    return (
+      <div className="w-full">
+        <AuthResult
+          icon={ShieldAlert}
+          tone="red"
+          title="Unlock link not accepted"
+          description="This link is invalid or has already expired. Request a fresh unlock link to try again."
+          actions={<PrimaryLink to="/auth/unlock">Request a new link</PrimaryLink>}
+        />
+
+        <AuthFooter>
+          <AuthLink to="/auth/login">Back to sign in</AuthLink>
+        </AuthFooter>
+      </div>
+    );
+  }
+
+  if (isSuccess) {
+    return (
+      <div className="w-full">
+        <AuthResult
+          icon={CheckCircle2}
+          tone="green"
+          title="Account unlocked"
+          description="The lock has been lifted. Sign in to pick up where you left off."
+          actions={<PrimaryLink to="/auth/login">Sign in to your account</PrimaryLink>}
+        />
+      </div>
+    );
+  }
+
   return (
-    <div className="w-full space-y-6">
-      <div className="text-center space-y-4">
-        <div>
-          <h2 className="text-xl font-semibold tracking-tight text-foreground">
-            {isPending ? 'Unlocking account...' : 'Account unlocked'}
-          </h2>
-          <p className="text-sm text-[#999999] mt-1">
-            {isPending ? 'Please wait while we unlock your account.' : 'Your account has been successfully unlocked. You can now sign in.'}
+    <div className="w-full">
+      <AuthHeading
+        eyebrow="Account defense"
+        icon={LockKeyhole}
+        tone="amber"
+        title="Unlocking your account"
+        description="We're validating the unlock link you opened. This only takes a moment."
+      />
+
+      <AuthCard>
+        <div className="flex items-center gap-3">
+          <IconChip icon={LockKeyhole} tone="amber" size="sm" />
+          <p className="flex items-center gap-2 text-[13px] text-[var(--text2)]" role="status" aria-live="polite">
+            <Loader2 className="size-3.5 animate-spin text-[var(--amber)]" aria-hidden="true" />
+            {isPending ? 'Verifying the unlock token…' : 'Preparing the unlock request…'}
           </p>
         </div>
-      </div>
+      </AuthCard>
 
-      <div className="rounded-xl border border-input bg-[#111111]/80 backdrop-blur-sm p-6 sm:p-8 space-y-4">
-        {isPending ? (
-          <div className="flex justify-center py-4">
-            <span className="flex items-center gap-2 text-[#999999] text-sm">
-              <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeDasharray="31.4" strokeLinecap="round" /></svg>
-              Unlocking...
-            </span>
-          </div>
-        ) : (
-          <>
-            <div className="flex items-center gap-3 p-3 rounded-lg bg-[#34d399]/5 border border-[#34d399]/10 text-sm text-[#34d399]">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-              Account unlocked successfully.
-            </div>
-            <Link to="/auth/login">
-              <Button className="w-full h-10 bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-colors">
-                Sign in to your account
-              </Button>
-            </Link>
-          </>
-        )}
-      </div>
+      <AuthFooter>
+        <AuthLink to="/auth/login">Back to sign in</AuthLink>
+      </AuthFooter>
     </div>
   );
 }

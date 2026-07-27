@@ -1,107 +1,150 @@
-import { useNavigate, useParams } from "react-router";
-import { PageHeader, FillPage, InfiniteTable, Button, StatusBadge } from "@/shared/observe";
-import { Plus, Edit2, Play, Pause, Trash, MoreHorizontal } from "lucide-react";
-import { toast } from "sonner";
-import { useAlertRoutes, useAlertRouteMutations } from "@/modules/projects/hooks/useAlertRoutes";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { useNavigate } from "react-router";
+import { Activity, CheckCircle2, GitBranch, Pencil, Plus, Route, Trash2 } from "lucide-react";
+import { useAlertRouteMutations, useAlertRoutes } from "@/modules/projects/hooks/useAlertRoutes";
+import { useCurrentProject } from "./ProjectShellPage";
+import { IconChip, Notice, Panel, Pill, SectionHeading, StatCard, Toggle } from "@/shared/ui/pulse";
+import { Table, Td, Timestamp, Tr } from "@/shared/observe";
+import { Button as UiButton } from "@/components/ui/button";
+import { apiErrorMessage } from "@/modules/projects/components/project-ui";
+
+// ── module-level constants (rules.md §1.2) ───────────────────
+
+const ROUTE_HEADERS = ["Route", "Targets", "Active", "Created", ""];
+
+interface AlertRouteRow {
+  id: string;
+  name: string;
+  isActive?: boolean;
+  is_active?: boolean;
+  targetCount?: number;
+  createdAt: string;
+}
+
+function isActiveOf(route: AlertRouteRow) {
+  return route.isActive ?? route.is_active ?? false;
+}
+
+// ── page ─────────────────────────────────────────────────────
 
 export default function ProjectAlertRoutesPage() {
   const navigate = useNavigate();
-  const { projectId } = useParams<{ projectId: string }>();
-  const { data: routes, isLoading } = useAlertRoutes(projectId!);
-  const { deleteRoute } = useAlertRouteMutations(projectId!);
+  const { projectId } = useCurrentProject();
+  const { data, isLoading, error } = useAlertRoutes(projectId);
+  const { deleteRoute, toggleRoute } = useAlertRouteMutations(projectId);
 
-  const columns = [
-    {
-      key: "name",
-      header: "Route Name",
-      width: "2fr",
-      cell: (r: any) => (
-        <button type="button" className="font-medium text-[var(--text)] cursor-pointer hover:underline text-left" onClick={() => navigate(`/projects/${projectId}/routes/${r.id}`)}>
-          {r.name}
-        </button>
-      ),
-    },
-    {
-      key: "status",
-      header: "Status",
-      width: "100px",
-      cell: (r: any) => <StatusBadge status={r.isActive ? "active" : "suspended"} />,
-    },
-    {
-      key: "targets",
-      header: "Targets",
-      width: "150px",
-      cell: (r: any) => `${r.targetCount} Connectors`,
-    },
-    {
-      key: "created",
-      header: "Created",
-      width: "150px",
-      cell: (r: any) => new Date(r.createdAt).toLocaleDateString(),
-    },
-    {
-      key: "actions",
-      header: "",
-      width: "60px",
-      align: "right" as const,
-      cell: (r: any) => (
-        <div className="flex justify-end" onClick={(e) => e.stopPropagation()}>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="h-8 w-8 p-0">
-                <span className="sr-only">Open menu</span>
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-[180px]">
-              <DropdownMenuItem onClick={() => toast.success("Route toggled")}>
-                {r.isActive ? <Pause className="mr-2 h-4 w-4" /> : <Play className="mr-2 h-4 w-4" />}
-                {r.isActive ? "Pause Route" : "Resume Route"}
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => navigate(`/projects/${projectId}/routes/${r.id}`)}>
-                <Edit2 className="mr-2 h-4 w-4" />
-                Edit Route
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={async () => {
-                  await deleteRoute.mutateAsync(r.id);
-                  toast.success("Route deleted");
-                }}
-                className="text-[var(--red)] focus:text-[var(--red)] focus:bg-[var(--red-bg)]"
-              >
-                <Trash className="mr-2 h-4 w-4" />
-                Delete Route
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      ),
-    },
-  ];
+  const routes = (data ?? []) as AlertRouteRow[];
+  const activeCount = routes.filter(isActiveOf).length;
+  const totalTargets = routes.reduce((sum, route) => sum + (route.targetCount ?? 0), 0);
 
   return (
-    <FillPage className="flex flex-col gap-6">
-      <PageHeader
-        title="Alert Routes"
-        description="Configure routing rules for project alerts."
+    <div className="flex flex-col gap-6">
+      <SectionHeading
+        title="Alert routes"
+        description="Condition-based routing: match an alert on severity, category, or environment, then fan it out to selected connectors."
         actions={
-          <Button variant="primary" onClick={() => navigate(`/projects/${projectId}/routes/new`)}>
-            <Plus className="size-4 mr-2" /> New Route
-          </Button>
+          <UiButton size="lg" onClick={() => navigate(`/projects/${projectId}/routes/new`)}>
+            <Plus className="mr-1.5 size-4" /> New route
+          </UiButton>
         }
       />
-      
-      <InfiniteTable
-        items={routes || []}
-        queryKey={["alertRoutes", projectId]}
-        columns={columns}
-        getKey={(r) => r.id}
-        loading={isLoading}
-        emptyMessage="No alert routes configured."
-        className="flex-1"
-      />
-    </FillPage>
+
+      <div className="grid grid-cols-2 gap-4 xl:grid-cols-3">
+        <StatCard label="Routes" value={routes.length} icon={Route} tone="brand" />
+        <StatCard label="Active" value={activeCount} icon={CheckCircle2} tone="green" />
+        <StatCard label="Connector targets" value={totalTargets} icon={GitBranch} tone="blue" />
+      </div>
+
+      {error && <Notice tone="red">{apiErrorMessage(error)}</Notice>}
+
+      <Panel bodyClassName="p-0">
+        {isLoading ? (
+          <div className="flex flex-col gap-2 p-5">
+            {[0, 1, 2].map((row) => (
+              <div key={row} className="h-10 animate-pulse rounded-[8px] bg-[var(--bg2)]" />
+            ))}
+          </div>
+        ) : routes.length === 0 ? (
+          <div className="flex flex-col items-center gap-3 py-12 text-center">
+            <IconChip icon={Route} size="lg" tone="brand" />
+            <p className="text-[13.5px] font-semibold text-[var(--text)]">No alert routes configured</p>
+            <p className="max-w-[48ch] text-[12.5px] text-[var(--text2)]">
+              Without a route, alerts fall back to the project's default channel. Add a route to send specific
+              categories to specific destinations.
+            </p>
+            <UiButton size="lg" onClick={() => navigate(`/projects/${projectId}/routes/new`)}>
+              <Plus className="mr-1.5 size-4" /> New route
+            </UiButton>
+          </div>
+        ) : (
+          <Table headers={ROUTE_HEADERS} maxHeight="32rem">
+            {routes.map((route) => (
+              <Tr key={route.id}>
+                <Td>
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/projects/${projectId}/routes/${route.id}`)}
+                    className="truncate text-left text-[13px] font-medium text-[var(--text)] hover:text-[var(--brand)] hover:underline"
+                  >
+                    {route.name}
+                  </button>
+                </Td>
+                <Td>
+                  <Pill tone="blue">
+                    {route.targetCount ?? 0} connector{(route.targetCount ?? 0) === 1 ? "" : "s"}
+                  </Pill>
+                </Td>
+                <Td>
+                  <Toggle
+                    checked={isActiveOf(route)}
+                    label={`Toggle ${route.name}`}
+                    disabled={toggleRoute.isPending}
+                    onChange={(next) => toggleRoute.mutate({ routeId: route.id, isActive: next })}
+                  />
+                </Td>
+                <Td>
+                  <Timestamp value={route.createdAt} />
+                </Td>
+                <Td className="text-right">
+                  <div className="flex items-center justify-end gap-1">
+                    <UiButton
+                      variant="ghost"
+                      size="icon-sm"
+                      aria-label={`Edit ${route.name}`}
+                      onClick={() => navigate(`/projects/${projectId}/routes/${route.id}`)}
+                    >
+                      <Pencil className="size-3.5" />
+                    </UiButton>
+                    <UiButton
+                      variant="ghost"
+                      size="icon-sm"
+                      aria-label={`Delete ${route.name}`}
+                      onClick={() => deleteRoute.mutate(route.id)}
+                      disabled={deleteRoute.isPending}
+                    >
+                      <Trash2 className="size-3.5 text-[var(--red)]" />
+                    </UiButton>
+                  </div>
+                </Td>
+              </Tr>
+            ))}
+          </Table>
+        )}
+      </Panel>
+
+      <Panel title="Routing order" icon={Activity}>
+        <p className="text-[12.5px] leading-relaxed text-[var(--text2)]">
+          Routes are evaluated per alert. Every matching active route delivers, so overlapping conditions produce
+          multiple notifications. Per-member severity floors and quiet hours are applied after routing — see{" "}
+          <button
+            type="button"
+            onClick={() => navigate(`/projects/${projectId}/preferences`)}
+            className="font-medium text-[var(--brand)] hover:underline"
+          >
+            My notifications
+          </button>
+          .
+        </p>
+      </Panel>
+    </div>
   );
 }

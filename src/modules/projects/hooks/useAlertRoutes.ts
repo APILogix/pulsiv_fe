@@ -44,11 +44,11 @@ export const useAlertRouteMutations = (projectId: string) => {
 
   return {
     createRoute: useMutation({
-      mutationFn: (payload: any) => apiClient.post(routeBase(orgId(), projectId), payload),
+      mutationFn: (payload: Record<string, unknown>) => apiClient.post(routeBase(orgId(), projectId), payload),
       onSuccess: () => queryClient.invalidateQueries({ queryKey: alertRouteKeys.lists(projectId) }),
     }),
     updateRoute: useMutation({
-      mutationFn: ({ routeId, payload }: { routeId: string; payload: any }) => 
+      mutationFn: ({ routeId, payload }: { routeId: string; payload: Record<string, unknown> }) => 
         apiClient.patch(`${routeBase(orgId(), projectId)}/${routeId}`, payload),
       onSuccess: (_, { routeId }) => {
         queryClient.invalidateQueries({ queryKey: alertRouteKeys.lists(projectId) });
@@ -58,6 +58,15 @@ export const useAlertRouteMutations = (projectId: string) => {
     deleteRoute: useMutation({
       mutationFn: (routeId: string) => apiClient.delete(`${routeBase(orgId(), projectId)}/${routeId}`),
       onSuccess: () => queryClient.invalidateQueries({ queryKey: alertRouteKeys.lists(projectId) }),
+    }),
+    // Backend expects the snake_case `is_active` flag on this endpoint.
+    toggleRoute: useMutation({
+      mutationFn: ({ routeId, isActive }: { routeId: string; isActive: boolean }) =>
+        apiClient.post(`${routeBase(orgId(), projectId)}/${routeId}/toggle`, { is_active: isActive }),
+      onSuccess: (_data, { routeId }) => {
+        queryClient.invalidateQueries({ queryKey: alertRouteKeys.lists(projectId) });
+        queryClient.invalidateQueries({ queryKey: alertRouteKeys.detail(projectId, routeId) });
+      },
     }),
   };
 };

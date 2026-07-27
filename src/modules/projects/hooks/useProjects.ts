@@ -1,180 +1,140 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { projectsApi } from "../api/projects.api";
-import { useOrgStore } from "@/modules/organizations/store/org.store";
+import type {
+  CreateProjectBody,
+  ListProjectsQuery,
+  UpdateProjectBody,
+  UpdateProjectSettingsBody,
+} from "../api/types";
+import { projectKeys, useProjectScope } from "./useProjectScope";
 
-export const projectQueryKeys = {
-  all: ["projects"] as const,
-  lists: () => [...projectQueryKeys.all, "list"] as const,
-  detail: (id: string) => [...projectQueryKeys.all, "detail", id] as const,
-  settings: (id: string) => [...projectQueryKeys.all, "settings", id] as const,
-  overview: (id: string) => [...projectQueryKeys.all, "overview", id] as const,
-  stats: (id: string) => [...projectQueryKeys.all, "stats", id] as const,
-  usage: (id: string) => [...projectQueryKeys.all, "usage", id] as const,
-  activity: (id: string) => [...projectQueryKeys.all, "activity", id] as const,
-  environments: (id: string) => [...projectQueryKeys.all, "environments", id] as const,
-  apiKeys: (id: string) => [...projectQueryKeys.all, "apiKeys", id] as const,
-  apiKeyUsage: (id: string, keyId: string) => [...projectQueryKeys.apiKeys(id), keyId, "usage"] as const,
-  members: (id: string) => [...projectQueryKeys.all, "members", id] as const,
-};
+type Lifecycle = "archive" | "unarchive" | "pause" | "resume" | "restore";
 
-// --- Queries ---
+// ── Queries ──────────────────────────────────────────────────
 
-export const useProjects = () => {
-  const activeOrgId = useOrgStore((state) => state.activeOrgId);
+export function useProjects(query: ListProjectsQuery = {}) {
+  const { activeOrgId } = useProjectScope();
   return useQuery({
-    queryKey: [...projectQueryKeys.lists(), activeOrgId],
-    queryFn: () => projectsApi.list(activeOrgId!),
+    queryKey: projectKeys.list(activeOrgId, query),
+    queryFn: () => projectsApi.list(activeOrgId!, query),
     enabled: !!activeOrgId,
+    staleTime: 30_000,
   });
-};
+}
 
-export const useProject = (projectId: string) => {
-  const activeOrgId = useOrgStore((state) => state.activeOrgId);
+export function useProject(projectId: string) {
+  const { activeOrgId } = useProjectScope();
   return useQuery({
-    queryKey: [...projectQueryKeys.detail(projectId), activeOrgId],
+    queryKey: projectKeys.detail(activeOrgId, projectId),
     queryFn: () => projectsApi.get(activeOrgId!, projectId),
     enabled: !!activeOrgId && !!projectId,
+    staleTime: 30_000,
   });
-};
+}
 
-
-export const useProjectSettings = (projectId: string) => {
-  const activeOrgId = useOrgStore((state) => state.activeOrgId);
+export function useProjectOverview(projectId: string) {
+  const { activeOrgId } = useProjectScope();
   return useQuery({
-    queryKey: [...projectQueryKeys.settings(projectId), activeOrgId],
+    queryKey: projectKeys.overview(activeOrgId, projectId),
+    queryFn: () => projectsApi.getOverview(activeOrgId!, projectId),
+    enabled: !!activeOrgId && !!projectId,
+    staleTime: 30_000,
+  });
+}
+
+export function useProjectStats(projectId: string) {
+  const { activeOrgId } = useProjectScope();
+  return useQuery({
+    queryKey: projectKeys.stats(activeOrgId, projectId),
+    queryFn: () => projectsApi.getStats(activeOrgId!, projectId),
+    enabled: !!activeOrgId && !!projectId,
+  });
+}
+
+export function useProjectUsageCounters(projectId: string) {
+  const { activeOrgId } = useProjectScope();
+  return useQuery({
+    queryKey: projectKeys.usageCounters(activeOrgId, projectId),
+    queryFn: () => projectsApi.getUsageCounters(activeOrgId!, projectId),
+    enabled: !!activeOrgId && !!projectId,
+  });
+}
+
+export function useProjectSettings(projectId: string) {
+  const { activeOrgId } = useProjectScope();
+  return useQuery({
+    queryKey: projectKeys.settings(activeOrgId, projectId),
     queryFn: () => projectsApi.getSettings(activeOrgId!, projectId),
     enabled: !!activeOrgId && !!projectId,
   });
-};
+}
 
-export const useProjectOverview = (projectId: string) => {
-  const activeOrgId = useOrgStore((state) => state.activeOrgId);
+export function useProjectActivity(
+  projectId: string,
+  query: { limit?: number; action?: string; cursor?: string } = {},
+) {
+  const { activeOrgId } = useProjectScope();
   return useQuery({
-    queryKey: [...projectQueryKeys.overview(projectId), activeOrgId],
-    queryFn: () => projectsApi.getOverview(activeOrgId!, projectId),
+    queryKey: projectKeys.activity(activeOrgId, projectId, query),
+    queryFn: () => projectsApi.getActivity(activeOrgId!, projectId, query),
     enabled: !!activeOrgId && !!projectId,
   });
-};
+}
 
-export const useProjectUsage = (projectId: string) => {
-  const activeOrgId = useOrgStore((state) => state.activeOrgId);
-  return useQuery({
-    queryKey: [...projectQueryKeys.usage(projectId), activeOrgId],
-    queryFn: () => projectsApi.getUsage(activeOrgId!, projectId),
-    enabled: !!activeOrgId && !!projectId,
-  });
-};
+// ── Mutations ────────────────────────────────────────────────
 
-export const useApiKeys = (projectId: string) => {
-  const activeOrgId = useOrgStore((state) => state.activeOrgId);
-  return useQuery({
-    queryKey: [...projectQueryKeys.apiKeys(projectId), activeOrgId],
-    queryFn: () => projectsApi.listApiKeys(activeOrgId!, projectId),
-    enabled: !!activeOrgId && !!projectId,
-  });
-};
-
-export const useProjectMembers = (projectId: string) => {
-  const activeOrgId = useOrgStore((state) => state.activeOrgId);
-  return useQuery({
-    queryKey: [...projectQueryKeys.members(projectId), activeOrgId],
-    queryFn: () => projectsApi.listMembers(activeOrgId!, projectId),
-    enabled: !!activeOrgId && !!projectId,
-  });
-};
-
-// --- Mutations ---
-export const useProjectMutations = () => {
+export function useProjectMutations(projectId?: string) {
   const queryClient = useQueryClient();
-  const activeOrgId = useOrgStore((state) => state.activeOrgId);
-  const orgId = () => {
-    if (!activeOrgId) throw new Error("No active organization selected");
-    return activeOrgId;
+  const { activeOrgId, requireOrgId } = useProjectScope();
+
+  const invalidateLists = () =>
+    queryClient.invalidateQueries({ queryKey: ["projects", "list"], exact: false });
+
+  const invalidateProject = (id: string) => {
+    queryClient.invalidateQueries({ queryKey: projectKeys.detail(activeOrgId, id) });
+    queryClient.invalidateQueries({ queryKey: projectKeys.overview(activeOrgId, id) });
+    queryClient.invalidateQueries({ queryKey: projectKeys.stats(activeOrgId, id) });
+    invalidateLists();
   };
 
   return {
     createProject: useMutation({
-      mutationFn: (data: any) => projectsApi.create(orgId(), data),
-      onSuccess: () => queryClient.invalidateQueries({ queryKey: projectQueryKeys.lists() }),
-    }),
-
-    updateSettings: useMutation({
-      mutationFn: ({ id, data }: { id: string; data: any }) => projectsApi.updateSettings(orgId(), id, data),
-      onSuccess: (_, { id }) => {
-        queryClient.invalidateQueries({ queryKey: projectQueryKeys.settings(id) });
-        queryClient.invalidateQueries({ queryKey: projectQueryKeys.overview(id) });
-      },
+      mutationFn: (payload: CreateProjectBody) => projectsApi.create(requireOrgId(), payload),
+      onSuccess: invalidateLists,
     }),
 
     updateProject: useMutation({
-      mutationFn: ({ id, data }: { id: string; data: any }) => projectsApi.update(orgId(), id, data),
-      onSuccess: (_, { id }) => {
-        queryClient.invalidateQueries({ queryKey: projectQueryKeys.lists() });
-        queryClient.invalidateQueries({ queryKey: projectQueryKeys.detail(id) });
-      },
+      mutationFn: ({ id, payload }: { id: string; payload: UpdateProjectBody }) =>
+        projectsApi.update(requireOrgId(), id, payload),
+      onSuccess: (_data, { id }) => invalidateProject(id),
     }),
+
     deleteProject: useMutation({
-      mutationFn: (id: string) => projectsApi.delete(orgId(), id),
-      onSuccess: (_, id) => {
-        queryClient.invalidateQueries({ queryKey: projectQueryKeys.lists() });
-        queryClient.removeQueries({ queryKey: projectQueryKeys.detail(id) });
+      mutationFn: (id: string) => projectsApi.remove(requireOrgId(), id),
+      onSuccess: (_data, id) => {
+        queryClient.removeQueries({ queryKey: projectKeys.detail(activeOrgId, id) });
+        invalidateLists();
       },
     }),
-    archiveProject: useMutation({
-      mutationFn: (id: string) => projectsApi.archive(orgId(), id),
-      onSuccess: (_, id) => queryClient.invalidateQueries({ queryKey: projectQueryKeys.detail(id) }),
+
+    /** archive | unarchive | pause | resume | restore */
+    transition: useMutation({
+      mutationFn: ({ id, action }: { id: string; action: Lifecycle }) =>
+        projectsApi.lifecycle(requireOrgId(), id, action),
+      onSuccess: (_data, { id }) => invalidateProject(id),
     }),
-    unarchiveProject: useMutation({
-      mutationFn: (id: string) => projectsApi.unarchive(orgId(), id),
-      onSuccess: (_, id) => queryClient.invalidateQueries({ queryKey: projectQueryKeys.detail(id) }),
-    }),
-    pauseProject: useMutation({
-      mutationFn: (id: string) => projectsApi.pause(orgId(), id),
-      onSuccess: (_, id) => queryClient.invalidateQueries({ queryKey: projectQueryKeys.detail(id) }),
-    }),
-    resumeProject: useMutation({
-      mutationFn: (id: string) => projectsApi.resume(orgId(), id),
-      onSuccess: (_, id) => queryClient.invalidateQueries({ queryKey: projectQueryKeys.detail(id) }),
-    }),
-    createEnvironment: useMutation({
-      mutationFn: ({ projectId, data }: { projectId: string; data: any }) => projectsApi.createEnvironment(orgId(), projectId, data),
-      onSuccess: (_, { projectId }) => queryClient.invalidateQueries({ queryKey: projectQueryKeys.environments(projectId) }),
-    }),
-    deleteEnvironment: useMutation({
-      mutationFn: ({ projectId, env }: { projectId: string; env: string }) => projectsApi.deleteEnvironment(orgId(), projectId, env as "development" | "production"),
-      onSuccess: (_, { projectId }) => queryClient.invalidateQueries({ queryKey: projectQueryKeys.environments(projectId) }),
-    }),
-    createApiKey: useMutation({
-      mutationFn: ({ projectId, data }: { projectId: string; data: any }) => projectsApi.createApiKey(orgId(), projectId, data),
-      onSuccess: (_, { projectId }) => queryClient.invalidateQueries({ queryKey: projectQueryKeys.apiKeys(projectId) }),
-    }),
-    rotateApiKey: useMutation({
-      mutationFn: ({ projectId, keyId }: { projectId: string; keyId: string }) => projectsApi.rotateApiKey(orgId(), projectId, keyId),
-      onSuccess: (_, { projectId }) => queryClient.invalidateQueries({ queryKey: projectQueryKeys.apiKeys(projectId) }),
-    }),
-    regenerateApiKey: useMutation({
-      mutationFn: ({ projectId, keyId }: { projectId: string; keyId: string }) => projectsApi.regenerateApiKey(orgId(), projectId, keyId),
-      onSuccess: (_, { projectId }) => queryClient.invalidateQueries({ queryKey: projectQueryKeys.apiKeys(projectId) }),
-    }),
-    revokeApiKey: useMutation({
-      mutationFn: ({ projectId, keyId }: { projectId: string; keyId: string }) => projectsApi.revokeApiKey(orgId(), projectId, keyId),
-      onSuccess: (_, { projectId }) => queryClient.invalidateQueries({ queryKey: projectQueryKeys.apiKeys(projectId) }),
-    }),
-    disableApiKey: useMutation({
-      mutationFn: ({ projectId, keyId }: { projectId: string; keyId: string }) => projectsApi.disableApiKey(orgId(), projectId, keyId),
-      onSuccess: (_, { projectId }) => queryClient.invalidateQueries({ queryKey: projectQueryKeys.apiKeys(projectId) }),
-    }),
-    addMember: useMutation({
-      mutationFn: ({ projectId, userId, role }: { projectId: string; userId: string; role: string }) => projectsApi.addMember(orgId(), projectId, { userId, role }),
-      onSuccess: (_, { projectId }) => {
-        queryClient.invalidateQueries({ queryKey: projectQueryKeys.members(projectId) });
+
+    updateSettings: useMutation({
+      mutationFn: ({ id, payload }: { id: string; payload: UpdateProjectSettingsBody }) =>
+        projectsApi.updateSettings(requireOrgId(), id, payload),
+      onSuccess: (_data, { id }) => {
+        queryClient.invalidateQueries({ queryKey: projectKeys.settings(activeOrgId, id) });
+        queryClient.invalidateQueries({ queryKey: projectKeys.overview(activeOrgId, id) });
       },
     }),
-    removeMember: useMutation({
-      mutationFn: ({ projectId, userId }: { projectId: string; userId: string }) => projectsApi.removeMember(orgId(), projectId, userId),
-      onSuccess: (_, { projectId }) => {
-        queryClient.invalidateQueries({ queryKey: projectQueryKeys.members(projectId) });
-      },
-    }),
+
+    invalidateProject: () => {
+      if (projectId) invalidateProject(projectId);
+    },
   };
-};
+}

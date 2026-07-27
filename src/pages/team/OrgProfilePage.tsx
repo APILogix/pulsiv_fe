@@ -272,7 +272,7 @@ export default function OrgProfilePage() {
   const recentSecurity = securityEvents?.data ?? [];
   const highSeverity = recentSecurity.filter((event) => event.severity === "high" || event.severity === "critical").length;
   const posture = postureScore(settings, !!activeSso);
-  const planLabel = billing?.plan.tier || billing?.plan.key || org.status;
+  const planLabel = billing?.plan?.tier || billing?.plan?.key || org.status;
   const isOwner = me?.role === "owner";
 
   const facts: HeroFact[] = [

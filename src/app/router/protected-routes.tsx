@@ -71,14 +71,20 @@ const ProjectOverviewPage = lazy(() => import("@/pages/workspaces/ProjectOvervie
 
 // Project Shell
 const ProjectShellPage = lazy(() => import("@/pages/workspaces/ProjectShellPage").then(m => ({ default: m.ProjectShellPage })));
+const ProjectAnalyticsPage = lazy(() => import("@/pages/workspaces/ProjectAnalyticsPage"));
 const ProjectUsagePage = lazy(() => import("@/pages/workspaces/ProjectUsagePage"));
 const ProjectSettingsPage = lazy(() => import("@/pages/workspaces/ProjectSettingsPage"));
+const ProjectEnvironmentsPage = lazy(() => import("@/pages/workspaces/ProjectEnvironmentsPage"));
 const ProjectApiKeysPage = lazy(() => import("@/pages/workspaces/ProjectApiKeysPage"));
 const ProjectActivityPage = lazy(() => import("@/pages/workspaces/ProjectActivityPage"));
 const RemoteConfigPage = lazy(() => import("@/pages/workspaces/RemoteConfigPage"));
 const ProjectAlertRoutesPage = lazy(() => import("@/pages/workspaces/ProjectAlertRoutesPage"));
+const ProjectThresholdsPage = lazy(() => import("@/pages/workspaces/ProjectThresholdsPage"));
+const ProjectAlertChannelsPage = lazy(() => import("@/pages/workspaces/ProjectAlertChannelsPage"));
+const ProjectConnectorsPage = lazy(() => import("@/pages/workspaces/ProjectConnectorsPage"));
+const ProjectInvitationsPage = lazy(() => import("@/pages/workspaces/ProjectInvitationsPage"));
+const ProjectRolesPage = lazy(() => import("@/pages/workspaces/ProjectRolesPage"));
 
-// Mock pages (kept imported but can be hidden from routing for now)
 const ProjectMembersPage = lazy(() => import("@/pages/workspaces/ProjectMembersPage"));
 const AlertRouteWizardPage = lazy(() => import("@/pages/workspaces/AlertRouteWizardPage"));
 const MemberAlertPreferencesPage = lazy(() => import("@/pages/workspaces/MemberAlertPreferencesPage"));
@@ -229,15 +235,31 @@ export const protectedRoutes: RouteObject[] = [
                 element: <ProjectShellPage />,
                 children: [
                   { index: true, element: <Navigate to="overview" replace /> },
+
+                  // Insight
                   { path: "overview", element: <ProjectOverviewPage /> },
+                  { path: "analytics", element: <ProjectAnalyticsPage /> },
                   { path: "usage", element: <ProjectUsagePage /> },
-                  { path: "api-keys", element: <ProjectApiKeysPage /> },
                   { path: "activity", element: <ProjectActivityPage /> },
+
+                  // Configure
+                  { path: "environments", element: <ProjectEnvironmentsPage /> },
+                  { path: "api-keys", element: <ProjectApiKeysPage /> },
                   { path: "remote-config", element: <RemoteConfigPage /> },
-                  { path: "routes", element: <ProjectAlertRoutesPage /> },
+                  { path: "settings", element: <Navigate to="general" replace /> },
                   { path: "settings/general", element: <ProjectSettingsPage /> },
+
+                  // Access
                   { path: "members", element: <ProjectMembersPage /> },
+                  { path: "invitations", element: <ProjectInvitationsPage /> },
+                  { path: "roles", element: <ProjectRolesPage /> },
+
+                  // Alerting
+                  { path: "alert-thresholds", element: <ProjectThresholdsPage /> },
+                  { path: "alert-channels", element: <ProjectAlertChannelsPage /> },
+                  { path: "routes", element: <ProjectAlertRoutesPage /> },
                   { path: "routes/:routeId", element: <AlertRouteWizardPage /> },
+                  { path: "connectors", element: <ProjectConnectorsPage /> },
                   { path: "preferences", element: <MemberAlertPreferencesPage /> },
                   { path: "deliveries", element: <AlertDeliveryLogsPage /> },
                   { path: "dlq", element: <DeadLetterQueuePage /> },

@@ -1,225 +1,500 @@
-import { useEffect, useState } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { Trash2 } from "lucide-react";
+import { useState } from "react";
 import { useNavigate } from "react-router";
+import {
+  AlertTriangle,
+  Archive,
+  Ban,
+  Database,
+  Eye,
+  FileText,
+  Loader2,
+  Pause,
+  Play,
+  RotateCcw,
+  Save,
+  ShieldAlert,
+  ShieldCheck,
+  Sliders,
+  Trash2,
+} from "lucide-react";
 import { useProjectMutations, useProjectSettings } from "@/modules/projects/hooks/useProjects";
-import { Button } from "@/shared/observe";
-import { Field, FillPage, PageHeader, SectionCard, inputClass, textareaClass } from "@/shared/observe";
-import { toast } from "sonner";
+import type { ProjectSettings, UpdateProjectSettingsBody } from "@/modules/projects/api/types";
 import { useCurrentProject } from "./ProjectShellPage";
+import {
+  Notice,
+  Panel,
+  Pill,
+  RowStack,
+  SectionHeading,
+  SplitShell,
+  fieldInputClass,
+  fieldTextareaClass,
+} from "@/shared/ui/pulse";
+import { Timestamp } from "@/shared/observe";
+import { Button as UiButton } from "@/components/ui/button";
+import {
+  ConfirmDialog,
+  DialogField,
+  TogglePanelRow,
+  apiErrorMessage,
+  optionalText,
+  parseList,
+} from "@/modules/projects/components/project-ui";
 
-const generalSchema = z.object({
-  name: z.string().min(1, "Project name is required"),
-  description: z.string().max(5000, "Keep it under 5000 characters").nullable().optional(),
-});
+// ── module-level constants (rules.md §1.2) ───────────────────
 
-const advancedSchema = z.object({
-  retentionDays: z.number().min(1).max(365),
-  maxEventsPerSecond: z.number().min(100),
-  autoArchive: z.boolean(),
-  alertingEnabled: z.boolean(),
-  ingestionEnabled: z.boolean(),
-});
+const PIPELINE_TOGGLES: Array<{
+  key: keyof ProjectSettings;
+  label: string;
+  description: string;
+}> = [
+  { key: "errorMonitoringEnabled", label: "Error monitoring", description: "Accept exception and crash events." },
+  {
+    key: "performanceMonitoringEnabled",
+    label: "Performance monitoring",
+    description: "Accept transactions and latency measurements.",
+  },
+  { key: "traceIngestionEnabled", label: "Trace ingestion", description: "Accept distributed traces and spans." },
+  { key: "logIngestionEnabled", label: "Log ingestion", description: "Accept structured log lines." },
+  { key: "metricIngestionEnabled", label: "Metric ingestion", description: "Accept custom and system metrics." },
+  { key: "profileIngestionEnabled", label: "Profile ingestion", description: "Accept CPU and memory profiles." },
+  {
+    key: "sessionReplayEnabled",
+    label: "Session replay",
+    description: "Accept replay recordings. Increases storage consumption substantially.",
+  },
+  {
+    key: "releaseTrackingEnabled",
+    label: "Release tracking",
+    description: "Associate events with releases and deploy markers.",
+  },
+];
 
-type GeneralFormData = z.infer<typeof generalSchema>;
-type AdvancedFormData = z.infer<typeof advancedSchema>;
+const PRIVACY_TOGGLES: Array<{ key: keyof ProjectSettings; label: string; description: string }> = [
+  {
+    key: "piiScrubbingEnabled",
+    label: "PII scrubbing",
+    description: "Strip emails, tokens, and card-like strings from payloads before storage.",
+  },
+  {
+    key: "ipCollectionEnabled",
+    label: "Store client IP addresses",
+    description: "Disable to drop IPs at ingest for stricter privacy compliance.",
+  },
+];
+
+const asMessage = apiErrorMessage;
+
+// ── page ─────────────────────────────────────────────────────
 
 export default function ProjectSettingsPage() {
   const navigate = useNavigate();
-  const { project, projectId } = useCurrentProject();
-  const { updateProject, deleteProject, updateSettings } = useProjectMutations();
-  
-  const { data: settings } = useProjectSettings(projectId);
+  const { projectId, project } = useCurrentProject();
+  const { data: settings, isLoading } = useProjectSettings(projectId);
+  const { updateProject, updateSettings, deleteProject, transition } = useProjectMutations(projectId);
 
-  const [savingGeneral, setSavingGeneral] = useState(false);
-  const [savingAdvanced, setSavingAdvanced] = useState(false);
-  const [deleting, setDeleting] = useState(false);
+  const [profileError, setProfileError] = useState<string | null>(null);
+  const [settingsError, setSettingsError] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleteAcknowledged, setDeleteAcknowledged] = useState("");
 
-  const {
-    register: registerGeneral,
-    handleSubmit: handleGeneralSubmit,
-    reset: resetGeneral,
-    formState: { errors: generalErrors },
-  } = useForm<GeneralFormData>({
-    resolver: zodResolver(generalSchema),
-    mode: "onBlur",
-    defaultValues: { name: "", description: "" },
-  });
+  const patchSettings = (payload: UpdateProjectSettingsBody) => {
+    setSettingsError(null);
+    updateSettings.mutate(
+      { id: projectId, payload: { ...payload, ...(settings ? { version: settings.version } : {}) } },
+      { onError: (mutationError) => setSettingsError(asMessage(mutationError)) },
+    );
+  };
 
-  const {
-    register: registerAdvanced,
-    handleSubmit: handleAdvancedSubmit,
-    reset: resetAdvanced,
-    formState: { errors: advancedErrors },
-  } = useForm<AdvancedFormData>({
-    resolver: zodResolver(advancedSchema),
-    mode: "onBlur",
-    defaultValues: {
-      retentionDays: 30,
-      maxEventsPerSecond: 1000,
-      autoArchive: false,
-      alertingEnabled: true,
-      ingestionEnabled: true,
-    },
-  });
-
-  useEffect(() => {
-    if (!project) return;
-    resetGeneral({
-      name: project.name,
-      description: project.description ?? "",
-    });
-  }, [project, resetGeneral]);
-
-  useEffect(() => {
-    if (!settings) return;
-    resetAdvanced({
-      retentionDays: settings.retentionDays,
-      maxEventsPerSecond: settings.maxEventsPerSecond,
-      autoArchive: settings.autoArchive,
-      alertingEnabled: settings.alertingEnabled,
-      ingestionEnabled: settings.ingestionEnabled,
-    });
-  }, [settings, resetAdvanced]);
-
-  const onGeneralSubmit = handleGeneralSubmit(async (data) => {
-    if (!project) return;
-    setSavingGeneral(true);
-    try {
-      await updateProject.mutateAsync({
-        id: project.id,
-        data: {
-          name: data.name,
-          description: data.description?.trim() ? data.description : null,
+  const handleProfileSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setProfileError(null);
+    const form = new FormData(event.currentTarget);
+    updateProject.mutate(
+      {
+        id: projectId,
+        payload: {
+          name: String(form.get("name") ?? "").trim(),
+          description: optionalText(form.get("description")) ?? null,
+          visibility: String(form.get("visibility") ?? project.visibility) as typeof project.visibility,
+          timezone: String(form.get("timezone") ?? project.timezone).trim(),
+          tags: parseList(form.get("tags")),
+          version: project.version,
         },
-      });
-      toast.success("General settings saved");
-      setSavingGeneral(false);
-    } catch {
-      toast.error("Failed to save general settings");
-      setSavingGeneral(false);
-    }
-  });
+      },
+      { onError: (mutationError) => setProfileError(asMessage(mutationError)) },
+    );
+  };
 
-  const onAdvancedSubmit = handleAdvancedSubmit(async (data) => {
-    if (!project) return;
-    setSavingAdvanced(true);
-    try {
-      await updateSettings.mutateAsync({
-        id: project.id,
-        data,
-      });
-      toast.success("Advanced settings saved");
-      setSavingAdvanced(false);
-    } catch {
-      toast.error("Failed to save advanced settings");
-      setSavingAdvanced(false);
-    }
-  });
+  const handleDomainsSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    patchSettings({
+      allowedDomains: parseList(form.get("allowedDomains")),
+      blockedDomains: parseList(form.get("blockedDomains")),
+    });
+  };
 
-  const handleDelete = async () => {
-    if (!project) return;
-    setDeleting(true);
-    try {
-      await deleteProject.mutateAsync(project.id);
-      toast.success("Project archived");
-      navigate("/projects");
-    } catch {
-      toast.error("Failed to archive project");
-      setDeleting(false);
-    }
+  const handleRetentionSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    const retention = Number(form.get("dataRetentionDays"));
+    const sampling = Number(form.get("samplingRate"));
+    patchSettings({
+      ...(Number.isFinite(retention) ? { dataRetentionDays: retention } : {}),
+      ...(Number.isFinite(sampling) ? { samplingRate: sampling / 100 } : {}),
+    });
   };
 
   return (
-    <FillPage className="flex flex-col gap-6">
-      <PageHeader
-        title="Project Settings"
-        description={`Manage project metadata and lifecycle controls.${project ? ` Default environment: ${project.defaultEnvironment}.` : ""}`}
+    <div className="flex flex-col gap-6">
+      <SectionHeading
+        title="Project settings"
+        description="Identity, ingestion policy, retention, and privacy controls. Changes are audit-logged."
       />
-      <div className="sidebar-scroll flex-1 overflow-y-auto">
-        <div className="flex max-w-[800px] flex-col gap-8 pb-12">
-          
-          <SectionCard title="General Settings">
-            <form onSubmit={onGeneralSubmit} className="flex flex-col gap-5">
-              <Field label="Name" error={generalErrors.name?.message}>
-                <input {...registerGeneral("name")} className={inputClass} />
-              </Field>
-              <Field label="Slug" hint="Slug is generated on creation and is not editable in the current schema.">
-                <input value={project?.slug ?? ""} className={inputClass} disabled readOnly />
-              </Field>
-              <Field label="Description" error={generalErrors.description?.message}>
-                <textarea {...registerGeneral("description")} className={textareaClass} rows={4} />
-              </Field>
-              <div className="pt-2">
-                <Button type="submit" variant="primary" disabled={savingGeneral}>
-                  {savingGeneral ? "Saving..." : "Save General Changes"}
-                </Button>
-              </div>
-            </form>
-          </SectionCard>
 
-          <SectionCard title="Advanced Settings">
-            <form onSubmit={onAdvancedSubmit} className="flex flex-col gap-5">
-              <div className="grid grid-cols-2 gap-4">
-                <Field label="Retention Days" error={advancedErrors.retentionDays?.message} hint="How long events are stored.">
-                  <input type="number" {...registerAdvanced("retentionDays", { valueAsNumber: true })} className={inputClass} />
-                </Field>
-                <Field label="Rate Limit (events/sec)" error={advancedErrors.maxEventsPerSecond?.message} hint="Max burst per second.">
-                  <input type="number" {...registerAdvanced("maxEventsPerSecond", { valueAsNumber: true })} className={inputClass} />
-                </Field>
-              </div>
-              
-              <div className="flex flex-col gap-3 mt-2">
-                <label className="flex items-center gap-3">
-                  <input type="checkbox" {...registerAdvanced("ingestionEnabled")} className="w-4 h-4 rounded border-[var(--border)] text-[var(--brand)] focus:ring-[var(--brand)]" />
-                  <div>
-                    <div className="text-[14px] font-medium text-[var(--text)]">Enable Ingestion</div>
-                    <div className="text-[12px] text-[var(--text2)]">Allow events and telemetry to be ingested</div>
-                  </div>
-                </label>
-                
-                <label className="flex items-center gap-3">
-                  <input type="checkbox" {...registerAdvanced("alertingEnabled")} className="w-4 h-4 rounded border-[var(--border)] text-[var(--brand)] focus:ring-[var(--brand)]" />
-                  <div>
-                    <div className="text-[14px] font-medium text-[var(--text)]">Enable Alerting</div>
-                    <div className="text-[12px] text-[var(--text2)]">Process alert rules and send notifications</div>
-                  </div>
-                </label>
-                
-                <label className="flex items-center gap-3">
-                  <input type="checkbox" {...registerAdvanced("autoArchive")} className="w-4 h-4 rounded border-[var(--border)] text-[var(--brand)] focus:ring-[var(--brand)]" />
-                  <div>
-                    <div className="text-[14px] font-medium text-[var(--text)]">Auto Archive</div>
-                    <div className="text-[12px] text-[var(--text2)]">Automatically archive this project if inactive for 90 days</div>
-                  </div>
-                </label>
-              </div>
+      {settingsError && (
+        <Notice tone="red" icon={AlertTriangle} title="Could not save settings">
+          {settingsError}
+        </Notice>
+      )}
 
-              <div className="pt-2">
-                <Button type="submit" variant="primary" disabled={savingAdvanced}>
-                  {savingAdvanced ? "Saving..." : "Save Advanced Settings"}
-                </Button>
+      <SplitShell
+        rail={
+          <>
+            <Panel title="Lifecycle" description="Control ingestion without deleting data." icon={Play}>
+              <div className="flex flex-col gap-2">
+                {project.status === "active" ? (
+                  <UiButton
+                    variant="outline"
+                    size="lg"
+                    className="justify-start"
+                    onClick={() => transition.mutate({ id: projectId, action: "pause" })}
+                    disabled={transition.isPending}
+                  >
+                    <Pause className="mr-2 size-4 text-[var(--amber)]" /> Pause ingestion
+                  </UiButton>
+                ) : (
+                  <UiButton
+                    variant="outline"
+                    size="lg"
+                    className="justify-start"
+                    onClick={() => transition.mutate({ id: projectId, action: "resume" })}
+                    disabled={transition.isPending}
+                  >
+                    <Play className="mr-2 size-4 text-[var(--green)]" /> Resume ingestion
+                  </UiButton>
+                )}
+                {project.status === "archived" ? (
+                  <UiButton
+                    variant="outline"
+                    size="lg"
+                    className="justify-start"
+                    onClick={() => transition.mutate({ id: projectId, action: "unarchive" })}
+                    disabled={transition.isPending}
+                  >
+                    <RotateCcw className="mr-2 size-4" /> Unarchive project
+                  </UiButton>
+                ) : (
+                  <UiButton
+                    variant="outline"
+                    size="lg"
+                    className="justify-start"
+                    onClick={() => transition.mutate({ id: projectId, action: "archive" })}
+                    disabled={transition.isPending}
+                  >
+                    <Archive className="mr-2 size-4" /> Archive project
+                  </UiButton>
+                )}
+                <UiButton
+                  variant="outline"
+                  size="lg"
+                  className="justify-start"
+                  onClick={() => transition.mutate({ id: projectId, action: "restore" })}
+                  disabled={transition.isPending}
+                >
+                  <RotateCcw className="mr-2 size-4" /> Restore soft-deleted
+                </UiButton>
               </div>
-            </form>
-          </SectionCard>
+              <p className="mt-3 text-[11.5px] leading-relaxed text-[var(--text3)]">
+                Current state: <Pill tone={project.status === "active" ? "green" : "amber"}>{project.status}</Pill>
+              </p>
+            </Panel>
 
-          <SectionCard title="Danger Zone" className="border border-[var(--red)]/20 bg-[var(--red)]/5">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-[14px] font-medium text-[var(--text)]">Archive this project</div>
-                <p className="mt-1 text-[13px] text-[var(--text2)]">
-                  This uses the project soft-delete flow and revokes active project API keys.
-                </p>
+            <Panel title="Metadata" icon={FileText}>
+              <dl className="flex flex-col gap-3 text-[12.5px]">
+                <div className="flex justify-between gap-3">
+                  <dt className="text-[var(--text3)]">Slug</dt>
+                  <dd className="font-[family-name:var(--mono)] text-[var(--text)]">{project.slug}</dd>
+                </div>
+                <div className="flex justify-between gap-3">
+                  <dt className="text-[var(--text3)]">Version</dt>
+                  <dd className="tabular-nums text-[var(--text)]">{project.version}</dd>
+                </div>
+                <div className="flex justify-between gap-3">
+                  <dt className="text-[var(--text3)]">Created</dt>
+                  <dd className="text-[var(--text)]">
+                    <Timestamp value={project.createdAt} />
+                  </dd>
+                </div>
+                <div className="flex justify-between gap-3">
+                  <dt className="text-[var(--text3)]">Updated</dt>
+                  <dd className="text-[var(--text)]">
+                    <Timestamp value={project.updatedAt} />
+                  </dd>
+                </div>
+                {settings && (
+                  <div className="flex justify-between gap-3">
+                    <dt className="text-[var(--text3)]">Settings version</dt>
+                    <dd className="tabular-nums text-[var(--text)]">{settings.version}</dd>
+                  </div>
+                )}
+              </dl>
+            </Panel>
+          </>
+        }
+      >
+        {/* ── identity ── */}
+        <form onSubmit={handleProfileSubmit}>
+          <Panel
+            title="Identity"
+            description="Name, description, visibility, and tags."
+            icon={Sliders}
+            footer={
+              <UiButton type="submit" size="lg" disabled={updateProject.isPending}>
+                {updateProject.isPending ? (
+                  <Loader2 className="mr-1.5 size-3.5 animate-spin" />
+                ) : (
+                  <Save className="mr-1.5 size-3.5" />
+                )}
+                Save identity
+              </UiButton>
+            }
+          >
+            <div className="flex flex-col gap-5">
+              <DialogField label="Name" name="name" required>
+                <input
+                  id="name"
+                  name="name"
+                  required
+                  defaultValue={project.name}
+                  maxLength={255}
+                  className={fieldInputClass}
+                />
+              </DialogField>
+              <DialogField label="Description" name="description">
+                <textarea
+                  id="description"
+                  name="description"
+                  defaultValue={project.description ?? ""}
+                  maxLength={5000}
+                  className={fieldTextareaClass}
+                />
+              </DialogField>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <DialogField label="Visibility" name="visibility">
+                  <select
+                    id="visibility"
+                    name="visibility"
+                    defaultValue={project.visibility}
+                    className={fieldInputClass}
+                  >
+                    <option value="private">Private</option>
+                    <option value="organization">Organization</option>
+                    <option value="public">Public</option>
+                  </select>
+                </DialogField>
+                <DialogField label="Timezone" name="timezone">
+                  <input
+                    id="timezone"
+                    name="timezone"
+                    defaultValue={project.timezone}
+                    maxLength={100}
+                    className={fieldInputClass}
+                  />
+                </DialogField>
               </div>
-              <Button variant="danger" onClick={handleDelete} disabled={deleting}>
-                <Trash2 className="mr-2 size-4" /> {deleting ? "Archiving..." : "Archive Project"}
-              </Button>
+              <DialogField label="Tags" name="tags" hint="Comma separated, up to 20.">
+                <input id="tags" name="tags" defaultValue={project.tags.join(", ")} className={fieldInputClass} />
+              </DialogField>
+              {profileError && (
+                <Notice tone="red" icon={AlertTriangle}>
+                  {profileError}
+                </Notice>
+              )}
             </div>
-          </SectionCard>
+          </Panel>
+        </form>
+
+        {/* ── retention + sampling ── */}
+        <form onSubmit={handleRetentionSubmit}>
+          <Panel
+            title="Retention & sampling"
+            description="How long telemetry is kept and what fraction of traffic is stored."
+            icon={Database}
+            footer={
+              <UiButton type="submit" size="lg" disabled={updateSettings.isPending || isLoading}>
+                {updateSettings.isPending ? (
+                  <Loader2 className="mr-1.5 size-3.5 animate-spin" />
+                ) : (
+                  <Save className="mr-1.5 size-3.5" />
+                )}
+                Save retention
+              </UiButton>
+            }
+          >
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+              <DialogField label="Retention (days)" name="dataRetentionDays" hint="1–3650 days.">
+                <input
+                  id="dataRetentionDays"
+                  name="dataRetentionDays"
+                  type="number"
+                  min={1}
+                  max={3650}
+                  defaultValue={settings?.dataRetentionDays ?? 30}
+                  className={fieldInputClass}
+                />
+              </DialogField>
+              <DialogField label="Sampling rate (%)" name="samplingRate" hint="100% stores every event.">
+                <input
+                  id="samplingRate"
+                  name="samplingRate"
+                  type="number"
+                  min={0}
+                  max={100}
+                  step={1}
+                  defaultValue={settings ? Math.round(settings.samplingRate * 100) : 100}
+                  className={fieldInputClass}
+                />
+              </DialogField>
+            </div>
+          </Panel>
+        </form>
+
+        {/* ── pipelines ── */}
+        <Panel
+          title="Ingestion pipelines"
+          description="Reject a telemetry type at the edge by turning it off here."
+          icon={ShieldCheck}
+          bodyClassName="p-0"
+        >
+          <RowStack>
+            {PIPELINE_TOGGLES.map((toggle) => (
+              <TogglePanelRow
+                key={String(toggle.key)}
+                label={toggle.label}
+                description={toggle.description}
+                checked={Boolean(settings?.[toggle.key])}
+                disabled={isLoading || updateSettings.isPending}
+                onChange={(next) => patchSettings({ [toggle.key]: next } as UpdateProjectSettingsBody)}
+              />
+            ))}
+          </RowStack>
+        </Panel>
+
+        {/* ── privacy ── */}
+        <Panel title="Privacy" description="Data minimisation controls applied at ingest." icon={Eye} bodyClassName="p-0">
+          <RowStack>
+            {PRIVACY_TOGGLES.map((toggle) => (
+              <TogglePanelRow
+                key={String(toggle.key)}
+                label={toggle.label}
+                description={toggle.description}
+                checked={Boolean(settings?.[toggle.key])}
+                disabled={isLoading || updateSettings.isPending}
+                onChange={(next) => patchSettings({ [toggle.key]: next } as UpdateProjectSettingsBody)}
+              />
+            ))}
+          </RowStack>
+        </Panel>
+
+        {/* ── domains ── */}
+        <form onSubmit={handleDomainsSubmit}>
+          <Panel
+            title="Domain rules"
+            description="Restrict which origins may submit browser telemetry to this project."
+            icon={Ban}
+            footer={
+              <UiButton type="submit" size="lg" disabled={updateSettings.isPending || isLoading}>
+                {updateSettings.isPending ? (
+                  <Loader2 className="mr-1.5 size-3.5 animate-spin" />
+                ) : (
+                  <Save className="mr-1.5 size-3.5" />
+                )}
+                Save domains
+              </UiButton>
+            }
+          >
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+              <DialogField label="Allowed domains" name="allowedDomains" hint="Comma or newline separated.">
+                <textarea
+                  id="allowedDomains"
+                  name="allowedDomains"
+                  defaultValue={settings?.allowedDomains.join(", ") ?? ""}
+                  placeholder="app.example.com"
+                  className={fieldTextareaClass}
+                />
+              </DialogField>
+              <DialogField label="Blocked domains" name="blockedDomains" hint="Takes precedence over the allowlist.">
+                <textarea
+                  id="blockedDomains"
+                  name="blockedDomains"
+                  defaultValue={settings?.blockedDomains.join(", ") ?? ""}
+                  placeholder="staging.example.com"
+                  className={fieldTextareaClass}
+                />
+              </DialogField>
+            </div>
+          </Panel>
+        </form>
+
+        {/* ── danger zone ── */}
+        <Panel
+          title="Danger zone"
+          description="Deleting a project soft-deletes it. Data is purged when retention expires."
+          icon={ShieldAlert}
+          danger
+          footer={
+            <UiButton variant="destructive" size="lg" onClick={() => setConfirmDelete(true)}>
+              <Trash2 className="mr-1.5 size-4" /> Delete project
+            </UiButton>
+          }
+        >
+          <Notice tone="red" icon={AlertTriangle} title="This stops ingestion immediately">
+            Every API key for this project is revoked and all alert routing stops. A soft-deleted project can be
+            recovered with <strong>Restore soft-deleted</strong> until retention expires.
+          </Notice>
+        </Panel>
+      </SplitShell>
+
+      <ConfirmDialog
+        open={confirmDelete}
+        onOpenChange={(open) => {
+          setConfirmDelete(open);
+          if (!open) setDeleteAcknowledged("");
+        }}
+        title={`Delete ${project.name}?`}
+        description="Type the project slug to confirm. This revokes all keys and stops ingestion."
+        confirmLabel="Delete project"
+        pending={deleteProject.isPending}
+        onConfirm={() => {
+          if (deleteAcknowledged !== project.slug) return;
+          deleteProject.mutate(projectId, { onSuccess: () => navigate("/projects") });
+        }}
+      >
+        <div className="flex flex-col gap-2 px-4">
+          <label htmlFor="confirm-slug" className="text-[12px] text-[var(--text2)]">
+            Type <code className="font-[family-name:var(--mono)] text-[var(--text)]">{project.slug}</code> to confirm
+          </label>
+          <input
+            id="confirm-slug"
+            value={deleteAcknowledged}
+            onChange={(event) => setDeleteAcknowledged(event.target.value)}
+            className={fieldInputClass}
+            autoComplete="off"
+          />
         </div>
-      </div>
-    </FillPage>
+      </ConfirmDialog>
+    </div>
   );
 }

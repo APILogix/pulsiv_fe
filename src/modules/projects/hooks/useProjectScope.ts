@@ -37,9 +37,6 @@ export const projectKeys = {
     ["projects", "api-keys", orgId, id, keyId, "usage"] as const,
   members: (orgId: string | null, id: string, query?: unknown) =>
     ["projects", "members", orgId, id, query] as const,
-  invitations: (orgId: string | null, id: string, query?: unknown) =>
-    ["projects", "invitations", orgId, id, query] as const,
-  roles: (orgId: string | null, id: string) => ["projects", "roles", orgId, id] as const,
   analytics: (orgId: string | null, id: string, kind: string, query?: unknown) =>
     ["projects", "analytics", orgId, id, kind, query] as const,
   connectors: (orgId: string | null, id: string) => ["projects", "connectors", orgId, id] as const,

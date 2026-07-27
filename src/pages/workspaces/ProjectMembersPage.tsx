@@ -50,7 +50,7 @@ const ROLE_FILTER_OPTIONS = [
   ...PROJECT_MEMBER_ROLES.map((role) => ({ value: role, label: role })),
 ];
 
-const MEMBER_TABLE_HEADERS = ["Member", "Role", "Status", "Added", ""];
+const MEMBER_TABLE_HEADERS = ["Member", "Role", "Status", "Joined", ""];
 
 function memberLabel(member: ProjectMember) {
   return member.user?.fullName || member.user?.email || member.userId;
@@ -96,7 +96,7 @@ export default function ProjectMembersPage() {
     <div className="flex flex-col gap-6">
       <SectionHeading
         title="Project members"
-        description="Project roles layer on top of organization membership. A user must belong to the organization before joining a project."
+        description="Members are added directly from the organization roster and gain access immediately. A user must belong to the organization before joining a project."
         actions={
           <div className="flex items-center gap-2">
             <UiButton variant="outline" size="lg" onClick={() => setTransferring(true)}>
@@ -166,7 +166,7 @@ export default function ProjectMembersPage() {
                   </Pill>
                 </Td>
                 <Td>
-                  <Timestamp value={member.addedAt} />
+                  <Timestamp value={member.joinedAt ?? member.createdAt} />
                 </Td>
                 <Td className="text-right">
                   <DropdownMenu>
@@ -218,7 +218,7 @@ export default function ProjectMembersPage() {
           if (!open) setFormError(null);
         }}
         title="Add project member"
-        description={`Grant an existing member of this organization access to ${project.name}.`}
+        description={`Grant an existing member of this organization immediate access to ${project.name}. No invitation is sent.`}
         submitLabel="Add member"
         pending={addMember.isPending}
         error={formError}
@@ -239,8 +239,8 @@ export default function ProjectMembersPage() {
       >
         {candidates.length === 0 ? (
           <Notice tone="amber" icon={UserPlus} title="No eligible organization members">
-            Every active organization member already belongs to this project. Invite someone new from the Invitations
-            tab.
+            Every active organization member already belongs to this project. Invite people to the organization first,
+            then add them here.
           </Notice>
         ) : (
           <DialogField label="Organization member" name="userId" required>

@@ -30,7 +30,6 @@ const ENTITY_ICON: Record<string, LucideIcon> = {
   project_api_key: KeyRound,
   environment: Layers,
   project_member: Users,
-  project_invitation: Users,
   project_role: ShieldAlert,
   alert_channel: Activity,
   alert_threshold: Activity,

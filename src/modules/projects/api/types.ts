@@ -352,13 +352,12 @@ export interface ListApiKeysQuery {
   offset?: number;
 }
 
-// ── Members, invitations, roles ──────────────────────────────
+// ── Members ──────────────────────────────────────────────────
 
 export const PROJECT_MEMBER_ROLES = ["owner", "admin", "developer", "qa", "viewer"] as const;
 export type ProjectMemberRole = (typeof PROJECT_MEMBER_ROLES)[number];
 
 export type ProjectMemberStatus = "pending" | "active" | "inactive" | "removed";
-export type InvitationStatus = "pending" | "accepted" | "declined" | "expired" | "cancelled";
 
 export interface ProjectMember {
   id: string;
@@ -366,45 +365,15 @@ export interface ProjectMember {
   userId: string;
   organizationId: string;
   role: ProjectMemberRole;
-  roleId: string | null;
   status: ProjectMemberStatus;
-  addedByUserId: string | null;
-  addedAt: string;
-  removedAt: string | null;
+  /** Actor who added this member directly. */
+  invitedByUserId: string | null;
+  invitedAt: string | null;
+  joinedAt: string | null;
+  createdByUserId: string | null;
   createdAt: string;
-  updatedAt: string;
+  updatedAt: string | null;
   user?: { id: string; email: string; fullName: string };
-}
-
-export interface ProjectInvitation {
-  id: string;
-  projectId: string;
-  organizationId: string;
-  email: string;
-  invitedByUserId: string;
-  invitedUserId: string | null;
-  role: ProjectMemberRole;
-  status: InvitationStatus;
-  expiresAt: string;
-  acceptedAt: string | null;
-  declinedAt: string | null;
-  cancelledAt: string | null;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface ProjectRole {
-  id: string;
-  projectId: string | null;
-  organizationId: string;
-  name: string;
-  slug: string;
-  description: string | null;
-  isSystem: boolean;
-  isDefault: boolean;
-  permissions: string[];
-  createdAt: string;
-  updatedAt: string;
 }
 
 // ── Usage analytics ──────────────────────────────────────────

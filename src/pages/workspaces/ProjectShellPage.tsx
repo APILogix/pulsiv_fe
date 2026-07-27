@@ -18,9 +18,9 @@ import {
   RotateCcw,
   ScrollText,
   Settings,
-  Shield,
+
   Sliders,
-  UserPlus,
+
   Users,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -80,8 +80,6 @@ const SHELL_TABS: ShellTab[] = [
   { label: "Settings", to: "settings/general", icon: Settings, group: "Configure" },
 
   { label: "Members", to: "members", icon: Users, group: "Access" },
-  { label: "Invitations", to: "invitations", icon: UserPlus, group: "Access" },
-  { label: "Roles", to: "roles", icon: Shield, group: "Access" },
 
   { label: "Thresholds", to: "alert-thresholds", icon: BellRing, group: "Alerting" },
   { label: "Channels", to: "alert-channels", icon: Bell, group: "Alerting" },

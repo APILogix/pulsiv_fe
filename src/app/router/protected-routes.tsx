@@ -82,8 +82,7 @@ const ProjectAlertRoutesPage = lazy(() => import("@/pages/workspaces/ProjectAler
 const ProjectThresholdsPage = lazy(() => import("@/pages/workspaces/ProjectThresholdsPage"));
 const ProjectAlertChannelsPage = lazy(() => import("@/pages/workspaces/ProjectAlertChannelsPage"));
 const ProjectConnectorsPage = lazy(() => import("@/pages/workspaces/ProjectConnectorsPage"));
-const ProjectInvitationsPage = lazy(() => import("@/pages/workspaces/ProjectInvitationsPage"));
-const ProjectRolesPage = lazy(() => import("@/pages/workspaces/ProjectRolesPage"));
+
 
 const ProjectMembersPage = lazy(() => import("@/pages/workspaces/ProjectMembersPage"));
 const AlertRouteWizardPage = lazy(() => import("@/pages/workspaces/AlertRouteWizardPage"));
@@ -109,13 +108,14 @@ const KeysTokensPage = lazy(() => import("@/pages/connections/KeysTokensPage"));
 const PipelinePage = lazy(() => import("@/pages/connections/PipelinePage"));
 const RateLimitsPage = lazy(() => import("@/pages/connections/RateLimitsPage"));
 
-// Insights
-const AiOverviewPage = lazy(() => import("@/pages/insights/AiOverviewPage"));
-const RootCausePage = lazy(() => import("@/pages/insights/RootCausePage"));
-const AnomaliesPage = lazy(() => import("@/pages/insights/AnomaliesPage"));
-const ReleaseImpactPage = lazy(() => import("@/pages/insights/ReleaseImpactPage"));
-const CostUsagePage = lazy(() => import("@/pages/insights/CostUsagePage"));
-const PoliciesPage = lazy(() => import("@/pages/insights/PoliciesPage"));
+// AI (enterprise)
+const AiOverviewPage = lazy(() => import("@/pages/ai/AiOverviewPage"));
+const AiAssistantPage = lazy(() => import("@/pages/ai/AiAssistantPage"));
+const AiInvestigationsPage = lazy(() => import("@/pages/ai/AiInvestigationsPage"));
+const AiReportsPage = lazy(() => import("@/pages/ai/AiReportsPage"));
+const AiUsagePage = lazy(() => import("@/pages/ai/AiUsagePage"));
+const AiKnowledgePage = lazy(() => import("@/pages/ai/AiKnowledgePage"));
+const AiSettingsPage = lazy(() => import("@/pages/ai/AiSettingsPage"));
 
 // Team
 const OrgProfilePage = lazy(() => import("@/pages/team/OrgProfilePage"));
@@ -251,8 +251,6 @@ export const protectedRoutes: RouteObject[] = [
 
                   // Access
                   { path: "members", element: <ProjectMembersPage /> },
-                  { path: "invitations", element: <ProjectInvitationsPage /> },
-                  { path: "roles", element: <ProjectRolesPage /> },
 
                   // Alerting
                   { path: "alert-thresholds", element: <ProjectThresholdsPage /> },
@@ -297,12 +295,13 @@ export const protectedRoutes: RouteObject[] = [
             path: "ai",
             element: <ModuleLayout />,
             children: [
-              { index: true, element: <AiOverviewPage /> },
-              { path: "root-cause", element: <RootCausePage /> },
-              { path: "anomalies", element: <AnomaliesPage /> },
-              { path: "release-impact", element: <ReleaseImpactPage /> },
-              { path: "costs", element: <CostUsagePage /> },
-              { path: "policies", element: <PoliciesPage /> },
+              { index: true, element: withMetricLoading(<AiOverviewPage />) },
+              { path: "assistant", element: withMetricLoading(<AiAssistantPage />) },
+              { path: "investigations", element: withMetricLoading(<AiInvestigationsPage />) },
+              { path: "reports", element: withMetricLoading(<AiReportsPage />) },
+              { path: "usage", element: withMetricLoading(<AiUsagePage />) },
+              { path: "knowledge", element: withMetricLoading(<AiKnowledgePage />) },
+              { path: "settings", element: withMetricLoading(<AiSettingsPage />) },
             ],
           },
           {

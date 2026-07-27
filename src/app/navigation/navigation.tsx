@@ -5,7 +5,6 @@ import {
   BadgeDollarSign,
   Bell,
   BellRing,
-  BrainCircuit,
   Building2,
   Cable,
   CreditCard,
@@ -36,6 +35,11 @@ import {
   Cpu,
   GitFork,
   Award,
+  MessagesSquare,
+  FlaskConical,
+  FileBarChart,
+  BookOpen,
+  SlidersHorizontal,
 } from "lucide-react";
 
 export type NavStatus = "live" | "partial" | "coming-soon";
@@ -155,18 +159,19 @@ export const mainNavigation: MainNavItem[] = [
     ],
   },
   {
-    label: "Insights",
+    label: "AI",
     path: "/ai",
     icon: Sparkles,
-    status: "coming-soon",
-    description: "AI-assisted triage, anomaly detection, and root cause analysis.",
+    status: "live",
+    description: "Enterprise AI: assistant, investigations, reports, usage, knowledge, and governance.",
     children: [
-      { label: "AI overview", path: "/ai", icon: Sparkles, status: "coming-soon", exact: true, description: "AI feature landing page and readiness." },
-      { label: "Root cause analysis", path: "/ai/root-cause", icon: BrainCircuit, status: "coming-soon", description: "Planned automated incident explanation." },
-      { label: "Anomaly detection", path: "/ai/anomalies", icon: Radar, status: "coming-soon", description: "Planned AI-driven anomaly summaries." },
-      { label: "Release impact", path: "/ai/release-impact", icon: Activity, status: "coming-soon", description: "Planned release-aware regression insights." },
-      { label: "Cost & usage", path: "/ai/costs", icon: BadgeDollarSign, status: "coming-soon", description: "Model spend tracking and governance." },
-      { label: "Prompt & policy controls", path: "/ai/policies", icon: Shield, status: "coming-soon", description: "Prompt governance and approval controls." },
+      { label: "AI Overview", path: "/ai", icon: Sparkles, status: "live", exact: true, description: "AI health, recommendations, credits, and recent activity." },
+      { label: "AI Assistant", path: "/ai/assistant", icon: MessagesSquare, status: "live", description: "Grounded monitoring chat with citations and follow-ups." },
+      { label: "AI Investigations", path: "/ai/investigations", icon: FlaskConical, status: "live", description: "Investigate errors, traces, logs, spans, stack traces, and deployments." },
+      { label: "AI Reports", path: "/ai/reports", icon: FileBarChart, status: "live", description: "Weekly, incident, and executive reports with history and export." },
+      { label: "AI Usage", path: "/ai/usage", icon: Gauge, status: "live", description: "AI credit consumption, limits, and cost visibility." },
+      { label: "AI Knowledge", path: "/ai/knowledge", icon: BookOpen, status: "live", description: "Runbooks and documentation the AI can cite." },
+      { label: "AI Settings", path: "/ai/settings", icon: SlidersHorizontal, status: "live", description: "Organization AI configuration, budgets, and limits." },
     ],
   },
   {

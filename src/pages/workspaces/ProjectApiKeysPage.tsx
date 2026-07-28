@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import {
   AlertTriangle,
   Ban,
@@ -131,7 +131,7 @@ function KeyUsageSheet({
 }) {
   const [range, setRange] = useState("7d");
   const [granularity, setGranularity] = useState<ApiKeyUsageGranularity>("daily");
-  const query = useMemo(() => {
+  const query = (() => {
     const end = new Date();
     end.setMinutes(0, 0, 0);
     return {
@@ -139,7 +139,7 @@ function KeyUsageSheet({
       from: new Date(end.getTime() - USAGE_RANGE_HOURS[range] * 60 * 60 * 1000).toISOString(),
       granularity,
     };
-  }, [granularity, range]);
+  })();
   const { data: usage, isLoading, error } = useApiKeyUsage(projectId, apiKey?.id, query);
   const { data: fresh } = useApiKey(projectId, apiKey?.id);
   const detail = fresh ?? apiKey;
@@ -258,12 +258,13 @@ export default function ProjectApiKeysPage() {
     return remaining > 0 && remaining <= 30 * 24 * 60 * 60 * 1000;
   }).length;
   const neverUsedCount = keys.filter((key) => key.status === "active" && !key.lastUsedAt).length;
-  const avgAgeDays = useMemo(() => {
+  const avgAgeDays = (() => {
     const activeKeys = keys.filter((k) => k.status === "active" && k.createdAt);
     if (activeKeys.length === 0) return 0;
-    const total = activeKeys.reduce((sum, k) => sum + (Date.now() - new Date(k.createdAt).getTime()), 0);
+    const now = Date.now();
+    const total = activeKeys.reduce((sum, k) => sum + (now - new Date(k.createdAt).getTime()), 0);
     return Math.round(total / activeKeys.length / (1000 * 60 * 60 * 24));
-  }, [keys]);
+  })();
 
   const environmentOptions = [
     { value: "", label: "All environments" },

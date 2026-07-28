@@ -125,8 +125,12 @@ export default function DeadLetterQueuePage() {
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem
                         onClick={async () => {
-                          await mutations.reprocessDeadLetter.mutateAsync(String(item.id));
-                          toast.success("Replayed successfully");
+                          try {
+                            await mutations.reprocessDeadLetter.mutateAsync(String(item.id));
+                            toast.success("Replayed successfully");
+                          } catch (err) {
+                            toast.error(apiErrorMessage(err));
+                          }
                         }}
                       >
                         <RotateCcw className="mr-2 size-4" /> Replay message
@@ -134,8 +138,12 @@ export default function DeadLetterQueuePage() {
                       <DropdownMenuSeparator />
                       <DropdownMenuItem
                         onClick={async () => {
-                          await mutations.discardDeadLetter.mutateAsync(String(item.id));
-                          toast.success("Message discarded");
+                          try {
+                            await mutations.discardDeadLetter.mutateAsync(String(item.id));
+                            toast.success("Message discarded");
+                          } catch (err) {
+                            toast.error(apiErrorMessage(err));
+                          }
                         }}
                         className="text-[var(--red)] focus:text-[var(--red)]"
                       >

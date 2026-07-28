@@ -256,6 +256,7 @@ export default function ProjectsPage() {
   const [sortBy, setSortBy] = useState<"created_at" | "updated_at" | "name">("created_at");
   const [search, setSearch] = useState("");
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Debounced search with 300ms delay
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -326,7 +327,7 @@ export default function ProjectsPage() {
             aria-hidden="true"
           />
           <input
-            id="project-search"
+            ref={searchInputRef}
             name="project-search"
             type="search"
             defaultValue={search}
@@ -377,9 +378,8 @@ export default function ProjectsPage() {
                 onClick={() => {
                   setSearch("");
                   setStatus("all");
-                  // Reset input value
-                  const input = document.getElementById("project-search") as HTMLInputElement | null;
-                  if (input) input.value = "";
+                  // Reset uncontrolled input value via ref
+                  if (searchInputRef.current) searchInputRef.current.value = "";
                 }}
               >
                 Clear filters

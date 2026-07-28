@@ -84,37 +84,9 @@ const SEVERITY_FILTER_OPTIONS = [
   ...SEVERITY_CHOICES.map((severity) => ({ value: severity, label: severity })),
 ];
 
-const THRESHOLD_HEADERS = ["Threshold", "Condition", "Gauge", "Window", "Severity", "State", "Last fired", ""];
+const THRESHOLD_HEADERS = ["Threshold", "Condition", "Window", "Severity", "State", "Last fired", ""];
 
 const asMessage = apiErrorMessage;
-
-// ── threshold gauge visual ───────────────────────────────────
-
-function ThresholdGauge({ threshold }: { threshold: ProjectAlertThreshold }) {
-  // Visual gauge showing a representation of where a metric might be relative to threshold
-  // Since we don't have live metric values, we show the threshold point on a bar
-  const severity = threshold.severity;
-  const accent = severity === "critical" || severity === "error" ? "var(--red)" : severity === "warning" ? "var(--amber)" : "var(--blue)";
-  const position = 65; // threshold marker position (percentage along bar)
-
-  return (
-    <div className="flex items-center gap-2">
-      <div className="relative h-1.5 w-16 overflow-hidden rounded-full bg-[var(--bg3)]">
-        <div
-          className="absolute inset-y-0 left-0 rounded-full opacity-40"
-          style={{ width: `${position}%`, background: accent }}
-        />
-        <div
-          className="absolute top-0 h-full w-0.5 rounded-full"
-          style={{ left: `${position}%`, background: accent }}
-        />
-      </div>
-      <span className="text-[10px] tabular-nums text-[var(--text3)]">
-        {threshold.comparisonOperator}{formatNumber(threshold.thresholdValue)}
-      </span>
-    </div>
-  );
-}
 
 // ── threshold form ───────────────────────────────────────────
 
@@ -474,9 +446,6 @@ export default function ProjectThresholdsPage() {
                   <code className="font-[family-name:var(--mono)] text-[12px] text-[var(--text2)]">
                     {threshold.comparisonOperator} {formatNumber(threshold.thresholdValue)} {threshold.thresholdUnit}
                   </code>
-                </Td>
-                <Td>
-                  <ThresholdGauge threshold={threshold} />
                 </Td>
                 <Td>
                   <span className="text-[12px] text-[var(--text2)]">

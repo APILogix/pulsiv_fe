@@ -84,9 +84,8 @@ function actionBgClass(action: string): string {
 }
 
 /** Group items by relative time period */
-function getTimeGroup(dateStr: string): string {
+function getTimeGroup(dateStr: string, now: Date): string {
   const date = new Date(dateStr);
-  const now = new Date();
   const diffMs = now.getTime() - date.getTime();
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
@@ -196,11 +195,12 @@ export default function ProjectActivityPage() {
 
   const sensitiveCount = items.filter((item) => item.isSensitive).length;
 
-  // Group items by time period
+  // Group items by time period — stabilize "now" per render cycle
+  const now = new Date();
   const groupedItems: Array<{ group: string; items: AuditLog[] }> = [];
   let currentGroup = "";
   for (const item of items) {
-    const group = getTimeGroup(item.createdAt);
+    const group = getTimeGroup(item.createdAt, now);
     if (group !== currentGroup) {
       groupedItems.push({ group, items: [item] });
       currentGroup = group;

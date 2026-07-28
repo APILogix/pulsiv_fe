@@ -18,7 +18,7 @@ export function AppLayout() {
 
 
   return (
-    <div className="flex min-h-screen w-full bg-[var(--bg)] font-sans relative z-0">
+    <div className="flex h-screen overflow-hidden w-full bg-[var(--bg)] font-sans relative z-0">
       <div className="fixed inset-0 pointer-events-none -z-10" style={{ background: 'radial-gradient(1200px 600px at 80% -10%, var(--brand-bg) 0%, transparent 60%), radial-gradient(900px 500px at -10% 110%, var(--ai-bg) 0%, transparent 55%)' }} />
       <AppDualSidebar />
       <main className="flex-1 min-w-0 flex flex-col h-screen overflow-hidden transition-opacity duration-200" id="main-content">

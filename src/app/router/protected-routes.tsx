@@ -2,8 +2,9 @@ import { lazy, type ReactNode } from "react";
 import { RouteObject, Navigate } from "react-router";
 import { RequireAuth } from "./route-guards";
 import { MetricRouteBoundary } from "@/shared/ui/loading";
+import NotFoundPage from "@/shared/components/NotFoundPage";
 
-const AppLayout = lazy(() => import("../layouts/AppLayout").then((m) => ({ default: m.AppLayout })));
+import { AuthenticatedAppLayout } from "../layouts/AuthenticatedAppLayout";
 
 const DashboardPage = lazy(() => import("@/modules/dashboard/index").then((m) => ({ default: m.DashboardPage ?? (() => null) })));
 const SecurityCenterPage = lazy(() => import("@/modules/auth/pages/SecurityCenterPage").then((m) => ({ default: m.default })));
@@ -71,14 +72,19 @@ const ProjectOverviewPage = lazy(() => import("@/pages/workspaces/ProjectOvervie
 
 // Project Shell
 const ProjectShellPage = lazy(() => import("@/pages/workspaces/ProjectShellPage").then(m => ({ default: m.ProjectShellPage })));
+const ProjectAnalyticsPage = lazy(() => import("@/pages/workspaces/ProjectAnalyticsPage"));
 const ProjectUsagePage = lazy(() => import("@/pages/workspaces/ProjectUsagePage"));
 const ProjectSettingsPage = lazy(() => import("@/pages/workspaces/ProjectSettingsPage"));
+const ProjectEnvironmentsPage = lazy(() => import("@/pages/workspaces/ProjectEnvironmentsPage"));
 const ProjectApiKeysPage = lazy(() => import("@/pages/workspaces/ProjectApiKeysPage"));
 const ProjectActivityPage = lazy(() => import("@/pages/workspaces/ProjectActivityPage"));
 const RemoteConfigPage = lazy(() => import("@/pages/workspaces/RemoteConfigPage"));
 const ProjectAlertRoutesPage = lazy(() => import("@/pages/workspaces/ProjectAlertRoutesPage"));
+const ProjectThresholdsPage = lazy(() => import("@/pages/workspaces/ProjectThresholdsPage"));
+const ProjectAlertChannelsPage = lazy(() => import("@/pages/workspaces/ProjectAlertChannelsPage"));
+const ProjectConnectorsPage = lazy(() => import("@/pages/workspaces/ProjectConnectorsPage"));
 
-// Mock pages (kept imported but can be hidden from routing for now)
+
 const ProjectMembersPage = lazy(() => import("@/pages/workspaces/ProjectMembersPage"));
 const AlertRouteWizardPage = lazy(() => import("@/pages/workspaces/AlertRouteWizardPage"));
 const MemberAlertPreferencesPage = lazy(() => import("@/pages/workspaces/MemberAlertPreferencesPage"));
@@ -95,6 +101,18 @@ const EscalationDetailPage = lazy(() => import("@/pages/act/EscalationDetailPage
 const ChannelsPage = lazy(() => import("@/pages/act/ChannelsPage"));
 const ChannelDetailPage = lazy(() => import("@/pages/act/ChannelDetailPage"));
 
+// Workflows (automation)
+const AutomationOverviewPage = lazy(() => import("@/pages/automation/AutomationOverviewPage"));
+const AutomationWorkflowsPage = lazy(() => import("@/pages/automation/AutomationWorkflowsPage"));
+const AutomationWorkflowDetailPage = lazy(() => import("@/pages/automation/AutomationWorkflowDetailPage"));
+const AutomationRunsPage = lazy(() => import("@/pages/automation/AutomationRunsPage"));
+const AutomationRunDetailPage = lazy(() => import("@/pages/automation/AutomationRunDetailPage"));
+const AutomationApprovalsPage = lazy(() => import("@/pages/automation/AutomationApprovalsPage"));
+const AutomationApprovalDetailPage = lazy(() => import("@/pages/automation/AutomationApprovalDetailPage"));
+const AutomationTemplatesPage = lazy(() => import("@/pages/automation/AutomationTemplatesPage"));
+const AutomationAuditPage = lazy(() => import("@/pages/automation/AutomationAuditPage"));
+const AutomationEventsPage = lazy(() => import("@/pages/automation/AutomationEventsPage"));
+
 // Connections
 const ConnectionsOverview = lazy(() => import("@/pages/connections/ConnectionsOverview"));
 const ApiEndpointsPage = lazy(() => import("@/pages/connections/ApiEndpointsPage"));
@@ -103,13 +121,14 @@ const KeysTokensPage = lazy(() => import("@/pages/connections/KeysTokensPage"));
 const PipelinePage = lazy(() => import("@/pages/connections/PipelinePage"));
 const RateLimitsPage = lazy(() => import("@/pages/connections/RateLimitsPage"));
 
-// Insights
-const AiOverviewPage = lazy(() => import("@/pages/insights/AiOverviewPage"));
-const RootCausePage = lazy(() => import("@/pages/insights/RootCausePage"));
-const AnomaliesPage = lazy(() => import("@/pages/insights/AnomaliesPage"));
-const ReleaseImpactPage = lazy(() => import("@/pages/insights/ReleaseImpactPage"));
-const CostUsagePage = lazy(() => import("@/pages/insights/CostUsagePage"));
-const PoliciesPage = lazy(() => import("@/pages/insights/PoliciesPage"));
+// AI (enterprise)
+const AiOverviewPage = lazy(() => import("@/pages/ai/AiOverviewPage"));
+const AiAssistantPage = lazy(() => import("@/pages/ai/AiAssistantPage"));
+const AiInvestigationsPage = lazy(() => import("@/pages/ai/AiInvestigationsPage"));
+const AiReportsPage = lazy(() => import("@/pages/ai/AiReportsPage"));
+const AiUsagePage = lazy(() => import("@/pages/ai/AiUsagePage"));
+const AiKnowledgePage = lazy(() => import("@/pages/ai/AiKnowledgePage"));
+const AiSettingsPage = lazy(() => import("@/pages/ai/AiSettingsPage"));
 
 // Team
 const OrgProfilePage = lazy(() => import("@/pages/team/OrgProfilePage"));
@@ -153,11 +172,8 @@ const withMetricLoading = (content: ReactNode) => (
 
 export const protectedRoutes: RouteObject[] = [
   {
-    element: <RequireAuth />,
+    element: <AuthenticatedAppLayout />,
     children: [
-      {
-        element: <AppLayout />,
-        children: [
           { index: true, element: withMetricLoading(<DashboardPage />) },
           { path: "dashboard", element: withMetricLoading(<DashboardPage />) },
 
@@ -229,18 +245,39 @@ export const protectedRoutes: RouteObject[] = [
                 element: <ProjectShellPage />,
                 children: [
                   { index: true, element: <Navigate to="overview" replace /> },
+
+                  // Monitor
                   { path: "overview", element: <ProjectOverviewPage /> },
+                  { path: "analytics", element: <ProjectAnalyticsPage /> },
                   { path: "usage", element: <ProjectUsagePage /> },
-                  { path: "api-keys", element: <ProjectApiKeysPage /> },
                   { path: "activity", element: <ProjectActivityPage /> },
+
+                  // Telemetry
+                  { path: "environments", element: <ProjectEnvironmentsPage /> },
+                  { path: "api-keys", element: <ProjectApiKeysPage /> },
                   { path: "remote-config", element: <RemoteConfigPage /> },
+
+                  // Alerting
+                  { path: "alert-rules", element: <ProjectThresholdsPage /> },
+                  { path: "alert-channels", element: <ProjectAlertChannelsPage /> },
                   { path: "routes", element: <ProjectAlertRoutesPage /> },
-                  { path: "settings/general", element: <ProjectSettingsPage /> },
-                  { path: "members", element: <ProjectMembersPage /> },
                   { path: "routes/:routeId", element: <AlertRouteWizardPage /> },
-                  { path: "preferences", element: <MemberAlertPreferencesPage /> },
+                  { path: "connectors", element: <ProjectConnectorsPage /> },
                   { path: "deliveries", element: <AlertDeliveryLogsPage /> },
                   { path: "dlq", element: <DeadLetterQueuePage /> },
+                  { path: "preferences", element: <MemberAlertPreferencesPage /> },
+
+                  // Team
+                  { path: "members", element: <ProjectMembersPage /> },
+
+                  // Configuration
+                  { path: "settings", element: <Navigate to="general" replace /> },
+                  { path: "settings/general", element: <ProjectSettingsPage /> },
+
+                  // Legacy paths — kept so existing links and bookmarks resolve.
+                  { path: "alert-thresholds", element: <Navigate to="../alert-rules" replace /> },
+                  { path: "thresholds", element: <Navigate to="../alert-rules" replace /> },
+                  { path: "channels", element: <Navigate to="../alert-channels" replace /> },
                 ]
               }
             ],
@@ -260,6 +297,22 @@ export const protectedRoutes: RouteObject[] = [
             ],
           },
           {
+            path: "automation",
+            element: <ModuleLayout />,
+            children: [
+              { index: true, element: <AutomationOverviewPage /> },
+              { path: "workflows", element: <AutomationWorkflowsPage /> },
+              { path: "workflows/:workflowId", element: <AutomationWorkflowDetailPage /> },
+              { path: "runs", element: <AutomationRunsPage /> },
+              { path: "runs/:runId", element: <AutomationRunDetailPage /> },
+              { path: "approvals", element: <AutomationApprovalsPage /> },
+              { path: "approvals/:approvalId", element: <AutomationApprovalDetailPage /> },
+              { path: "templates", element: <AutomationTemplatesPage /> },
+              { path: "events", element: <AutomationEventsPage /> },
+              { path: "audit", element: <AutomationAuditPage /> },
+            ],
+          },
+          {
             path: "ingestion",
             element: <ModuleLayout />,
             children: [
@@ -275,12 +328,13 @@ export const protectedRoutes: RouteObject[] = [
             path: "ai",
             element: <ModuleLayout />,
             children: [
-              { index: true, element: <AiOverviewPage /> },
-              { path: "root-cause", element: <RootCausePage /> },
-              { path: "anomalies", element: <AnomaliesPage /> },
-              { path: "release-impact", element: <ReleaseImpactPage /> },
-              { path: "costs", element: <CostUsagePage /> },
-              { path: "policies", element: <PoliciesPage /> },
+              { index: true, element: withMetricLoading(<AiOverviewPage />) },
+              { path: "assistant", element: withMetricLoading(<AiAssistantPage />) },
+              { path: "investigations", element: withMetricLoading(<AiInvestigationsPage />) },
+              { path: "reports", element: withMetricLoading(<AiReportsPage />) },
+              { path: "usage", element: withMetricLoading(<AiUsagePage />) },
+              { path: "knowledge", element: withMetricLoading(<AiKnowledgePage />) },
+              { path: "settings", element: withMetricLoading(<AiSettingsPage />) },
             ],
           },
           {
@@ -385,8 +439,14 @@ export const protectedRoutes: RouteObject[] = [
           { path: "auth/security", element: <SecurityCenterPage /> },
           { path: "auth/sessions", element: <SessionsPage /> },
           { path: "auth/step-up", element: <StepUpPage /> },
-        ],
-      },
+          // Catch-all for unmatched paths within the authenticated app shell
+          { path: "*", element: <NotFoundPage /> },
+    ],
+  },
+  // Routes that require auth but render OUTSIDE the main app shell (no sidebar)
+  {
+    element: <RequireAuth />,
+    children: [
       { path: "onboarding/organization", element: <CreateOrganizationPage /> },
       { path: "billing/checkout/success", element: <CheckoutSuccessPage /> },
       { path: "billing/checkout/cancel", element: <CheckoutCancelPage /> },

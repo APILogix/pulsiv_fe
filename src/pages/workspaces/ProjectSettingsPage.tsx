@@ -7,6 +7,7 @@ import {
   Database,
   Eye,
   FileText,
+  Globe,
   Loader2,
   Pause,
   Play,
@@ -162,6 +163,29 @@ export default function ProjectSettingsPage() {
       <SplitShell
         rail={
           <>
+            {/* Section navigation */}
+            <Panel title="Sections" bodyClassName="p-3">
+              <nav className="flex flex-col gap-0.5" aria-label="Settings sections">
+                {[
+                  { id: "identity", label: "Identity", icon: Sliders },
+                  { id: "retention", label: "Retention & sampling", icon: Database },
+                  { id: "pipelines", label: "Ingestion pipelines", icon: ShieldCheck },
+                  { id: "privacy", label: "Privacy", icon: Eye },
+                  { id: "domains", label: "Domain rules", icon: Globe },
+                  { id: "danger", label: "Danger zone", icon: ShieldAlert },
+                ].map((section) => (
+                  <a
+                    key={section.id}
+                    href={`#${section.id}`}
+                    className="flex items-center gap-2 rounded-[8px] px-3 py-2 text-[12.5px] font-medium text-[var(--text2)] transition-colors hover:bg-[var(--bg2)] hover:text-[var(--text)]"
+                  >
+                    <section.icon className="size-3.5 text-[var(--text3)]" />
+                    {section.label}
+                  </a>
+                ))}
+              </nav>
+            </Panel>
+
             <Panel title="Lifecycle" description="Control ingestion without deleting data." icon={Play}>
               <div className="flex flex-col gap-2">
                 {project.status === "active" ? (
@@ -255,7 +279,7 @@ export default function ProjectSettingsPage() {
         }
       >
         {/* ── identity ── */}
-        <form onSubmit={handleProfileSubmit}>
+        <form onSubmit={handleProfileSubmit} id="identity">
           <Panel
             title="Identity"
             description="Name, description, visibility, and tags."
@@ -327,7 +351,7 @@ export default function ProjectSettingsPage() {
         </form>
 
         {/* ── retention + sampling ── */}
-        <form onSubmit={handleRetentionSubmit}>
+        <form onSubmit={handleRetentionSubmit} id="retention">
           <Panel
             title="Retention & sampling"
             description="How long telemetry is kept and what fraction of traffic is stored."
@@ -377,7 +401,9 @@ export default function ProjectSettingsPage() {
           description="Reject a telemetry type at the edge by turning it off here."
           icon={ShieldCheck}
           bodyClassName="p-0"
+          className="scroll-mt-4"
         >
+          <div id="pipelines" />
           <RowStack>
             {PIPELINE_TOGGLES.map((toggle) => (
               <TogglePanelRow
@@ -394,6 +420,7 @@ export default function ProjectSettingsPage() {
 
         {/* ── privacy ── */}
         <Panel title="Privacy" description="Data minimisation controls applied at ingest." icon={Eye} bodyClassName="p-0">
+          <div id="privacy" />
           <RowStack>
             {PRIVACY_TOGGLES.map((toggle) => (
               <TogglePanelRow
@@ -409,7 +436,7 @@ export default function ProjectSettingsPage() {
         </Panel>
 
         {/* ── domains ── */}
-        <form onSubmit={handleDomainsSubmit}>
+        <form onSubmit={handleDomainsSubmit} id="domains">
           <Panel
             title="Domain rules"
             description="Restrict which origins may submit browser telemetry to this project."
@@ -449,22 +476,27 @@ export default function ProjectSettingsPage() {
         </form>
 
         {/* ── danger zone ── */}
-        <Panel
-          title="Danger zone"
-          description="Deleting a project soft-deletes it. Data is purged when retention expires."
-          icon={ShieldAlert}
-          danger
-          footer={
-            <UiButton variant="destructive" size="lg" onClick={() => setConfirmDelete(true)}>
-              <Trash2 className="mr-1.5 size-4" /> Delete project
-            </UiButton>
-          }
-        >
-          <Notice tone="red" icon={AlertTriangle} title="This stops ingestion immediately">
-            Every API key for this project is revoked and all alert routing stops. A soft-deleted project can be
-            recovered with <strong>Restore soft-deleted</strong> until retention expires.
-          </Notice>
-        </Panel>
+        <div id="danger" className="scroll-mt-4">
+          <Panel
+            title="Danger zone"
+            description="Deleting a project soft-deletes it. Data is purged when retention expires."
+            icon={ShieldAlert}
+            danger
+            className="relative overflow-hidden"
+            footer={
+              <UiButton variant="destructive" size="lg" onClick={() => setConfirmDelete(true)}>
+                <Trash2 className="mr-1.5 size-4" /> Delete project
+              </UiButton>
+            }
+          >
+            {/* Red gradient accent on the top */}
+            <span className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-[var(--red)] via-[var(--red)]/60 to-transparent" aria-hidden="true" />
+            <Notice tone="red" icon={AlertTriangle} title="This stops ingestion immediately">
+              Every API key for this project is revoked and all alert routing stops. A soft-deleted project can be
+              recovered with <strong>Restore soft-deleted</strong> until retention expires.
+            </Notice>
+          </Panel>
+        </div>
       </SplitShell>
 
       <ConfirmDialog

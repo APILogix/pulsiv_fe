@@ -2,7 +2,7 @@
   "id": "FEAT-004",
   "type": "feat",
   "description": "Redesign the Telemetry pages (Environments, API Keys, Remote Config) and Settings page with modern UI/UX patterns. Improve card layouts, table interactions, and form experiences for better usability.",
-  "status": "pending",
+  "status": "in_progress",
   "steps": [
     "Redesign src/pages/workspaces/ProjectEnvironmentsPage.tsx: (a) Improve the EnvironmentCard with a more visual color indicator (larger swatch or side accent bar). (b) Add an environment comparison view showing key metrics side by side. (c) Better action button placement with contextual visibility. (d) Add batch operations toolbar. (e) Improve the create dialog with real-time slug validation and color palette with preview.",
     "Redesign src/pages/workspaces/ProjectApiKeysPage.tsx: (a) Add a visual key health indicator showing usage patterns. (b) Improve the table with inline key prefix highlighting and better status indicators. (c) Redesign the key creation flow with better environment selector (visual cards instead of dropdown). (d) Add a key security score or health indicator based on age, usage, and rotation status. (e) Improve the usage sheet with better chart interactions and summary cards. (f) Add copy-to-clipboard with better feedback animation.",

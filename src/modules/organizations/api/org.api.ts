@@ -139,8 +139,8 @@ export const orgApi = {
   
   // Security / Audit
   listSecurityEvents: (orgId: string, params?: { cursor?: string; limit?: number; severity?: string; eventType?: string }) => apiClient.get(`/organizations/${orgId}/security-events`, { params }).then(r => r.data as t.CursorPaginatedResponse<t.SecurityEvent>),
-  listAuditLogs: (orgId: string, params?: { cursor?: string; limit?: number; action?: string; entityType?: string; actorUserId?: string }) => apiClient.get(`/organizations/${orgId}/audit-logs`, { params }).then(r => r.data as t.CursorPaginatedResponse<t.AuditLog>),
-  exportAuditLogs: (orgId: string, params?: { action?: string; entityType?: string; actorUserId?: string }) => apiClient.get(`/organizations/${orgId}/audit-logs/export`, { params }).then(r => r.data.data as t.AuditLog[]),
+  listAuditLogs: (orgId: string, params?: { cursor?: string; limit?: number; action?: string; entityType?: string; actorUserId?: string; projectId?: string }) => apiClient.get(`/organizations/${orgId}/audit-logs`, { params }).then(r => r.data as t.CursorPaginatedResponse<t.AuditLog>),
+  exportAuditLogs: (orgId: string, params?: { action?: string; entityType?: string; actorUserId?: string; projectId?: string }) => apiClient.get(`/organizations/${orgId}/audit-logs/export`, { params }).then(r => r.data.data as t.AuditLog[]),
   
 
   // SDK Configs

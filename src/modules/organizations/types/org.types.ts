@@ -192,7 +192,11 @@ export interface AuditLog {
   entityType: string;
   entityId: string | null;
   entityName: string | null;
+  projectId: string | null;
+  changedFields: string[] | null;
   status: string;
+  isSensitive: boolean;
+  metadata: Record<string, unknown>;
   createdAt: string;
 }
 

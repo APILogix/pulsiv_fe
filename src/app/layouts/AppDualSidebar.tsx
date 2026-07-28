@@ -1,16 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router';
-import {
-  Activity,
-  Cable,
-  ChevronRight,
-  FileText,
-  KeyRound,
-  LayoutDashboard,
-  LineChart,
-  Settings,
-  Users,
-} from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 import clsx from 'clsx';
 
 import {
@@ -18,42 +8,29 @@ import {
   type MainNavItem,
   type ModuleNavItem,
 } from '@/app/navigation/navigation';
+import {
+  ActiveProjectNav,
+  WorkspaceProjectList,
+  activeProjectIdFromPath,
+} from '@/modules/projects/components/ActiveProjectNav';
 import { useOrganizations } from '@/modules/organizations/hooks/useOrganizations';
 import { useSidebarStore } from '@/stores/sidebarStore';
 
 import { PrimaryRail } from './PrimaryRail';
 
+/**
+ * Children shown in the global flyout for a rail item.
+ *
+ * Project pages are deliberately NOT injected here. Inside a project, the
+ * project sidebar (`modules/projects/components/ProjectSidebar`) is the single
+ * navigation surface; duplicating its rows in the global flyout is what made
+ * the shell feel cluttered and let the two lists drift out of sync.
+ */
 function getDynamicChildren(
   item: MainNavItem | null,
-  pathname: string,
+  _pathname: string,
 ): ModuleNavItem[] {
-  let children = item?.children || [];
-
-  if (item?.label === 'Workspaces') {
-    const projectMatch = pathname.match(/^\/projects\/([a-zA-Z0-9_-]+)(?:\/|$)/);
-    if (projectMatch) {
-      const possibleId = projectMatch[1];
-      if (
-        possibleId !== 'overview' &&
-        possibleId !== 'usage' &&
-        possibleId !== 'new'
-      ) {
-        children = [
-          ...children,
-          { label: 'Overview', path: `/projects/${possibleId}/overview`, icon: LayoutDashboard, status: 'live', description: '', group: 'Active Project' },
-          { label: 'Usage', path: `/projects/${possibleId}/usage`, icon: LineChart, status: 'live', description: '', group: 'Active Project' },
-          { label: 'API Keys', path: `/projects/${possibleId}/api-keys`, icon: KeyRound, status: 'live', description: '', group: 'Active Project' },
-          { label: 'Activity', path: `/projects/${possibleId}/activity`, icon: Activity, status: 'live', description: '', group: 'Active Project' },
-          { label: 'Remote Config', path: `/projects/${possibleId}/remote-config`, icon: Cable, status: 'live', description: '', group: 'Active Project' },
-          { label: 'Alert Routes', path: `/projects/${possibleId}/routes`, icon: FileText, status: 'live', description: '', group: 'Active Project' },
-          { label: 'Members', path: `/projects/${possibleId}/members`, icon: Users, status: 'live', description: '', group: 'Active Project' },
-          { label: 'General Settings', path: `/projects/${possibleId}/settings/general`, icon: Settings, status: 'live', description: '', group: 'Active Project' },
-        ];
-      }
-    }
-  }
-
-  return children;
+  return item?.children ?? [];
 }
 
 export function AppDualSidebar() {
@@ -64,6 +41,10 @@ export function AppDualSidebar() {
     location.pathname.startsWith('/account/') ||
     location.pathname === '/settings' ||
     location.pathname.startsWith('/settings/');
+
+  // Project pages live inside this flyout as an "Active project" section —
+  // there is no third sidebar.
+  const activeProjectId = activeProjectIdFromPath(location.pathname);
 
   const derivedActive = accountRoute
     ? null
@@ -216,93 +197,112 @@ export function AppDualSidebar() {
           </div>
         </div>
 
-        <div className="grow overflow-y-auto p-2 sidebar-scroll">
-          {navItemsToRender.length > 0 ? (
-            <div className="category-view active">
-              {Object.entries(
-                navItemsToRender.reduce(
-                  (acc, child) => {
-                    const groupName = child.group || activeRailItem?.label || 'Navigation';
-                    if (!acc[groupName]) acc[groupName] = [];
-                    acc[groupName].push(child);
-                    return acc;
-                  },
-                  {} as Record<string, ModuleNavItem[]>,
-                ),
-              ).map(([groupName, items]) => (
-                <div key={groupName} className="nav-group mb-1">
-                  <button
-                    type="button"
-                    className={clsx(
-                      'w-full flex items-center justify-between px-3 py-2 rounded-md cursor-pointer text-[13.5px] font-medium transition-colors hover:bg-[var(--bg2)] hover:text-[var(--text)]',
-                      expandedGroups[groupName]
-                        ? 'text-[var(--text)]'
-                        : 'text-[var(--text2)]',
-                    )}
-                    onClick={() => toggleGroup(groupName)}
-                    aria-expanded={expandedGroups[groupName] ?? false}
-                  >
-                    <div className="flex items-center gap-2.5">{groupName}</div>
-                    <ChevronRight
-                      size={14}
+        <div className="grow flex flex-col min-h-0">
+          <div
+            className={clsx(
+              'p-2',
+              activeRailItem?.label !== 'Workspaces'
+                ? 'grow overflow-y-auto sidebar-scroll'
+                : 'shrink-0 pb-0',
+            )}
+          >
+            {navItemsToRender.length > 0 ? (
+              <div className="category-view active">
+                {Object.entries(
+                  navItemsToRender.reduce(
+                    (acc, child) => {
+                      const groupName = child.group || activeRailItem?.label || 'Navigation';
+                      if (!acc[groupName]) acc[groupName] = [];
+                      acc[groupName].push(child);
+                      return acc;
+                    },
+                    {} as Record<string, ModuleNavItem[]>,
+                  ),
+                ).map(([groupName, items]) => (
+                  <div key={groupName} className="nav-group mb-1">
+                    <button
+                      type="button"
                       className={clsx(
-                        'transition-transform duration-200',
-                        expandedGroups[groupName] && 'rotate-90',
+                        'w-full flex items-center justify-between px-3 py-2 rounded-md cursor-pointer text-[13.5px] font-medium transition-colors hover:bg-[var(--bg2)] hover:text-[var(--text)]',
+                        expandedGroups[groupName]
+                          ? 'text-[var(--text)]'
+                          : 'text-[var(--text2)]',
                       )}
-                    />
-                  </button>
-                  <div
-                    className={clsx(
-                      'nav-group-children pl-3',
-                      expandedGroups[groupName] && 'open',
-                    )}
-                  >
-                    {items.map((child) => {
-                      const isChildActive = child.exact
-                        ? location.pathname === child.path
-                        : location.pathname === child.path ||
-                          location.pathname.startsWith(`${child.path}/`);
+                      onClick={() => toggleGroup(groupName)}
+                      aria-expanded={expandedGroups[groupName] ?? false}
+                    >
+                      <div className="flex items-center gap-2.5">{groupName}</div>
+                      <ChevronRight
+                        size={14}
+                        className={clsx(
+                          'transition-transform duration-200',
+                          expandedGroups[groupName] && 'rotate-90',
+                        )}
+                      />
+                    </button>
+                    <div
+                      className={clsx(
+                        'nav-group-children pl-3',
+                        expandedGroups[groupName] && 'open',
+                      )}
+                    >
+                      {items.map((child) => {
+                        const isChildActive = child.exact
+                          ? location.pathname === child.path
+                          : location.pathname === child.path ||
+                            location.pathname.startsWith(`${child.path}/`);
 
-                      if (child.external) {
+                        if (child.external) {
+                          return (
+                            <a
+                              key={child.path}
+                              href={child.path}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className={clsx(
+                                'flex items-center py-2 px-3 pl-6 my-0.5 rounded-md cursor-pointer text-[13px] no-underline relative',
+                                'text-[var(--text3)] hover:text-[var(--text2)] hover:bg-[var(--bg2)]',
+                              )}
+                            >
+                              <div className="absolute left-2 top-0 bottom-0 w-[1px] bg-[var(--border)]" />
+                              {child.label}
+                            </a>
+                          );
+                        }
+
                         return (
-                          <a
+                          <Link
                             key={child.path}
-                            href={child.path}
-                            target="_blank"
-                            rel="noopener noreferrer"
+                            to={child.path}
                             className={clsx(
                               'flex items-center py-2 px-3 pl-6 my-0.5 rounded-md cursor-pointer text-[13px] no-underline relative',
-                              'text-[var(--text3)] hover:text-[var(--text2)] hover:bg-[var(--bg2)]',
+                              isChildActive
+                                ? 'text-[var(--brand)] font-medium bg-[var(--bg2)]'
+                                : 'text-[var(--text3)] hover:text-[var(--text2)] hover:bg-[var(--bg2)]',
                             )}
                           >
                             <div className="absolute left-2 top-0 bottom-0 w-[1px] bg-[var(--border)]" />
                             {child.label}
-                          </a>
+                          </Link>
                         );
-                      }
-
-                      return (
-                        <Link
-                          key={child.path}
-                          to={child.path}
-                          className={clsx(
-                            'flex items-center py-2 px-3 pl-6 my-0.5 rounded-md cursor-pointer text-[13px] no-underline relative',
-                            isChildActive
-                              ? 'text-[var(--brand)] font-medium bg-[var(--bg2)]'
-                              : 'text-[var(--text3)] hover:text-[var(--text2)] hover:bg-[var(--bg2)]',
-                          )}
-                        >
-                          <div className="absolute left-2 top-0 bottom-0 w-[1px] bg-[var(--border)]" />
-                          {child.label}
-                        </Link>
-                      );
-                    })}
+                      })}
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
+            ) : (
+              <div className="p-4 text-[13px] text-[var(--text2)] text-center mt-4" />
+            )}
+          </div>
+
+          {activeRailItem?.label === 'Workspaces' && (
+            <div className="grow overflow-y-auto p-2 pt-0 sidebar-scroll">
+              {activeProjectId ? (
+                <ActiveProjectNav projectId={activeProjectId} />
+              ) : (
+                <WorkspaceProjectList />
+              )}
             </div>
-          ) : (
-            <div className="p-4 text-[13px] text-[var(--text2)] text-center mt-4" />
           )}
         </div>
 

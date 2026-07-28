@@ -6,13 +6,17 @@
  */
 import { apiClient } from "@/infrastructure/api-client/axios";
 import { projectPath } from "./projects.api";
-import type { EnvironmentBody, ProjectEnvironment } from "./types";
+import type { CreateEnvironmentBody, EnvironmentBody, ProjectEnvironment } from "./types";
 
 const envBase = (orgId: string, projectId: string) => `${projectPath(orgId, projectId)}/environments`;
 
 export const environmentsApi = {
-  list: async (orgId: string, projectId: string): Promise<ProjectEnvironment[]> => {
-    const { data } = await apiClient.get(envBase(orgId, projectId));
+  list: async (
+    orgId: string,
+    projectId: string,
+    options: { includeDeleted?: boolean } = {},
+  ): Promise<ProjectEnvironment[]> => {
+    const { data } = await apiClient.get(envBase(orgId, projectId), { params: options });
     return data.data ?? [];
   },
 
@@ -24,7 +28,7 @@ export const environmentsApi = {
   create: async (
     orgId: string,
     projectId: string,
-    payload: EnvironmentBody & { name: string },
+    payload: CreateEnvironmentBody,
   ): Promise<ProjectEnvironment> => {
     const { data } = await apiClient.post(envBase(orgId, projectId), payload);
     return data.data;
@@ -42,5 +46,20 @@ export const environmentsApi = {
 
   remove: async (orgId: string, projectId: string, environmentId: string): Promise<void> => {
     await apiClient.delete(`${envBase(orgId, projectId)}/${environmentId}`);
+  },
+
+  restore: async (orgId: string, projectId: string, environmentId: string): Promise<ProjectEnvironment> => {
+    const { data } = await apiClient.post(`${envBase(orgId, projectId)}/${environmentId}/restore`);
+    return data.data;
+  },
+
+  setDefault: async (orgId: string, projectId: string, environmentId: string): Promise<ProjectEnvironment> => {
+    const { data } = await apiClient.post(`${envBase(orgId, projectId)}/${environmentId}/set-default`);
+    return data.data;
+  },
+
+  deactivate: async (orgId: string, projectId: string, environmentId: string): Promise<ProjectEnvironment> => {
+    const { data } = await apiClient.post(`${envBase(orgId, projectId)}/${environmentId}/deactivate`);
+    return data.data;
   },
 };

@@ -2,8 +2,9 @@ import { lazy, type ReactNode } from "react";
 import { RouteObject, Navigate } from "react-router";
 import { RequireAuth } from "./route-guards";
 import { MetricRouteBoundary } from "@/shared/ui/loading";
+import NotFoundPage from "@/shared/components/NotFoundPage";
 
-const AppLayout = lazy(() => import("../layouts/AppLayout").then((m) => ({ default: m.AppLayout })));
+const AuthenticatedAppLayout = lazy(() => import("../layouts/AuthenticatedAppLayout").then((m) => ({ default: m.AuthenticatedAppLayout })));
 
 const DashboardPage = lazy(() => import("@/modules/dashboard/index").then((m) => ({ default: m.DashboardPage ?? (() => null) })));
 const SecurityCenterPage = lazy(() => import("@/modules/auth/pages/SecurityCenterPage").then((m) => ({ default: m.default })));
@@ -100,6 +101,18 @@ const EscalationDetailPage = lazy(() => import("@/pages/act/EscalationDetailPage
 const ChannelsPage = lazy(() => import("@/pages/act/ChannelsPage"));
 const ChannelDetailPage = lazy(() => import("@/pages/act/ChannelDetailPage"));
 
+// Workflows (automation)
+const AutomationOverviewPage = lazy(() => import("@/pages/automation/AutomationOverviewPage"));
+const AutomationWorkflowsPage = lazy(() => import("@/pages/automation/AutomationWorkflowsPage"));
+const AutomationWorkflowDetailPage = lazy(() => import("@/pages/automation/AutomationWorkflowDetailPage"));
+const AutomationRunsPage = lazy(() => import("@/pages/automation/AutomationRunsPage"));
+const AutomationRunDetailPage = lazy(() => import("@/pages/automation/AutomationRunDetailPage"));
+const AutomationApprovalsPage = lazy(() => import("@/pages/automation/AutomationApprovalsPage"));
+const AutomationApprovalDetailPage = lazy(() => import("@/pages/automation/AutomationApprovalDetailPage"));
+const AutomationTemplatesPage = lazy(() => import("@/pages/automation/AutomationTemplatesPage"));
+const AutomationAuditPage = lazy(() => import("@/pages/automation/AutomationAuditPage"));
+const AutomationEventsPage = lazy(() => import("@/pages/automation/AutomationEventsPage"));
+
 // Connections
 const ConnectionsOverview = lazy(() => import("@/pages/connections/ConnectionsOverview"));
 const ApiEndpointsPage = lazy(() => import("@/pages/connections/ApiEndpointsPage"));
@@ -159,11 +172,8 @@ const withMetricLoading = (content: ReactNode) => (
 
 export const protectedRoutes: RouteObject[] = [
   {
-    element: <RequireAuth />,
+    element: <AuthenticatedAppLayout />,
     children: [
-      {
-        element: <AppLayout />,
-        children: [
           { index: true, element: withMetricLoading(<DashboardPage />) },
           { path: "dashboard", element: withMetricLoading(<DashboardPage />) },
 
@@ -236,31 +246,38 @@ export const protectedRoutes: RouteObject[] = [
                 children: [
                   { index: true, element: <Navigate to="overview" replace /> },
 
-                  // Insight
+                  // Monitor
                   { path: "overview", element: <ProjectOverviewPage /> },
                   { path: "analytics", element: <ProjectAnalyticsPage /> },
                   { path: "usage", element: <ProjectUsagePage /> },
                   { path: "activity", element: <ProjectActivityPage /> },
 
-                  // Configure
+                  // Telemetry
                   { path: "environments", element: <ProjectEnvironmentsPage /> },
                   { path: "api-keys", element: <ProjectApiKeysPage /> },
                   { path: "remote-config", element: <RemoteConfigPage /> },
-                  { path: "settings", element: <Navigate to="general" replace /> },
-                  { path: "settings/general", element: <ProjectSettingsPage /> },
-
-                  // Access
-                  { path: "members", element: <ProjectMembersPage /> },
 
                   // Alerting
-                  { path: "alert-thresholds", element: <ProjectThresholdsPage /> },
+                  { path: "alert-rules", element: <ProjectThresholdsPage /> },
                   { path: "alert-channels", element: <ProjectAlertChannelsPage /> },
                   { path: "routes", element: <ProjectAlertRoutesPage /> },
                   { path: "routes/:routeId", element: <AlertRouteWizardPage /> },
                   { path: "connectors", element: <ProjectConnectorsPage /> },
-                  { path: "preferences", element: <MemberAlertPreferencesPage /> },
                   { path: "deliveries", element: <AlertDeliveryLogsPage /> },
                   { path: "dlq", element: <DeadLetterQueuePage /> },
+                  { path: "preferences", element: <MemberAlertPreferencesPage /> },
+
+                  // Team
+                  { path: "members", element: <ProjectMembersPage /> },
+
+                  // Configuration
+                  { path: "settings", element: <Navigate to="general" replace /> },
+                  { path: "settings/general", element: <ProjectSettingsPage /> },
+
+                  // Legacy paths — kept so existing links and bookmarks resolve.
+                  { path: "alert-thresholds", element: <Navigate to="../alert-rules" replace /> },
+                  { path: "thresholds", element: <Navigate to="../alert-rules" replace /> },
+                  { path: "channels", element: <Navigate to="../alert-channels" replace /> },
                 ]
               }
             ],
@@ -277,6 +294,22 @@ export const protectedRoutes: RouteObject[] = [
               { path: "escalations/:policyId", element: <EscalationDetailPage /> },
               { path: "channels", element: <ChannelsPage /> },
               { path: "channels/:channelId", element: <ChannelDetailPage /> },
+            ],
+          },
+          {
+            path: "automation",
+            element: <ModuleLayout />,
+            children: [
+              { index: true, element: <AutomationOverviewPage /> },
+              { path: "workflows", element: <AutomationWorkflowsPage /> },
+              { path: "workflows/:workflowId", element: <AutomationWorkflowDetailPage /> },
+              { path: "runs", element: <AutomationRunsPage /> },
+              { path: "runs/:runId", element: <AutomationRunDetailPage /> },
+              { path: "approvals", element: <AutomationApprovalsPage /> },
+              { path: "approvals/:approvalId", element: <AutomationApprovalDetailPage /> },
+              { path: "templates", element: <AutomationTemplatesPage /> },
+              { path: "events", element: <AutomationEventsPage /> },
+              { path: "audit", element: <AutomationAuditPage /> },
             ],
           },
           {
@@ -406,8 +439,14 @@ export const protectedRoutes: RouteObject[] = [
           { path: "auth/security", element: <SecurityCenterPage /> },
           { path: "auth/sessions", element: <SessionsPage /> },
           { path: "auth/step-up", element: <StepUpPage /> },
-        ],
-      },
+          // Catch-all for unmatched paths within the authenticated app shell
+          { path: "*", element: <NotFoundPage /> },
+    ],
+  },
+  // Routes that require auth but render OUTSIDE the main app shell (no sidebar)
+  {
+    element: <RequireAuth />,
+    children: [
       { path: "onboarding/organization", element: <CreateOrganizationPage /> },
       { path: "billing/checkout/success", element: <CheckoutSuccessPage /> },
       { path: "billing/checkout/cancel", element: <CheckoutCancelPage /> },

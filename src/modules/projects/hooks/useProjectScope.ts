@@ -24,8 +24,6 @@ export const projectKeys = {
   stats: (orgId: string | null, id: string) => ["projects", "stats", orgId, id] as const,
   usageCounters: (orgId: string | null, id: string) => ["projects", "usage-counters", orgId, id] as const,
   settings: (orgId: string | null, id: string) => ["projects", "settings", orgId, id] as const,
-  activity: (orgId: string | null, id: string, query?: unknown) =>
-    ["projects", "activity", orgId, id, query] as const,
   environments: (orgId: string | null, id: string) => ["projects", "environments", orgId, id] as const,
   environment: (orgId: string | null, id: string, envId: string) =>
     ["projects", "environments", orgId, id, envId] as const,
@@ -33,8 +31,8 @@ export const projectKeys = {
     ["projects", "api-keys", orgId, id, query] as const,
   apiKey: (orgId: string | null, id: string, keyId: string) =>
     ["projects", "api-keys", orgId, id, keyId] as const,
-  apiKeyUsage: (orgId: string | null, id: string, keyId: string) =>
-    ["projects", "api-keys", orgId, id, keyId, "usage"] as const,
+  apiKeyUsage: (orgId: string | null, id: string, keyId: string, query?: unknown) =>
+    ["projects", "api-keys", orgId, id, keyId, "usage", query] as const,
   members: (orgId: string | null, id: string, query?: unknown) =>
     ["projects", "members", orgId, id, query] as const,
   analytics: (orgId: string | null, id: string, kind: string, query?: unknown) =>

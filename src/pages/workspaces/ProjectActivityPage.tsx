@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
   Activity,
   AlertTriangle,
@@ -12,8 +13,10 @@ import {
   Users,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { useProjectActivity } from "@/modules/projects/hooks/useProjects";
-import type { ProjectActivityItem } from "@/modules/projects/api/types";
+import { orgApi } from "@/modules/organizations/api/org.api";
+import { orgQueryKeys } from "@/modules/organizations/hooks/useOrganizations";
+import { useOrgStore } from "@/modules/organizations/store/org.store";
+import type { AuditLog } from "@/modules/organizations/types/org.types";
 import { useCurrentProject } from "./ProjectShellPage";
 import { IconChip, Notice, Panel, Pill, SectionHeading, Toolbar, fieldInputClass, type SurfaceTone } from "@/shared/ui/pulse";
 import { JsonViewer, Timestamp } from "@/shared/observe";
@@ -54,7 +57,7 @@ function actionTone(action: string): SurfaceTone {
 
 // ── activity row ─────────────────────────────────────────────
 
-function ActivityRow({ item }: { item: ProjectActivityItem }) {
+function ActivityRow({ item }: { item: AuditLog }) {
   const [expanded, setExpanded] = useState(false);
   const Icon = ENTITY_ICON[item.entityType] ?? Activity;
   const hasDetail = Object.keys(item.metadata ?? {}).length > 0 || (item.changedFields?.length ?? 0) > 0;
@@ -125,12 +128,18 @@ function ActivityRow({ item }: { item: ProjectActivityItem }) {
 
 export default function ProjectActivityPage() {
   const { projectId } = useCurrentProject();
+  const activeOrgId = useOrgStore((state) => state.activeOrgId);
   const [action, setAction] = useState("");
   const [limit, setLimit] = useState(25);
 
-  const { data, isLoading, error } = useProjectActivity(projectId, {
-    limit,
-    ...(action ? { action } : {}),
+  const { data, isLoading, error } = useQuery({
+    queryKey: [...orgQueryKeys.auditLogs(activeOrgId!), { projectId, limit, action }],
+    queryFn: () => orgApi.listAuditLogs(activeOrgId!, {
+      projectId,
+      limit,
+      action: action || undefined,
+    }),
+    enabled: !!activeOrgId && !!projectId,
   });
   const items = data?.data ?? [];
 

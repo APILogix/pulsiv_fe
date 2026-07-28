@@ -163,39 +163,19 @@ export interface ProjectUsageCounter {
   lastFlushedAt: string | null;
 }
 
-// ── Activity ─────────────────────────────────────────────────
-
-export interface ProjectActivityItem {
-  id: string;
-  actorUserId: string | null;
-  actorEmail: string | null;
-  action: string;
-  entityType: string;
-  entityId: string | null;
-  entityName: string | null;
-  changedFields: string[] | null;
-  status: string;
-  isSensitive: boolean;
-  metadata: Record<string, unknown>;
-  createdAt: string;
-}
-
-export interface ProjectActivityPage {
-  data: ProjectActivityItem[];
-  meta: { hasMore: boolean; nextCursor: string | null; limit: number };
-}
-
 // ── Environments ─────────────────────────────────────────────
 
-export const WELL_KNOWN_ENVIRONMENTS = [
-  "development",
-  "staging",
-  "production",
-  "qa",
-  "testing",
-  "canary",
-  "sandbox",
-] as const;
+export enum EnvironmentType {
+  PRODUCTION = "production",
+  PRE_PRODUCTION = "pre_production",
+  STAGING = "staging",
+  PRE_STAGING = "pre_staging",
+  DEVELOPMENT = "development",
+  TESTING = "testing",
+  PREVIEW = "preview",
+  PRE_DEPLOYMENT = "pre_deployment",
+  CUSTOM = "custom",
+}
 
 export interface ProjectEnvironment {
   id: string;
@@ -203,23 +183,11 @@ export interface ProjectEnvironment {
   orgId: string;
   name: string;
   slug: string;
+  type: EnvironmentType;
   description: string | null;
-  color: string | null;
-  icon: string | null;
+  color: string;
   isDefault: boolean;
   isActive: boolean;
-  rateLimitPerSecond: number | null;
-  rateLimitPerMinute: number | null;
-  rateLimitPerHour: number | null;
-  burstLimit: number | null;
-  allowedEventTypes: string[];
-  maxEventSizeBytes: number | null;
-  maxBatchSize: number | null;
-  requireHttps: boolean;
-  ipAllowlist: string[] | null;
-  ipBlocklist: string[] | null;
-  alertEmail: string | null;
-  alertWebhookUrl: string | null;
   createdAt: string;
   updatedAt: string;
   deletedAt: string | null;
@@ -227,79 +195,43 @@ export interface ProjectEnvironment {
 
 export interface EnvironmentBody {
   name?: string;
+  slug?: string;
+  type?: EnvironmentType;
   description?: string | null;
-  color?: string | null;
-  icon?: string | null;
+  color?: string;
   isActive?: boolean;
   isDefault?: boolean;
-  rateLimitPerSecond?: number | null;
-  rateLimitPerMinute?: number | null;
-  rateLimitPerHour?: number | null;
-  burstLimit?: number | null;
-  allowedEventTypes?: string[];
-  maxEventSizeBytes?: number | null;
-  maxBatchSize?: number | null;
-  requireHttps?: boolean;
-  ipAllowlist?: string[] | null;
-  ipBlocklist?: string[] | null;
-  alertEmail?: string | null;
-  alertWebhookUrl?: string | null;
+}
+
+export interface CreateEnvironmentBody extends EnvironmentBody {
+  name: string;
+  slug: string;
+  type: EnvironmentType;
+  color: string;
 }
 
 // ── API keys ─────────────────────────────────────────────────
 
 export type ApiKeyStatus = "active" | "revoked" | "expired" | "rotated" | "suspended";
-export type ApiKeyType = "read_write" | "read_only" | "write_only" | "temporary";
-export type ApiKeyRotationState = "none" | "rotating" | "grace_period" | "completed";
-
-export const API_KEY_PERMISSIONS = [
-  "ingest:write",
-  "ingest:read",
-  "events:read",
-  "metrics:read",
-  "config:read",
-] as const;
-export type ApiKeyPermission = (typeof API_KEY_PERMISSIONS)[number];
+export type ApiKeyUsageGranularity = "hourly" | "daily" | "monthly";
 
 export interface ProjectApiKey {
   id: string;
   projectId: string;
-  orgId: string | null;
-  publicKey: string;
-  keyType: ApiKeyType;
+  orgId: string;
   environmentId: string;
-  environment: { id: string; name: string; slug: string } | null;
   name: string | null;
-  description: string | null;
-  isActive: boolean;
+  publicKey: string;
   status: ApiKeyStatus;
-  rotationState: ApiKeyRotationState;
-  rotationVersion: number;
-  rotatedAt: string | null;
-  rotationReason: string | null;
-  gracePeriodEndsAt: string | null;
-  revokedAt: string | null;
-  revokedReason: string | null;
   expiresAt: string | null;
-  autoRotateEnabled: boolean;
-  autoRotateDays: number;
   lastUsedAt: string | null;
-  lastUsedIp: string | null;
-  usageCount: number;
-  errorCount: number;
-  rateLimitPerSecond: number | null;
-  rateLimitPerMinute: number | null;
-  rateLimitPerHour: number | null;
-  permissions: string[];
-  allowedEndpoints: string[];
-  blockedEndpoints: string[];
-  allowedEventTypes: string[];
-  allowedOrigins: string[];
-  allowedIps: string[];
-  allowedDomains: string[];
+  createdBy: string | null;
+  rotatedFromKeyId: string | null;
   createdAt: string;
   updatedAt: string;
-  version: number;
+  deletedAt: string | null;
+  /** Derived display data that may be expanded by list/detail endpoints. */
+  environment?: { id: string; name: string; slug: string } | null;
 }
 
 export interface CreateApiKeyResponse {
@@ -307,16 +239,39 @@ export interface CreateApiKeyResponse {
   fullKey: string;
 }
 
+export interface ApiKeyUsageQuery {
+  from: string;
+  to: string;
+  granularity: ApiKeyUsageGranularity;
+}
+
+export interface ApiKeyUsageSeriesPoint {
+  bucket: string;
+  requests: number;
+  acceptedEvents: number;
+  errorEvents: number;
+  ingestionFailures: number;
+  acceptedBytes: number;
+  rateLimitedRequests: number;
+}
+
 export interface ApiKeyUsage {
   keyId: string;
   keyPrefix: string;
-  totalRequests: number;
-  totalSuccess: number;
-  totalErrors: number;
-  bytesIngested: number;
-  eventsIngested: number;
   lastUsedAt: string | null;
-  requestsByDay: Array<{ date: string; count: number }>;
+  granularity: ApiKeyUsageGranularity;
+  from: string;
+  to: string;
+  summary: {
+    requests: number;
+    acceptedEvents: number;
+    errorEvents: number;
+    ingestionFailures: number;
+    acceptedBytes: number;
+    rateLimitedRequests: number;
+    errorRate: number;
+  };
+  series: ApiKeyUsageSeriesPoint[];
 }
 
 export interface BulkOperationResult {
@@ -329,23 +284,16 @@ export interface BulkOperationResult {
 export interface CreateApiKeyBody {
   environmentId: string;
   name?: string | null;
-  description?: string | null;
-  keyType?: ApiKeyType;
   expiresAt?: string | null;
-  autoRotateEnabled?: boolean;
-  autoRotateDays?: number;
-  permissions?: ApiKeyPermission[];
-  allowedOrigins?: string[];
-  allowedIps?: string[];
-  allowedDomains?: string[];
-  rateLimitPerSecond?: number | null;
-  rateLimitPerMinute?: number | null;
-  rateLimitPerHour?: number | null;
+}
+
+export interface UpdateApiKeyBody {
+  name?: string | null;
+  expiresAt?: string | null;
 }
 
 export interface ListApiKeysQuery {
   environmentId?: string;
-  keyType?: ApiKeyType;
   status?: ApiKeyStatus;
   includeInactive?: boolean;
   limit?: number;
@@ -378,7 +326,7 @@ export interface ProjectMember {
 
 // ── Usage analytics ──────────────────────────────────────────
 
-export type UsageGranularity = "minute" | "hourly" | "daily";
+export type UsageGranularity = "minute" | "hourly" | "daily" | "monthly";
 
 export interface UsageTimeSeriesPoint {
   bucket: string;

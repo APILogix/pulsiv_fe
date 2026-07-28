@@ -9,7 +9,6 @@ import {
   LineChart as LineChartIcon,
   Layers,
   ListOrdered,
-  Timer,
   TrendingUp,
 } from "lucide-react";
 import {
@@ -20,6 +19,7 @@ import {
   useUsageTopList,
 } from "@/modules/projects/hooks/useProjectAnalytics";
 import { useEnvironments } from "@/modules/projects/hooks/useEnvironments";
+import { environmentTypeLabel } from "@/modules/projects/environment.constants";
 import {
   TOP_LIST_DIMENSIONS,
   type HeatmapType,
@@ -37,7 +37,7 @@ import {
   Toolbar,
   type SegmentOption,
 } from "@/shared/ui/pulse";
-import { FilterSelect, Table, Td, Tr, formatBytes, formatCompact, formatLatency, formatNumber } from "@/shared/observe";
+import { FilterSelect, Table, Td, Tr, formatBytes, formatCompact, formatNumber } from "@/shared/observe";
 import { apiErrorMessage } from "@/modules/projects/components/project-ui";
 import { cn } from "@/lib/utils";
 
@@ -65,6 +65,7 @@ const GRANULARITY_OPTIONS: SegmentOption<UsageGranularity>[] = [
   { value: "minute", label: "Minute" },
   { value: "hourly", label: "Hourly" },
   { value: "daily", label: "Daily" },
+  { value: "monthly", label: "Monthly" },
 ];
 
 const HEATMAP_OPTIONS: SegmentOption<HeatmapType>[] = [
@@ -263,12 +264,20 @@ export default function ProjectAnalyticsPage() {
   const monthlyQuery = useMonthlyUsage(projectId);
 
   const summary = usageQuery.data?.summary;
-  const series = usageQuery.data?.timeSeries ?? [];
+  const series = useMemo(
+    () => [...(usageQuery.data?.timeSeries ?? [])].sort(
+      (left, right) => new Date(left.bucket).getTime() - new Date(right.bucket).getTime(),
+    ),
+    [usageQuery.data?.timeSeries],
+  );
   const errorRate = summary && summary.totalEvents > 0 ? (summary.errors / summary.totalEvents) * 100 : 0;
 
   const environmentOptions = [
     { value: "", label: "All environments" },
-    ...environments.map((environment) => ({ value: environment.id, label: environment.name })),
+    ...environments.map((environment) => ({
+      value: environment.id,
+      label: `${environment.name} · ${environmentTypeLabel(environment.type)}`,
+    })),
   ];
 
   const topMax = Math.max(1, ...(topQuery.data ?? []).map((item) => item.totalEvents));
@@ -329,15 +338,11 @@ export default function ProjectAnalyticsPage() {
           series={series.map((point) => point.errors)}
         />
         <StatCard
-          label="p95 latency"
-          value={summary?.latencyMsP95 != null ? formatLatency(summary.latencyMsP95) : "—"}
-          icon={Timer}
+          label="Requests"
+          value={formatCompact(summary?.requests ?? 0)}
+          icon={Gauge}
           tone="violet"
-          footnote={
-            summary?.latencyMsP50 != null && summary?.latencyMsP99 != null
-              ? `p50 ${formatLatency(summary.latencyMsP50)} · p99 ${formatLatency(summary.latencyMsP99)}`
-              : undefined
-          }
+          series={series.map((point) => point.requests)}
         />
         <StatCard
           label="Active keys"

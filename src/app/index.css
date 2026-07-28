@@ -71,6 +71,10 @@
   --rail-width: 64px;
   --flyout-width: 224px;
   --header-height: 52px;
+
+  /* project shell — the in-project sidebar is the only project nav */
+  --project-nav-width: 236px;
+  --project-nav-rail: 60px;
   
   /* chart colors */
   --chart-1: var(--brand);

@@ -55,7 +55,7 @@ export const publicRoutes: RouteObject[] = [
     ],
   },
   {
-    path: "/loading",
+    path: "loading",
     element: <LoadingScreen />,
   },
 ];

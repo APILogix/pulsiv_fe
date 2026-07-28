@@ -9,12 +9,14 @@ import { apiClient } from "@/infrastructure/api-client/axios";
 import { projectPath } from "./projects.api";
 import type {
   ApiKeyUsage,
+  ApiKeyUsageQuery,
   BulkOperationResult,
   CreateApiKeyBody,
   CreateApiKeyResponse,
   ListApiKeysQuery,
   Paged,
   ProjectApiKey,
+  UpdateApiKeyBody,
 } from "./types";
 
 const keyBase = (orgId: string, projectId: string) => `${projectPath(orgId, projectId)}/api-keys`;
@@ -52,7 +54,7 @@ export const apiKeysApi = {
     orgId: string,
     projectId: string,
     apiKeyId: string,
-    payload: Record<string, unknown>,
+    payload: UpdateApiKeyBody,
   ): Promise<ProjectApiKey> => {
     const { data } = await apiClient.patch(`${keyBase(orgId, projectId)}/${apiKeyId}`, payload);
     return data.data;
@@ -74,9 +76,8 @@ export const apiKeysApi = {
     orgId: string,
     projectId: string,
     apiKeyId: string,
-    payload: { rotationReason?: string; gracePeriodHours?: number } = {},
   ): Promise<CreateApiKeyResponse> => {
-    const { data } = await apiClient.post(`${keyBase(orgId, projectId)}/${apiKeyId}/rotate`, payload);
+    const { data } = await apiClient.post(`${keyBase(orgId, projectId)}/${apiKeyId}/rotate`);
     return data.data;
   },
 
@@ -100,15 +101,20 @@ export const apiKeysApi = {
     return data.data;
   },
 
-  usage: async (orgId: string, projectId: string, apiKeyId: string): Promise<ApiKeyUsage> => {
-    const { data } = await apiClient.get(`${keyBase(orgId, projectId)}/${apiKeyId}/usage`);
+  usage: async (
+    orgId: string,
+    projectId: string,
+    apiKeyId: string,
+    query: ApiKeyUsageQuery,
+  ): Promise<ApiKeyUsage> => {
+    const { data } = await apiClient.get(`${keyBase(orgId, projectId)}/${apiKeyId}/usage`, { params: query });
     return data.data;
   },
 
   bulkRotate: async (
     orgId: string,
     projectId: string,
-    payload: { environmentId?: string; rotationReason?: string; gracePeriodHours?: number } = {},
+    payload: { environmentId?: string } = {},
   ): Promise<BulkOperationResult> => {
     const { data } = await apiClient.post(`${keyBase(orgId, projectId)}/bulk-rotate`, payload);
     return data.data;

@@ -1,8 +1,8 @@
 /**
  * Project core API — CRUD, lifecycle, overview, stats, usage counters,
- * settings, and activity.
+ * and settings.
  *
- * Backend: `pulse/src/modules/projects/{core,settings,activity}` mounted at
+ * Backend: `pulse/src/modules/projects/{core,settings}` mounted at
  * `/organizations/:orgId/projects`.
  */
 import { apiClient } from "@/infrastructure/api-client/axios";
@@ -11,7 +11,6 @@ import type {
   ListProjectsQuery,
   Paged,
   Project,
-  ProjectActivityPage,
   ProjectListItem,
   ProjectOverview,
   ProjectSettings,
@@ -102,15 +101,5 @@ export const projectsApi = {
   ): Promise<ProjectSettings> => {
     const { data } = await apiClient.patch(`${projectPath(orgId, projectId)}/settings`, payload);
     return data.data;
-  },
-
-  // ── Activity ───────────────────────────────────────────────
-  getActivity: async (
-    orgId: string,
-    projectId: string,
-    query: { cursor?: string; limit?: number; action?: string } = {},
-  ): Promise<ProjectActivityPage> => {
-    const { data } = await apiClient.get(`${projectPath(orgId, projectId)}/activity`, { params: query });
-    return { data: data.data ?? [], meta: data.meta ?? { hasMore: false, nextCursor: null, limit: 25 } };
   },
 };

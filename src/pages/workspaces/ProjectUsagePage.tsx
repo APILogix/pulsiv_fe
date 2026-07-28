@@ -1,3 +1,4 @@
+import { useMemo, useState } from "react";
 import { Link } from "react-router";
 import {
   Activity,
@@ -6,21 +7,37 @@ import {
   Gauge,
   HardDrive,
   KeyRound,
+  LineChart as LineChartIcon,
   Layers,
   RefreshCcw,
   Sigma,
 } from "lucide-react";
 import { useProjectStats, useProjectUsageCounters } from "@/modules/projects/hooks/useProjects";
-import { useMonthlyUsage } from "@/modules/projects/hooks/useProjectAnalytics";
+import { useMonthlyUsage, useUsageAnalytics } from "@/modules/projects/hooks/useProjectAnalytics";
+import type { UsageGranularity } from "@/modules/projects/api/types";
+import { UsageTrendChart } from "@/modules/projects/components/UsageTrendChart";
 import { useCurrentProject } from "./ProjectShellPage";
-import { Meter, Notice, Panel, SectionHeading, StatCard } from "@/shared/ui/pulse";
-import { Table, Td, Timestamp, Tr, formatBytes, formatCompact, formatNumber } from "@/shared/observe";
+import { Meter, Notice, Panel, SectionHeading, SegmentedControl, StatCard, Toolbar, type SegmentOption } from "@/shared/ui/pulse";
+import { FilterSelect, Table, Td, Timestamp, Tr, formatBytes, formatCompact, formatNumber } from "@/shared/observe";
 import { Button as UiButton } from "@/components/ui/button";
 import { apiErrorMessage } from "@/modules/projects/components/project-ui";
 
 // ── module-level constants (rules.md §1.2) ───────────────────
 
 const COUNTER_HEADERS = ["Counter", "Total", "Period", "Last flushed"];
+
+type UsageRangeKey = "30d" | "90d" | "180d" | "1y";
+const USAGE_RANGE_OPTIONS: SegmentOption<UsageRangeKey>[] = [
+  { value: "30d", label: "30d" },
+  { value: "90d", label: "90d" },
+  { value: "180d", label: "180d" },
+  { value: "1y", label: "1y" },
+];
+const USAGE_RANGE_DAYS: Record<UsageRangeKey, number> = { "30d": 30, "90d": 90, "180d": 180, "1y": 365 };
+const USAGE_GRANULARITY_OPTIONS = [
+  { value: "daily", label: "Daily usage" },
+  { value: "monthly", label: "Monthly usage" },
+];
 
 /** Human labels for the known `project_usage_counters.counter_type` values. */
 const COUNTER_LABELS: Record<string, string> = {
@@ -46,6 +63,18 @@ function counterLabel(counterType: string) {
 
 export default function ProjectUsagePage() {
   const { projectId } = useCurrentProject();
+  const [usageRange, setUsageRange] = useState<UsageRangeKey>("90d");
+  const [usageGranularity, setUsageGranularity] = useState<Extract<UsageGranularity, "daily" | "monthly">>("daily");
+  const usageWindow = useMemo(() => {
+    const end = new Date();
+    end.setHours(0, 0, 0, 0);
+    return {
+      to: end.toISOString(),
+      from: new Date(end.getTime() - USAGE_RANGE_DAYS[usageRange] * 24 * 60 * 60 * 1000).toISOString(),
+      granularity: usageGranularity,
+    };
+  }, [usageGranularity, usageRange]);
+  const analytics = useUsageAnalytics(projectId, usageWindow);
   const { data: counters = [], isLoading, error, refetch, isFetching } = useProjectUsageCounters(projectId);
   const { data: stats } = useProjectStats(projectId);
   const { data: monthly } = useMonthlyUsage(projectId);
@@ -96,6 +125,50 @@ export default function ProjectUsagePage() {
           footnote={`${formatNumber(stats?.stats.apiKeysCount ?? 0)} keys total`}
         />
       </div>
+
+      <Panel
+        title="Project usage trend"
+        description="Accepted telemetry volume and errors across the selected range."
+        icon={LineChartIcon}
+        actions={
+          <Toolbar>
+            <SegmentedControl
+              value={usageRange}
+              onChange={setUsageRange}
+              options={USAGE_RANGE_OPTIONS}
+              ariaLabel="Project usage range"
+            />
+            <FilterSelect
+              label="Bucket"
+              value={usageGranularity}
+              onChange={(value) => setUsageGranularity(value as Extract<UsageGranularity, "daily" | "monthly">)}
+              options={USAGE_GRANULARITY_OPTIONS}
+            />
+          </Toolbar>
+        }
+      >
+        {analytics.isLoading ? (
+          <div className="h-64 animate-pulse rounded-[12px] bg-[var(--bg2)]" />
+        ) : analytics.error ? (
+          <Notice tone="red">{asMessage(analytics.error)}</Notice>
+        ) : (
+          <UsageTrendChart
+            ariaLabel="Project event, request, and error usage over time"
+            points={(analytics.data?.timeSeries ?? []).map((point) => ({
+              bucket: point.bucket,
+              totalEvents: point.totalEvents,
+              requests: point.requests,
+              errors: point.errors,
+            }))}
+            series={[
+              { key: "totalEvents", label: "Events", color: "var(--brand)" },
+              { key: "requests", label: "Requests", color: "var(--blue)" },
+              { key: "errors", label: "Errors", color: "var(--red)" },
+            ]}
+            emptyMessage="No project usage was recorded in this range."
+          />
+        )}
+      </Panel>
 
       {monthly && (
         <Panel title="Plan consumption" description={`Billing month ${monthly.yearMonth}.`} icon={Sigma}>

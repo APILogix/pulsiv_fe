@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiKeysApi } from "../api/api-keys.api";
-import type { CreateApiKeyBody, ListApiKeysQuery } from "../api/types";
+import type { ApiKeyUsageQuery, CreateApiKeyBody, ListApiKeysQuery, UpdateApiKeyBody } from "../api/types";
 import { projectKeys, useProjectScope } from "./useProjectScope";
 
 export function useApiKeys(projectId: string, query: ListApiKeysQuery = {}) {
@@ -21,11 +21,11 @@ export function useApiKey(projectId: string, apiKeyId?: string) {
   });
 }
 
-export function useApiKeyUsage(projectId: string, apiKeyId?: string) {
+export function useApiKeyUsage(projectId: string, apiKeyId: string | undefined, query: ApiKeyUsageQuery) {
   const { activeOrgId } = useProjectScope();
   return useQuery({
-    queryKey: projectKeys.apiKeyUsage(activeOrgId, projectId, apiKeyId ?? ""),
-    queryFn: () => apiKeysApi.usage(activeOrgId!, projectId, apiKeyId!),
+    queryKey: projectKeys.apiKeyUsage(activeOrgId, projectId, apiKeyId ?? "", query),
+    queryFn: () => apiKeysApi.usage(activeOrgId!, projectId, apiKeyId!, query),
     enabled: !!activeOrgId && !!projectId && !!apiKeyId,
   });
 }
@@ -45,7 +45,7 @@ export function useApiKeyMutations(projectId: string) {
       onSuccess: invalidate,
     }),
     updateKey: useMutation({
-      mutationFn: ({ apiKeyId, payload }: { apiKeyId: string; payload: Record<string, unknown> }) =>
+      mutationFn: ({ apiKeyId, payload }: { apiKeyId: string; payload: UpdateApiKeyBody }) =>
         apiKeysApi.update(requireOrgId(), projectId, apiKeyId, payload),
       onSuccess: invalidate,
     }),
@@ -55,15 +55,7 @@ export function useApiKeyMutations(projectId: string) {
       onSuccess: invalidate,
     }),
     rotateKey: useMutation({
-      mutationFn: ({
-        apiKeyId,
-        rotationReason,
-        gracePeriodHours,
-      }: {
-        apiKeyId: string;
-        rotationReason?: string;
-        gracePeriodHours?: number;
-      }) => apiKeysApi.rotate(requireOrgId(), projectId, apiKeyId, { rotationReason, gracePeriodHours }),
+      mutationFn: (apiKeyId: string) => apiKeysApi.rotate(requireOrgId(), projectId, apiKeyId),
       onSuccess: invalidate,
     }),
     regenerateKey: useMutation({
@@ -76,7 +68,7 @@ export function useApiKeyMutations(projectId: string) {
       onSuccess: invalidate,
     }),
     bulkRotate: useMutation({
-      mutationFn: (payload: { environmentId?: string; rotationReason?: string; gracePeriodHours?: number }) =>
+      mutationFn: (payload: { environmentId?: string }) =>
         apiKeysApi.bulkRotate(requireOrgId(), projectId, payload),
       onSuccess: invalidate,
     }),

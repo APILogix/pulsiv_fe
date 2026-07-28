@@ -13,8 +13,10 @@ import {
 } from "lucide-react";
 import { useThresholdMutations, useThresholds } from "@/modules/projects/hooks/useProjectAlerting";
 import { useEnvironments } from "@/modules/projects/hooks/useEnvironments";
+import { environmentTypeLabel } from "@/modules/projects/environment.constants";
 import {
   THRESHOLD_OPERATORS,
+  type EnvironmentType,
   type ProjectAlertThreshold,
   type ThresholdBody,
   type ThresholdOperator,
@@ -93,7 +95,7 @@ function ThresholdFields({
   environments,
 }: {
   threshold?: ProjectAlertThreshold;
-  environments: Array<{ id: string; name: string }>;
+  environments: Array<{ id: string; name: string; type: EnvironmentType }>;
 }) {
   return (
     <>
@@ -154,7 +156,7 @@ function ThresholdFields({
             <option value="">All environments</option>
             {environments.map((environment) => (
               <option key={environment.id} value={environment.id}>
-                {environment.name}
+                {environment.name} · {environmentTypeLabel(environment.type)}
               </option>
             ))}
           </select>

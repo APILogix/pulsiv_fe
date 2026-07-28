@@ -69,18 +69,6 @@ export function useProjectSettings(projectId: string) {
   });
 }
 
-export function useProjectActivity(
-  projectId: string,
-  query: { limit?: number; action?: string; cursor?: string } = {},
-) {
-  const { activeOrgId } = useProjectScope();
-  return useQuery({
-    queryKey: projectKeys.activity(activeOrgId, projectId, query),
-    queryFn: () => projectsApi.getActivity(activeOrgId!, projectId, query),
-    enabled: !!activeOrgId && !!projectId,
-  });
-}
-
 // ── Mutations ────────────────────────────────────────────────
 
 export function useProjectMutations(projectId?: string) {

@@ -1,13 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { environmentsApi } from "../api/environments.api";
-import type { EnvironmentBody } from "../api/types";
+import type { CreateEnvironmentBody, EnvironmentBody } from "../api/types";
 import { projectKeys, useProjectScope } from "./useProjectScope";
 
-export function useEnvironments(projectId: string) {
+export function useEnvironments(projectId: string, options: { includeDeleted?: boolean } = {}) {
   const { activeOrgId } = useProjectScope();
+  const includeDeleted = options.includeDeleted ?? false;
   return useQuery({
-    queryKey: projectKeys.environments(activeOrgId, projectId),
-    queryFn: () => environmentsApi.list(activeOrgId!, projectId),
+    queryKey: [...projectKeys.environments(activeOrgId, projectId), { includeDeleted }],
+    queryFn: () => environmentsApi.list(activeOrgId!, projectId, { includeDeleted }),
     enabled: !!activeOrgId && !!projectId,
     staleTime: 60_000,
   });
@@ -33,7 +34,7 @@ export function useEnvironmentMutations(projectId: string) {
 
   return {
     createEnvironment: useMutation({
-      mutationFn: (payload: EnvironmentBody & { name: string }) =>
+      mutationFn: (payload: CreateEnvironmentBody) =>
         environmentsApi.create(requireOrgId(), projectId, payload),
       onSuccess: invalidate,
     }),
@@ -45,6 +46,21 @@ export function useEnvironmentMutations(projectId: string) {
     deleteEnvironment: useMutation({
       mutationFn: (environmentId: string) =>
         environmentsApi.remove(requireOrgId(), projectId, environmentId),
+      onSuccess: invalidate,
+    }),
+    restoreEnvironment: useMutation({
+      mutationFn: (environmentId: string) =>
+        environmentsApi.restore(requireOrgId(), projectId, environmentId),
+      onSuccess: invalidate,
+    }),
+    setDefaultEnvironment: useMutation({
+      mutationFn: (environmentId: string) =>
+        environmentsApi.setDefault(requireOrgId(), projectId, environmentId),
+      onSuccess: invalidate,
+    }),
+    deactivateEnvironment: useMutation({
+      mutationFn: (environmentId: string) =>
+        environmentsApi.deactivate(requireOrgId(), projectId, environmentId),
       onSuccess: invalidate,
     }),
   };

@@ -1,0 +1,7 @@
+{
+  "task_id": "task-redesign-project-module",
+  "task_description": "Redesign the frontend project module with modern UI/UX best practices while keeping the existing Sentinel design system theme (indigo brand, green truth, cyan AI three-channel separation). This includes all pages under /projects/ and /projects/:projectId/ - the projects list, create wizard, project shell, overview, analytics, usage, settings, environments, API keys, remote config, alert thresholds, channels, routes, connectors, delivery logs, dead letters, member preferences, members, and activity log.",
+  "status": "in_progress",
+  "feature_order": ["FEAT-001", "FEAT-002", "FEAT-003", "FEAT-004", "FEAT-005"],
+  "blocked_reason": null
+}

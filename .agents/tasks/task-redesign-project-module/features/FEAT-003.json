@@ -1,0 +1,24 @@
+{
+  "id": "FEAT-003",
+  "type": "feat",
+  "description": "Redesign the Project Shell, Overview, and Analytics pages with modern UI/UX. Improve the ProjectHeaderBar with a more polished breadcrumb and environment switcher. Enhance the Overview page with better data visualization, card compositions, and scannable metrics. Modernize the Analytics page with improved chart interactions and layout.",
+  "status": "pending",
+  "steps": [
+    "Redesign src/modules/projects/components/ProjectHeaderBar.tsx: (a) Make the header more compact with better use of space. (b) Improve the environment selector with a colored indicator dot that's more prominent. (c) Add a subtle animated status indicator for active projects. (d) Improve breadcrumb with better visual separation and hover states.",
+    "Redesign src/pages/workspaces/ProjectOverviewPage.tsx: (a) Improve the stat cards row with mini sparkline trends in each card and better color coding. (b) Redesign the HourlyBars chart component with better tooltip interactions, gradient fills, and a smoother visual style. (c) Improve the Breakdown component with animated progress bars and better labeling. (d) Redesign the configuration snapshot section with a more visual toggle grid instead of plain pills. (e) Add a 'Quick actions' card with contextual shortcuts based on project state. (f) Better visual grouping with section dividers or subtle background variations.",
+    "Redesign src/pages/workspaces/ProjectAnalyticsPage.tsx: (a) Improve the VolumeChart SVG component with hover crosshair, tooltip showing exact values, and smoother line rendering. (b) Redesign the HeatmapGrid with better color scaling and cell hover states. (c) Add a sticky toolbar that remains visible while scrolling through analytics sections. (d) Improve the comparison table with inline bar visualizations. (e) Better skeleton loading states matching content shape.",
+    "Follow all rules.md constraints and use existing shared primitives."
+  ],
+  "acceptance_criteria": [
+    "ProjectHeaderBar has improved breadcrumbs, environment selector, and status indicator",
+    "ProjectOverviewPage renders with improved stat cards, chart visualizations, and configuration display",
+    "ProjectAnalyticsPage has improved chart interactions and heatmap styling",
+    "All changes use theme tokens only - no hardcoded colors",
+    "npm run build completes without new TypeScript errors"
+  ],
+  "verification": [
+    "Run `npm run build` and confirm it passes without new errors"
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}

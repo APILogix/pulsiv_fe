@@ -1,0 +1,20 @@
+{
+  "id": "FEAT-001",
+  "type": "chore",
+  "description": "Environment setup - install dependencies and verify the project builds cleanly before making any code changes.",
+  "status": "completed",
+  "steps": [
+    "Run `npm install` in /projects/sandbox/pulsiv_fe to install all dependencies",
+    "Run `npm run build` (which runs `tsc -b && vite build`) to verify baseline compiles without errors",
+    "If there are TypeScript errors, note them but do not fix unrelated issues - only note blockers that would affect the project module pages"
+  ],
+  "acceptance_criteria": [
+    "npm install completes successfully",
+    "npm run build completes successfully OR only has errors unrelated to the project module pages we will modify"
+  ],
+  "verification": [
+    "Run `npm run build` and confirm exit code 0 or only unrelated errors"
+  ],
+  "blocked_reason": null,
+  "findings": "npm install requires --legacy-peer-deps due to react-simple-maps@3.0.0 having peer dep conflict with React 19 (expects React 16/17/18). With that flag, all 782 packages install successfully. Build (tsc -b && vite build) passes cleanly with exit code 0 - no TypeScript errors, no Vite errors. All project module pages compile and bundle without issues. 2841 modules transformed, built in ~30s."
+}

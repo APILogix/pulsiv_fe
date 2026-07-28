@@ -14,6 +14,7 @@ import {
   ChevronLeft,
   ChevronRight,
   FileStack,
+  MoreHorizontal,
   Plus,
   Rocket,
   Trash2,
@@ -26,12 +27,25 @@ import {
   PageHero,
   Panel,
   Pill,
-  Row,
-  RowStack,
   Toolbar,
 } from "@/shared/ui/pulse";
 import { FilterSelect, SearchInput, Timestamp } from "@/shared/observe";
 import { Button as UiButton } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { ConfirmDialog, apiErrorMessage } from "@/modules/projects/components/project-ui";
 import {
   useAutomationScope,
@@ -249,89 +263,116 @@ export default function AutomationWorkflowsPage() {
             />
           </div>
         ) : (
-          <RowStack>
-            {workflows.map((workflow) => {
-              const blockedReason = workflow.entitlementUnavailable
-                ? (workflow.unavailableReason ?? "Plan upgrade required")
-                : workflow.status === "draft"
-                  ? "Publish a version before switching this on"
-                  : null;
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Workflow</TableHead>
+                <TableHead>Trigger</TableHead>
+                <TableHead>Last run</TableHead>
+                <TableHead>On/off</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {workflows.map((workflow) => {
+                const blockedReason = workflow.entitlementUnavailable
+                  ? (workflow.unavailableReason ?? "Plan upgrade required")
+                  : workflow.status === "draft"
+                    ? "Publish a version before switching this on"
+                    : null;
 
-              return (
-                <Row key={workflow.id} className="flex flex-col gap-3 lg:flex-row lg:items-center lg:gap-4">
-                  <div className="flex min-w-0 flex-1 flex-col gap-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Link
-                        to={`/automation/workflows/${workflow.id}`}
-                        className="truncate text-[14px] font-medium text-[var(--text)] hover:text-[var(--brand)]"
-                      >
-                        {workflow.name}
-                      </Link>
-                      <WorkflowStatusPill status={workflow.status} />
-                      {workflow.actionRequiresApproval.some(Boolean) && (
-                        <Pill tone="amber">Approval</Pill>
-                      )}
-                      <EntitlementNote
-                        unavailable={workflow.entitlementUnavailable}
-                        reason={workflow.unavailableReason}
-                      />
-                    </div>
-                    <p className="truncate text-[12px] text-[var(--text3)]">
-                      {labelize(workflow.workflowType)} · {workflow.triggerType ?? "no trigger"} ·{" "}
-                      {workflow.actionCount} action{workflow.actionCount === 1 ? "" : "s"} · v
-                      {workflow.currentVersion}
-                    </p>
-                    <div className="flex flex-wrap items-center gap-2 text-[12px] text-[var(--text3)]">
+                return (
+                  <TableRow key={workflow.id}>
+                    <TableCell className="max-w-[360px]">
+                      <div className="flex flex-col gap-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Link
+                            to={`/automation/workflows/${workflow.id}`}
+                            className="truncate text-[13.5px] font-medium text-[var(--text)] hover:text-[var(--brand)]"
+                          >
+                            {workflow.name}
+                          </Link>
+                          <WorkflowStatusPill status={workflow.status} />
+                          {workflow.actionRequiresApproval.some(Boolean) && (
+                            <Pill tone="amber">Approval</Pill>
+                          )}
+                        </div>
+                        <p className="truncate text-[11.5px] text-[var(--text3)]">
+                          {labelize(workflow.workflowType)} · {workflow.actionCount} action
+                          {workflow.actionCount === 1 ? "" : "s"} · v{workflow.currentVersion}
+                          {workflow.tags.length > 0 ? ` · ${workflow.tags.join(", ")}` : ""}
+                        </p>
+                        <EntitlementNote
+                          unavailable={workflow.entitlementUnavailable}
+                          reason={workflow.unavailableReason}
+                        />
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-[12.5px] text-[var(--text2)]">
+                        {workflow.triggerType ?? "No trigger"}
+                      </span>
+                    </TableCell>
+                    <TableCell>
                       {workflow.lastRunStatus ? (
-                        <>
+                        <div className="flex flex-col gap-1">
                           <RunStatusPill status={workflow.lastRunStatus} />
-                          {workflow.lastRunCreatedAt && <Timestamp value={workflow.lastRunCreatedAt} />}
-                        </>
+                          {workflow.lastRunCreatedAt && (
+                            <span className="text-[11.5px] text-[var(--text3)]">
+                              <Timestamp value={workflow.lastRunCreatedAt} />
+                            </span>
+                          )}
+                        </div>
                       ) : (
-                        <span>Never run</span>
+                        <span className="text-[12px] text-[var(--text3)]">Never run</span>
                       )}
-                      {workflow.tags.length > 0 && <span>· {workflow.tags.join(", ")}</span>}
-                    </div>
-                  </div>
-
-                  <div className="flex shrink-0 flex-wrap items-center gap-2">
-                    <PowerToggle
-                      checked={workflow.isEnabled}
-                      onChange={(next) => handleToggle(workflow, next)}
-                      label={`Switch ${workflow.name} ${workflow.isEnabled ? "off" : "on"}`}
-                      pending={pendingToggleId === workflow.id && toggleWorkflow.isPending}
-                      blockedReason={blockedReason}
-                    />
-                    <UiButton
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handlePublish(workflow)}
-                      disabled={publishWorkflow.isPending}
-                    >
-                      <Rocket className="size-3.5" /> Publish
-                    </UiButton>
-                    <UiButton
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleRun(workflow)}
-                      disabled={runWorkflow.isPending || !workflow.isEnabled}
-                      title={workflow.isEnabled ? undefined : "Switch the workflow on to run it"}
-                    >
-                      <Zap className="size-3.5" /> Run
-                    </UiButton>
-                    <UiButton
-                      variant="ghost"
-                      size="icon-sm"
-                      aria-label={`Archive ${workflow.name}`}
-                      onClick={() => setDeleteTarget(workflow)}
-                    >
-                      <Trash2 className="size-3.5 text-[var(--red)]" />
-                    </UiButton>
-                  </div>
-                </Row>
-              );
-            })}
-          </RowStack>
+                    </TableCell>
+                    <TableCell>
+                      <PowerToggle
+                        checked={workflow.isEnabled}
+                        onChange={(next) => handleToggle(workflow, next)}
+                        label={`Switch ${workflow.name} ${workflow.isEnabled ? "off" : "on"}`}
+                        pending={pendingToggleId === workflow.id && toggleWorkflow.isPending}
+                        blockedReason={blockedReason}
+                      />
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-1.5">
+                        <UiButton
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleRun(workflow)}
+                          disabled={runWorkflow.isPending || !workflow.isEnabled}
+                          title={workflow.isEnabled ? undefined : "Switch the workflow on to run it"}
+                        >
+                          <Zap className="size-3.5" /> Run
+                        </UiButton>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <UiButton variant="ghost" size="icon-sm" aria-label={`More actions for ${workflow.name}`}>
+                              <MoreHorizontal className="size-3.5" />
+                            </UiButton>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handlePublish(workflow)} disabled={publishWorkflow.isPending}>
+                              <Rocket className="size-3.5" /> Publish
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              variant="destructive"
+                              onClick={() => setDeleteTarget(workflow)}
+                            >
+                              <Trash2 className="size-3.5" /> Archive
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
         )}
       </Panel>
 

@@ -16,9 +16,17 @@ import {
   Play,
   RotateCcw,
 } from "lucide-react";
-import { EmptyPanel, Notice, PageHero, Panel, Row, RowStack, Toolbar } from "@/shared/ui/pulse";
+import { EmptyPanel, Notice, PageHero, Panel, Toolbar } from "@/shared/ui/pulse";
 import { FilterSelect, Timestamp } from "@/shared/observe";
 import { Button as UiButton } from "@/components/ui/button";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { apiErrorMessage } from "@/modules/projects/components/project-ui";
 import { useAutomationScope, useRunMutations, useRuns } from "@/modules/automation/hooks/useAutomation";
 import {
@@ -168,55 +176,86 @@ export default function AutomationRunsPage() {
             />
           </div>
         ) : (
-          <RowStack>
-            {runs.map((run) => {
-              const active = ACTIVE_RUN_STATUSES.includes(run.status);
-              const retryable = RETRYABLE_RUN_STATUSES.includes(run.status);
-              return (
-                <Row key={run.runId} className="flex flex-col gap-3 lg:flex-row lg:items-center lg:gap-4">
-                  <div className="flex min-w-0 flex-1 flex-col gap-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Link
-                        to={`/automation/runs/${run.runId}`}
-                        className="truncate text-[13.5px] font-medium text-[var(--text)] hover:text-[var(--brand)]"
-                      >
-                        {run.workflowName}
-                      </Link>
-                      <RunStatusPill status={run.status} />
-                    </div>
-                    <p className="truncate text-[12px] text-[var(--text3)]">
-                      {run.triggerType} · {run.sourceModule} · {run.stepCount} steps
-                      {run.failedStepCount > 0 ? ` · ${run.failedStepCount} failed` : ""}
-                      {run.pendingApprovalCount > 0 ? ` · ${run.pendingApprovalCount} awaiting approval` : ""}
-                    </p>
-                    <p className="text-[12px] text-[var(--text3)]">
-                      queued <Timestamp value={run.queuedAt} /> · duration{" "}
-                      {elapsed(run.startedAt, run.completedAt)}
-                    </p>
-                  </div>
-
-                  <div className="flex shrink-0 items-center gap-2">
-                    <UiButton
-                      variant="outline"
-                      size="sm"
-                      disabled={!active || cancelRun.isPending}
-                      onClick={() => handleCancel(run.runId)}
-                    >
-                      <Ban className="size-3.5" /> Cancel
-                    </UiButton>
-                    <UiButton
-                      variant="outline"
-                      size="sm"
-                      disabled={!retryable || retryRun.isPending}
-                      onClick={() => handleRetry(run.runId)}
-                    >
-                      <RotateCcw className="size-3.5" /> Retry
-                    </UiButton>
-                  </div>
-                </Row>
-              );
-            })}
-          </RowStack>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Workflow</TableHead>
+                <TableHead>Trigger</TableHead>
+                <TableHead>Steps</TableHead>
+                <TableHead>Queued</TableHead>
+                <TableHead>Duration</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {runs.map((run) => {
+                const active = ACTIVE_RUN_STATUSES.includes(run.status);
+                const retryable = RETRYABLE_RUN_STATUSES.includes(run.status);
+                return (
+                  <TableRow key={run.runId}>
+                    <TableCell className="max-w-[280px]">
+                      <div className="flex flex-col gap-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Link
+                            to={`/automation/runs/${run.runId}`}
+                            className="truncate text-[13px] font-medium text-[var(--text)] hover:text-[var(--brand)]"
+                          >
+                            {run.workflowName}
+                          </Link>
+                          <RunStatusPill status={run.status} />
+                        </div>
+                        <span className="text-[11.5px] text-[var(--text3)]">{run.sourceModule}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-[12.5px] text-[var(--text2)]">{run.triggerType}</span>
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-[12.5px] text-[var(--text2)]">
+                        {run.stepCount}
+                        {run.failedStepCount > 0 && (
+                          <span className="ml-1.5 text-[var(--red)]">{run.failedStepCount} failed</span>
+                        )}
+                        {run.pendingApprovalCount > 0 && (
+                          <span className="ml-1.5 text-[var(--amber)]">{run.pendingApprovalCount} pending</span>
+                        )}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-[12px] text-[var(--text3)]">
+                        <Timestamp value={run.queuedAt} />
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-[12px] tabular-nums text-[var(--text2)]">
+                        {elapsed(run.startedAt, run.completedAt)}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-1.5">
+                        <UiButton
+                          variant="outline"
+                          size="sm"
+                          disabled={!active || cancelRun.isPending}
+                          onClick={() => handleCancel(run.runId)}
+                        >
+                          <Ban className="size-3.5" /> Cancel
+                        </UiButton>
+                        <UiButton
+                          variant="outline"
+                          size="sm"
+                          disabled={!retryable || retryRun.isPending}
+                          onClick={() => handleRetry(run.runId)}
+                        >
+                          <RotateCcw className="size-3.5" /> Retry
+                        </UiButton>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
         )}
       </Panel>
 

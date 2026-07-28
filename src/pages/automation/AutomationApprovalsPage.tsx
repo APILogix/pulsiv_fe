@@ -21,13 +21,19 @@ import {
   Notice,
   PageHero,
   Panel,
-  Row,
-  RowStack,
   Toolbar,
   fieldTextareaClass,
 } from "@/shared/ui/pulse";
 import { FilterSelect, Timestamp } from "@/shared/observe";
 import { Button as UiButton } from "@/components/ui/button";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { DialogField, FormDialog, apiErrorMessage } from "@/modules/projects/components/project-ui";
 import {
   useApprovalMutations,
@@ -201,64 +207,90 @@ export default function AutomationApprovalsPage() {
             />
           </div>
         ) : (
-          <RowStack>
-            {approvals.map((approval) => {
-              const expired = new Date(approval.expiresAt).getTime() < Date.now();
-              const decidable = approval.status === "pending" && !expired;
-              return (
-                <Row key={approval.id} className="flex flex-col gap-3 lg:flex-row lg:items-center lg:gap-4">
-                  <div className="flex min-w-0 flex-1 flex-col gap-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Link
-                        to={`/automation/approvals/${approval.id}`}
-                        className="truncate text-[13.5px] font-medium text-[var(--text)] hover:text-[var(--brand)]"
-                      >
-                        {approval.workflowName || "Workflow"}
-                      </Link>
-                      <ApprovalStatusPill status={approval.status} />
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Workflow</TableHead>
+                <TableHead>Action</TableHead>
+                <TableHead>Risk</TableHead>
+                <TableHead>Requested</TableHead>
+                <TableHead>Expires</TableHead>
+                <TableHead className="text-right">Decision</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {approvals.map((approval) => {
+                const expired = new Date(approval.expiresAt).getTime() < Date.now();
+                const decidable = approval.status === "pending" && !expired;
+                return (
+                  <TableRow key={approval.id}>
+                    <TableCell className="max-w-[240px]">
+                      <div className="flex flex-col gap-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Link
+                            to={`/automation/approvals/${approval.id}`}
+                            className="truncate text-[13px] font-medium text-[var(--text)] hover:text-[var(--brand)]"
+                          >
+                            {approval.workflowName || "Workflow"}
+                          </Link>
+                          <ApprovalStatusPill status={approval.status} />
+                        </div>
+                        {approval.rejectionReason ? (
+                          <p className="truncate text-[11.5px] text-[var(--red)]">{approval.rejectionReason}</p>
+                        ) : approval.approvalReason ? (
+                          <p className="truncate text-[11.5px] text-[var(--text2)]">{approval.approvalReason}</p>
+                        ) : null}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {approval.actionType ? <CodeChip>{approval.actionType}</CodeChip> : "—"}
+                    </TableCell>
+                    <TableCell>
                       <RiskPill risk={approval.riskLevel} />
-                      {expired && approval.status === "pending" && (
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-[12px] text-[var(--text3)]">
+                        <Timestamp value={approval.createdAt} />
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      {expired && approval.status === "pending" ? (
                         <span className="inline-flex items-center gap-1 text-[11.5px] text-[var(--red)]">
-                          <Clock className="size-3" aria-hidden="true" /> expired
+                          <Clock className="size-3" aria-hidden="true" /> Expired
+                        </span>
+                      ) : (
+                        <span className="text-[12px] text-[var(--text3)]">
+                          <Timestamp value={approval.expiresAt} />
                         </span>
                       )}
-                    </div>
-                    <p className="truncate text-[12px] text-[var(--text3)]">
-                      {approval.actionType ? <CodeChip>{approval.actionType}</CodeChip> : "Action unknown"} · requested{" "}
-                      <Timestamp value={approval.createdAt} /> · expires <Timestamp value={approval.expiresAt} />
-                    </p>
-                    {approval.approvalReason && (
-                      <p className="truncate text-[12px] text-[var(--text2)]">{approval.approvalReason}</p>
-                    )}
-                    {approval.rejectionReason && (
-                      <p className="truncate text-[12px] text-[var(--red)]">{approval.rejectionReason}</p>
-                    )}
-                  </div>
-
-                  <div className="flex shrink-0 items-center gap-2">
-                    <UiButton asChild variant="ghost" size="sm">
-                      <Link to={`/automation/runs/${approval.runId}`}>View run</Link>
-                    </UiButton>
-                    <UiButton
-                      variant="outline"
-                      size="sm"
-                      disabled={!decidable || pending}
-                      onClick={() => setDecision({ approval, kind: "reject" })}
-                    >
-                      <X className="size-3.5 text-[var(--red)]" /> Reject
-                    </UiButton>
-                    <UiButton
-                      size="sm"
-                      disabled={!decidable || pending}
-                      onClick={() => setDecision({ approval, kind: "approve" })}
-                    >
-                      <Check className="size-3.5" /> Approve
-                    </UiButton>
-                  </div>
-                </Row>
-              );
-            })}
-          </RowStack>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-1.5">
+                        <UiButton asChild variant="ghost" size="sm">
+                          <Link to={`/automation/runs/${approval.runId}`}>Run</Link>
+                        </UiButton>
+                        <UiButton
+                          variant="outline"
+                          size="sm"
+                          disabled={!decidable || pending}
+                          onClick={() => setDecision({ approval, kind: "reject" })}
+                        >
+                          <X className="size-3.5 text-[var(--red)]" /> Reject
+                        </UiButton>
+                        <UiButton
+                          size="sm"
+                          disabled={!decidable || pending}
+                          onClick={() => setDecision({ approval, kind: "approve" })}
+                        >
+                          <Check className="size-3.5" /> Approve
+                        </UiButton>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
         )}
       </Panel>
 

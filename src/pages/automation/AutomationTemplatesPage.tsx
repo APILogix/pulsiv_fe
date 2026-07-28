@@ -182,6 +182,8 @@ export default function AutomationTemplatesPage() {
               description={template.description ?? undefined}
               icon={template.isFeatured ? Sparkles : FileStack}
               tone={template.isFeatured ? "ai" : "brand"}
+              className="pulse-lift flex h-full flex-col"
+              bodyClassName="flex-1"
               footer={
                 <>
                   <UiButton variant="ghost" size="sm" onClick={() => setSelected(template)}>

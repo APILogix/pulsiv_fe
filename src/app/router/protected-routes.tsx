@@ -4,7 +4,7 @@ import { RequireAuth } from "./route-guards";
 import { MetricRouteBoundary } from "@/shared/ui/loading";
 import NotFoundPage from "@/shared/components/NotFoundPage";
 
-const AuthenticatedAppLayout = lazy(() => import("../layouts/AuthenticatedAppLayout").then((m) => ({ default: m.AuthenticatedAppLayout })));
+import { AuthenticatedAppLayout } from "../layouts/AuthenticatedAppLayout";
 
 const DashboardPage = lazy(() => import("@/modules/dashboard/index").then((m) => ({ default: m.DashboardPage ?? (() => null) })));
 const SecurityCenterPage = lazy(() => import("@/modules/auth/pages/SecurityCenterPage").then((m) => ({ default: m.default })));

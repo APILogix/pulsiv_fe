@@ -5,7 +5,7 @@
  * triggers), so this surface is read-only. Requires an admin role; a 403 here
  * means the signed-in member cannot read the automation audit log.
  */
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { Link } from "react-router";
 import {
   AlertTriangle,
@@ -14,9 +14,17 @@ import {
   Lock,
   ScrollText,
 } from "lucide-react";
-import { EmptyPanel, Notice, PageHero, Panel, Row, RowStack, Toolbar } from "@/shared/ui/pulse";
+import { EmptyPanel, Notice, PageHero, Panel, Toolbar } from "@/shared/ui/pulse";
 import { FilterSelect, JsonViewer, SearchInput, Timestamp } from "@/shared/observe";
 import { Button as UiButton } from "@/components/ui/button";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { apiErrorMessage } from "@/modules/projects/components/project-ui";
 import { useAutomationAudit, useAutomationScope } from "@/modules/automation/hooks/useAutomation";
 import { AUDIT_ACTIONS, type AuditListQuery } from "@/modules/automation/api/types";
@@ -117,70 +125,89 @@ export default function AutomationAuditPage() {
             />
           </div>
         ) : (
-          <RowStack>
-            {entries.map((entry) => {
-              const expanded = expandedId === entry.id;
-              return (
-                <Row key={entry.id} className="flex flex-col gap-2">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div className="flex min-w-0 flex-col gap-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-[13px] font-medium text-[var(--text)]">
-                          {labelize(entry.action)}
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Action</TableHead>
+                <TableHead>Actor</TableHead>
+                <TableHead>Occurred</TableHead>
+                <TableHead className="text-right">Links</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {entries.map((entry) => {
+                const expanded = expandedId === entry.id;
+                return (
+                  <Fragment key={entry.id}>
+                    <TableRow>
+                      <TableCell>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-[13px] font-medium text-[var(--text)]">
+                            {labelize(entry.action)}
+                          </span>
+                          <CodeChip>{entry.entityType}</CodeChip>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-[12px] text-[var(--text2)]">
+                          {entry.actorType === "user" ? "User" : labelize(entry.actorType)}
+                          {entry.actorUserId ? ` · ${entry.actorUserId.slice(0, 8)}` : ""}
                         </span>
-                        <CodeChip>{entry.entityType}</CodeChip>
-                        <span className="text-[11.5px] text-[var(--text3)]">
-                          {entry.actorType === "user" ? "user" : entry.actorType}
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-[12px] text-[var(--text3)]">
+                          <Timestamp value={entry.occurredAt} />
+                          {entry.ipAddress ? ` · ${entry.ipAddress}` : ""}
                         </span>
-                      </div>
-                      <p className="text-[12px] text-[var(--text3)]">
-                        <Timestamp value={entry.occurredAt} />
-                        {entry.actorUserId ? ` · actor ${entry.actorUserId.slice(0, 8)}` : ""}
-                        {entry.ipAddress ? ` · ${entry.ipAddress}` : ""}
-                      </p>
-                    </div>
-                    <div className="flex shrink-0 items-center gap-2">
-                      {entry.workflowId && (
-                        <UiButton asChild variant="ghost" size="sm">
-                          <Link to={`/automation/workflows/${entry.workflowId}`}>Workflow</Link>
-                        </UiButton>
-                      )}
-                      {entry.runId && (
-                        <UiButton asChild variant="ghost" size="sm">
-                          <Link to={`/automation/runs/${entry.runId}`}>Run</Link>
-                        </UiButton>
-                      )}
-                      <UiButton
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setExpandedId(expanded ? null : entry.id)}
-                        aria-expanded={expanded}
-                      >
-                        {expanded ? "Hide" : "Diff"}
-                      </UiButton>
-                    </div>
-                  </div>
-
-                  {expanded && (
-                    <div className="grid gap-3 lg:grid-cols-2">
-                      <div>
-                        <p className="mb-1.5 text-[10.5px] font-semibold uppercase tracking-[0.12em] text-[var(--text3)]">
-                          Before
-                        </p>
-                        <JsonViewer data={entry.beforeState ?? null} maxHeight={220} />
-                      </div>
-                      <div>
-                        <p className="mb-1.5 text-[10.5px] font-semibold uppercase tracking-[0.12em] text-[var(--text3)]">
-                          After
-                        </p>
-                        <JsonViewer data={entry.afterState ?? null} maxHeight={220} />
-                      </div>
-                    </div>
-                  )}
-                </Row>
-              );
-            })}
-          </RowStack>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-1.5">
+                          {entry.workflowId && (
+                            <UiButton asChild variant="ghost" size="sm">
+                              <Link to={`/automation/workflows/${entry.workflowId}`}>Workflow</Link>
+                            </UiButton>
+                          )}
+                          {entry.runId && (
+                            <UiButton asChild variant="ghost" size="sm">
+                              <Link to={`/automation/runs/${entry.runId}`}>Run</Link>
+                            </UiButton>
+                          )}
+                          <UiButton
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setExpandedId(expanded ? null : entry.id)}
+                            aria-expanded={expanded}
+                          >
+                            {expanded ? "Hide" : "Diff"}
+                          </UiButton>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                    {expanded && (
+                      <TableRow>
+                        <TableCell colSpan={4} className="bg-[var(--bg2)]/40">
+                          <div className="grid gap-3 py-1 lg:grid-cols-2">
+                            <div>
+                              <p className="mb-1.5 text-[10.5px] font-semibold uppercase tracking-[0.12em] text-[var(--text3)]">
+                                Before
+                              </p>
+                              <JsonViewer data={entry.beforeState ?? null} maxHeight={220} />
+                            </div>
+                            <div>
+                              <p className="mb-1.5 text-[10.5px] font-semibold uppercase tracking-[0.12em] text-[var(--text3)]">
+                                After
+                              </p>
+                              <JsonViewer data={entry.afterState ?? null} maxHeight={220} />
+                            </div>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </Fragment>
+                );
+              })}
+            </TableBody>
+          </Table>
         )}
       </Panel>
 

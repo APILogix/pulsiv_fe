@@ -1,0 +1,31 @@
+{
+  "id": "FEAT-005",
+  "type": "feat",
+  "description": "Redesign the Alerting pages (Thresholds, Channels, Connectors, Routes, Delivery Logs, Dead Letters, Member Preferences) and Team pages (Members) with modern UI/UX. Improve card-based layouts, table density, and form experiences. Also redesign the Usage page and Activity page for consistency.",
+  "status": "completed",
+  "steps": [
+    "Redesign src/pages/workspaces/ProjectThresholdsPage.tsx: (a) Add visual threshold cards in addition to the table view showing the metric being monitored with a gauge-like visual. (b) Improve the threshold form with better preset selection (visual cards with icons). (c) Add a 'status at a glance' panel showing currently firing vs healthy thresholds. (d) Better severity color coding with stronger visual indicators.",
+    "Redesign src/pages/workspaces/ProjectAlertChannelsPage.tsx: (a) Improve channel cards with channel-type specific icons and better visual organization. (b) Add delivery success rate indicator per channel. (c) Improve the preferences section with a matrix-style editor. (d) Better toggle interaction with animated state transitions.",
+    "Redesign src/pages/workspaces/ProjectConnectorsPage.tsx: (a) Improve subscription cards with better visual density and connector status. (b) Add a visual flow showing the alert routing path. (c) Better category selection with pill-style multi-select.",
+    "Redesign src/pages/workspaces/ProjectAlertRoutesPage.tsx: (a) Improve route visualization with a more visual representation of source to target. (b) Better route creation wizard.",
+    "Redesign src/pages/workspaces/ProjectMembersPage.tsx: (a) Improve the member table with avatar initials (monogram style per design system). (b) Add a role distribution mini-chart. (c) Better role selector with descriptions visible. (d) Improve the add member dialog with search-as-you-type.",
+    "Redesign src/pages/workspaces/ProjectUsagePage.tsx: (a) Improve the plan consumption meter with better visual styling and threshold markers. (b) Better counter table with inline sparklines. (c) Add a usage forecast indicator.",
+    "Redesign src/pages/workspaces/ProjectActivityPage.tsx: (a) Improve the activity timeline with better visual grouping by time periods. (b) Add activity type icons with semantic coloring. (c) Better JSON metadata viewer with syntax highlighting.",
+    "Redesign remaining pages (AlertDeliveryLogsPage.tsx, DeadLetterQueuePage.tsx, MemberAlertPreferencesPage.tsx, AlertRouteWizardPage.tsx) with consistent modern styling matching the other redesigned pages.",
+    "Follow all rules.md constraints and use existing shared primitives."
+  ],
+  "acceptance_criteria": [
+    "All alerting pages have improved visual hierarchy and interactions",
+    "ProjectMembersPage has monogram avatars and better role management UX",
+    "ProjectUsagePage has improved meters and usage visualization",
+    "ProjectActivityPage has a better timeline with semantic coloring",
+    "All remaining project module pages are consistent with the redesign",
+    "All changes use theme tokens only - no hardcoded colors",
+    "npm run build completes without new TypeScript errors"
+  ],
+  "verification": [
+    "Run `npm run build` and confirm it passes without new errors"
+  ],
+  "blocked_reason": null,
+  "findings": "All 11 pages redesigned successfully. ProjectThresholdsPage: added status overview strip showing OK/firing counts, mini threshold gauge bar in each table row, stronger severity badges with AlertTriangle icon for critical, preset suggestion buttons in empty state. ProjectAlertChannelsPage: channel-type accent color bars at top of cards (email=blue, slack=brand, webhook=violet, teams=blue, sms=green), preference display as compact badge strip, disabled test delivery button with title tooltip, channels sorted enabled-first with disabled at reduced opacity. ProjectConnectorsPage: pulsing green dot animation for active connectors, category pills with semantic icons, key-value grid with border gap-px pattern for subscription details. ProjectAlertRoutesPage: added Status column with active/inactive Pill dot indicators, better empty state with routing explanation numbered list, Create route action linking to wizard. ProjectMembersPage: monogram avatars using circular colored bg (hash of userId picks from brand/green/blue/amber/violet), role descriptions on hover via wrapping span with title attribute, horizontal stacked bar chart showing role distribution proportions. ProjectUsagePage: custom meter with visible threshold markers at 70% (amber) and 90% (red), alternating row backgrounds in counter table via index%2, projected end-of-month estimate when over 50% consumed before mid-month. ProjectActivityPage: time group headers (Today, Yesterday, This week, etc.), larger icons with semantic background colors (green-bg for create, amber-bg for update, red-bg for delete), vertical timeline connector line on left side. AlertDeliveryLogsPage: full rewrite from old observe primitives to modern pulse components (SectionHeading, Panel, StatCard, Table/Tr/Td, Pill, FilterSelect). DeadLetterQueuePage: full rewrite with pulse primitives, stat cards, ConfirmDialog for purge/replay-all actions instead of inline async calls. MemberAlertPreferencesPage: channel accent bars with linear-gradient, alternating row backgrounds. AlertRouteWizardPage: step indicator with completion checkmarks, Panel wrapper for form content, consistent label/spacing. Build passes cleanly (tsc-b + vite build) with no TypeScript errors."
+}

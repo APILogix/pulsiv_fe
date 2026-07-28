@@ -1,5 +1,16 @@
 import { useState } from "react";
-import { Cable, CheckCircle2, Layers, Pencil, Plus, Trash2, Users, Volume2 } from "lucide-react";
+import {
+  Activity,
+  Cable,
+  CheckCircle2,
+  Layers,
+  Pencil,
+  Plus,
+  Shield,
+  Trash2,
+  Users,
+  Volume2,
+} from "lucide-react";
 import {
   useConnectorSubscriptionMutations,
   useConnectorSubscriptions,
@@ -38,6 +49,14 @@ import {
 const SEVERITY_CHOICES = ["info", "warning", "error", "critical"] as const;
 const DIGEST_CHOICES = ["immediate", "hourly", "daily", "weekly"] as const;
 
+const CATEGORY_ICON: Record<string, typeof Activity> = {
+  error: Shield,
+  performance: Activity,
+  security: Shield,
+  usage: Layers,
+  deployment: Cable,
+};
+
 const asMessage = apiErrorMessage;
 
 // ── subscription form ────────────────────────────────────────
@@ -59,7 +78,7 @@ function SubscriptionFields({
       {!subscription && (
         <DialogField label="Connector" name="connectorId" required hint="Organization connectors are managed under Connections.">
           <select id="connectorId" name="connectorId" required className={fieldInputClass}>
-            <option value="">Select a connector…</option>
+            <option value="">Select a connector...</option>
             {connectors.map((connector) => (
               <option key={connector.id} value={connector.id}>
                 {connector.name ?? connector.id}
@@ -247,11 +266,20 @@ export default function ProjectConnectorsPage() {
           {subscriptions.map((subscription) => (
             <div
               key={subscription.id}
-              className="pulse-edge flex flex-col gap-3.5 rounded-[14px] border border-[var(--border)] bg-[var(--bg1)] p-4"
+              className="pulse-edge relative flex flex-col gap-3.5 overflow-hidden rounded-[14px] border border-[var(--border)] bg-[var(--bg1)] p-4"
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="flex min-w-0 items-start gap-3">
-                  <IconChip icon={Cable} tone={subscription.enabled ? "brand" : "neutral"} />
+                  <div className="relative">
+                    <IconChip icon={Cable} tone={subscription.enabled ? "brand" : "neutral"} />
+                    {/* Pulsing dot for active connectors */}
+                    {subscription.enabled && (
+                      <span className="absolute -right-0.5 -top-0.5 flex size-2.5">
+                        <span className="absolute inline-flex size-full animate-ping rounded-full bg-[var(--green)] opacity-60" />
+                        <span className="relative inline-flex size-2.5 rounded-full bg-[var(--green)]" />
+                      </span>
+                    )}
+                  </div>
                   <div className="min-w-0">
                     <p className="truncate text-[14px] font-semibold text-[var(--text)]">
                       {connectorName(subscription.connectorId)}
@@ -271,50 +299,56 @@ export default function ProjectConnectorsPage() {
                 />
               </div>
 
+              {/* Category pills with icons */}
               <div className="flex flex-wrap gap-1.5">
-                {subscription.alertCategories.map((category) => (
-                  <Pill key={category} tone="blue">
-                    {category}
-                  </Pill>
-                ))}
+                {subscription.alertCategories.map((category) => {
+                  const CatIcon = CATEGORY_ICON[category] ?? Activity;
+                  return (
+                    <Pill key={category} tone="blue">
+                      <CatIcon className="size-3" aria-hidden="true" />
+                      {category}
+                    </Pill>
+                  );
+                })}
               </div>
 
-              <dl className="grid grid-cols-2 gap-x-5 gap-y-2.5">
-                <div>
-                  <dt className="text-[10.5px] font-medium uppercase tracking-[0.1em] text-[var(--text3)]">
+              {/* Key-value grid with improved styling */}
+              <div className="grid grid-cols-2 gap-px overflow-hidden rounded-[10px] border border-[var(--border)] bg-[var(--border)]">
+                <div className="flex flex-col gap-0.5 bg-[var(--bg2)] px-3 py-2">
+                  <span className="text-[10px] font-medium uppercase tracking-[0.1em] text-[var(--text3)]">
                     Min severity
-                  </dt>
-                  <dd className="text-[12.5px] font-medium capitalize text-[var(--text)]">
+                  </span>
+                  <span className="text-[12.5px] font-medium capitalize text-[var(--text)]">
                     {subscription.severityThreshold}
-                  </dd>
+                  </span>
                 </div>
-                <div>
-                  <dt className="flex items-center gap-1 text-[10.5px] font-medium uppercase tracking-[0.1em] text-[var(--text3)]">
-                    <Volume2 className="size-3" aria-hidden="true" /> Digest
-                  </dt>
-                  <dd className="text-[12.5px] font-medium text-[var(--text)]">
+                <div className="flex flex-col gap-0.5 bg-[var(--bg2)] px-3 py-2">
+                  <span className="flex items-center gap-1 text-[10px] font-medium uppercase tracking-[0.1em] text-[var(--text3)]">
+                    <Volume2 className="size-2.5" aria-hidden="true" /> Digest
+                  </span>
+                  <span className="text-[12.5px] font-medium text-[var(--text)]">
                     {subscription.digestMode ?? "immediate"}
-                  </dd>
+                  </span>
                 </div>
-                <div>
-                  <dt className="text-[10.5px] font-medium uppercase tracking-[0.1em] text-[var(--text3)]">Targets</dt>
-                  <dd className="text-[12.5px] font-medium text-[var(--text)]">
+                <div className="flex flex-col gap-0.5 bg-[var(--bg2)] px-3 py-2">
+                  <span className="text-[10px] font-medium uppercase tracking-[0.1em] text-[var(--text3)]">Targets</span>
+                  <span className="text-[12.5px] font-medium text-[var(--text)]">
                     {subscription.memberIds.length > 0
                       ? `${subscription.memberIds.length} member${subscription.memberIds.length === 1 ? "" : "s"}`
                       : "All subscribers"}
-                  </dd>
+                  </span>
                 </div>
-                <div>
-                  <dt className="text-[10.5px] font-medium uppercase tracking-[0.1em] text-[var(--text3)]">
+                <div className="flex flex-col gap-0.5 bg-[var(--bg2)] px-3 py-2">
+                  <span className="text-[10px] font-medium uppercase tracking-[0.1em] text-[var(--text3)]">
                     Quiet hours
-                  </dt>
-                  <dd className="text-[12.5px] font-medium text-[var(--text)]">
+                  </span>
+                  <span className="text-[12.5px] font-medium text-[var(--text)]">
                     {subscription.quietHours && Object.keys(subscription.quietHours).length > 0
                       ? "Configured"
                       : "None"}
-                  </dd>
+                  </span>
                 </div>
-              </dl>
+              </div>
 
               <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[var(--border)] pt-3">
                 <span className="text-[11.5px] text-[var(--text3)]">

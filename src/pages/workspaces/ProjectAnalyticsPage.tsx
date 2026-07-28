@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   Activity,
   AlertTriangle,
@@ -98,6 +98,8 @@ const COMPARISON_HEADERS = ["Series", "Events", "Errors", "Requests", "Error rat
 function VolumeChart({ points }: { points: UsageTimeSeriesPoint[] }) {
   const width = 1000;
   const height = 220;
+  const [hoverIndex, setHoverIndex] = useState<number | null>(null);
+  const svgRef = useRef<SVGSVGElement>(null);
 
   const paths = useMemo(() => {
     if (points.length < 2) return [];
@@ -109,12 +111,17 @@ function VolumeChart({ points }: { points: UsageTimeSeriesPoint[] }) {
     return CHART_SERIES.map((series) => {
       const coords = points.map((point, index) => {
         const value = Number(point[series.key] ?? 0);
-        return `${(index * step).toFixed(2)},${(height - (value / max) * height).toFixed(2)}`;
+        return {
+          x: Number((index * step).toFixed(2)),
+          y: Number((height - (value / max) * height).toFixed(2)),
+          str: `${(index * step).toFixed(2)},${(height - (value / max) * height).toFixed(2)}`,
+        };
       });
       return {
         ...series,
-        line: coords.join(" "),
-        area: `0,${height} ${coords.join(" ")} ${width},${height}`,
+        coords,
+        line: coords.map((c) => c.str).join(" "),
+        area: `0,${height} ${coords.map((c) => c.str).join(" ")} ${width},${height}`,
       };
     });
   }, [points]);
@@ -129,6 +136,18 @@ function VolumeChart({ points }: { points: UsageTimeSeriesPoint[] }) {
 
   const first = points[0]?.bucket;
   const last = points[points.length - 1]?.bucket;
+  const step = width / (points.length - 1);
+
+  const handleMouseMove = (event: React.MouseEvent<SVGSVGElement>) => {
+    const svg = svgRef.current;
+    if (!svg) return;
+    const rect = svg.getBoundingClientRect();
+    const x = ((event.clientX - rect.left) / rect.width) * width;
+    const index = Math.round(x / step);
+    setHoverIndex(Math.max(0, Math.min(points.length - 1, index)));
+  };
+
+  const handleMouseLeave = () => setHoverIndex(null);
 
   return (
     <div className="flex flex-col gap-3">
@@ -140,40 +159,103 @@ function VolumeChart({ points }: { points: UsageTimeSeriesPoint[] }) {
           </span>
         ))}
       </div>
-      <svg
-        viewBox={`0 0 ${width} ${height}`}
-        preserveAspectRatio="none"
-        className="h-[220px] w-full"
-        role="img"
-        aria-label="Event volume over the selected range"
-      >
-        {[0.25, 0.5, 0.75].map((ratio) => (
-          <line
-            key={ratio}
-            x1={0}
-            x2={width}
-            y1={height * ratio}
-            y2={height * ratio}
-            stroke="var(--border)"
-            strokeWidth="1"
-            vectorEffect="non-scaling-stroke"
-          />
-        ))}
-        {paths.map((series) => (
-          <g key={series.key}>
-            <polygon points={series.area} fill={series.color} opacity="0.08" />
-            <polyline
-              points={series.line}
-              fill="none"
-              stroke={series.color}
-              strokeWidth="1.75"
-              strokeLinecap="round"
-              strokeLinejoin="round"
+      <div className="relative">
+        <svg
+          ref={svgRef}
+          viewBox={`0 0 ${width} ${height}`}
+          preserveAspectRatio="none"
+          className="h-[220px] w-full"
+          role="img"
+          aria-label="Event volume over the selected range"
+          onMouseMove={handleMouseMove}
+          onMouseLeave={handleMouseLeave}
+        >
+          {/* grid lines */}
+          {[0.25, 0.5, 0.75].map((ratio) => (
+            <line
+              key={ratio}
+              x1={0}
+              x2={width}
+              y1={height * ratio}
+              y2={height * ratio}
+              stroke="var(--border)"
+              strokeWidth="1"
+              strokeDasharray="4 4"
               vectorEffect="non-scaling-stroke"
             />
-          </g>
-        ))}
-      </svg>
+          ))}
+          {/* area fills + lines */}
+          {paths.map((series) => (
+            <g key={series.key}>
+              <defs>
+                <linearGradient id={`vol-grad-${series.key}`} x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor={series.color} stopOpacity="0.15" />
+                  <stop offset="100%" stopColor={series.color} stopOpacity="0" />
+                </linearGradient>
+              </defs>
+              <polygon points={series.area} fill={`url(#vol-grad-${series.key})`} />
+              <polyline
+                points={series.line}
+                fill="none"
+                stroke={series.color}
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                vectorEffect="non-scaling-stroke"
+              />
+              {/* hover dot */}
+              {hoverIndex !== null && series.coords[hoverIndex] && (
+                <circle
+                  cx={series.coords[hoverIndex].x}
+                  cy={series.coords[hoverIndex].y}
+                  r="4"
+                  fill={series.color}
+                  stroke="var(--bg1)"
+                  strokeWidth="2"
+                  vectorEffect="non-scaling-stroke"
+                />
+              )}
+            </g>
+          ))}
+          {/* crosshair line */}
+          {hoverIndex !== null && (
+            <line
+              x1={hoverIndex * step}
+              x2={hoverIndex * step}
+              y1={0}
+              y2={height}
+              stroke="var(--text3)"
+              strokeWidth="1"
+              strokeDasharray="3 3"
+              vectorEffect="non-scaling-stroke"
+              opacity="0.6"
+            />
+          )}
+        </svg>
+        {/* tooltip */}
+        {hoverIndex !== null && points[hoverIndex] && (
+          <div
+            className="pointer-events-none absolute top-0 z-10 rounded-[8px] bg-[var(--bg1)] px-3 py-2 shadow-lg ring-1 ring-[var(--border)]"
+            style={{
+              left: `${(hoverIndex / (points.length - 1)) * 100}%`,
+              transform: "translateX(-50%)",
+            }}
+          >
+            <p className="mb-1 font-[family-name:var(--mono)] text-[10px] text-[var(--text3)]">
+              {new Date(points[hoverIndex].bucket).toLocaleString()}
+            </p>
+            {CHART_SERIES.map((series) => (
+              <p key={series.key} className="flex items-center gap-1.5 text-[11px]">
+                <span className="size-1.5 rounded-full" style={{ background: series.color }} aria-hidden="true" />
+                <span className="text-[var(--text2)]">{series.label}:</span>
+                <span className="font-semibold tabular-nums text-[var(--text)]">
+                  {formatCompact(Number(points[hoverIndex][series.key] ?? 0))}
+                </span>
+              </p>
+            ))}
+          </div>
+        )}
+      </div>
       <div className="flex justify-between font-[family-name:var(--mono)] text-[10.5px] text-[var(--text3)]">
         <span>{first ? new Date(first).toLocaleString() : ""}</span>
         <span>{last ? new Date(last).toLocaleString() : ""}</span>
@@ -199,7 +281,7 @@ function HeatmapGrid({ cells }: { cells: Array<{ x: string; y: string; value: nu
 
   return (
     <div className="sidebar-scroll overflow-x-auto">
-      <table className="border-separate border-spacing-[2px]">
+      <table className="border-separate border-spacing-[3px]">
         <tbody>
           {rows.yKeys.map((yKey) => (
             <tr key={yKey}>
@@ -210,10 +292,9 @@ function HeatmapGrid({ cells }: { cells: Array<{ x: string; y: string; value: nu
                 const value = rows.lookup.get(`${xKey}|${yKey}`) ?? 0;
                 const intensity = value === 0 ? 0 : 0.15 + (value / rows.max) * 0.85;
                 return (
-                  <td key={xKey}>
+                  <td key={xKey} className="group relative">
                     <div
-                      title={`${xKey} · ${yKey} — ${formatNumber(value)} events`}
-                      className="size-4 rounded-[3px] ring-1 ring-inset ring-[var(--border)]"
+                      className="size-5 rounded-[4px] ring-1 ring-inset ring-[var(--border)] transition-transform duration-150 group-hover:scale-125 group-hover:ring-[var(--brand)]/40"
                       style={{
                         background:
                           value === 0
@@ -221,6 +302,10 @@ function HeatmapGrid({ cells }: { cells: Array<{ x: string; y: string; value: nu
                             : `color-mix(in srgb, var(--brand) ${Math.round(intensity * 100)}%, transparent)`,
                       }}
                     />
+                    {/* tooltip */}
+                    <div className="pointer-events-none absolute -top-8 left-1/2 z-20 -translate-x-1/2 whitespace-nowrap rounded-[6px] bg-[var(--bg1)] px-2 py-1 text-[10px] font-medium tabular-nums text-[var(--text)] opacity-0 shadow-lg ring-1 ring-[var(--border)] transition-opacity group-hover:opacity-100">
+                      {xKey} &middot; {yKey} &mdash; {formatNumber(value)}
+                    </div>
                   </td>
                 );
               })}
@@ -285,6 +370,7 @@ export default function ProjectAnalyticsPage() {
   return (
     <div className="flex flex-col gap-6">
       <Toolbar
+        className="sticky top-0 z-10 backdrop-blur-md bg-[var(--bg1)]/80"
         trailing={
           <span className="text-[11.5px] text-[var(--text3)]">
             {new Date(from).toLocaleString()} → {new Date(to).toLocaleString()}
@@ -360,7 +446,18 @@ export default function ProjectAnalyticsPage() {
         icon={LineChartIcon}
       >
         {usageQuery.isLoading ? (
-          <div className="h-56 animate-pulse rounded-[12px] bg-[var(--bg2)]" />
+          <div className="flex flex-col gap-3">
+            <div className="flex gap-4">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="h-3 w-16 animate-pulse rounded-full bg-[var(--bg2)]" />
+              ))}
+            </div>
+            <div className="h-[220px] animate-pulse rounded-[12px] bg-[var(--bg2)]" />
+            <div className="flex justify-between">
+              <div className="h-3 w-24 animate-pulse rounded-full bg-[var(--bg2)]" />
+              <div className="h-3 w-24 animate-pulse rounded-full bg-[var(--bg2)]" />
+            </div>
+          </div>
         ) : (
           <VolumeChart points={series} />
         )}
@@ -414,7 +511,16 @@ export default function ProjectAnalyticsPage() {
           }
         >
           {heatmapQuery.isLoading ? (
-            <div className="h-40 animate-pulse rounded-[12px] bg-[var(--bg2)]" />
+            <div className="flex flex-col gap-2">
+              {[0, 1, 2, 3, 4].map((row) => (
+                <div key={row} className="flex gap-1">
+                  <div className="h-5 w-8 animate-pulse rounded bg-[var(--bg2)]" />
+                  {[0, 1, 2, 3, 4, 5, 6].map((col) => (
+                    <div key={col} className="size-5 animate-pulse rounded-[4px] bg-[var(--bg2)]" />
+                  ))}
+                </div>
+              ))}
+            </div>
           ) : (
             <HeatmapGrid cells={heatmapQuery.data?.cells ?? []} />
           )}
@@ -504,7 +610,7 @@ export default function ProjectAnalyticsPage() {
           </p>
         ) : (
           <Table headers={COMPARISON_HEADERS} maxHeight="24rem">
-            {(comparisonQuery.data ?? []).map((entry) => {
+            {(comparisonQuery.data ?? []).map((entry, index) => {
               const totals = entry.data.reduce(
                 (accumulator, point) => ({
                   events: accumulator.events + point.totalEvents,
@@ -515,7 +621,7 @@ export default function ProjectAnalyticsPage() {
               );
               const rate = totals.events > 0 ? (totals.errors / totals.events) * 100 : 0;
               return (
-                <Tr key={entry.id}>
+                <Tr key={entry.id} className={index % 2 === 1 ? "bg-[var(--bg2)]/40" : undefined}>
                   <Td>
                     <span className="truncate text-[13px] font-medium text-[var(--text)]">{entry.name}</span>
                   </Td>

@@ -1,10 +1,11 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import {
   AlertTriangle,
   Ban,
   BarChart3,
   CalendarClock,
   CheckCircle2,
+  Clock,
   KeyRound,
   Layers,
   MoreHorizontal,
@@ -90,7 +91,30 @@ const STATUS_FILTER_OPTIONS = [
   { value: "suspended", label: "Suspended" },
 ];
 
-const KEY_TABLE_HEADERS = ["Key", "Environment", "Status", "Expires", "Last used", ""];
+const KEY_TABLE_HEADERS = ["", "Key", "Environment", "Status", "Expires", "Last used", ""];
+
+const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+
+function getKeyHealth(key: ProjectApiKey): { tone: "green" | "amber" | "red"; label: string } {
+  // Red: expiring within 7 days or already expired
+  if (key.expiresAt) {
+    const remaining = new Date(key.expiresAt).getTime() - Date.now();
+    if (remaining <= 0) return { tone: "red", label: "Expired" };
+    if (remaining <= SEVEN_DAYS_MS) return { tone: "red", label: "Expiring soon" };
+  }
+  // Amber: not used in 7+ days (or never used)
+  if (!key.lastUsedAt) return { tone: "amber", label: "Never used" };
+  const sinceUsed = Date.now() - new Date(key.lastUsedAt).getTime();
+  if (sinceUsed > SEVEN_DAYS_MS) return { tone: "amber", label: "Idle 7+ days" };
+  // Green: recently used and active
+  return { tone: "green", label: "Healthy" };
+}
+
+const HEALTH_DOT_CLASSES: Record<string, string> = {
+  green: "bg-[var(--green)]",
+  amber: "bg-[var(--amber)]",
+  red: "bg-[var(--red)]",
+};
 
 const asMessage = apiErrorMessage;
 
@@ -107,7 +131,7 @@ function KeyUsageSheet({
 }) {
   const [range, setRange] = useState("7d");
   const [granularity, setGranularity] = useState<ApiKeyUsageGranularity>("daily");
-  const query = useMemo(() => {
+  const query = (() => {
     const end = new Date();
     end.setMinutes(0, 0, 0);
     return {
@@ -115,7 +139,7 @@ function KeyUsageSheet({
       from: new Date(end.getTime() - USAGE_RANGE_HOURS[range] * 60 * 60 * 1000).toISOString(),
       granularity,
     };
-  }, [granularity, range]);
+  })();
   const { data: usage, isLoading, error } = useApiKeyUsage(projectId, apiKey?.id, query);
   const { data: fresh } = useApiKey(projectId, apiKey?.id);
   const detail = fresh ?? apiKey;
@@ -233,6 +257,14 @@ export default function ProjectApiKeysPage() {
     const remaining = new Date(key.expiresAt).getTime() - Date.now();
     return remaining > 0 && remaining <= 30 * 24 * 60 * 60 * 1000;
   }).length;
+  const neverUsedCount = keys.filter((key) => key.status === "active" && !key.lastUsedAt).length;
+  const avgAgeDays = (() => {
+    const activeKeys = keys.filter((k) => k.status === "active" && k.createdAt);
+    if (activeKeys.length === 0) return 0;
+    const now = Date.now();
+    const total = activeKeys.reduce((sum, k) => sum + (now - new Date(k.createdAt).getTime()), 0);
+    return Math.round(total / activeKeys.length / (1000 * 60 * 60 * 24));
+  })();
 
   const environmentOptions = [
     { value: "", label: "All environments" },
@@ -328,6 +360,31 @@ export default function ProjectApiKeysPage() {
         <StatCard label="Expiring in 30 days" value={expiringCount} icon={CalendarClock} tone="blue" />
       </div>
 
+      {/* At a glance mini panel */}
+      {keys.length > 0 && (
+        <div className="flex flex-wrap items-center gap-4 rounded-[10px] border border-[var(--border)] bg-[var(--bg1)] px-4 py-2.5">
+          <span className="text-[11px] font-medium uppercase tracking-[0.1em] text-[var(--text3)]">At a glance</span>
+          <div className="flex flex-wrap items-center gap-4">
+            {expiringCount > 0 && (
+              <div className="flex items-center gap-1.5">
+                <span className="size-1.5 rounded-full bg-[var(--red)]" />
+                <span className="text-[12px] text-[var(--text2)]">{expiringCount} expiring soon</span>
+              </div>
+            )}
+            {neverUsedCount > 0 && (
+              <div className="flex items-center gap-1.5">
+                <span className="size-1.5 rounded-full bg-[var(--amber)]" />
+                <span className="text-[12px] text-[var(--text2)]">{neverUsedCount} never used</span>
+              </div>
+            )}
+            <div className="flex items-center gap-1.5">
+              <Clock className="size-3 text-[var(--text3)]" />
+              <span className="text-[12px] text-[var(--text2)]">Avg age: {avgAgeDays}d</span>
+            </div>
+          </div>
+        </div>
+      )}
+
       <Toolbar>
         <FilterSelect
           label="Environment"
@@ -370,15 +427,24 @@ export default function ProjectApiKeysPage() {
           </div>
         ) : (
           <Table headers={KEY_TABLE_HEADERS} maxHeight="34rem">
-            {keys.map((key) => (
-              <Tr key={key.id}>
+            {keys.map((key) => {
+              const health = getKeyHealth(key);
+              return (
+              <Tr key={key.id} className="group relative transition-colors hover:bg-[var(--bg2)]/50">
+                {/* Health indicator */}
+                <Td className="w-8">
+                  <span
+                    className={`inline-block size-2 rounded-full ${HEALTH_DOT_CLASSES[health.tone]}`}
+                    title={health.label}
+                  />
+                </Td>
                 <Td>
                   <div className="flex min-w-0 flex-col gap-0.5">
                     <span className="truncate text-[13px] font-medium text-[var(--text)]">
                       {key.name || "Unnamed key"}
                     </span>
                     <span className="flex items-center gap-1.5">
-                      <code className="truncate font-[family-name:var(--mono)] text-[11px] text-[var(--text3)]">
+                      <code className="truncate rounded bg-[var(--bg2)] px-1.5 py-0.5 font-[family-name:var(--mono)] text-[11px] text-[var(--text3)]">
                         {key.publicKey}
                       </code>
                       <CopyButton value={key.publicKey} label="" className="h-5 border-0 bg-transparent px-1 py-0" />
@@ -387,7 +453,7 @@ export default function ProjectApiKeysPage() {
                 </Td>
                 <Td>
                   <span className="text-[12.5px] text-[var(--text2)]">
-                    {key.environment?.name ?? environments.find((env) => env.id === key.environmentId)?.name ?? "—"}
+                    {key.environment?.name ?? environments.find((env) => env.id === key.environmentId)?.name ?? "\u2014"}
                   </span>
                 </Td>
                 <Td>
@@ -445,7 +511,8 @@ export default function ProjectApiKeysPage() {
                   </DropdownMenu>
                 </Td>
               </Tr>
-            ))}
+              );
+            })}
           </Table>
         )}
       </Panel>
@@ -467,14 +534,27 @@ export default function ProjectApiKeysPage() {
       >
         <DialogField label="Environment" name="environmentId" required>
           <select id="environmentId" name="environmentId" required className={fieldInputClass}>
-            <option value="">Select an environment…</option>
+            <option value="">Select an environment...</option>
             {activeEnvironments.map((environment) => (
               <option key={environment.id} value={environment.id}>
-                {environment.name} · {environmentTypeLabel(environment.type)}
+                {environment.name} \u00B7 {environmentTypeLabel(environment.type)}
                 {environment.isDefault ? " (default)" : ""}
               </option>
             ))}
           </select>
+          {activeEnvironments.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {activeEnvironments.map((environment) => (
+                <span
+                  key={environment.id}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--bg2)] px-2 py-0.5 text-[10.5px] font-medium text-[var(--text2)]"
+                >
+                  <span className="size-2 rounded-full" style={{ backgroundColor: environment.color }} />
+                  {environment.name}
+                </span>
+              ))}
+            </div>
+          )}
         </DialogField>
 
         <DialogField label="Name" name="name">

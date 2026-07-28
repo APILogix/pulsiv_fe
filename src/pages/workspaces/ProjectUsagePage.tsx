@@ -11,13 +11,14 @@ import {
   Layers,
   RefreshCcw,
   Sigma,
+  TrendingUp,
 } from "lucide-react";
 import { useProjectStats, useProjectUsageCounters } from "@/modules/projects/hooks/useProjects";
 import { useMonthlyUsage, useUsageAnalytics } from "@/modules/projects/hooks/useProjectAnalytics";
 import type { UsageGranularity } from "@/modules/projects/api/types";
 import { UsageTrendChart } from "@/modules/projects/components/UsageTrendChart";
 import { useCurrentProject } from "./ProjectShellPage";
-import { Meter, Notice, Panel, SectionHeading, SegmentedControl, StatCard, Toolbar, type SegmentOption } from "@/shared/ui/pulse";
+import { Notice, Panel, SectionHeading, SegmentedControl, StatCard, Toolbar, type SegmentOption } from "@/shared/ui/pulse";
 import { FilterSelect, Table, Td, Timestamp, Tr, formatBytes, formatCompact, formatNumber } from "@/shared/observe";
 import { Button as UiButton } from "@/components/ui/button";
 import { apiErrorMessage } from "@/modules/projects/components/project-ui";
@@ -86,6 +87,21 @@ export default function ProjectUsagePage() {
 
   const totalEvents = findCounter(["events", "events_total"]);
   const totalBytes = findCounter(["bytes", "bytes_total", "event_bytes"]);
+
+  // Projected end-of-month calculation
+  const projectedWarning = (() => {
+    if (!monthly || !monthly.planLimit || monthly.planLimit <= 0) return null;
+    const now = new Date();
+    const dayOfMonth = now.getDate();
+    const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    const midMonth = Math.floor(daysInMonth / 2);
+    const pct = monthly.usagePercent ?? 0;
+    if (pct > 50 && dayOfMonth < midMonth) {
+      const projected = Math.round((monthly.totalEvents / dayOfMonth) * daysInMonth);
+      return `At current rate, projected end-of-month usage: ~${formatCompact(projected)} events (${Math.round((projected / monthly.planLimit) * 100)}% of limit)`;
+    }
+    return null;
+  })();
 
   return (
     <div className="flex flex-col gap-6">
@@ -173,17 +189,73 @@ export default function ProjectUsagePage() {
       {monthly && (
         <Panel title="Plan consumption" description={`Billing month ${monthly.yearMonth}.`} icon={Sigma}>
           <div className="flex flex-col gap-5">
-            <Meter
-              label="Events against plan allowance"
-              used={monthly.totalEvents}
-              limit={monthly.planLimit}
-              format={formatCompact}
-              hint={
-                monthly.usagePercent != null
-                  ? `${monthly.usagePercent.toFixed(1)}% consumed this month`
-                  : "This project has no explicit plan limit"
-              }
-            />
+            {/* Enhanced meter with threshold markers */}
+            <div className="flex flex-col gap-2">
+              <div className="flex items-baseline justify-between gap-3">
+                <span className="text-[12.5px] font-medium text-[var(--text2)]">Events against plan allowance</span>
+                <span className="text-[12.5px] font-semibold tabular-nums text-[var(--text)]">
+                  {formatCompact(monthly.totalEvents)}
+                  <span className="ml-1 font-normal text-[var(--text3)]">
+                    / {monthly.planLimit && monthly.planLimit > 0 ? formatCompact(monthly.planLimit) : "\u221E"}
+                  </span>
+                </span>
+              </div>
+              <div className="relative">
+                <div
+                  className="h-2 w-full overflow-hidden rounded-full bg-[var(--bg3)]"
+                  role="progressbar"
+                  aria-label="Events against plan allowance"
+                  aria-valuenow={Math.round(monthly.usagePercent ?? 0)}
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                >
+                  <div
+                    className="h-full rounded-full transition-[width] duration-500"
+                    style={{
+                      width: `${Math.min(100, monthly.usagePercent ?? 0)}%`,
+                      background: (monthly.usagePercent ?? 0) >= 90 ? "var(--red)" : (monthly.usagePercent ?? 0) >= 70 ? "var(--amber)" : "var(--brand)",
+                    }}
+                  />
+                </div>
+                {/* Threshold markers at 70% and 90% */}
+                {monthly.planLimit && monthly.planLimit > 0 && (
+                  <>
+                    <div
+                      className="absolute top-0 h-2 w-px bg-[var(--amber)]"
+                      style={{ left: "70%" }}
+                      title="70% threshold"
+                    />
+                    <div
+                      className="absolute top-0 h-2 w-px bg-[var(--red)]"
+                      style={{ left: "90%" }}
+                      title="90% threshold"
+                    />
+                  </>
+                )}
+              </div>
+              <div className="flex items-center justify-between">
+                <p className="text-[11.5px] tabular-nums text-[var(--text3)]">
+                  {monthly.usagePercent != null
+                    ? `${monthly.usagePercent.toFixed(1)}% consumed this month`
+                    : "This project has no explicit plan limit"}
+                </p>
+                {monthly.planLimit && monthly.planLimit > 0 && (
+                  <div className="flex items-center gap-3 text-[10px] text-[var(--text3)]">
+                    <span className="flex items-center gap-1"><span className="inline-block size-1.5 rounded-full bg-[var(--amber)]" />70%</span>
+                    <span className="flex items-center gap-1"><span className="inline-block size-1.5 rounded-full bg-[var(--red)]" />90%</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Projected warning */}
+            {projectedWarning && (
+              <div className="flex items-start gap-2 rounded-[10px] border border-[var(--amber-bg)] bg-[var(--amber-bg)] px-3.5 py-2.5">
+                <TrendingUp className="mt-0.5 size-3.5 shrink-0 text-[var(--amber)]" aria-hidden="true" />
+                <p className="text-[12px] font-medium text-[var(--amber)]">{projectedWarning}</p>
+              </div>
+            )}
+
             <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-[12px] border border-[var(--border)] bg-[var(--border)] sm:grid-cols-4">
               {[
                 { label: "Ingested", value: formatBytes(monthly.totalBytes) },
@@ -225,8 +297,8 @@ export default function ProjectUsagePage() {
           </div>
         ) : (
           <Table headers={COUNTER_HEADERS} maxHeight="30rem">
-            {counters.map((counter) => (
-              <Tr key={counter.counterType}>
+            {counters.map((counter, index) => (
+              <Tr key={counter.counterType} className={index % 2 === 1 ? "bg-[var(--bg2)]/30" : undefined}>
                 <Td>
                   <div className="flex flex-col gap-0.5">
                     <span className="text-[13px] font-medium capitalize text-[var(--text)]">
@@ -250,7 +322,7 @@ export default function ProjectUsagePage() {
                       <Timestamp value={counter.lastPeriodStart} /> → <Timestamp value={counter.lastPeriodEnd} />
                     </span>
                   ) : (
-                    <span className="text-[12px] text-[var(--text3)]">—</span>
+                    <span className="text-[12px] text-[var(--text3)]">-</span>
                   )}
                 </Td>
                 <Td>

@@ -1,7 +1,8 @@
 /* Hallmark · genre: modern-minimal · tone: technical · component: environment management */
 import { useMemo, useState } from "react";
-import { ArchiveRestore, Layers, Pencil, Plus, Power, Search, Star, Trash2 } from "lucide-react";
+import { ArchiveRestore, KeyRound, Layers, Pencil, Plus, Power, Search, Star, Trash2 } from "lucide-react";
 import { useEnvironmentMutations, useEnvironments } from "@/modules/projects/hooks/useEnvironments";
+import { useApiKeys } from "@/modules/projects/hooks/useApiKeys";
 import {
   EnvironmentType,
   type CreateEnvironmentBody,
@@ -18,6 +19,8 @@ import { IconChip, Notice, Panel, Pill, SectionHeading, Toolbar, fieldInputClass
 import { FilterSelect, Timestamp } from "@/shared/observe";
 import { Button as UiButton } from "@/components/ui/button";
 import { ConfirmDialog, DialogField, FormDialog, apiErrorMessage, optionalText } from "@/modules/projects/components/project-ui";
+
+// ── module-level constants (rules.md) ────────────────────────
 
 const TYPE_FILTER_OPTIONS = [
   { value: "", label: "All types" },
@@ -125,9 +128,10 @@ function EnvironmentFields({ environment, allowDefault }: { environment?: Projec
   );
 }
 
-function EnvironmentCard({ environment, activeCount, onEdit, onDefault, onActivate, onDeactivate, onDelete, onRestore }: {
+function EnvironmentCard({ environment, activeCount, keyCount, onEdit, onDefault, onActivate, onDeactivate, onDelete, onRestore }: {
   environment: ProjectEnvironment;
   activeCount: number;
+  keyCount: number;
   onEdit: () => void;
   onDefault: () => void;
   onActivate: () => void;
@@ -137,11 +141,18 @@ function EnvironmentCard({ environment, activeCount, onEdit, onDefault, onActiva
 }) {
   const deleted = environment.deletedAt !== null;
   return (
-    <article className="pulse-edge flex min-w-0 flex-col gap-4 rounded-[14px] border border-[var(--border)] bg-[var(--bg1)] p-4">
-      <div className="flex min-w-0 items-start justify-between gap-3">
-        <div className="flex min-w-0 items-start gap-3">
-          <span className="mt-1 size-3 shrink-0 rounded-full ring-2 ring-[var(--bg3)]" style={{ backgroundColor: environment.color }} aria-hidden="true" />
-          <div className="min-w-0">
+    <article className="group pulse-edge relative flex min-w-0 flex-col overflow-hidden rounded-[14px] border border-[var(--border)] bg-[var(--bg1)] transition-shadow hover:shadow-[0_2px_12px_-2px_var(--border)]">
+      {/* Left colored accent bar */}
+      <div
+        className="absolute inset-y-0 left-0 w-1 rounded-l-[14px]"
+        style={{ backgroundColor: environment.color }}
+        aria-hidden="true"
+      />
+
+      <div className="flex min-w-0 flex-col gap-3 pl-5 pr-4 pt-4 pb-3">
+        {/* Header row */}
+        <div className="flex min-w-0 items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="truncate text-[14px] font-semibold text-[var(--text)]">{environment.name}</h2>
               <Pill tone={typeTone(environment.type)}>{environmentTypeLabel(environment.type)}</Pill>
@@ -150,16 +161,27 @@ function EnvironmentCard({ environment, activeCount, onEdit, onDefault, onActiva
                 {deleted ? "deleted" : environment.isActive ? "active" : "inactive"}
               </Pill>
             </div>
+            <p className="mt-2 line-clamp-2 text-[12.5px] leading-relaxed text-[var(--text2)]">
+              {environment.description || "No description provided."}
+            </p>
           </div>
+        </div>
+
+        {/* Mini stats row */}
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-1.5 rounded-[6px] bg-[var(--bg2)] px-2 py-1">
+            <KeyRound className="size-3 text-[var(--text3)]" />
+            <span className="text-[11px] font-medium tabular-nums text-[var(--text2)]">{keyCount} key{keyCount !== 1 ? "s" : ""}</span>
+          </div>
+          <span className="text-[11px] text-[var(--text3)]">
+            Slug: <code className="font-[family-name:var(--mono)] text-[var(--text2)]">{environment.slug}</code>
+          </span>
         </div>
       </div>
 
-      <p className="min-h-10 text-[12.5px] leading-relaxed text-[var(--text2)]">
-        {environment.description || "No description provided."}
-      </p>
-
-      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--border)] pt-3">
-        <span className="text-[11.5px] text-[var(--text3)]">Updated <Timestamp value={environment.updatedAt} /></span>
+      {/* Footer with actions */}
+      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--border)] bg-[var(--bg2)]/40 px-5 py-2.5 pl-5">
+        <span className="text-[11px] text-[var(--text3)]">Updated <Timestamp value={environment.updatedAt} /></span>
         <div className="flex flex-wrap items-center justify-end gap-1.5">
           {deleted ? (
             <UiButton variant="outline" size="sm" onClick={onRestore}>
@@ -185,8 +207,14 @@ function EnvironmentCard({ environment, activeCount, onEdit, onDefault, onActiva
                   <Power className="mr-1.5 size-3.5" /> Deactivate
                 </UiButton>
               )}
-              <UiButton variant="outline" size="icon-sm" aria-label={`Delete ${environment.name}`}
-                onClick={onDelete} disabled={environment.isDefault || (environment.isActive && activeCount <= 1)}>
+              <UiButton
+                variant="outline"
+                size="icon-sm"
+                aria-label={`Delete ${environment.name}`}
+                onClick={onDelete}
+                disabled={environment.isDefault || (environment.isActive && activeCount <= 1)}
+                className="opacity-0 transition-opacity group-hover:opacity-100 focus:opacity-100"
+              >
                 <Trash2 className="size-3.5 text-[var(--red)]" />
               </UiButton>
             </>
@@ -197,9 +225,63 @@ function EnvironmentCard({ environment, activeCount, onEdit, onDefault, onActiva
   );
 }
 
+// ── Active environments summary strip ────────────────────────
+
+function EnvironmentsSummary({ environments }: { environments: ProjectEnvironment[] }) {
+  const active = environments.filter((e) => e.isActive && !e.deletedAt);
+  const inactive = environments.filter((e) => !e.isActive && !e.deletedAt);
+  const deleted = environments.filter((e) => e.deletedAt);
+
+  if (environments.length === 0) return null;
+
+  return (
+    <div className="flex flex-wrap items-center gap-3 rounded-[10px] border border-[var(--border)] bg-[var(--bg1)] px-4 py-2.5">
+      <div className="flex items-center gap-2">
+        <span className="text-[11px] font-medium uppercase tracking-[0.1em] text-[var(--text3)]">Summary</span>
+      </div>
+      <div className="flex flex-wrap items-center gap-3">
+        {active.length > 0 && (
+          <div className="flex items-center gap-1.5">
+            <span className="size-1.5 rounded-full bg-[var(--green)]" />
+            <span className="text-[12px] font-medium text-[var(--text2)]">{active.length} active</span>
+            <div className="ml-1 flex -space-x-1">
+              {active.slice(0, 5).map((env) => (
+                <span
+                  key={env.id}
+                  className="size-3 rounded-full ring-2 ring-[var(--bg1)]"
+                  style={{ backgroundColor: env.color }}
+                  title={env.name}
+                />
+              ))}
+              {active.length > 5 && (
+                <span className="flex size-3 items-center justify-center rounded-full bg-[var(--bg3)] text-[7px] font-bold text-[var(--text3)] ring-2 ring-[var(--bg1)]">
+                  +{active.length - 5}
+                </span>
+              )}
+            </div>
+          </div>
+        )}
+        {inactive.length > 0 && (
+          <div className="flex items-center gap-1.5">
+            <span className="size-1.5 rounded-full bg-[var(--amber)]" />
+            <span className="text-[12px] text-[var(--text3)]">{inactive.length} inactive</span>
+          </div>
+        )}
+        {deleted.length > 0 && (
+          <div className="flex items-center gap-1.5">
+            <span className="size-1.5 rounded-full bg-[var(--text3)]" />
+            <span className="text-[12px] text-[var(--text3)]">{deleted.length} deleted</span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function ProjectEnvironmentsPage() {
   const { projectId } = useCurrentProject();
   const { data: environments = [], isLoading, error } = useEnvironments(projectId, { includeDeleted: true });
+  const { data: apiKeysData } = useApiKeys(projectId, { includeInactive: true, limit: 500 });
   const mutations = useEnvironmentMutations(projectId);
   const [search, setSearch] = useState("");
   const [type, setType] = useState("");
@@ -212,6 +294,18 @@ export default function ProjectEnvironmentsPage() {
   const [formError, setFormError] = useState<string | null>(null);
 
   const activeCount = environments.filter((environment) => environment.isActive && !environment.deletedAt).length;
+
+  // Count API keys per environment
+  const keyCountMap = useMemo(() => {
+    const map: Record<string, number> = {};
+    const keys = apiKeysData?.data ?? [];
+    for (const key of keys) {
+      const envId = key.environmentId;
+      map[envId] = (map[envId] ?? 0) + 1;
+    }
+    return map;
+  }, [apiKeysData]);
+
   const filtered = useMemo(() => environments.filter((environment) => {
     const haystack = `${environment.name} ${environment.description ?? ""}`.toLowerCase();
     if (search && !haystack.includes(search.toLowerCase())) return false;
@@ -246,6 +340,8 @@ export default function ProjectEnvironmentsPage() {
         description="Deployment scopes for API keys and SDK configuration. Slugs identify environments in SDKs; types drive product behavior."
         actions={<UiButton size="lg" onClick={() => { setFormError(null); setCreating(true); }}><Plus className="mr-1.5 size-4" /> New environment</UiButton>} />
 
+      <EnvironmentsSummary environments={environments} />
+
       <Toolbar>
         <label className="relative min-w-0 flex-1 sm:max-w-[320px]">
           <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[var(--text3)]" />
@@ -264,19 +360,39 @@ export default function ProjectEnvironmentsPage() {
       {isLoading ? (
         <Panel><div className="grid grid-cols-1 gap-4 lg:grid-cols-2">{[0, 1, 2, 3].map((row) => <div key={row} className="h-44 animate-pulse rounded-[12px] bg-[var(--bg2)]" />)}</div></Panel>
       ) : filtered.length === 0 ? (
-        <Panel><div className="flex flex-col items-center gap-3 py-10 text-center">
-          <IconChip icon={Layers} size="lg" tone="brand" />
-          <p className="text-[13.5px] font-semibold text-[var(--text)]">No environments match these filters</p>
-          <p className="text-[12.5px] text-[var(--text2)]">Clear a filter or create another deployment scope.</p>
-        </div></Panel>
+        <Panel>
+          <div className="flex flex-col items-center gap-4 py-12 text-center">
+            <IconChip icon={Layers} size="lg" tone="brand" />
+            <div>
+              <p className="text-[13.5px] font-semibold text-[var(--text)]">No environments match these filters</p>
+              <p className="mt-1 text-[12.5px] text-[var(--text2)]">Clear a filter or create another deployment scope.</p>
+            </div>
+            {environments.length === 0 && (
+              <div className="mt-2 flex flex-wrap items-center justify-center gap-2">
+                <Pill tone="red">Production</Pill>
+                <Pill tone="amber">Staging</Pill>
+                <Pill tone="blue">Development</Pill>
+                <Pill tone="neutral">Custom</Pill>
+              </div>
+            )}
+          </div>
+        </Panel>
       ) : (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-          {filtered.map((environment) => <EnvironmentCard key={environment.id} environment={environment} activeCount={activeCount}
-            onEdit={() => { setFormError(null); setEditing(environment); }}
-            onDefault={() => mutations.setDefaultEnvironment.mutate(environment.id, { onError: mutationError })}
-            onActivate={() => mutations.updateEnvironment.mutate({ environmentId: environment.id, payload: { isActive: true } }, { onError: mutationError })}
-            onDeactivate={() => setDeactivating(environment)} onDelete={() => setDeleting(environment)}
-            onRestore={() => mutations.restoreEnvironment.mutate(environment.id, { onError: mutationError })} />)}
+          {filtered.map((environment) => (
+            <EnvironmentCard
+              key={environment.id}
+              environment={environment}
+              activeCount={activeCount}
+              keyCount={keyCountMap[environment.id] ?? 0}
+              onEdit={() => { setFormError(null); setEditing(environment); }}
+              onDefault={() => mutations.setDefaultEnvironment.mutate(environment.id, { onError: mutationError })}
+              onActivate={() => mutations.updateEnvironment.mutate({ environmentId: environment.id, payload: { isActive: true } }, { onError: mutationError })}
+              onDeactivate={() => setDeactivating(environment)}
+              onDelete={() => setDeleting(environment)}
+              onRestore={() => mutations.restoreEnvironment.mutate(environment.id, { onError: mutationError })}
+            />
+          ))}
         </div>
       )}
 

@@ -37,6 +37,15 @@ const ROLE_DESCRIPTION: Record<ProjectMemberRole, string> = {
   viewer: "Read-only access to telemetry and dashboards.",
 };
 
+/** Colors for monogram avatars, picked by hash of userId */
+const AVATAR_COLORS: string[] = [
+  "var(--brand)",
+  "var(--green)",
+  "var(--blue)",
+  "var(--amber)",
+  "var(--violet)",
+];
+
 const STATUS_FILTER_OPTIONS = [
   { value: "", label: "All statuses" },
   { value: "active", label: "Active" },
@@ -54,6 +63,20 @@ const MEMBER_TABLE_HEADERS = ["Member", "Role", "Status", "Joined", ""];
 
 function memberLabel(member: ProjectMember) {
   return member.user?.fullName || member.user?.email || member.userId;
+}
+
+/** Simple hash to pick avatar color deterministically from userId */
+function avatarColorIndex(userId: string): number {
+  let hash = 0;
+  for (let i = 0; i < userId.length; i++) {
+    hash = ((hash << 5) - hash + userId.charCodeAt(i)) | 0;
+  }
+  return Math.abs(hash) % AVATAR_COLORS.length;
+}
+
+function memberInitial(member: ProjectMember): string {
+  const name = member.user?.fullName || member.user?.email || member.userId;
+  return (name[0] ?? "?").toUpperCase();
 }
 
 // ── page ─────────────────────────────────────────────────────
@@ -92,6 +115,13 @@ export default function ProjectMembersPage() {
   const owners = members.filter((member) => member.role === "owner");
   const activeMembers = members.filter((member) => member.status === "active");
 
+  // Role distribution for stacked bar
+  const roleCounts = PROJECT_MEMBER_ROLES.map((r) => ({
+    role: r,
+    count: members.filter((m) => m.role === r).length,
+  })).filter((entry) => entry.count > 0);
+  const totalForBar = members.length || 1;
+
   return (
     <div className="flex flex-col gap-6">
       <SectionHeading
@@ -120,6 +150,40 @@ export default function ProjectMembersPage() {
           tone="blue"
         />
       </div>
+
+      {/* Role distribution stacked bar */}
+      {members.length > 0 && (
+        <div className="flex flex-col gap-2 rounded-[12px] border border-[var(--border)] bg-[var(--bg1)] px-4 py-3">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-medium uppercase tracking-[0.1em] text-[var(--text3)]">
+              Role distribution
+            </span>
+            <div className="flex flex-wrap gap-3">
+              {roleCounts.map((entry) => (
+                <span key={entry.role} className="flex items-center gap-1.5 text-[11px] text-[var(--text2)]">
+                  <span
+                    className="inline-block size-2 rounded-full"
+                    style={{ background: `var(--${ROLE_TONE[entry.role]})` }}
+                  />
+                  {entry.role} ({entry.count})
+                </span>
+              ))}
+            </div>
+          </div>
+          <div className="flex h-2 w-full overflow-hidden rounded-full bg-[var(--bg3)]">
+            {roleCounts.map((entry) => (
+              <div
+                key={entry.role}
+                className="h-full transition-[width] duration-500"
+                style={{
+                  width: `${(entry.count / totalForBar) * 100}%`,
+                  background: `var(--${ROLE_TONE[entry.role]})`,
+                }}
+              />
+            ))}
+          </div>
+        </div>
+      )}
 
       <Toolbar>
         <FilterSelect label="Status" value={status} onChange={setStatus} options={STATUS_FILTER_OPTIONS} />
@@ -150,15 +214,28 @@ export default function ProjectMembersPage() {
             {members.map((member) => (
               <Tr key={member.id}>
                 <Td>
-                  <div className="flex min-w-0 flex-col gap-0.5">
-                    <span className="truncate text-[13px] font-medium text-[var(--text)]">{memberLabel(member)}</span>
-                    {member.user?.email && (
-                      <span className="truncate text-[11.5px] text-[var(--text3)]">{member.user.email}</span>
-                    )}
+                  <div className="flex min-w-0 items-center gap-3">
+                    {/* Monogram avatar */}
+                    <span
+                      className="flex size-8 shrink-0 items-center justify-center rounded-full text-[13px] font-bold text-white"
+                      style={{ background: AVATAR_COLORS[avatarColorIndex(member.userId)] }}
+                    >
+                      {memberInitial(member)}
+                    </span>
+                    <div className="min-w-0 flex-col gap-0.5">
+                      <span className="block truncate text-[13px] font-medium text-[var(--text)]">{memberLabel(member)}</span>
+                      {member.user?.email && (
+                        <span className="block truncate text-[11.5px] text-[var(--text3)]">{member.user.email}</span>
+                      )}
+                    </div>
                   </div>
                 </Td>
                 <Td>
-                  <Pill tone={ROLE_TONE[member.role]}>{member.role}</Pill>
+                  <span title={ROLE_DESCRIPTION[member.role]}>
+                    <Pill tone={ROLE_TONE[member.role]}>
+                      {member.role}
+                    </Pill>
+                  </span>
                 </Td>
                 <Td>
                   <Pill tone={member.status === "active" ? "green" : member.status === "pending" ? "amber" : "neutral"} dot>
@@ -245,7 +322,7 @@ export default function ProjectMembersPage() {
         ) : (
           <DialogField label="Organization member" name="userId" required>
             <select id="userId" name="userId" required className={fieldInputClass}>
-              <option value="">Select a member…</option>
+              <option value="">Select a member...</option>
               {candidates.map((candidate) => (
                 <option key={candidate.userId} value={candidate.userId}>
                   {candidate.fullName || candidate.email} · {candidate.role}
@@ -294,7 +371,7 @@ export default function ProjectMembersPage() {
         </Notice>
         <DialogField label="New owner" name="newOwnerUserId" required hint="Must already be a project member.">
           <select id="newOwnerUserId" name="newOwnerUserId" required className={fieldInputClass}>
-            <option value="">Select a project member…</option>
+            <option value="">Select a project member...</option>
             {members
               .filter((member) => member.role !== "owner" && member.status === "active")
               .map((member) => (

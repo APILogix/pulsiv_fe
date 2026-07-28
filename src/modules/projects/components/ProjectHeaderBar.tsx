@@ -3,6 +3,7 @@ import {
   Archive,
   Check,
   ChevronDown,
+  ChevronRight,
   Clock,
   Layers,
   MoreHorizontal,
@@ -26,33 +27,43 @@ import {
 import { Button as UiButton } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-// ── module-level constants (rules.md §1.2) ───────────────────
+// ── module-level constants (rules.md) ────────────────────────
 
-const STATUS_STYLE: Record<ProjectStatus, string> = {
-  active: "bg-[var(--green-bg)] text-[var(--green)] ring-[var(--green)]/25",
-  paused: "bg-[var(--amber-bg)] text-[var(--amber)] ring-[var(--amber)]/25",
-  archived: "bg-[var(--bg2)] text-[var(--text2)] ring-[var(--border)]",
+const STATUS_CONFIG: Record<ProjectStatus, { class: string; dot: string; label: string }> = {
+  active: {
+    class: "bg-[var(--green)]/10 text-[var(--green)] border-[var(--green)]/20",
+    dot: "bg-[var(--green)]",
+    label: "Live",
+  },
+  paused: {
+    class: "bg-[var(--amber)]/10 text-[var(--amber)] border-[var(--amber)]/20",
+    dot: "bg-[var(--amber)]",
+    label: "Paused",
+  },
+  archived: {
+    class: "bg-[var(--bg2)] text-[var(--text3)] border-[var(--border)]",
+    dot: "bg-[var(--text3)]",
+    label: "Archived",
+  },
 };
 
 // ── environment selector ─────────────────────────────────────
-// The environment is a scope over every project page, so it lives here and
-// never in the navigation tree.
 
 function EnvironmentSelector({ projectId }: { projectId: string }) {
   const { environments, environment, isLoading, select } = useEnvironmentScope(projectId);
 
   if (isLoading) {
-    return <span className="h-7 w-[104px] animate-pulse rounded-[7px] bg-[var(--bg2)]" aria-hidden="true" />;
+    return <span className="h-7 w-24 animate-pulse rounded-full bg-[var(--bg2)]" aria-hidden="true" />;
   }
 
   if (environments.length === 0) {
     return (
       <Link
         to={`/projects/${projectId}/environments`}
-        className="inline-flex h-7 items-center gap-1.5 rounded-[7px] border border-dashed border-[var(--border2)] px-2 text-[12px] text-[var(--text3)] transition-colors hover:text-[var(--text2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
+        className="inline-flex h-7 items-center gap-1.5 rounded-full border border-dashed border-[var(--border2)] px-3 text-[11.5px] text-[var(--text3)] transition-all hover:border-[var(--brand)]/40 hover:text-[var(--brand)]"
       >
-        <Layers className="size-3.5" aria-hidden="true" />
-        Add environment
+        <Layers className="size-3" aria-hidden="true" />
+        Add env
       </Link>
     );
   }
@@ -60,33 +71,33 @@ function EnvironmentSelector({ projectId }: { projectId: string }) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
-        className="inline-flex h-7 items-center gap-2 rounded-[7px] border border-[var(--border)] bg-[var(--bg2)]/70 px-2 transition-colors hover:border-[var(--border2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
-        aria-label={`Environment: ${environment?.name ?? "none"}. Change environment`}
+        className="inline-flex h-7 items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--bg1)]/80 px-3 backdrop-blur-sm transition-all hover:border-[var(--border2)] hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
+        aria-label={`Environment: ${environment?.name ?? "none"}`}
       >
         <span
           aria-hidden="true"
-          className="size-2 shrink-0 rounded-full"
+          className="size-2 shrink-0 rounded-full ring-1 ring-white/20"
           style={{ background: environment?.color ?? "var(--text3)" }}
         />
-        <span className="max-w-[120px] truncate text-[12px] font-medium text-[var(--text)]">
+        <span className="max-w-[100px] truncate text-[11.5px] font-medium text-[var(--text)]">
           {environment?.name}
         </span>
-        <ChevronDown className="size-3 shrink-0 text-[var(--text3)]" aria-hidden="true" />
+        <ChevronDown className="size-3 text-[var(--text3)]" aria-hidden="true" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-[220px]">
-        <DropdownMenuLabel className="text-[10.5px] font-semibold uppercase tracking-[0.1em] text-[var(--text3)]">
-          Environment
+        <DropdownMenuLabel className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text3)]">
+          Environment scope
         </DropdownMenuLabel>
         {environments.map((candidate) => (
           <DropdownMenuItem key={candidate.id} onSelect={() => select(candidate.id)} className="gap-2">
             <span
               aria-hidden="true"
-              className="size-2 shrink-0 rounded-full"
+              className="size-2.5 shrink-0 rounded-full ring-1 ring-inset ring-black/5"
               style={{ background: candidate.color }}
             />
             <span className="min-w-0 flex-1 truncate text-[13px]">{candidate.name}</span>
             {candidate.isDefault && (
-              <span className="font-[family-name:var(--mono)] text-[10px] uppercase text-[var(--text3)]">
+              <span className="rounded-full bg-[var(--bg2)] px-1.5 py-px text-[9px] font-bold uppercase text-[var(--text3)]">
                 default
               </span>
             )}
@@ -97,7 +108,7 @@ function EnvironmentSelector({ projectId }: { projectId: string }) {
         ))}
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild>
-          <Link to={`/projects/${projectId}/environments`} className="text-[13px]">
+          <Link to={`/projects/${projectId}/environments`} className="text-[12.5px]">
             Manage environments
           </Link>
         </DropdownMenuItem>
@@ -148,67 +159,61 @@ function LifecycleMenu({ project }: { project: Project }) {
   );
 }
 
-// ── header ───────────────────────────────────────────────────
+// ── header bar ───────────────────────────────────────────────
 
 export function ProjectHeaderBar({ project }: { project: Project }) {
   const location = useLocation();
   const active = resolveActiveProjectNav(location.pathname, project.id);
   const crumb = active ? projectNavCrumb(active.segment) : null;
+  const statusCfg = STATUS_CONFIG[project.status];
 
   return (
-    <header className="flex h-[var(--header-height)] shrink-0 items-center gap-2 border-b border-[var(--border)] bg-[var(--bg1)] px-3 sm:px-4">
-      {/* breadcrumb + identity */}
-      <nav aria-label="Breadcrumb" className="flex min-w-0 flex-1 items-center gap-1.5 text-[12.5px]">
+    <header className="sticky top-0 z-20 flex h-[52px] shrink-0 items-center gap-3 border-b border-[var(--border)] bg-[var(--bg1)]/80 px-4 backdrop-blur-md sm:px-6">
+      {/* breadcrumb trail */}
+      <nav aria-label="Breadcrumb" className="flex min-w-0 flex-1 items-center gap-1 text-[13px]">
         <Link
           to="/projects"
-          className="hidden shrink-0 rounded-sm text-[var(--text3)] transition-colors hover:text-[var(--text2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] sm:inline"
+          className="hidden shrink-0 text-[var(--text3)] transition-colors hover:text-[var(--text)] sm:inline"
         >
           Projects
         </Link>
-        <span aria-hidden="true" className="hidden text-[var(--text3)]/60 sm:inline">
-          /
-        </span>
+        <ChevronRight className="hidden size-3 text-[var(--text3)]/50 sm:inline" aria-hidden="true" />
         <Link
           to={`/projects/${project.id}/overview`}
-          className="min-w-0 shrink truncate rounded-sm text-[13px] font-semibold text-[var(--text)] transition-colors hover:text-[var(--brand)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
+          className="min-w-0 shrink truncate font-semibold text-[var(--text)] transition-colors hover:text-[var(--brand)]"
         >
           {project.name}
         </Link>
         {crumb && (
           <>
-            <span aria-hidden="true" className="hidden text-[var(--text3)]/60 md:inline">
-              /
-            </span>
-            <span className="hidden shrink-0 text-[var(--text3)] md:inline">{crumb.group}</span>
-            <span aria-hidden="true" className="text-[var(--text3)]/60">
-              /
-            </span>
-            <span className="shrink-0 truncate text-[var(--text2)]" aria-current="page">
+            <ChevronRight className="size-3 text-[var(--text3)]/50" aria-hidden="true" />
+            <span className="shrink-0 text-[var(--text2)]" aria-current="page">
               {crumb.page}
             </span>
           </>
         )}
       </nav>
 
-      {/* scope + state + actions */}
+      {/* right side controls */}
       <div className="flex shrink-0 items-center gap-2">
+        {/* status badge */}
         <span
           className={cn(
-            "hidden items-center gap-1.5 rounded-full px-2 py-[3px] font-[family-name:var(--mono)] text-[10px] font-semibold uppercase tracking-[0.08em] ring-1 ring-inset sm:inline-flex",
-            STATUS_STYLE[project.status],
+            "hidden items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10.5px] font-semibold uppercase tracking-wide sm:inline-flex",
+            statusCfg.class,
           )}
         >
-          <span aria-hidden="true" className="size-1.5 rounded-full bg-current" />
-          {project.status}
+          <span className={cn("size-1.5 rounded-full", statusCfg.dot)} aria-hidden="true" />
+          {statusCfg.label}
         </span>
 
-        <span className="hidden items-center gap-1 font-[family-name:var(--mono)] text-[11px] text-[var(--text3)] xl:inline-flex">
+        {/* timezone */}
+        <span className="hidden items-center gap-1 text-[11px] text-[var(--text3)] xl:inline-flex">
           <Clock className="size-3" aria-hidden="true" />
           {project.timezone}
         </span>
 
         <EnvironmentSelector projectId={project.id} />
-
         <LifecycleMenu project={project} />
       </div>
     </header>

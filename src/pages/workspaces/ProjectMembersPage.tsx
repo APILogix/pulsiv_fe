@@ -8,7 +8,7 @@ import { orgQueryKeys } from "@/modules/organizations/hooks/useOrganizations";
 import { useOrgStore } from "@/modules/organizations/store/org.store";
 import { useCurrentProject } from "./ProjectShellPage";
 import { IconChip, Notice, Panel, Pill, SectionHeading, StatCard, Toolbar, fieldInputClass, type SurfaceTone } from "@/shared/ui/pulse";
-import { FilterSelect, Table, Td, Timestamp, Tr } from "@/shared/observe";
+import { FilterSelect } from "@/shared/observe";
 import { Button as UiButton } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -18,6 +18,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ConfirmDialog, DialogField, FormDialog, apiErrorMessage } from "@/modules/projects/components/project-ui";
+import { cn } from "@/lib/utils";
 
 // ── module-level constants (rules.md §1.2) ───────────────────
 
@@ -50,10 +51,33 @@ const ROLE_FILTER_OPTIONS = [
   ...PROJECT_MEMBER_ROLES.map((role) => ({ value: role, label: role })),
 ];
 
-const MEMBER_TABLE_HEADERS = ["Member", "Role", "Status", "Joined", ""];
+const AVATAR_COLORS = [
+  "bg-[var(--brand)]",
+  "bg-[var(--violet)]",
+  "bg-[var(--blue)]",
+  "bg-[var(--green)]",
+  "bg-[var(--amber)]",
+  "bg-[var(--red)]",
+];
 
 function memberLabel(member: ProjectMember) {
   return member.user?.fullName || member.user?.email || member.userId;
+}
+
+function memberInitials(member: ProjectMember): string {
+  const name = member.user?.fullName || member.user?.email || "";
+  if (!name) return "?";
+  const parts = name.split(/[\s@.]+/).filter(Boolean);
+  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+  return name.slice(0, 2).toUpperCase();
+}
+
+function avatarColor(id: string): string {
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) {
+    hash = id.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
 }
 
 // ── page ─────────────────────────────────────────────────────
@@ -72,7 +96,6 @@ export default function ProjectMembersPage() {
 
   const { addMember, updateMemberRole, removeMember, transferOwnership } = useMemberMutations(projectId);
 
-  // Project members are drawn from the organization roster.
   const { data: orgMembers } = useQuery({
     queryKey: [...orgQueryKeys.members(activeOrgId ?? ""), "project-add-candidates"],
     queryFn: () => orgApi.listMembers(activeOrgId!, { limit: 100, status: "active" }),
@@ -96,7 +119,7 @@ export default function ProjectMembersPage() {
     <div className="flex flex-col gap-6">
       <SectionHeading
         title="Project members"
-        description="Members are added directly from the organization roster and gain access immediately. A user must belong to the organization before joining a project."
+        description="Members are added directly from the organization roster and gain access immediately."
         actions={
           <div className="flex items-center gap-2">
             <UiButton variant="outline" size="lg" onClick={() => setTransferring(true)}>
@@ -126,18 +149,17 @@ export default function ProjectMembersPage() {
         <FilterSelect label="Role" value={role} onChange={setRole} options={ROLE_FILTER_OPTIONS} />
       </Toolbar>
 
-      <Panel bodyClassName="p-0">
-        {isLoading ? (
-          <div className="flex flex-col gap-2 p-5">
-            {[0, 1, 2].map((row) => (
-              <div key={row} className="h-10 animate-pulse rounded-[8px] bg-[var(--bg2)]" />
-            ))}
-          </div>
-        ) : error ? (
-          <div className="p-5">
-            <Notice tone="red">{asMessage(error)}</Notice>
-          </div>
-        ) : members.length === 0 ? (
+      {/* Member cards grid */}
+      {isLoading ? (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {[0, 1, 2, 3, 4, 5].map((row) => (
+            <div key={row} className="h-28 animate-pulse rounded-2xl bg-[var(--bg2)]" />
+          ))}
+        </div>
+      ) : error ? (
+        <Notice tone="red">{asMessage(error)}</Notice>
+      ) : members.length === 0 ? (
+        <Panel>
           <div className="flex flex-col items-center gap-3 py-12 text-center">
             <IconChip icon={Users} size="lg" tone="brand" />
             <p className="text-[13.5px] font-semibold text-[var(--text)]">No members match these filters</p>
@@ -145,70 +167,80 @@ export default function ProjectMembersPage() {
               <UserPlus className="mr-1.5 size-4" /> Add member
             </UiButton>
           </div>
-        ) : (
-          <Table headers={MEMBER_TABLE_HEADERS} maxHeight="32rem">
-            {members.map((member) => (
-              <Tr key={member.id}>
-                <Td>
-                  <div className="flex min-w-0 flex-col gap-0.5">
-                    <span className="truncate text-[13px] font-medium text-[var(--text)]">{memberLabel(member)}</span>
-                    {member.user?.email && (
-                      <span className="truncate text-[11.5px] text-[var(--text3)]">{member.user.email}</span>
-                    )}
-                  </div>
-                </Td>
-                <Td>
+        </Panel>
+      ) : (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {members.map((member) => (
+            <div
+              key={member.id}
+              className="group flex items-center gap-4 rounded-2xl border border-[var(--border)] bg-[var(--bg1)]/70 p-4 backdrop-blur-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-[var(--brand)]/5"
+            >
+              {/* Avatar monogram */}
+              <div className={cn("flex size-11 shrink-0 items-center justify-center rounded-full text-[14px] font-bold text-white shadow-inner", avatarColor(member.userId))}>
+                {memberInitials(member)}
+              </div>
+
+              {/* Info */}
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <p className="truncate text-[13px] font-semibold text-[var(--text)]">{memberLabel(member)}</p>
+                  {member.role === "owner" && <Crown className="size-3.5 shrink-0 text-[var(--violet)]" />}
+                </div>
+                {member.user?.email && (
+                  <p className="mt-0.5 truncate text-[11px] text-[var(--text3)]">{member.user.email}</p>
+                )}
+                <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                   <Pill tone={ROLE_TONE[member.role]}>{member.role}</Pill>
-                </Td>
-                <Td>
                   <Pill tone={member.status === "active" ? "green" : member.status === "pending" ? "amber" : "neutral"} dot>
                     {member.status}
                   </Pill>
-                </Td>
-                <Td>
-                  <Timestamp value={member.joinedAt ?? member.createdAt} />
-                </Td>
-                <Td className="text-right">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <UiButton variant="ghost" size="icon-sm" aria-label={`Actions for ${memberLabel(member)}`}>
-                        <MoreHorizontal className="size-4" />
-                      </UiButton>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-56">
-                      {PROJECT_MEMBER_ROLES.filter((candidate) => candidate !== member.role).map((candidate) => (
-                        <DropdownMenuItem
-                          key={candidate}
-                          onClick={() => updateMemberRole.mutate({ memberId: member.id, role: candidate })}
-                        >
-                          <ShieldCheck className="mr-2 size-4" /> Set role: {candidate}
-                        </DropdownMenuItem>
-                      ))}
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => setRemovingMember(member)}>
-                        <UserMinus className="mr-2 size-4 text-[var(--red)]" /> Remove from project
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </Td>
-              </Tr>
-            ))}
-          </Table>
-        )}
-      </Panel>
+                </div>
+              </div>
 
-      <Panel title="Role reference" description="What each project role can do." icon={ShieldCheck}>
-        <ul className="flex flex-col divide-y divide-[var(--border)]">
-          {PROJECT_MEMBER_ROLES.map((projectRole) => (
-            <li key={projectRole} className="flex items-start gap-3 py-2.5 first:pt-0 last:pb-0">
-              <Pill tone={ROLE_TONE[projectRole]} className="mt-0.5 shrink-0">
-                {projectRole}
-              </Pill>
-              <p className="text-[12.5px] leading-relaxed text-[var(--text2)]">{ROLE_DESCRIPTION[projectRole]}</p>
-            </li>
+              {/* Actions */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <UiButton variant="ghost" size="icon-sm" aria-label={`Actions for ${memberLabel(member)}`} className="opacity-0 transition-opacity group-hover:opacity-100">
+                    <MoreHorizontal className="size-4" />
+                  </UiButton>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  {PROJECT_MEMBER_ROLES.filter((candidate) => candidate !== member.role).map((candidate) => (
+                    <DropdownMenuItem
+                      key={candidate}
+                      onClick={() => updateMemberRole.mutate({ memberId: member.id, role: candidate })}
+                    >
+                      <ShieldCheck className="mr-2 size-4" /> Set role: {candidate}
+                    </DropdownMenuItem>
+                  ))}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => setRemovingMember(member)}>
+                    <UserMinus className="mr-2 size-4 text-[var(--red)]" /> Remove from project
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           ))}
-        </ul>
-      </Panel>
+        </div>
+      )}
+
+      {/* Role reference */}
+      <div className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--bg1)]/70 backdrop-blur-sm">
+        <div className="border-b border-[var(--border)] px-5 py-3.5">
+          <div className="flex items-center gap-2.5">
+            <ShieldCheck className="size-4 text-[var(--text2)]" />
+            <h3 className="text-[13px] font-semibold text-[var(--text)]">Role reference</h3>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 gap-px bg-[var(--border)] sm:grid-cols-2 lg:grid-cols-5">
+          {PROJECT_MEMBER_ROLES.map((projectRole) => (
+            <div key={projectRole} className="flex flex-col gap-2 bg-[var(--bg1)] px-4 py-3.5">
+              <Pill tone={ROLE_TONE[projectRole]}>{projectRole}</Pill>
+              <p className="text-[11.5px] leading-relaxed text-[var(--text3)]">{ROLE_DESCRIPTION[projectRole]}</p>
+            </div>
+          ))}
+        </div>
+      </div>
 
       {/* ── add member ── */}
       <FormDialog
@@ -245,7 +277,7 @@ export default function ProjectMembersPage() {
         ) : (
           <DialogField label="Organization member" name="userId" required>
             <select id="userId" name="userId" required className={fieldInputClass}>
-              <option value="">Select a member…</option>
+              <option value="">Select a member...</option>
               {candidates.map((candidate) => (
                 <option key={candidate.userId} value={candidate.userId}>
                   {candidate.fullName || candidate.email} · {candidate.role}
@@ -294,7 +326,7 @@ export default function ProjectMembersPage() {
         </Notice>
         <DialogField label="New owner" name="newOwnerUserId" required hint="Must already be a project member.">
           <select id="newOwnerUserId" name="newOwnerUserId" required className={fieldInputClass}>
-            <option value="">Select a project member…</option>
+            <option value="">Select a project member...</option>
             {members
               .filter((member) => member.role !== "owner" && member.status === "active")
               .map((member) => (

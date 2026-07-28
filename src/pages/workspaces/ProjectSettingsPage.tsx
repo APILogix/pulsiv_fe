@@ -22,7 +22,6 @@ import type { ProjectSettings, UpdateProjectSettingsBody } from "@/modules/proje
 import { useCurrentProject } from "./ProjectShellPage";
 import {
   Notice,
-  Panel,
   Pill,
   RowStack,
   SectionHeading,
@@ -40,6 +39,7 @@ import {
   optionalText,
   parseList,
 } from "@/modules/projects/components/project-ui";
+import { cn } from "@/lib/utils";
 
 // ── module-level constants (rules.md §1.2) ───────────────────
 
@@ -162,8 +162,20 @@ export default function ProjectSettingsPage() {
       <SplitShell
         rail={
           <>
-            <Panel title="Lifecycle" description="Control ingestion without deleting data." icon={Play}>
-              <div className="flex flex-col gap-2">
+            {/* Lifecycle card with glassmorphism */}
+            <div className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--bg1)]/70 backdrop-blur-sm">
+              <div className="border-b border-[var(--border)] px-5 py-3.5">
+                <div className="flex items-center gap-2.5">
+                  <div className="flex size-8 items-center justify-center rounded-lg bg-[var(--green)]/10">
+                    <Play className="size-3.5 text-[var(--green)]" />
+                  </div>
+                  <div>
+                    <h3 className="text-[13px] font-semibold text-[var(--text)]">Lifecycle</h3>
+                    <p className="text-[11px] text-[var(--text3)]">Control ingestion without deleting data</p>
+                  </div>
+                </div>
+              </div>
+              <div className="flex flex-col gap-2 p-4">
                 {project.status === "active" ? (
                   <UiButton
                     variant="outline"
@@ -216,13 +228,22 @@ export default function ProjectSettingsPage() {
                   <RotateCcw className="mr-2 size-4" /> Restore soft-deleted
                 </UiButton>
               </div>
-              <p className="mt-3 text-[11.5px] leading-relaxed text-[var(--text3)]">
-                Current state: <Pill tone={project.status === "active" ? "green" : "amber"}>{project.status}</Pill>
-              </p>
-            </Panel>
+              <div className="border-t border-[var(--border)] px-5 py-3">
+                <p className="text-[11.5px] text-[var(--text3)]">
+                  Current state: <Pill tone={project.status === "active" ? "green" : "amber"}>{project.status}</Pill>
+                </p>
+              </div>
+            </div>
 
-            <Panel title="Metadata" icon={FileText}>
-              <dl className="flex flex-col gap-3 text-[12.5px]">
+            {/* Metadata card */}
+            <div className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--bg1)]/70 backdrop-blur-sm">
+              <div className="border-b border-[var(--border)] px-5 py-3.5">
+                <div className="flex items-center gap-2.5">
+                  <FileText className="size-4 text-[var(--text2)]" />
+                  <h3 className="text-[13px] font-semibold text-[var(--text)]">Metadata</h3>
+                </div>
+              </div>
+              <dl className="flex flex-col gap-3 p-5 text-[12.5px]">
                 <div className="flex justify-between gap-3">
                   <dt className="text-[var(--text3)]">Slug</dt>
                   <dd className="font-[family-name:var(--mono)] text-[var(--text)]">{project.slug}</dd>
@@ -250,28 +271,25 @@ export default function ProjectSettingsPage() {
                   </div>
                 )}
               </dl>
-            </Panel>
+            </div>
           </>
         }
       >
-        {/* ── identity ── */}
+        {/* ── identity section ── */}
         <form onSubmit={handleProfileSubmit}>
-          <Panel
-            title="Identity"
-            description="Name, description, visibility, and tags."
-            icon={Sliders}
-            footer={
-              <UiButton type="submit" size="lg" disabled={updateProject.isPending}>
-                {updateProject.isPending ? (
-                  <Loader2 className="mr-1.5 size-3.5 animate-spin" />
-                ) : (
-                  <Save className="mr-1.5 size-3.5" />
-                )}
-                Save identity
-              </UiButton>
-            }
-          >
-            <div className="flex flex-col gap-5">
+          <div className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--bg1)]/70 backdrop-blur-sm transition-all duration-200 hover:shadow-md hover:shadow-[var(--brand)]/5">
+            <div className="border-b border-[var(--border)] px-6 py-4">
+              <div className="flex items-center gap-3">
+                <div className="flex size-9 items-center justify-center rounded-xl bg-[var(--brand)]/10">
+                  <Sliders className="size-4 text-[var(--brand)]" />
+                </div>
+                <div>
+                  <h3 className="text-[14px] font-semibold tracking-[-0.01em] text-[var(--text)]">Identity</h3>
+                  <p className="text-[12px] text-[var(--text3)]">Name, description, visibility, and tags</p>
+                </div>
+              </div>
+            </div>
+            <div className="flex flex-col gap-5 p-6">
               <DialogField label="Name" name="name" required>
                 <input
                   id="name"
@@ -323,28 +341,35 @@ export default function ProjectSettingsPage() {
                 </Notice>
               )}
             </div>
-          </Panel>
-        </form>
-
-        {/* ── retention + sampling ── */}
-        <form onSubmit={handleRetentionSubmit}>
-          <Panel
-            title="Retention & sampling"
-            description="How long telemetry is kept and what fraction of traffic is stored."
-            icon={Database}
-            footer={
-              <UiButton type="submit" size="lg" disabled={updateSettings.isPending || isLoading}>
-                {updateSettings.isPending ? (
+            <div className="border-t border-[var(--border)] px-6 py-3.5">
+              <UiButton type="submit" size="lg" disabled={updateProject.isPending}>
+                {updateProject.isPending ? (
                   <Loader2 className="mr-1.5 size-3.5 animate-spin" />
                 ) : (
                   <Save className="mr-1.5 size-3.5" />
                 )}
-                Save retention
+                Save identity
               </UiButton>
-            }
-          >
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-              <DialogField label="Retention (days)" name="dataRetentionDays" hint="1–3650 days.">
+            </div>
+          </div>
+        </form>
+
+        {/* ── retention + sampling ── */}
+        <form onSubmit={handleRetentionSubmit}>
+          <div className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--bg1)]/70 backdrop-blur-sm transition-all duration-200 hover:shadow-md hover:shadow-[var(--brand)]/5">
+            <div className="border-b border-[var(--border)] px-6 py-4">
+              <div className="flex items-center gap-3">
+                <div className="flex size-9 items-center justify-center rounded-xl bg-[var(--blue)]/10">
+                  <Database className="size-4 text-[var(--blue)]" />
+                </div>
+                <div>
+                  <h3 className="text-[14px] font-semibold tracking-[-0.01em] text-[var(--text)]">Retention & sampling</h3>
+                  <p className="text-[12px] text-[var(--text3)]">How long telemetry is kept and what fraction is stored</p>
+                </div>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 gap-5 p-6 sm:grid-cols-2">
+              <DialogField label="Retention (days)" name="dataRetentionDays" hint="1-3650 days.">
                 <input
                   id="dataRetentionDays"
                   name="dataRetentionDays"
@@ -368,16 +393,32 @@ export default function ProjectSettingsPage() {
                 />
               </DialogField>
             </div>
-          </Panel>
+            <div className="border-t border-[var(--border)] px-6 py-3.5">
+              <UiButton type="submit" size="lg" disabled={updateSettings.isPending || isLoading}>
+                {updateSettings.isPending ? (
+                  <Loader2 className="mr-1.5 size-3.5 animate-spin" />
+                ) : (
+                  <Save className="mr-1.5 size-3.5" />
+                )}
+                Save retention
+              </UiButton>
+            </div>
+          </div>
         </form>
 
         {/* ── pipelines ── */}
-        <Panel
-          title="Ingestion pipelines"
-          description="Reject a telemetry type at the edge by turning it off here."
-          icon={ShieldCheck}
-          bodyClassName="p-0"
-        >
+        <div className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--bg1)]/70 backdrop-blur-sm">
+          <div className="border-b border-[var(--border)] px-6 py-4">
+            <div className="flex items-center gap-3">
+              <div className="flex size-9 items-center justify-center rounded-xl bg-[var(--green)]/10">
+                <ShieldCheck className="size-4 text-[var(--green)]" />
+              </div>
+              <div>
+                <h3 className="text-[14px] font-semibold tracking-[-0.01em] text-[var(--text)]">Ingestion pipelines</h3>
+                <p className="text-[12px] text-[var(--text3)]">Reject a telemetry type at the edge by turning it off</p>
+              </div>
+            </div>
+          </div>
           <RowStack>
             {PIPELINE_TOGGLES.map((toggle) => (
               <TogglePanelRow
@@ -390,10 +431,21 @@ export default function ProjectSettingsPage() {
               />
             ))}
           </RowStack>
-        </Panel>
+        </div>
 
         {/* ── privacy ── */}
-        <Panel title="Privacy" description="Data minimisation controls applied at ingest." icon={Eye} bodyClassName="p-0">
+        <div className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--bg1)]/70 backdrop-blur-sm">
+          <div className="border-b border-[var(--border)] px-6 py-4">
+            <div className="flex items-center gap-3">
+              <div className="flex size-9 items-center justify-center rounded-xl bg-[var(--violet)]/10">
+                <Eye className="size-4 text-[var(--violet)]" />
+              </div>
+              <div>
+                <h3 className="text-[14px] font-semibold tracking-[-0.01em] text-[var(--text)]">Privacy</h3>
+                <p className="text-[12px] text-[var(--text3)]">Data minimisation controls applied at ingest</p>
+              </div>
+            </div>
+          </div>
           <RowStack>
             {PRIVACY_TOGGLES.map((toggle) => (
               <TogglePanelRow
@@ -406,26 +458,23 @@ export default function ProjectSettingsPage() {
               />
             ))}
           </RowStack>
-        </Panel>
+        </div>
 
         {/* ── domains ── */}
         <form onSubmit={handleDomainsSubmit}>
-          <Panel
-            title="Domain rules"
-            description="Restrict which origins may submit browser telemetry to this project."
-            icon={Ban}
-            footer={
-              <UiButton type="submit" size="lg" disabled={updateSettings.isPending || isLoading}>
-                {updateSettings.isPending ? (
-                  <Loader2 className="mr-1.5 size-3.5 animate-spin" />
-                ) : (
-                  <Save className="mr-1.5 size-3.5" />
-                )}
-                Save domains
-              </UiButton>
-            }
-          >
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+          <div className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--bg1)]/70 backdrop-blur-sm transition-all duration-200 hover:shadow-md hover:shadow-[var(--brand)]/5">
+            <div className="border-b border-[var(--border)] px-6 py-4">
+              <div className="flex items-center gap-3">
+                <div className="flex size-9 items-center justify-center rounded-xl bg-[var(--amber)]/10">
+                  <Ban className="size-4 text-[var(--amber)]" />
+                </div>
+                <div>
+                  <h3 className="text-[14px] font-semibold tracking-[-0.01em] text-[var(--text)]">Domain rules</h3>
+                  <p className="text-[12px] text-[var(--text3)]">Restrict which origins may submit browser telemetry</p>
+                </div>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 gap-5 p-6 sm:grid-cols-2">
               <DialogField label="Allowed domains" name="allowedDomains" hint="Comma or newline separated.">
                 <textarea
                   id="allowedDomains"
@@ -445,26 +494,46 @@ export default function ProjectSettingsPage() {
                 />
               </DialogField>
             </div>
-          </Panel>
+            <div className="border-t border-[var(--border)] px-6 py-3.5">
+              <UiButton type="submit" size="lg" disabled={updateSettings.isPending || isLoading}>
+                {updateSettings.isPending ? (
+                  <Loader2 className="mr-1.5 size-3.5 animate-spin" />
+                ) : (
+                  <Save className="mr-1.5 size-3.5" />
+                )}
+                Save domains
+              </UiButton>
+            </div>
+          </div>
         </form>
 
-        {/* ── danger zone ── */}
-        <Panel
-          title="Danger zone"
-          description="Deleting a project soft-deletes it. Data is purged when retention expires."
-          icon={ShieldAlert}
-          danger
-          footer={
+        {/* ── danger zone with gradient red border ── */}
+        <div className={cn(
+          "overflow-hidden rounded-2xl border-2 border-[var(--red)]/30 bg-gradient-to-br from-[var(--red)]/5 to-transparent",
+        )}>
+          <div className="border-b border-[var(--red)]/20 px-6 py-4">
+            <div className="flex items-center gap-3">
+              <div className="flex size-9 items-center justify-center rounded-xl bg-[var(--red)]/10">
+                <ShieldAlert className="size-4 text-[var(--red)]" />
+              </div>
+              <div>
+                <h3 className="text-[14px] font-semibold tracking-[-0.01em] text-[var(--red)]">Danger zone</h3>
+                <p className="text-[12px] text-[var(--text3)]">Deleting a project soft-deletes it. Data is purged when retention expires.</p>
+              </div>
+            </div>
+          </div>
+          <div className="p-6">
+            <Notice tone="red" icon={AlertTriangle} title="This stops ingestion immediately">
+              Every API key for this project is revoked and all alert routing stops. A soft-deleted project can be
+              recovered with <strong>Restore soft-deleted</strong> until retention expires.
+            </Notice>
+          </div>
+          <div className="border-t border-[var(--red)]/20 px-6 py-3.5">
             <UiButton variant="destructive" size="lg" onClick={() => setConfirmDelete(true)}>
               <Trash2 className="mr-1.5 size-4" /> Delete project
             </UiButton>
-          }
-        >
-          <Notice tone="red" icon={AlertTriangle} title="This stops ingestion immediately">
-            Every API key for this project is revoked and all alert routing stops. A soft-deleted project can be
-            recovered with <strong>Restore soft-deleted</strong> until retention expires.
-          </Notice>
-        </Panel>
+          </div>
+        </div>
       </SplitShell>
 
       <ConfirmDialog

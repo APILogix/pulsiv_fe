@@ -97,7 +97,7 @@ const COMPARISON_HEADERS = ["Series", "Events", "Errors", "Requests", "Error rat
 
 function VolumeChart({ points }: { points: UsageTimeSeriesPoint[] }) {
   const width = 1000;
-  const height = 220;
+  const height = 240;
 
   const paths = useMemo(() => {
     if (points.length < 2) return [];
@@ -135,45 +135,58 @@ function VolumeChart({ points }: { points: UsageTimeSeriesPoint[] }) {
       <div className="flex flex-wrap items-center gap-4">
         {CHART_SERIES.map((series) => (
           <span key={series.key} className="inline-flex items-center gap-1.5 text-[11.5px] text-[var(--text2)]">
-            <span className="size-2 rounded-full" style={{ background: series.color }} aria-hidden="true" />
+            <span className="size-2.5 rounded-full" style={{ background: series.color }} aria-hidden="true" />
             {series.label}
           </span>
         ))}
       </div>
-      <svg
-        viewBox={`0 0 ${width} ${height}`}
-        preserveAspectRatio="none"
-        className="h-[220px] w-full"
-        role="img"
-        aria-label="Event volume over the selected range"
-      >
-        {[0.25, 0.5, 0.75].map((ratio) => (
-          <line
-            key={ratio}
-            x1={0}
-            x2={width}
-            y1={height * ratio}
-            y2={height * ratio}
-            stroke="var(--border)"
-            strokeWidth="1"
-            vectorEffect="non-scaling-stroke"
-          />
-        ))}
-        {paths.map((series) => (
-          <g key={series.key}>
-            <polygon points={series.area} fill={series.color} opacity="0.08" />
-            <polyline
-              points={series.line}
-              fill="none"
-              stroke={series.color}
-              strokeWidth="1.75"
-              strokeLinecap="round"
-              strokeLinejoin="round"
+      <div className="relative overflow-hidden rounded-xl">
+        {/* Gradient overlay at bottom */}
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-16 bg-gradient-to-t from-[var(--bg1)] to-transparent" />
+        <svg
+          viewBox={`0 0 ${width} ${height}`}
+          preserveAspectRatio="none"
+          className="h-[240px] w-full"
+          role="img"
+          aria-label="Event volume over the selected range"
+        >
+          <defs>
+            {CHART_SERIES.map((series) => (
+              <linearGradient key={series.key} id={`grad-${series.key}`} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={series.color} stopOpacity="0.25" />
+                <stop offset="100%" stopColor={series.color} stopOpacity="0" />
+              </linearGradient>
+            ))}
+          </defs>
+          {[0.25, 0.5, 0.75].map((ratio) => (
+            <line
+              key={ratio}
+              x1={0}
+              x2={width}
+              y1={height * ratio}
+              y2={height * ratio}
+              stroke="var(--border)"
+              strokeWidth="1"
+              strokeDasharray="4 4"
               vectorEffect="non-scaling-stroke"
             />
-          </g>
-        ))}
-      </svg>
+          ))}
+          {paths.map((series) => (
+            <g key={series.key}>
+              <polygon points={series.area} fill={`url(#grad-${series.key})`} />
+              <polyline
+                points={series.line}
+                fill="none"
+                stroke={series.color}
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                vectorEffect="non-scaling-stroke"
+              />
+            </g>
+          ))}
+        </svg>
+      </div>
       <div className="flex justify-between font-[family-name:var(--mono)] text-[10.5px] text-[var(--text3)]">
         <span>{first ? new Date(first).toLocaleString() : ""}</span>
         <span>{last ? new Date(last).toLocaleString() : ""}</span>
@@ -199,7 +212,7 @@ function HeatmapGrid({ cells }: { cells: Array<{ x: string; y: string; value: nu
 
   return (
     <div className="sidebar-scroll overflow-x-auto">
-      <table className="border-separate border-spacing-[2px]">
+      <table className="border-separate border-spacing-[3px]">
         <tbody>
           {rows.yKeys.map((yKey) => (
             <tr key={yKey}>
@@ -213,7 +226,7 @@ function HeatmapGrid({ cells }: { cells: Array<{ x: string; y: string; value: nu
                   <td key={xKey}>
                     <div
                       title={`${xKey} · ${yKey} — ${formatNumber(value)} events`}
-                      className="size-4 rounded-[3px] ring-1 ring-inset ring-[var(--border)]"
+                      className="size-5 rounded-[5px] transition-transform duration-150 hover:scale-125"
                       style={{
                         background:
                           value === 0
@@ -245,8 +258,6 @@ export default function ProjectAnalyticsPage() {
   const [dimension, setDimension] = useState<TopListDimension>("endpoint");
   const [comparisonDimension, setComparisonDimension] = useState<"environment" | "apiKey">("environment");
 
-  // Range is derived once per render from a stable bucket so query keys stay
-  // stable across re-renders instead of changing every millisecond.
   const { from, to } = useMemo(() => {
     const now = new Date();
     now.setSeconds(0, 0);
@@ -284,35 +295,40 @@ export default function ProjectAnalyticsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <Toolbar
-        trailing={
-          <span className="text-[11.5px] text-[var(--text3)]">
-            {new Date(from).toLocaleString()} → {new Date(to).toLocaleString()}
-          </span>
-        }
-      >
-        <SegmentedControl
-          value={range}
-          onChange={(next) => {
-            setRange(next);
-            setGranularity(DEFAULT_GRANULARITY[next]);
-          }}
-          options={RANGE_OPTIONS}
-          ariaLabel="Analytics time range"
-        />
-        <SegmentedControl
-          value={granularity}
-          onChange={setGranularity}
-          options={GRANULARITY_OPTIONS}
-          ariaLabel="Bucket granularity"
-        />
-        <FilterSelect
-          label="Environment"
-          value={environmentId}
-          onChange={setEnvironmentId}
-          options={environmentOptions}
-        />
-      </Toolbar>
+      {/* ── sticky floating toolbar with glassmorphism ── */}
+      <div className="sticky top-0 z-30 -mx-1 px-1 py-2">
+        <div className="rounded-2xl border border-[var(--border)]/50 bg-[var(--bg1)]/80 px-4 py-3 shadow-lg shadow-black/5 backdrop-blur-xl">
+          <Toolbar
+            trailing={
+              <span className="hidden text-[11px] text-[var(--text3)] sm:inline">
+                {new Date(from).toLocaleDateString()} - {new Date(to).toLocaleDateString()}
+              </span>
+            }
+          >
+            <SegmentedControl
+              value={range}
+              onChange={(next) => {
+                setRange(next);
+                setGranularity(DEFAULT_GRANULARITY[next]);
+              }}
+              options={RANGE_OPTIONS}
+              ariaLabel="Analytics time range"
+            />
+            <SegmentedControl
+              value={granularity}
+              onChange={setGranularity}
+              options={GRANULARITY_OPTIONS}
+              ariaLabel="Bucket granularity"
+            />
+            <FilterSelect
+              label="Environment"
+              value={environmentId}
+              onChange={setEnvironmentId}
+              options={environmentOptions}
+            />
+          </Toolbar>
+        </div>
+      </div>
 
       {usageQuery.error && (
         <Notice tone="red" icon={AlertTriangle} title="Could not load usage analytics">
@@ -320,7 +336,7 @@ export default function ProjectAnalyticsPage() {
         </Notice>
       )}
 
-      {/* ── summary ── */}
+      {/* ── summary stat cards with sparkline backgrounds ── */}
       <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
         <StatCard
           label="Total events"
@@ -353,22 +369,42 @@ export default function ProjectAnalyticsPage() {
         />
       </div>
 
-      {/* ── volume trend ── */}
-      <Panel
-        title="Ingestion volume"
-        description="Events, errors, and requests across the selected range."
-        icon={LineChartIcon}
-      >
-        {usageQuery.isLoading ? (
-          <div className="h-56 animate-pulse rounded-[12px] bg-[var(--bg2)]" />
-        ) : (
-          <VolumeChart points={series} />
-        )}
-      </Panel>
+      {/* ── volume trend with gradient fills ── */}
+      <div className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--bg1)]/70 backdrop-blur-sm transition-all duration-200 hover:shadow-lg hover:shadow-[var(--brand)]/5">
+        <div className="border-b border-[var(--border)] px-6 py-4">
+          <div className="flex items-center gap-3">
+            <div className="flex size-9 items-center justify-center rounded-xl bg-[var(--brand)]/10">
+              <LineChartIcon className="size-4.5 text-[var(--brand)]" />
+            </div>
+            <div>
+              <h3 className="text-[14px] font-semibold tracking-[-0.01em] text-[var(--text)]">Ingestion volume</h3>
+              <p className="text-[12px] text-[var(--text3)]">Events, errors, and requests across the selected range</p>
+            </div>
+          </div>
+        </div>
+        <div className="p-6">
+          {usageQuery.isLoading ? (
+            <div className="h-60 animate-pulse rounded-xl bg-[var(--bg2)]" />
+          ) : (
+            <VolumeChart points={series} />
+          )}
+        </div>
+      </div>
 
-      {/* ── secondary metrics ── */}
-      <Panel title="Signal breakdown" description="Volume by telemetry type in this range." icon={Layers}>
-        <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-[12px] border border-[var(--border)] bg-[var(--border)] sm:grid-cols-3 lg:grid-cols-5">
+      {/* ── signal breakdown with glass card style ── */}
+      <div className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--bg1)]/70 backdrop-blur-sm">
+        <div className="border-b border-[var(--border)] px-6 py-4">
+          <div className="flex items-center gap-3">
+            <div className="flex size-9 items-center justify-center rounded-xl bg-[var(--violet)]/10">
+              <Layers className="size-4.5 text-[var(--violet)]" />
+            </div>
+            <div>
+              <h3 className="text-[14px] font-semibold tracking-[-0.01em] text-[var(--text)]">Signal breakdown</h3>
+              <p className="text-[12px] text-[var(--text3)]">Volume by telemetry type in this range</p>
+            </div>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-px bg-[var(--border)] sm:grid-cols-3 lg:grid-cols-5">
           {[
             { label: "Requests", value: summary?.requests },
             { label: "Transactions", value: summary?.transactions },
@@ -386,17 +422,17 @@ export default function ProjectAnalyticsPage() {
             { label: "Active users", value: summary?.activeUsers },
             { label: "Active members", value: summary?.activeMembers },
           ].map((item) => (
-            <div key={item.label} className="flex flex-col gap-1 bg-[var(--bg1)] px-3.5 py-3">
-              <dt className="text-[10.5px] font-medium uppercase tracking-[0.1em] text-[var(--text3)]">
+            <div key={item.label} className="flex flex-col gap-1.5 bg-[var(--bg1)] px-4 py-3.5 transition-colors hover:bg-[var(--bg2)]/50">
+              <dt className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--text3)]">
                 {item.label}
               </dt>
-              <dd className="text-[15px] font-semibold tabular-nums text-[var(--text)]">
+              <dd className="text-[17px] font-bold tabular-nums tracking-tight text-[var(--text)]">
                 {formatCompact(item.value ?? 0)}
               </dd>
             </div>
           ))}
-        </dl>
-      </Panel>
+        </div>
+      </div>
 
       {/* ── heatmap + top list ── */}
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
@@ -414,7 +450,7 @@ export default function ProjectAnalyticsPage() {
           }
         >
           {heatmapQuery.isLoading ? (
-            <div className="h-40 animate-pulse rounded-[12px] bg-[var(--bg2)]" />
+            <div className="h-40 animate-pulse rounded-xl bg-[var(--bg2)]" />
           ) : (
             <HeatmapGrid cells={heatmapQuery.data?.cells ?? []} />
           )}
@@ -435,7 +471,7 @@ export default function ProjectAnalyticsPage() {
           {topQuery.isLoading ? (
             <div className="flex flex-col gap-2">
               {[0, 1, 2, 3, 4].map((row) => (
-                <div key={row} className="h-8 animate-pulse rounded-[8px] bg-[var(--bg2)]" />
+                <div key={row} className="h-8 animate-pulse rounded-lg bg-[var(--bg2)]" />
               ))}
             </div>
           ) : (topQuery.data ?? []).length === 0 ? (
@@ -443,30 +479,30 @@ export default function ProjectAnalyticsPage() {
               No {dimension} data recorded in this range.
             </p>
           ) : (
-            <ol className="flex flex-col gap-2.5">
+            <ol className="flex flex-col gap-3">
               {(topQuery.data ?? []).map((item, index) => (
-                <li key={`${item.key}-${index}`} className="flex flex-col gap-1">
+                <li key={`${item.key}-${index}`} className="group flex flex-col gap-1.5 rounded-xl p-2.5 transition-colors hover:bg-[var(--bg2)]/50">
                   <div className="flex items-baseline justify-between gap-3">
-                    <span className="flex min-w-0 items-baseline gap-2">
-                      <span className="w-4 shrink-0 font-[family-name:var(--mono)] text-[10.5px] text-[var(--text3)]">
+                    <span className="flex min-w-0 items-baseline gap-2.5">
+                      <span className="flex size-5 shrink-0 items-center justify-center rounded-md bg-[var(--brand)]/10 font-[family-name:var(--mono)] text-[10px] font-bold text-[var(--brand)]">
                         {index + 1}
                       </span>
-                      <span className="truncate text-[12.5px] text-[var(--text2)]" title={item.key}>
+                      <span className="truncate text-[12.5px] font-medium text-[var(--text)]" title={item.key}>
                         {item.key || "(unknown)"}
                       </span>
                     </span>
-                    <span className="shrink-0 text-[12.5px] font-semibold tabular-nums text-[var(--text)]">
+                    <span className="shrink-0 text-[13px] font-bold tabular-nums text-[var(--text)]">
                       {formatCompact(item.totalEvents)}
                       {item.errors > 0 && (
-                        <span className="ml-1.5 text-[11px] font-normal text-[var(--red)]">
+                        <span className="ml-1.5 text-[10.5px] font-medium text-[var(--red)]">
                           {formatCompact(item.errors)} err
                         </span>
                       )}
                     </span>
                   </div>
-                  <div className="h-1.5 overflow-hidden rounded-full bg-[var(--bg3)]">
+                  <div className="h-2 overflow-hidden rounded-full bg-[var(--bg3)]">
                     <div
-                      className="h-full rounded-full bg-[var(--brand)]"
+                      className="h-full rounded-full bg-gradient-to-r from-[var(--brand)] to-[var(--brand)]/60 transition-[width] duration-500"
                       style={{ width: `${(item.totalEvents / topMax) * 100}%` }}
                     />
                   </div>
@@ -495,7 +531,7 @@ export default function ProjectAnalyticsPage() {
         {comparisonQuery.isLoading ? (
           <div className="flex flex-col gap-2 p-5">
             {[0, 1, 2].map((row) => (
-              <div key={row} className="h-9 animate-pulse rounded-[8px] bg-[var(--bg2)]" />
+              <div key={row} className="h-9 animate-pulse rounded-lg bg-[var(--bg2)]" />
             ))}
           </div>
         ) : (comparisonQuery.data ?? []).length === 0 ? (
@@ -552,7 +588,7 @@ export default function ProjectAnalyticsPage() {
         icon={TrendingUp}
       >
         {monthlyQuery.isLoading ? (
-          <div className="h-24 animate-pulse rounded-[12px] bg-[var(--bg2)]" />
+          <div className="h-24 animate-pulse rounded-xl bg-[var(--bg2)]" />
         ) : monthlyQuery.data ? (
           <div className="flex flex-col gap-5">
             <Meter
@@ -566,7 +602,7 @@ export default function ProjectAnalyticsPage() {
                   : "No plan limit configured for this project"
               }
             />
-            <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-[12px] border border-[var(--border)] bg-[var(--border)] sm:grid-cols-3 lg:grid-cols-5">
+            <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--border)] sm:grid-cols-3 lg:grid-cols-5">
               {[
                 { label: "Ingested", value: formatBytes(monthlyQuery.data.totalBytes) },
                 { label: "Key requests", value: formatCompact(monthlyQuery.data.apiKeyRequests) },

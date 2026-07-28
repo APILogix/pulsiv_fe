@@ -34,7 +34,7 @@ import {
   fieldInputClass,
   type SurfaceTone,
 } from "@/shared/ui/pulse";
-import { FilterSelect, Table, Td, Timestamp, Tr, formatNumber } from "@/shared/observe";
+import { FilterSelect, Timestamp, formatNumber } from "@/shared/observe";
 import { Button as UiButton } from "@/components/ui/button";
 import {
   ConfirmDialog,
@@ -44,6 +44,7 @@ import {
   optionalNumber,
   optionalText,
 } from "@/modules/projects/components/project-ui";
+import { cn } from "@/lib/utils";
 
 // ── module-level constants (rules.md §1.2) ───────────────────
 
@@ -52,6 +53,13 @@ const SEVERITY_TONE: Record<string, SurfaceTone> = {
   warning: "amber",
   error: "red",
   critical: "red",
+};
+
+const SEVERITY_BORDER: Record<string, string> = {
+  info: "border-l-[var(--blue)]",
+  warning: "border-l-[var(--amber)]",
+  error: "border-l-[var(--red)]",
+  critical: "border-l-[var(--red)]",
 };
 
 const SEVERITY_CHOICES = ["info", "warning", "error", "critical"] as const;
@@ -83,8 +91,6 @@ const SEVERITY_FILTER_OPTIONS = [
   { value: "", label: "All severities" },
   ...SEVERITY_CHOICES.map((severity) => ({ value: severity, label: severity })),
 ];
-
-const THRESHOLD_HEADERS = ["Threshold", "Condition", "Window", "Severity", "State", "Last fired", ""];
 
 const asMessage = apiErrorMessage;
 
@@ -348,7 +354,7 @@ export default function ProjectThresholdsPage() {
     <div className="flex flex-col gap-6">
       <SectionHeading
         title="Metric thresholds"
-        description="Project-scoped rules evaluated against ingested metrics. Breaches route through this project's alert channels."
+        description="Project-scoped rules evaluated against ingested metrics. Breaches route through alert channels."
         actions={
           <UiButton size="lg" onClick={() => setCreating(true)}>
             <Plus className="mr-1.5 size-4" /> New threshold
@@ -380,14 +386,15 @@ export default function ProjectThresholdsPage() {
 
       {error && <Notice tone="red">{asMessage(error)}</Notice>}
 
-      <Panel bodyClassName="p-0">
-        {isLoading ? (
-          <div className="flex flex-col gap-2 p-5">
-            {[0, 1, 2].map((row) => (
-              <div key={row} className="h-10 animate-pulse rounded-[8px] bg-[var(--bg2)]" />
-            ))}
-          </div>
-        ) : thresholds.length === 0 ? (
+      {/* ── Threshold cards with severity left border ── */}
+      {isLoading ? (
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+          {[0, 1, 2].map((row) => (
+            <div key={row} className="h-36 animate-pulse rounded-2xl bg-[var(--bg2)]" />
+          ))}
+        </div>
+      ) : thresholds.length === 0 ? (
+        <Panel>
           <div className="flex flex-col items-center gap-3 py-12 text-center">
             <IconChip icon={BellRing} size="lg" tone="brand" />
             <p className="text-[13.5px] font-semibold text-[var(--text)]">No thresholds configured</p>
@@ -398,98 +405,115 @@ export default function ProjectThresholdsPage() {
               <Plus className="mr-1.5 size-4" /> New threshold
             </UiButton>
           </div>
-        ) : (
-          <Table headers={THRESHOLD_HEADERS} maxHeight="34rem">
-            {thresholds.map((threshold) => (
-              <Tr key={threshold.id}>
-                <Td>
-                  <div className="flex min-w-0 flex-col gap-0.5">
-                    <span className="truncate text-[13px] font-medium text-[var(--text)]">{threshold.thresholdKey}</span>
-                    <span className="truncate text-[11px] text-[var(--text3)]">
-                      {threshold.metricName} · {threshold.metricSource} · env: {environmentName(threshold.environmentId)}
-                    </span>
+        </Panel>
+      ) : (
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+          {thresholds.map((threshold) => (
+            <div
+              key={threshold.id}
+              className={cn(
+                "group flex flex-col gap-3 rounded-2xl border border-[var(--border)] border-l-4 bg-[var(--bg1)]/70 p-5 backdrop-blur-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-[var(--brand)]/5",
+                SEVERITY_BORDER[threshold.severity] ?? "border-l-[var(--text3)]",
+              )}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <h3 className="truncate text-[14px] font-bold tracking-[-0.01em] text-[var(--text)]">{threshold.thresholdKey}</h3>
+                    <Pill tone={SEVERITY_TONE[threshold.severity] ?? "neutral"}>{threshold.severity}</Pill>
                   </div>
-                </Td>
-                <Td>
-                  <code className="font-[family-name:var(--mono)] text-[12px] text-[var(--text2)]">
-                    {threshold.comparisonOperator} {formatNumber(threshold.thresholdValue)} {threshold.thresholdUnit}
-                  </code>
-                </Td>
-                <Td>
-                  <span className="text-[12px] text-[var(--text2)]">
-                    {threshold.evaluationWindowMinutes}m
-                    <span className="text-[var(--text3)]">
-                      {" "}
-                      · x{threshold.consecutiveBreaches} · cd {threshold.cooldownMinutes}m
-                    </span>
-                  </span>
-                </Td>
-                <Td>
-                  <Pill tone={SEVERITY_TONE[threshold.severity] ?? "neutral"}>{threshold.severity}</Pill>
-                </Td>
-                <Td>
-                  <Toggle
-                    checked={threshold.enabled}
-                    label={`Toggle ${threshold.thresholdKey}`}
-                    disabled={toggleThreshold.isPending}
-                    onChange={(next) => toggleThreshold.mutate({ id: threshold.id, enabled: next })}
-                  />
-                </Td>
-                <Td>
-                  {threshold.lastTriggeredAt ? (
-                    <Timestamp value={threshold.lastTriggeredAt} />
-                  ) : (
-                    <span className="text-[12px] text-[var(--text3)]">Never</span>
-                  )}
-                </Td>
-                <Td className="text-right">
-                  <div className="flex items-center justify-end gap-1">
-                    <UiButton
-                      variant="ghost"
-                      size="icon-sm"
-                      aria-label={`Edit ${threshold.thresholdKey}`}
-                      onClick={() => {
-                        setFormError(null);
-                        setEditing(threshold);
-                      }}
-                    >
-                      <Pencil className="size-3.5" />
-                    </UiButton>
-                    <UiButton
-                      variant="ghost"
-                      size="icon-sm"
-                      aria-label={`Delete ${threshold.thresholdKey}`}
-                      onClick={() => setDeleting(threshold)}
-                    >
-                      <Trash2 className="size-3.5 text-[var(--red)]" />
-                    </UiButton>
-                  </div>
-                </Td>
-              </Tr>
-            ))}
-          </Table>
-        )}
-      </Panel>
+                  <p className="mt-1 truncate text-[11.5px] text-[var(--text3)]">
+                    {threshold.metricName} · {threshold.metricSource} · env: {environmentName(threshold.environmentId)}
+                  </p>
+                </div>
+                <Toggle
+                  checked={threshold.enabled}
+                  label={`Toggle ${threshold.thresholdKey}`}
+                  disabled={toggleThreshold.isPending}
+                  onChange={(next) => toggleThreshold.mutate({ id: threshold.id, enabled: next })}
+                />
+              </div>
 
-      <Panel title="How evaluation works" icon={TrendingUp}>
-        <ul className="flex flex-col gap-2.5 text-[12.5px] leading-relaxed text-[var(--text2)]">
-          <li className="flex gap-2">
-            <Clock className="mt-0.5 size-3.5 shrink-0 text-[var(--text3)]" aria-hidden="true" />
-            The evaluation window is the aggregation period. A 5-minute window compares the last 5 minutes of the metric
-            against the threshold value.
-          </li>
-          <li className="flex gap-2">
-            <Activity className="mt-0.5 size-3.5 shrink-0 text-[var(--text3)]" aria-hidden="true" />
-            Consecutive breaches suppress single-window noise: the rule only fires after N windows in a row satisfy the
-            condition.
-          </li>
-          <li className="flex gap-2">
-            <Power className="mt-0.5 size-3.5 shrink-0 text-[var(--text3)]" aria-hidden="true" />
-            Cooldown prevents repeat notifications while a condition stays broken. Recovery notifications are sent
-            separately when enabled.
-          </li>
-        </ul>
-      </Panel>
+              {/* Prominent metric value display */}
+              <div className="flex items-baseline gap-3 rounded-xl bg-[var(--bg2)]/60 px-4 py-3">
+                <span className="text-[24px] font-bold tabular-nums tracking-tight text-[var(--text)]">
+                  {formatNumber(threshold.thresholdValue)}
+                </span>
+                <span className="text-[12px] text-[var(--text3)]">{threshold.thresholdUnit}</span>
+                <code className="ml-auto font-[family-name:var(--mono)] text-[12px] font-medium text-[var(--text2)]">
+                  {threshold.comparisonOperator}
+                </code>
+              </div>
+
+              {/* Timing details */}
+              <div className="flex flex-wrap items-center gap-4 text-[11px] text-[var(--text3)]">
+                <span className="flex items-center gap-1">
+                  <Clock className="size-3" /> {threshold.evaluationWindowMinutes}m window
+                </span>
+                <span>x{threshold.consecutiveBreaches} consecutive</span>
+                <span>cd {threshold.cooldownMinutes}m</span>
+                {threshold.lastTriggeredAt && (
+                  <span className="ml-auto text-[var(--amber)]">
+                    Last fired <Timestamp value={threshold.lastTriggeredAt} />
+                  </span>
+                )}
+              </div>
+
+              {/* Actions */}
+              <div className="flex items-center justify-end gap-1.5 border-t border-[var(--border)] pt-3 opacity-0 transition-opacity group-hover:opacity-100">
+                <UiButton
+                  variant="ghost"
+                  size="sm"
+                  aria-label={`Edit ${threshold.thresholdKey}`}
+                  onClick={() => {
+                    setFormError(null);
+                    setEditing(threshold);
+                  }}
+                >
+                  <Pencil className="mr-1 size-3.5" /> Edit
+                </UiButton>
+                <UiButton
+                  variant="ghost"
+                  size="sm"
+                  aria-label={`Delete ${threshold.thresholdKey}`}
+                  onClick={() => setDeleting(threshold)}
+                >
+                  <Trash2 className="mr-1 size-3.5 text-[var(--red)]" /> Delete
+                </UiButton>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* How evaluation works */}
+      <div className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--bg1)]/70 backdrop-blur-sm">
+        <div className="border-b border-[var(--border)] px-5 py-3.5">
+          <div className="flex items-center gap-2.5">
+            <TrendingUp className="size-4 text-[var(--text2)]" />
+            <h3 className="text-[13px] font-semibold text-[var(--text)]">How evaluation works</h3>
+          </div>
+        </div>
+        <div className="p-5">
+          <ul className="flex flex-col gap-2.5 text-[12.5px] leading-relaxed text-[var(--text2)]">
+            <li className="flex gap-2">
+              <Clock className="mt-0.5 size-3.5 shrink-0 text-[var(--text3)]" aria-hidden="true" />
+              The evaluation window is the aggregation period. A 5-minute window compares the last 5 minutes of the metric
+              against the threshold value.
+            </li>
+            <li className="flex gap-2">
+              <Activity className="mt-0.5 size-3.5 shrink-0 text-[var(--text3)]" aria-hidden="true" />
+              Consecutive breaches suppress single-window noise: the rule only fires after N windows in a row satisfy the
+              condition.
+            </li>
+            <li className="flex gap-2">
+              <Power className="mt-0.5 size-3.5 shrink-0 text-[var(--text3)]" aria-hidden="true" />
+              Cooldown prevents repeat notifications while a condition stays broken. Recovery notifications are sent
+              separately when enabled.
+            </li>
+          </ul>
+        </div>
+      </div>
 
       <FormDialog
         open={creating}

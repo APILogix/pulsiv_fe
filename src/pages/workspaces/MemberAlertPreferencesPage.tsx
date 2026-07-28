@@ -42,6 +42,14 @@ const CHANNEL_ICON: Record<string, LucideIcon> = {
   sms: Send,
 };
 
+const CHANNEL_COLOR: Record<string, string> = {
+  email: "var(--blue)",
+  slack: "var(--violet)",
+  webhook: "var(--green)",
+  push: "var(--amber)",
+  sms: "var(--amber)",
+};
+
 const SEVERITY_CHOICES = ["info", "warning", "error", "critical"] as const;
 const DIGEST_CHOICES = ["immediate", "hourly", "daily", "weekly"] as const;
 
@@ -99,7 +107,7 @@ export default function MemberAlertPreferencesPage() {
     <div className="flex flex-col gap-6">
       <SectionHeading
         title="My notification preferences"
-        description="Personal delivery settings for this project, per channel and alert category. These apply to your account only."
+        description="Personal delivery settings for this project, per channel and alert category."
         actions={
           <UiButton
             variant="outline"
@@ -125,7 +133,7 @@ export default function MemberAlertPreferencesPage() {
       {isLoading ? (
         <div className="flex flex-col gap-4">
           {[0, 1].map((row) => (
-            <div key={row} className="h-40 animate-pulse rounded-[14px] bg-[var(--bg2)]" />
+            <div key={row} className="h-48 animate-pulse rounded-2xl bg-[var(--bg2)]" />
           ))}
         </div>
       ) : preferences.length === 0 ? (
@@ -145,25 +153,68 @@ export default function MemberAlertPreferencesPage() {
       ) : (
         Object.entries(byChannel).map(([channel, entries]) => {
           const Icon = CHANNEL_ICON[channel] ?? Bell;
+          const channelColor = CHANNEL_COLOR[channel] ?? "var(--text3)";
+          const channelEnabled = entries.filter((entry) => entry.enabled).length;
+
           return (
-            <Panel
+            <div
               key={channel}
-              title={channel}
-              description={`${entries.filter((entry) => entry.enabled).length} of ${entries.length} categories delivering.`}
-              icon={Icon}
-              bodyClassName="p-0"
+              className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--bg1)]/70 backdrop-blur-sm"
             >
-              <ul className="divide-y divide-[var(--border)]">
+              {/* Channel header with colored icon */}
+              <div className="flex items-center justify-between border-b border-[var(--border)] px-5 py-4">
+                <div className="flex items-center gap-3.5">
+                  <div
+                    className="flex size-10 items-center justify-center rounded-xl"
+                    style={{ backgroundColor: `color-mix(in srgb, ${channelColor} 12%, transparent)` }}
+                  >
+                    <Icon className="size-5" style={{ color: channelColor }} />
+                  </div>
+                  <div>
+                    <h3 className="text-[14px] font-bold capitalize tracking-[-0.01em] text-[var(--text)]">{channel}</h3>
+                    <p className="text-[11.5px] text-[var(--text3)]">
+                      {channelEnabled} of {entries.length} categories delivering
+                    </p>
+                  </div>
+                </div>
+                {/* Severity matrix summary */}
+                <div className="hidden items-center gap-1 sm:flex">
+                  {SEVERITY_CHOICES.map((sev) => {
+                    const count = entries.filter((e) => e.severityThreshold === sev && e.enabled).length;
+                    return (
+                      <div
+                        key={sev}
+                        className={cn(
+                          "flex size-7 items-center justify-center rounded-md text-[10px] font-bold",
+                          count > 0
+                            ? sev === "critical" || sev === "error"
+                              ? "bg-[var(--red)]/10 text-[var(--red)]"
+                              : sev === "warning"
+                                ? "bg-[var(--amber)]/10 text-[var(--amber)]"
+                                : "bg-[var(--blue)]/10 text-[var(--blue)]"
+                            : "bg-[var(--bg2)] text-[var(--text3)]",
+                        )}
+                        title={`${sev}: ${count} active`}
+                      >
+                        {count}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Preference rows */}
+              <div className="divide-y divide-[var(--border)]">
                 {entries.map((preference) => {
                   const quiet = quietHoursOf(preference);
                   return (
-                    <li
+                    <div
                       key={preference.id}
-                      className="flex flex-wrap items-center justify-between gap-3 px-5 py-3.5"
+                      className="flex flex-wrap items-center justify-between gap-3 px-5 py-3.5 transition-colors hover:bg-[var(--bg2)]/30"
                     >
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
-                          <p className="text-[13px] font-medium capitalize text-[var(--text)]">
+                          <p className="text-[13px] font-semibold capitalize text-[var(--text)]">
                             {preference.category}
                           </p>
                           <Pill tone={SEVERITY_TONE[preference.severityThreshold] ?? "neutral"}>
@@ -172,15 +223,15 @@ export default function MemberAlertPreferencesPage() {
                           <Pill tone="neutral">{preference.digestMode}</Pill>
                           {quiet.enabled && (
                             <Pill tone="violet">
-                              quiet {quiet.start}–{quiet.end} {quiet.timezone}
+                              quiet {quiet.start}-{quiet.end}
                             </Pill>
                           )}
                         </div>
-                        <p className="mt-0.5 text-[11.5px] text-[var(--text3)]">
+                        <p className="mt-0.5 text-[11px] text-[var(--text3)]">
                           Updated <Timestamp value={preference.updatedAt} />
                         </p>
                       </div>
-                      <div className="flex shrink-0 items-center gap-2">
+                      <div className="flex shrink-0 items-center gap-3">
                         <UiButton variant="outline" size="sm" onClick={() => openTuning(preference)}>
                           Configure
                         </UiButton>
@@ -196,11 +247,11 @@ export default function MemberAlertPreferencesPage() {
                           }
                         />
                       </div>
-                    </li>
+                    </div>
                   );
                 })}
-              </ul>
-            </Panel>
+              </div>
+            </div>
           );
         })
       )}
@@ -267,7 +318,7 @@ export default function MemberAlertPreferencesPage() {
               </DialogField>
             </div>
 
-            <label className="flex items-center gap-2 rounded-[10px] border border-[var(--border)] bg-[var(--bg2)] px-3.5 py-3 text-[12.5px] text-[var(--text)]">
+            <label className="flex items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--bg2)] px-3.5 py-3 text-[12.5px] text-[var(--text)]">
               <input type="checkbox" name="enabled" defaultChecked={tuning.enabled} className="size-4" />
               Deliver these alerts to me
             </label>

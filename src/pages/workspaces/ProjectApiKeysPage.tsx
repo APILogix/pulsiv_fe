@@ -37,7 +37,7 @@ import {
   fieldInputClass,
   type SurfaceTone,
 } from "@/shared/ui/pulse";
-import { CopyButton, FilterSelect, Table, Td, Timestamp, Tr, formatBytes, formatCompact } from "@/shared/observe";
+import { CopyButton, FilterSelect, Timestamp, formatBytes, formatCompact } from "@/shared/observe";
 import { UsageTrendChart } from "@/modules/projects/components/UsageTrendChart";
 import { Button as UiButton } from "@/components/ui/button";
 import {
@@ -55,6 +55,7 @@ import {
   apiErrorMessage,
   optionalText,
 } from "@/modules/projects/components/project-ui";
+import { cn } from "@/lib/utils";
 
 // ── module-level constants (rules.md §1.2) ───────────────────
 
@@ -89,8 +90,6 @@ const STATUS_FILTER_OPTIONS = [
   { value: "rotated", label: "Rotated" },
   { value: "suspended", label: "Suspended" },
 ];
-
-const KEY_TABLE_HEADERS = ["Key", "Environment", "Status", "Expires", "Last used", ""];
 
 const asMessage = apiErrorMessage;
 
@@ -347,20 +346,19 @@ export default function ProjectApiKeysPage() {
         </label>
       </Toolbar>
 
-      <Panel bodyClassName="p-0">
-        {isLoading ? (
-          <div className="flex flex-col gap-2 p-5">
-            {[0, 1, 2, 3].map((row) => (
-              <div key={row} className="h-10 animate-pulse rounded-[8px] bg-[var(--bg2)]" />
-            ))}
-          </div>
-        ) : error ? (
-          <div className="p-5">
-            <Notice tone="red" icon={AlertTriangle} title="Could not load API keys">
-              {asMessage(error)}
-            </Notice>
-          </div>
-        ) : keys.length === 0 ? (
+      {/* ── Key cards with glassmorphism ── */}
+      {isLoading ? (
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+          {[0, 1, 2, 3].map((row) => (
+            <div key={row} className="h-32 animate-pulse rounded-2xl bg-[var(--bg2)]" />
+          ))}
+        </div>
+      ) : error ? (
+        <Notice tone="red" icon={AlertTriangle} title="Could not load API keys">
+          {asMessage(error)}
+        </Notice>
+      ) : keys.length === 0 ? (
+        <Panel>
           <div className="flex flex-col items-center gap-3 py-12 text-center">
             <IconChip icon={KeyRound} size="lg" tone="brand" />
             <p className="text-[13.5px] font-semibold text-[var(--text)]">No API keys match these filters</p>
@@ -368,87 +366,99 @@ export default function ProjectApiKeysPage() {
               Create an environment-scoped key to start sending telemetry from an SDK.
             </p>
           </div>
-        ) : (
-          <Table headers={KEY_TABLE_HEADERS} maxHeight="34rem">
-            {keys.map((key) => (
-              <Tr key={key.id}>
-                <Td>
-                  <div className="flex min-w-0 flex-col gap-0.5">
-                    <span className="truncate text-[13px] font-medium text-[var(--text)]">
-                      {key.name || "Unnamed key"}
-                    </span>
-                    <span className="flex items-center gap-1.5">
-                      <code className="truncate font-[family-name:var(--mono)] text-[11px] text-[var(--text3)]">
-                        {key.publicKey}
-                      </code>
-                      <CopyButton value={key.publicKey} label="" className="h-5 border-0 bg-transparent px-1 py-0" />
-                    </span>
+        </Panel>
+      ) : (
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+          {keys.map((key) => (
+            <div
+              key={key.id}
+              className="group relative flex flex-col gap-3 rounded-2xl border border-[var(--border)] bg-[var(--bg1)]/70 p-4 backdrop-blur-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-[var(--brand)]/5"
+            >
+              {/* Status dot in top right */}
+              <div className="absolute right-4 top-4">
+                <span className={cn(
+                  "flex size-2.5 rounded-full",
+                  key.status === "active" && "bg-[var(--green)] shadow-[0_0_6px_var(--green)]",
+                  key.status === "revoked" && "bg-[var(--red)]",
+                  key.status === "expired" && "bg-[var(--text3)]",
+                  key.status === "suspended" && "bg-[var(--amber)]",
+                  key.status === "rotated" && "bg-[var(--amber)]",
+                )} />
+              </div>
+
+              <div className="flex min-w-0 items-start gap-3">
+                <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-[var(--brand)]/10">
+                  <KeyRound className="size-4 text-[var(--brand)]" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-[13px] font-bold text-[var(--text)]">{key.name || "Unnamed key"}</p>
+                  <div className="mt-0.5 flex items-center gap-1.5">
+                    <code className="truncate font-[family-name:var(--mono)] text-[10.5px] text-[var(--text3)]">
+                      {key.publicKey}
+                    </code>
+                    <CopyButton value={key.publicKey} label="" className="h-5 border-0 bg-transparent px-1 py-0" />
                   </div>
-                </Td>
-                <Td>
-                  <span className="text-[12.5px] text-[var(--text2)]">
-                    {key.environment?.name ?? environments.find((env) => env.id === key.environmentId)?.name ?? "—"}
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <Pill tone={KEY_STATUS_TONE[key.status]} dot>{key.status}</Pill>
+                <span className="text-[11px] text-[var(--text3)]">
+                  {key.environment?.name ?? environments.find((env) => env.id === key.environmentId)?.name ?? "-"}
+                </span>
+                {key.expiresAt && (
+                  <span className="text-[11px] text-[var(--text3)]">
+                    exp: <Timestamp value={key.expiresAt} />
                   </span>
-                </Td>
-                <Td>
-                  <Pill tone={KEY_STATUS_TONE[key.status]} dot>
-                    {key.status}
-                  </Pill>
-                </Td>
-                <Td>
-                  {key.expiresAt ? <Timestamp value={key.expiresAt} /> : <span className="text-[12px] text-[var(--text3)]">Never</span>}
-                </Td>
-                <Td>
-                  {key.lastUsedAt ? (
-                    <Timestamp value={key.lastUsedAt} />
-                  ) : (
-                    <span className="text-[12px] text-[var(--text3)]">Never</span>
-                  )}
-                </Td>
-                <Td className="text-right">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <UiButton variant="ghost" size="icon-sm" aria-label={`Actions for ${key.name ?? key.publicKey}`}>
-                        <MoreHorizontal className="size-4" />
-                      </UiButton>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-52">
-                      <DropdownMenuItem onClick={() => setInspecting(key)}>
-                        <BarChart3 className="mr-2 size-4" /> Usage
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => {
-                          setFormError(null);
-                          setEditing(key);
-                        }}
-                      >
-                        <Pencil className="mr-2 size-4" /> Edit metadata
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => setRotating(key)}>
-                        <RefreshCcw className="mr-2 size-4" /> Rotate (with grace)
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => setRegenerating(key)}>
-                        <RefreshCcw className="mr-2 size-4" /> Regenerate now
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        disabled={!(["active", "suspended"] as ApiKeyStatus[]).includes(key.status)}
-                        onClick={() => setKeyEnabled.mutate({ apiKeyId: key.id, enabled: key.status === "suspended" })}
-                      >
-                        <Power className="mr-2 size-4" /> {key.status === "suspended" ? "Activate" : "Suspend"}
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => setRevoking(key)}>
-                        <Trash2 className="mr-2 size-4 text-[var(--red)]" /> Revoke permanently
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </Td>
-              </Tr>
-            ))}
-          </Table>
-        )}
-      </Panel>
+                )}
+              </div>
+
+              <div className="flex items-center justify-between border-t border-[var(--border)] pt-2.5">
+                <span className="text-[10.5px] text-[var(--text3)]">
+                  {key.lastUsedAt ? (<>Last used <Timestamp value={key.lastUsedAt} /></>) : "Never used"}
+                </span>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <UiButton variant="ghost" size="icon-sm" aria-label={`Actions for ${key.name ?? key.publicKey}`}>
+                      <MoreHorizontal className="size-4" />
+                    </UiButton>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-52">
+                    <DropdownMenuItem onClick={() => setInspecting(key)}>
+                      <BarChart3 className="mr-2 size-4" /> Usage
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => {
+                        setFormError(null);
+                        setEditing(key);
+                      }}
+                    >
+                      <Pencil className="mr-2 size-4" /> Edit metadata
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => setRotating(key)}>
+                      <RefreshCcw className="mr-2 size-4" /> Rotate (with grace)
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setRegenerating(key)}>
+                      <RefreshCcw className="mr-2 size-4" /> Regenerate now
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      disabled={!(["active", "suspended"] as ApiKeyStatus[]).includes(key.status)}
+                      onClick={() => setKeyEnabled.mutate({ apiKeyId: key.id, enabled: key.status === "suspended" })}
+                    >
+                      <Power className="mr-2 size-4" /> {key.status === "suspended" ? "Activate" : "Suspend"}
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => setRevoking(key)}>
+                      <Trash2 className="mr-2 size-4 text-[var(--red)]" /> Revoke permanently
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* ── create ── */}
       <FormDialog

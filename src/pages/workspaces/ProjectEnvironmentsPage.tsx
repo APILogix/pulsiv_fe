@@ -18,6 +18,7 @@ import { IconChip, Notice, Panel, Pill, SectionHeading, Toolbar, fieldInputClass
 import { FilterSelect, Timestamp } from "@/shared/observe";
 import { Button as UiButton } from "@/components/ui/button";
 import { ConfirmDialog, DialogField, FormDialog, apiErrorMessage, optionalText } from "@/modules/projects/components/project-ui";
+import { cn } from "@/lib/utils";
 
 const TYPE_FILTER_OPTIONS = [
   { value: "", label: "All types" },
@@ -34,6 +35,16 @@ const DEFAULT_FILTER_OPTIONS = [
   { value: "default", label: "Default only" },
   { value: "standard", label: "Not default" },
 ];
+
+const ENV_TYPE_BORDER_COLOR: Record<string, string> = {
+  [EnvironmentType.PRODUCTION]: "border-l-[var(--red)]",
+  [EnvironmentType.STAGING]: "border-l-[var(--amber)]",
+  [EnvironmentType.PRE_STAGING]: "border-l-[var(--amber)]",
+  [EnvironmentType.PRE_PRODUCTION]: "border-l-[var(--amber)]",
+  [EnvironmentType.DEVELOPMENT]: "border-l-[var(--blue)]",
+  [EnvironmentType.TESTING]: "border-l-[var(--violet)]",
+  [EnvironmentType.CUSTOM]: "border-l-[var(--text3)]",
+};
 
 function typeTone(type: EnvironmentType) {
   if (type === EnvironmentType.PRODUCTION) return "red" as const;
@@ -136,14 +147,26 @@ function EnvironmentCard({ environment, activeCount, onEdit, onDefault, onActiva
   onRestore: () => void;
 }) {
   const deleted = environment.deletedAt !== null;
+  const borderClass = ENV_TYPE_BORDER_COLOR[environment.type] ?? "border-l-[var(--text3)]";
+
   return (
-    <article className="pulse-edge flex min-w-0 flex-col gap-4 rounded-[14px] border border-[var(--border)] bg-[var(--bg1)] p-4">
+    <article
+      className={cn(
+        "group flex min-w-0 flex-col gap-4 rounded-2xl border border-[var(--border)] border-l-4 bg-[var(--bg1)]/70 p-5 backdrop-blur-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-[var(--brand)]/5",
+        borderClass,
+      )}
+    >
       <div className="flex min-w-0 items-start justify-between gap-3">
-        <div className="flex min-w-0 items-start gap-3">
-          <span className="mt-1 size-3 shrink-0 rounded-full ring-2 ring-[var(--bg3)]" style={{ backgroundColor: environment.color }} aria-hidden="true" />
+        <div className="flex min-w-0 items-start gap-3.5">
+          {/* Large color swatch */}
+          <div
+            className="mt-0.5 size-10 shrink-0 rounded-xl ring-2 ring-[var(--border)] transition-transform duration-200 group-hover:scale-110"
+            style={{ backgroundColor: environment.color }}
+            aria-hidden="true"
+          />
           <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <h2 className="truncate text-[14px] font-semibold text-[var(--text)]">{environment.name}</h2>
+            <h2 className="truncate text-[15px] font-bold tracking-[-0.01em] text-[var(--text)]">{environment.name}</h2>
+            <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
               <Pill tone={typeTone(environment.type)}>{environmentTypeLabel(environment.type)}</Pill>
               {environment.isDefault && <Pill tone="brand"><Star className="size-3" /> Default</Pill>}
               <Pill tone={deleted ? "neutral" : environment.isActive ? "green" : "amber"} dot>
@@ -158,8 +181,14 @@ function EnvironmentCard({ environment, activeCount, onEdit, onDefault, onActiva
         {environment.description || "No description provided."}
       </p>
 
-      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--border)] pt-3">
-        <span className="text-[11.5px] text-[var(--text3)]">Updated <Timestamp value={environment.updatedAt} /></span>
+      {/* Slug display */}
+      <div className="rounded-lg bg-[var(--bg2)]/60 px-3 py-2">
+        <span className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--text3)]">SDK Slug</span>
+        <code className="mt-0.5 block font-[family-name:var(--mono)] text-[12px] text-[var(--text)]">{environment.slug}</code>
+      </div>
+
+      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--border)] pt-3.5">
+        <span className="text-[11px] text-[var(--text3)]">Updated <Timestamp value={environment.updatedAt} /></span>
         <div className="flex flex-wrap items-center justify-end gap-1.5">
           {deleted ? (
             <UiButton variant="outline" size="sm" onClick={onRestore}>
@@ -246,6 +275,21 @@ export default function ProjectEnvironmentsPage() {
         description="Deployment scopes for API keys and SDK configuration. Slugs identify environments in SDKs; types drive product behavior."
         actions={<UiButton size="lg" onClick={() => { setFormError(null); setCreating(true); }}><Plus className="mr-1.5 size-4" /> New environment</UiButton>} />
 
+      {/* Stat summary */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {[
+          { label: "Total", value: environments.length, color: "var(--brand)" },
+          { label: "Active", value: activeCount, color: "var(--green)" },
+          { label: "Inactive", value: environments.filter((e) => !e.isActive && !e.deletedAt).length, color: "var(--amber)" },
+          { label: "Deleted", value: environments.filter((e) => e.deletedAt).length, color: "var(--red)" },
+        ].map((stat) => (
+          <div key={stat.label} className="flex flex-col gap-1 rounded-xl border border-[var(--border)] bg-[var(--bg1)]/70 px-4 py-3 backdrop-blur-sm">
+            <span className="text-[10.5px] font-semibold uppercase tracking-[0.1em] text-[var(--text3)]">{stat.label}</span>
+            <span className="text-[24px] font-bold tabular-nums tracking-tight text-[var(--text)]">{stat.value}</span>
+          </div>
+        ))}
+      </div>
+
       <Toolbar>
         <label className="relative min-w-0 flex-1 sm:max-w-[320px]">
           <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[var(--text3)]" />
@@ -262,7 +306,7 @@ export default function ProjectEnvironmentsPage() {
       {formError && !creating && !editing && <Notice tone="red">{formError}</Notice>}
 
       {isLoading ? (
-        <Panel><div className="grid grid-cols-1 gap-4 lg:grid-cols-2">{[0, 1, 2, 3].map((row) => <div key={row} className="h-44 animate-pulse rounded-[12px] bg-[var(--bg2)]" />)}</div></Panel>
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">{[0, 1, 2, 3].map((row) => <div key={row} className="h-52 animate-pulse rounded-2xl bg-[var(--bg2)]" />)}</div>
       ) : filtered.length === 0 ? (
         <Panel><div className="flex flex-col items-center gap-3 py-10 text-center">
           <IconChip icon={Layers} size="lg" tone="brand" />

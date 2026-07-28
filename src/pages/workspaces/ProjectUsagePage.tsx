@@ -17,10 +17,11 @@ import { useMonthlyUsage, useUsageAnalytics } from "@/modules/projects/hooks/use
 import type { UsageGranularity } from "@/modules/projects/api/types";
 import { UsageTrendChart } from "@/modules/projects/components/UsageTrendChart";
 import { useCurrentProject } from "./ProjectShellPage";
-import { Meter, Notice, Panel, SectionHeading, SegmentedControl, StatCard, Toolbar, type SegmentOption } from "@/shared/ui/pulse";
+import { Meter, Notice, SectionHeading, SegmentedControl, StatCard, Toolbar, type SegmentOption } from "@/shared/ui/pulse";
 import { FilterSelect, Table, Td, Timestamp, Tr, formatBytes, formatCompact, formatNumber } from "@/shared/observe";
 import { Button as UiButton } from "@/components/ui/button";
 import { apiErrorMessage } from "@/modules/projects/components/project-ui";
+import { cn } from "@/lib/utils";
 
 // ── module-level constants (rules.md §1.2) ───────────────────
 
@@ -87,15 +88,18 @@ export default function ProjectUsagePage() {
   const totalEvents = findCounter(["events", "events_total"]);
   const totalBytes = findCounter(["bytes", "bytes_total", "event_bytes"]);
 
+  // Calculate plan usage percentage for the gauge
+  const usagePercent = monthly?.usagePercent ?? 0;
+
   return (
     <div className="flex flex-col gap-6">
       <SectionHeading
         title="Usage counters"
-        description="Durable lifetime counters maintained by the ingestion pipeline, plus the current plan position. For time-sliced breakdowns use Analytics."
+        description="Durable lifetime counters maintained by the ingestion pipeline, plus the current plan position."
         actions={
           <div className="flex items-center gap-2">
             <UiButton variant="outline" size="lg" onClick={() => refetch()} disabled={isFetching}>
-              <RefreshCcw className="mr-1.5 size-4" /> Refresh
+              <RefreshCcw className={cn("mr-1.5 size-4", isFetching && "animate-spin")} /> Refresh
             </UiButton>
             <Link to={`/projects/${projectId}/analytics`}>
               <UiButton size="lg">
@@ -108,6 +112,7 @@ export default function ProjectUsagePage() {
 
       {error && <Notice tone="red">{asMessage(error)}</Notice>}
 
+      {/* ── Glass stat cards ── */}
       <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
         <StatCard label="Events (lifetime)" value={formatCompact(totalEvents)} icon={Activity} tone="brand" />
         <StatCard label="Ingested (lifetime)" value={formatBytes(totalBytes)} icon={HardDrive} tone="blue" />
@@ -126,11 +131,93 @@ export default function ProjectUsagePage() {
         />
       </div>
 
-      <Panel
-        title="Project usage trend"
-        description="Accepted telemetry volume and errors across the selected range."
-        icon={LineChartIcon}
-        actions={
+      {/* ── Plan consumption with large gauge visualization ── */}
+      {monthly && (
+        <div className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--bg1)]/70 backdrop-blur-sm">
+          <div className="border-b border-[var(--border)] px-6 py-4">
+            <div className="flex items-center gap-3">
+              <div className="flex size-9 items-center justify-center rounded-xl bg-[var(--brand)]/10">
+                <Sigma className="size-4.5 text-[var(--brand)]" />
+              </div>
+              <div>
+                <h3 className="text-[14px] font-semibold tracking-[-0.01em] text-[var(--text)]">Plan consumption</h3>
+                <p className="text-[12px] text-[var(--text3)]">Billing month {monthly.yearMonth}</p>
+              </div>
+            </div>
+          </div>
+          <div className="p-6">
+            <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:gap-10">
+              {/* Large circular gauge */}
+              <div className="flex shrink-0 items-center justify-center">
+                <div className="relative flex size-40 items-center justify-center">
+                  <svg className="size-full -rotate-90" viewBox="0 0 100 100">
+                    <circle cx="50" cy="50" r="42" fill="none" stroke="var(--bg3)" strokeWidth="8" />
+                    <circle
+                      cx="50"
+                      cy="50"
+                      r="42"
+                      fill="none"
+                      stroke={usagePercent > 90 ? "var(--red)" : usagePercent > 70 ? "var(--amber)" : "var(--brand)"}
+                      strokeWidth="8"
+                      strokeLinecap="round"
+                      strokeDasharray={`${(usagePercent / 100) * 264} 264`}
+                    />
+                  </svg>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <span className="text-[28px] font-bold tabular-nums tracking-tight text-[var(--text)]">
+                      {usagePercent.toFixed(0)}%
+                    </span>
+                    <span className="text-[11px] text-[var(--text3)]">consumed</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Metrics grid */}
+              <div className="flex-1">
+                <Meter
+                  label="Events against plan allowance"
+                  used={monthly.totalEvents}
+                  limit={monthly.planLimit}
+                  format={formatCompact}
+                  hint={
+                    monthly.usagePercent != null
+                      ? `${monthly.usagePercent.toFixed(1)}% consumed this month`
+                      : "This project has no explicit plan limit"
+                  }
+                />
+                <dl className="mt-4 grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--border)] sm:grid-cols-4">
+                  {[
+                    { label: "Ingested", value: formatBytes(monthly.totalBytes) },
+                    { label: "Key requests", value: formatCompact(monthly.apiKeyRequests) },
+                    { label: "Rate-limited", value: formatCompact(monthly.rateLimitedEvents) },
+                    { label: "Notifications", value: formatCompact(monthly.alertNotifications) },
+                  ].map((item) => (
+                    <div key={item.label} className="flex flex-col gap-1 bg-[var(--bg1)] px-3.5 py-3">
+                      <dt className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--text3)]">
+                        {item.label}
+                      </dt>
+                      <dd className="text-[16px] font-bold tabular-nums text-[var(--text)]">{item.value}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Trend chart with gradient background ── */}
+      <div className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--bg1)]/70 backdrop-blur-sm transition-all duration-200 hover:shadow-lg hover:shadow-[var(--brand)]/5">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border)] px-6 py-4">
+          <div className="flex items-center gap-3">
+            <div className="flex size-9 items-center justify-center rounded-xl bg-[var(--blue)]/10">
+              <LineChartIcon className="size-4.5 text-[var(--blue)]" />
+            </div>
+            <div>
+              <h3 className="text-[14px] font-semibold tracking-[-0.01em] text-[var(--text)]">Project usage trend</h3>
+              <p className="text-[12px] text-[var(--text3)]">Accepted telemetry volume and errors</p>
+            </div>
+          </div>
           <Toolbar>
             <SegmentedControl
               value={usageRange}
@@ -145,126 +232,103 @@ export default function ProjectUsagePage() {
               options={USAGE_GRANULARITY_OPTIONS}
             />
           </Toolbar>
-        }
-      >
-        {analytics.isLoading ? (
-          <div className="h-64 animate-pulse rounded-[12px] bg-[var(--bg2)]" />
-        ) : analytics.error ? (
-          <Notice tone="red">{asMessage(analytics.error)}</Notice>
-        ) : (
-          <UsageTrendChart
-            ariaLabel="Project event, request, and error usage over time"
-            points={(analytics.data?.timeSeries ?? []).map((point) => ({
-              bucket: point.bucket,
-              totalEvents: point.totalEvents,
-              requests: point.requests,
-              errors: point.errors,
-            }))}
-            series={[
-              { key: "totalEvents", label: "Events", color: "var(--brand)" },
-              { key: "requests", label: "Requests", color: "var(--blue)" },
-              { key: "errors", label: "Errors", color: "var(--red)" },
-            ]}
-            emptyMessage="No project usage was recorded in this range."
-          />
-        )}
-      </Panel>
-
-      {monthly && (
-        <Panel title="Plan consumption" description={`Billing month ${monthly.yearMonth}.`} icon={Sigma}>
-          <div className="flex flex-col gap-5">
-            <Meter
-              label="Events against plan allowance"
-              used={monthly.totalEvents}
-              limit={monthly.planLimit}
-              format={formatCompact}
-              hint={
-                monthly.usagePercent != null
-                  ? `${monthly.usagePercent.toFixed(1)}% consumed this month`
-                  : "This project has no explicit plan limit"
-              }
+        </div>
+        <div className="p-6">
+          {analytics.isLoading ? (
+            <div className="h-64 animate-pulse rounded-xl bg-[var(--bg2)]" />
+          ) : analytics.error ? (
+            <Notice tone="red">{asMessage(analytics.error)}</Notice>
+          ) : (
+            <UsageTrendChart
+              ariaLabel="Project event, request, and error usage over time"
+              points={(analytics.data?.timeSeries ?? []).map((point) => ({
+                bucket: point.bucket,
+                totalEvents: point.totalEvents,
+                requests: point.requests,
+                errors: point.errors,
+              }))}
+              series={[
+                { key: "totalEvents", label: "Events", color: "var(--brand)" },
+                { key: "requests", label: "Requests", color: "var(--blue)" },
+                { key: "errors", label: "Errors", color: "var(--red)" },
+              ]}
+              emptyMessage="No project usage was recorded in this range."
             />
-            <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-[12px] border border-[var(--border)] bg-[var(--border)] sm:grid-cols-4">
-              {[
-                { label: "Ingested", value: formatBytes(monthly.totalBytes) },
-                { label: "Key requests", value: formatCompact(monthly.apiKeyRequests) },
-                { label: "Rate-limited", value: formatCompact(monthly.rateLimitedEvents) },
-                { label: "Notifications", value: formatCompact(monthly.alertNotifications) },
-              ].map((item) => (
-                <div key={item.label} className="flex flex-col gap-1 bg-[var(--bg1)] px-3.5 py-3">
-                  <dt className="text-[10.5px] font-medium uppercase tracking-[0.1em] text-[var(--text3)]">
-                    {item.label}
-                  </dt>
-                  <dd className="text-[15px] font-semibold tabular-nums text-[var(--text)]">{item.value}</dd>
-                </div>
-              ))}
-            </dl>
-          </div>
-        </Panel>
-      )}
+          )}
+        </div>
+      </div>
 
-      <Panel
-        title="Raw counters"
-        description="Aggregated by the ingestion flush worker. Values may lag real time by one flush interval."
-        icon={Database}
-        bodyClassName="p-0"
-      >
-        {isLoading ? (
-          <div className="flex flex-col gap-2 p-5">
-            {[0, 1, 2, 3].map((row) => (
-              <div key={row} className="h-9 animate-pulse rounded-[8px] bg-[var(--bg2)]" />
-            ))}
+      {/* ── Raw counters table ── */}
+      <div className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--bg1)]/70 backdrop-blur-sm">
+        <div className="border-b border-[var(--border)] px-6 py-4">
+          <div className="flex items-center gap-3">
+            <div className="flex size-9 items-center justify-center rounded-xl bg-[var(--violet)]/10">
+              <Database className="size-4.5 text-[var(--violet)]" />
+            </div>
+            <div>
+              <h3 className="text-[14px] font-semibold tracking-[-0.01em] text-[var(--text)]">Raw counters</h3>
+              <p className="text-[12px] text-[var(--text3)]">Aggregated by the ingestion flush worker</p>
+            </div>
           </div>
-        ) : counters.length === 0 ? (
-          <div className="flex flex-col items-center gap-2 py-12 text-center">
-            <Layers className="size-8 text-[var(--text3)]" aria-hidden="true" />
-            <p className="text-[13.5px] font-semibold text-[var(--text)]">No usage recorded yet</p>
-            <p className="max-w-[46ch] text-[12.5px] text-[var(--text2)]">
-              Counters appear after the first telemetry batch is accepted for this project.
-            </p>
-          </div>
-        ) : (
-          <Table headers={COUNTER_HEADERS} maxHeight="30rem">
-            {counters.map((counter) => (
-              <Tr key={counter.counterType}>
-                <Td>
-                  <div className="flex flex-col gap-0.5">
-                    <span className="text-[13px] font-medium capitalize text-[var(--text)]">
-                      {counterLabel(counter.counterType)}
+        </div>
+        <div>
+          {isLoading ? (
+            <div className="flex flex-col gap-2 p-5">
+              {[0, 1, 2, 3].map((row) => (
+                <div key={row} className="h-9 animate-pulse rounded-lg bg-[var(--bg2)]" />
+              ))}
+            </div>
+          ) : counters.length === 0 ? (
+            <div className="flex flex-col items-center gap-2 py-12 text-center">
+              <Layers className="size-8 text-[var(--text3)]" aria-hidden="true" />
+              <p className="text-[13.5px] font-semibold text-[var(--text)]">No usage recorded yet</p>
+              <p className="max-w-[46ch] text-[12.5px] text-[var(--text2)]">
+                Counters appear after the first telemetry batch is accepted for this project.
+              </p>
+            </div>
+          ) : (
+            <Table headers={COUNTER_HEADERS} maxHeight="30rem">
+              {counters.map((counter) => (
+                <Tr key={counter.counterType}>
+                  <Td>
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-[13px] font-medium capitalize text-[var(--text)]">
+                        {counterLabel(counter.counterType)}
+                      </span>
+                      <code className="font-[family-name:var(--mono)] text-[10.5px] text-[var(--text3)]">
+                        {counter.counterType}
+                      </code>
+                    </div>
+                  </Td>
+                  <Td>
+                    <span className="text-[14px] font-bold tabular-nums text-[var(--text)]">
+                      {BYTE_COUNTERS.has(counter.counterType)
+                        ? formatBytes(counter.totalValue)
+                        : formatNumber(counter.totalValue)}
                     </span>
-                    <code className="font-[family-name:var(--mono)] text-[10.5px] text-[var(--text3)]">
-                      {counter.counterType}
-                    </code>
-                  </div>
-                </Td>
-                <Td>
-                  <span className="text-[13px] font-semibold tabular-nums text-[var(--text)]">
-                    {BYTE_COUNTERS.has(counter.counterType)
-                      ? formatBytes(counter.totalValue)
-                      : formatNumber(counter.totalValue)}
-                  </span>
-                </Td>
-                <Td>
-                  {counter.lastPeriodStart && counter.lastPeriodEnd ? (
-                    <span className="text-[12px] text-[var(--text2)]">
-                      <Timestamp value={counter.lastPeriodStart} /> → <Timestamp value={counter.lastPeriodEnd} />
-                    </span>
-                  ) : (
-                    <span className="text-[12px] text-[var(--text3)]">—</span>
-                  )}
-                </Td>
-                <Td>
-                  {counter.lastFlushedAt ? (
-                    <Timestamp value={counter.lastFlushedAt} />
-                  ) : (
-                    <span className="text-[12px] text-[var(--text3)]">Never</span>
-                  )}
-                </Td>
-              </Tr>
-            ))}
-          </Table>
-        )}
-      </Panel>
+                  </Td>
+                  <Td>
+                    {counter.lastPeriodStart && counter.lastPeriodEnd ? (
+                      <span className="text-[12px] text-[var(--text2)]">
+                        <Timestamp value={counter.lastPeriodStart} /> &rarr; <Timestamp value={counter.lastPeriodEnd} />
+                      </span>
+                    ) : (
+                      <span className="text-[12px] text-[var(--text3)]">-</span>
+                    )}
+                  </Td>
+                  <Td>
+                    {counter.lastFlushedAt ? (
+                      <Timestamp value={counter.lastFlushedAt} />
+                    ) : (
+                      <span className="text-[12px] text-[var(--text3)]">Never</span>
+                    )}
+                  </Td>
+                </Tr>
+              ))}
+            </Table>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

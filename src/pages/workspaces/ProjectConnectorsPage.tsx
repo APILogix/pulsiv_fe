@@ -32,6 +32,7 @@ import {
   apiErrorMessage,
   optionalText,
 } from "@/modules/projects/components/project-ui";
+import { cn } from "@/lib/utils";
 
 // ── module-level constants (rules.md §1.2) ───────────────────
 
@@ -59,7 +60,7 @@ function SubscriptionFields({
       {!subscription && (
         <DialogField label="Connector" name="connectorId" required hint="Organization connectors are managed under Connections.">
           <select id="connectorId" name="connectorId" required className={fieldInputClass}>
-            <option value="">Select a connector…</option>
+            <option value="">Select a connector...</option>
             {connectors.map((connector) => (
               <option key={connector.id} value={connector.id}>
                 {connector.name ?? connector.id}
@@ -199,7 +200,7 @@ export default function ProjectConnectorsPage() {
     <div className="flex flex-col gap-6">
       <SectionHeading
         title="Connector subscriptions"
-        description="Bind organization connectors (Slack, Teams, webhooks) to this project's alert stream, with per-category and per-member targeting."
+        description="Bind organization connectors (Slack, Teams, webhooks) to this project's alert stream."
         actions={
           <UiButton size="lg" onClick={() => setCreating(true)} disabled={availableConnectors.length === 0}>
             <Plus className="mr-1.5 size-4" /> Subscribe connector
@@ -225,7 +226,7 @@ export default function ProjectConnectorsPage() {
       {isLoading ? (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           {[0, 1].map((row) => (
-            <div key={row} className="h-40 animate-pulse rounded-[14px] bg-[var(--bg2)]" />
+            <div key={row} className="h-48 animate-pulse rounded-2xl bg-[var(--bg2)]" />
           ))}
         </div>
       ) : subscriptions.length === 0 ? (
@@ -247,17 +248,26 @@ export default function ProjectConnectorsPage() {
           {subscriptions.map((subscription) => (
             <div
               key={subscription.id}
-              className="pulse-edge flex flex-col gap-3.5 rounded-[14px] border border-[var(--border)] bg-[var(--bg1)] p-4"
+              className="group flex flex-col gap-4 rounded-2xl border border-[var(--border)] bg-[var(--bg1)]/70 p-5 backdrop-blur-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-[var(--brand)]/5"
             >
               <div className="flex items-start justify-between gap-3">
-                <div className="flex min-w-0 items-start gap-3">
-                  <IconChip icon={Cable} tone={subscription.enabled ? "brand" : "neutral"} />
+                <div className="flex min-w-0 items-start gap-3.5">
+                  {/* Connector icon with pulse animation for enabled */}
+                  <div className="relative flex size-11 shrink-0 items-center justify-center rounded-xl bg-[var(--bg2)]">
+                    <Cable className={cn("size-5", subscription.enabled ? "text-[var(--green)]" : "text-[var(--text3)]")} />
+                    {subscription.enabled && (
+                      <span className="absolute -right-0.5 -top-0.5 flex size-3">
+                        <span className="absolute inline-flex size-full animate-ping rounded-full bg-[var(--green)] opacity-40" />
+                        <span className="relative inline-flex size-3 rounded-full bg-[var(--green)]" />
+                      </span>
+                    )}
+                  </div>
                   <div className="min-w-0">
-                    <p className="truncate text-[14px] font-semibold text-[var(--text)]">
+                    <p className="truncate text-[14px] font-bold tracking-[-0.01em] text-[var(--text)]">
                       {connectorName(subscription.connectorId)}
                     </p>
-                    <code className="font-[family-name:var(--mono)] text-[11px] text-[var(--text3)]">
-                      {subscription.connectorId}
+                    <code className="font-[family-name:var(--mono)] text-[10.5px] text-[var(--text3)]">
+                      {subscription.connectorId.slice(0, 8)}...
                     </code>
                   </div>
                 </div>
@@ -271,6 +281,7 @@ export default function ProjectConnectorsPage() {
                 />
               </div>
 
+              {/* Category pills */}
               <div className="flex flex-wrap gap-1.5">
                 {subscription.alertCategories.map((category) => (
                   <Pill key={category} tone="blue">
@@ -279,48 +290,49 @@ export default function ProjectConnectorsPage() {
                 ))}
               </div>
 
-              <dl className="grid grid-cols-2 gap-x-5 gap-y-2.5">
+              {/* Details grid */}
+              <div className="grid grid-cols-2 gap-3 rounded-xl bg-[var(--bg2)]/50 px-4 py-3">
                 <div>
-                  <dt className="text-[10.5px] font-medium uppercase tracking-[0.1em] text-[var(--text3)]">
+                  <dt className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--text3)]">
                     Min severity
                   </dt>
-                  <dd className="text-[12.5px] font-medium capitalize text-[var(--text)]">
+                  <dd className="mt-0.5 text-[13px] font-medium capitalize text-[var(--text)]">
                     {subscription.severityThreshold}
                   </dd>
                 </div>
                 <div>
-                  <dt className="flex items-center gap-1 text-[10.5px] font-medium uppercase tracking-[0.1em] text-[var(--text3)]">
+                  <dt className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--text3)]">
                     <Volume2 className="size-3" aria-hidden="true" /> Digest
                   </dt>
-                  <dd className="text-[12.5px] font-medium text-[var(--text)]">
+                  <dd className="mt-0.5 text-[13px] font-medium text-[var(--text)]">
                     {subscription.digestMode ?? "immediate"}
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-[10.5px] font-medium uppercase tracking-[0.1em] text-[var(--text3)]">Targets</dt>
-                  <dd className="text-[12.5px] font-medium text-[var(--text)]">
+                  <dt className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--text3)]">Targets</dt>
+                  <dd className="mt-0.5 text-[13px] font-medium text-[var(--text)]">
                     {subscription.memberIds.length > 0
                       ? `${subscription.memberIds.length} member${subscription.memberIds.length === 1 ? "" : "s"}`
                       : "All subscribers"}
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-[10.5px] font-medium uppercase tracking-[0.1em] text-[var(--text3)]">
+                  <dt className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--text3)]">
                     Quiet hours
                   </dt>
-                  <dd className="text-[12.5px] font-medium text-[var(--text)]">
+                  <dd className="mt-0.5 text-[13px] font-medium text-[var(--text)]">
                     {subscription.quietHours && Object.keys(subscription.quietHours).length > 0
                       ? "Configured"
                       : "None"}
                   </dd>
                 </div>
-              </dl>
+              </div>
 
               <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[var(--border)] pt-3">
-                <span className="text-[11.5px] text-[var(--text3)]">
+                <span className="text-[11px] text-[var(--text3)]">
                   Updated <Timestamp value={subscription.updatedAt} />
                 </span>
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1.5 opacity-0 transition-opacity group-hover:opacity-100">
                   <UiButton
                     variant="outline"
                     size="icon-sm"

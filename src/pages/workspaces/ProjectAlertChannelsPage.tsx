@@ -54,12 +54,12 @@ import {
 
 // ── module-level constants (rules.md §1.2) ───────────────────
 
-const CHANNEL_TYPES: Array<{ value: string; label: string; icon: LucideIcon; hint: string }> = [
-  { value: "email", label: "Email", icon: Mail, hint: "Destination optional — falls back to member emails." },
-  { value: "slack", label: "Slack", icon: Hash, hint: "Use a connector or a channel webhook URL." },
-  { value: "webhook", label: "Webhook", icon: Webhook, hint: "HTTPS endpoint receiving the alert payload." },
-  { value: "teams", label: "Microsoft Teams", icon: MessageSquare, hint: "Incoming webhook URL." },
-  { value: "sms", label: "SMS", icon: Send, hint: "E.164 phone number." },
+const CHANNEL_TYPES: Array<{ value: string; label: string; icon: LucideIcon; hint: string; color: string }> = [
+  { value: "email", label: "Email", icon: Mail, hint: "Destination optional - falls back to member emails.", color: "var(--blue)" },
+  { value: "slack", label: "Slack", icon: Hash, hint: "Use a connector or a channel webhook URL.", color: "var(--violet)" },
+  { value: "webhook", label: "Webhook", icon: Webhook, hint: "HTTPS endpoint receiving the alert payload.", color: "var(--green)" },
+  { value: "teams", label: "Microsoft Teams", icon: MessageSquare, hint: "Incoming webhook URL.", color: "var(--brand)" },
+  { value: "sms", label: "SMS", icon: Send, hint: "E.164 phone number.", color: "var(--amber)" },
 ];
 
 const CHANNEL_ICON: Record<string, LucideIcon> = {
@@ -68,6 +68,14 @@ const CHANNEL_ICON: Record<string, LucideIcon> = {
   webhook: Webhook,
   teams: MessageSquare,
   sms: Send,
+};
+
+const CHANNEL_COLOR: Record<string, string> = {
+  email: "var(--blue)",
+  slack: "var(--violet)",
+  webhook: "var(--green)",
+  teams: "var(--brand)",
+  sms: "var(--amber)",
 };
 
 const TYPE_FILTER_OPTIONS = [
@@ -126,7 +134,7 @@ function ChannelFields({ channel }: { channel?: ProjectAlertChannel }) {
           name="destination"
           defaultValue={channel?.destination ?? ""}
           maxLength={2048}
-          placeholder={channelType === "email" ? "oncall@example.com" : "https://hooks.example.com/…"}
+          placeholder={channelType === "email" ? "oncall@example.com" : "https://hooks.example.com/..."}
           className={fieldInputClass}
         />
       </DialogField>
@@ -221,7 +229,7 @@ export default function ProjectAlertChannelsPage() {
     <div className="flex flex-col gap-6">
       <SectionHeading
         title="Alert channels"
-        description="Where this project delivers alerts. Each member can additionally tune severity, digest cadence, and quiet hours per channel."
+        description="Where this project delivers alerts. Each member can tune severity, digest cadence, and quiet hours per channel."
         actions={
           <UiButton size="lg" onClick={() => setCreating(true)}>
             <Plus className="mr-1.5 size-4" /> New channel
@@ -257,7 +265,7 @@ export default function ProjectAlertChannelsPage() {
       {isLoading ? (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           {[0, 1].map((row) => (
-            <div key={row} className="h-40 animate-pulse rounded-[14px] bg-[var(--bg2)]" />
+            <div key={row} className="h-48 animate-pulse rounded-2xl bg-[var(--bg2)]" />
           ))}
         </div>
       ) : channels.length === 0 ? (
@@ -277,25 +285,32 @@ export default function ProjectAlertChannelsPage() {
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           {channels.map((channel) => {
             const Icon = CHANNEL_ICON[channel.channelType] ?? Bell;
+            const channelColor = CHANNEL_COLOR[channel.channelType] ?? "var(--text3)";
             const preference = preferenceFor(channel.id);
             return (
               <div
                 key={channel.id}
-                className="pulse-edge flex flex-col gap-3.5 rounded-[14px] border border-[var(--border)] bg-[var(--bg1)] p-4"
+                className="group flex flex-col gap-4 rounded-2xl border border-[var(--border)] bg-[var(--bg1)]/70 p-5 backdrop-blur-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-[var(--brand)]/5"
               >
                 <div className="flex items-start justify-between gap-3">
-                  <div className="flex min-w-0 items-start gap-3">
-                    <IconChip icon={Icon} tone={channel.enabled ? "brand" : "neutral"} />
+                  <div className="flex min-w-0 items-start gap-3.5">
+                    {/* Large colored icon circle */}
+                    <div
+                      className="flex size-12 shrink-0 items-center justify-center rounded-2xl"
+                      style={{ backgroundColor: `color-mix(in srgb, ${channelColor} 12%, transparent)` }}
+                    >
+                      <Icon className="size-5.5" style={{ color: channelColor }} />
+                    </div>
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
-                        <p className="truncate text-[14px] font-semibold text-[var(--text)]">{channel.name}</p>
+                        <p className="truncate text-[14px] font-bold tracking-[-0.01em] text-[var(--text)]">{channel.name}</p>
                         {channel.isDefault && (
                           <Pill tone="brand">
                             <Star className="size-3" aria-hidden="true" /> Default
                           </Pill>
                         )}
                       </div>
-                      <p className="truncate font-[family-name:var(--mono)] text-[11.5px] text-[var(--text3)]">
+                      <p className="mt-0.5 truncate font-[family-name:var(--mono)] text-[11px] text-[var(--text3)]">
                         {channel.channelType}
                         {channel.destination ? ` · ${channel.destination}` : ""}
                       </p>
@@ -315,27 +330,30 @@ export default function ProjectAlertChannelsPage() {
                   <p className="text-[12.5px] leading-relaxed text-[var(--text2)]">{channel.description}</p>
                 )}
 
-                <div className="rounded-[10px] border border-[var(--border)] bg-[var(--bg2)] px-3.5 py-2.5">
-                  <p className="mb-1 text-[10.5px] font-semibold uppercase tracking-[0.1em] text-[var(--text3)]">
+                {/* Preference display */}
+                <div className="rounded-xl border border-[var(--border)] bg-[var(--bg2)]/50 px-4 py-3">
+                  <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--text3)]">
                     My delivery preference
                   </p>
                   {preference ? (
-                    <p className="text-[12.5px] text-[var(--text2)]">
+                    <div className="flex flex-wrap items-center gap-1.5">
                       <Pill tone={preference.enabled ? "green" : "neutral"} dot>
                         {preference.enabled ? "on" : "muted"}
-                      </Pill>{" "}
-                      {preference.severityThreshold}+ · {preference.digestMode} · {preference.category}
-                    </p>
+                      </Pill>
+                      <span className="text-[12px] text-[var(--text2)]">
+                        {preference.severityThreshold}+ · {preference.digestMode} · {preference.category}
+                      </span>
+                    </div>
                   ) : (
                     <p className="text-[12px] text-[var(--text3)]">Using project defaults.</p>
                   )}
                 </div>
 
                 <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[var(--border)] pt-3">
-                  <span className="text-[11.5px] text-[var(--text3)]">
+                  <span className="text-[11px] text-[var(--text3)]">
                     Updated <Timestamp value={channel.updatedAt} />
                   </span>
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1.5 opacity-0 transition-opacity group-hover:opacity-100">
                     <UiButton variant="outline" size="sm" onClick={() => setTuning(channel)}>
                       <Settings2 className="mr-1 size-3.5" /> Preferences
                     </UiButton>
@@ -367,12 +385,16 @@ export default function ProjectAlertChannelsPage() {
       )}
 
       {preferences.length > 0 && (
-        <Panel
-          title="My channel preferences"
-          description="Personal overrides across every channel in this project."
-          icon={Settings2}
-          bodyClassName="p-0"
-        >
+        <div className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--bg1)]/70 backdrop-blur-sm">
+          <div className="border-b border-[var(--border)] px-5 py-3.5">
+            <div className="flex items-center gap-2.5">
+              <Settings2 className="size-4 text-[var(--text2)]" />
+              <div>
+                <h3 className="text-[13px] font-semibold text-[var(--text)]">My channel preferences</h3>
+                <p className="text-[11px] text-[var(--text3)]">Personal overrides across every channel</p>
+              </div>
+            </div>
+          </div>
           <RowStack>
             {preferences.map((preference) => (
               <div key={preference.id} className="flex flex-wrap items-center justify-between gap-3 px-5 py-3.5">
@@ -400,7 +422,7 @@ export default function ProjectAlertChannelsPage() {
               </div>
             ))}
           </RowStack>
-        </Panel>
+        </div>
       )}
 
       {/* ── create ── */}

@@ -1,1 +1,0 @@
-import{f as i,m as s}from"./index-SbDBhPiF.js";import{a as u}from"./auth.query-BaH5OBNx.js";async function p(t,{setAuth:o,queryClient:n,navigate:r}){var e;const a=await i.getCurrentUser();if(o(a),n.setQueryData(u.currentUser,a),((e=t.organizations)==null?void 0:e.length)===0){r("/onboarding/organization",{replace:!0});return}s(),r("/dashboard",{replace:!0})}export{p as c};

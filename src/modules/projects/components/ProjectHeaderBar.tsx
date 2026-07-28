@@ -3,6 +3,7 @@ import {
   Archive,
   Check,
   ChevronDown,
+  ChevronRight,
   Clock,
   Layers,
   MoreHorizontal,
@@ -15,6 +16,7 @@ import { useProjectMutations } from "@/modules/projects/hooks/useProjects";
 import { useEnvironmentScope } from "@/modules/projects/hooks/useEnvironmentScope";
 import type { Project, ProjectStatus } from "@/modules/projects/api/types";
 import { resolveActiveProjectNav, projectNavCrumb } from "@/modules/projects/navigation/project-nav";
+import { LiveDot } from "@/shared/ui/pulse";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -34,9 +36,13 @@ const STATUS_STYLE: Record<ProjectStatus, string> = {
   archived: "bg-[var(--bg2)] text-[var(--text2)] ring-[var(--border)]",
 };
 
+const STATUS_BORDER_COLOR: Record<ProjectStatus, string> = {
+  active: "var(--green)",
+  paused: "var(--amber)",
+  archived: "var(--border)",
+};
+
 // ── environment selector ─────────────────────────────────────
-// The environment is a scope over every project page, so it lives here and
-// never in the navigation tree.
 
 function EnvironmentSelector({ projectId }: { projectId: string }) {
   const { environments, environment, isLoading, select } = useEnvironmentScope(projectId);
@@ -60,13 +66,16 @@ function EnvironmentSelector({ projectId }: { projectId: string }) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
-        className="inline-flex h-7 items-center gap-2 rounded-[7px] border border-[var(--border)] bg-[var(--bg2)]/70 px-2 transition-colors hover:border-[var(--border2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
+        className="inline-flex h-7 items-center gap-2 rounded-[7px] border border-[var(--border)] bg-[var(--bg2)]/70 px-2.5 transition-all hover:border-[var(--border2)] hover:bg-[var(--bg2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
         aria-label={`Environment: ${environment?.name ?? "none"}. Change environment`}
       >
         <span
           aria-hidden="true"
-          className="size-2 shrink-0 rounded-full"
-          style={{ background: environment?.color ?? "var(--text3)" }}
+          className="size-2.5 shrink-0 rounded-full shadow-[0_0_6px_1px_var(--env-glow)]"
+          style={{
+            background: environment?.color ?? "var(--text3)",
+            "--env-glow": environment?.color ?? "transparent",
+          } as React.CSSProperties}
         />
         <span className="max-w-[120px] truncate text-[12px] font-medium text-[var(--text)]">
           {environment?.name}
@@ -81,8 +90,11 @@ function EnvironmentSelector({ projectId }: { projectId: string }) {
           <DropdownMenuItem key={candidate.id} onSelect={() => select(candidate.id)} className="gap-2">
             <span
               aria-hidden="true"
-              className="size-2 shrink-0 rounded-full"
-              style={{ background: candidate.color }}
+              className="size-2.5 shrink-0 rounded-full shadow-[0_0_4px_1px_var(--env-item-glow)]"
+              style={{
+                background: candidate.color,
+                "--env-item-glow": candidate.color,
+              } as React.CSSProperties}
             />
             <span className="min-w-0 flex-1 truncate text-[13px]">{candidate.name}</span>
             {candidate.isDefault && (
@@ -154,36 +166,40 @@ export function ProjectHeaderBar({ project }: { project: Project }) {
   const location = useLocation();
   const active = resolveActiveProjectNav(location.pathname, project.id);
   const crumb = active ? projectNavCrumb(active.segment) : null;
+  const borderColor = STATUS_BORDER_COLOR[project.status];
 
   return (
-    <header className="flex h-[var(--header-height)] shrink-0 items-center gap-2 border-b border-[var(--border)] bg-[var(--bg1)] px-3 sm:px-4">
+    <header className="relative flex h-[var(--header-height)] shrink-0 items-center gap-2 border-b border-[var(--border)] bg-[var(--bg1)] px-3 sm:px-4">
+      {/* subtle bottom gradient accent */}
+      <span
+        className="pointer-events-none absolute inset-x-0 bottom-0 h-px"
+        style={{
+          background: `linear-gradient(90deg, ${borderColor}, transparent 60%)`,
+        }}
+        aria-hidden="true"
+      />
+
       {/* breadcrumb + identity */}
-      <nav aria-label="Breadcrumb" className="flex min-w-0 flex-1 items-center gap-1.5 text-[12.5px]">
+      <nav aria-label="Breadcrumb" className="flex min-w-0 flex-1 items-center gap-1 text-[12.5px]">
         <Link
           to="/projects"
-          className="hidden shrink-0 rounded-sm text-[var(--text3)] transition-colors hover:text-[var(--text2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] sm:inline"
+          className="hidden shrink-0 rounded-sm px-1 py-0.5 text-[var(--text3)] transition-colors hover:text-[var(--text2)] hover:underline hover:underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] sm:inline"
         >
           Projects
         </Link>
-        <span aria-hidden="true" className="hidden text-[var(--text3)]/60 sm:inline">
-          /
-        </span>
+        <ChevronRight aria-hidden="true" className="hidden size-3 shrink-0 text-[var(--text3)]/60 sm:inline" />
         <Link
           to={`/projects/${project.id}/overview`}
-          className="min-w-0 shrink truncate rounded-sm text-[13px] font-semibold text-[var(--text)] transition-colors hover:text-[var(--brand)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
+          className="min-w-0 shrink truncate rounded-sm px-1 py-0.5 text-[13px] font-semibold text-[var(--text)] transition-colors hover:text-[var(--brand)] hover:underline hover:underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
         >
           {project.name}
         </Link>
         {crumb && (
           <>
-            <span aria-hidden="true" className="hidden text-[var(--text3)]/60 md:inline">
-              /
-            </span>
-            <span className="hidden shrink-0 text-[var(--text3)] md:inline">{crumb.group}</span>
-            <span aria-hidden="true" className="text-[var(--text3)]/60">
-              /
-            </span>
-            <span className="shrink-0 truncate text-[var(--text2)]" aria-current="page">
+            <ChevronRight aria-hidden="true" className="hidden size-3 shrink-0 text-[var(--text3)]/60 md:inline" />
+            <span className="hidden shrink-0 px-1 py-0.5 text-[var(--text3)] md:inline">{crumb.group}</span>
+            <ChevronRight aria-hidden="true" className="size-3 shrink-0 text-[var(--text3)]/60" />
+            <span className="shrink-0 truncate px-1 py-0.5 text-[var(--text2)]" aria-current="page">
               {crumb.page}
             </span>
           </>
@@ -191,14 +207,18 @@ export function ProjectHeaderBar({ project }: { project: Project }) {
       </nav>
 
       {/* scope + state + actions */}
-      <div className="flex shrink-0 items-center gap-2">
+      <div className="flex shrink-0 items-center gap-2.5">
         <span
           className={cn(
-            "hidden items-center gap-1.5 rounded-full px-2 py-[3px] font-[family-name:var(--mono)] text-[10px] font-semibold uppercase tracking-[0.08em] ring-1 ring-inset sm:inline-flex",
+            "hidden items-center gap-1.5 rounded-full px-2.5 py-[3px] font-[family-name:var(--mono)] text-[10px] font-semibold uppercase tracking-[0.08em] ring-1 ring-inset sm:inline-flex",
             STATUS_STYLE[project.status],
           )}
         >
-          <span aria-hidden="true" className="size-1.5 rounded-full bg-current" />
+          {project.status === "active" ? (
+            <LiveDot tone="green" className="size-1.5" />
+          ) : (
+            <span aria-hidden="true" className="size-1.5 rounded-full bg-current" />
+          )}
           {project.status}
         </span>
 

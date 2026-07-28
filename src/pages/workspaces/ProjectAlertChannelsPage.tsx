@@ -13,6 +13,7 @@ import {
   Star,
   Trash2,
   Webhook,
+  Zap,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import {
@@ -55,7 +56,7 @@ import {
 // ── module-level constants (rules.md §1.2) ───────────────────
 
 const CHANNEL_TYPES: Array<{ value: string; label: string; icon: LucideIcon; hint: string }> = [
-  { value: "email", label: "Email", icon: Mail, hint: "Destination optional — falls back to member emails." },
+  { value: "email", label: "Email", icon: Mail, hint: "Destination optional -- falls back to member emails." },
   { value: "slack", label: "Slack", icon: Hash, hint: "Use a connector or a channel webhook URL." },
   { value: "webhook", label: "Webhook", icon: Webhook, hint: "HTTPS endpoint receiving the alert payload." },
   { value: "teams", label: "Microsoft Teams", icon: MessageSquare, hint: "Incoming webhook URL." },
@@ -68,6 +69,15 @@ const CHANNEL_ICON: Record<string, LucideIcon> = {
   webhook: Webhook,
   teams: MessageSquare,
   sms: Send,
+};
+
+/** Channel-type specific accent colors */
+const CHANNEL_ACCENT: Record<string, string> = {
+  email: "var(--blue)",
+  slack: "var(--brand)",
+  webhook: "var(--violet)",
+  teams: "var(--blue)",
+  sms: "var(--green)",
 };
 
 const TYPE_FILTER_OPTIONS = [
@@ -126,7 +136,7 @@ function ChannelFields({ channel }: { channel?: ProjectAlertChannel }) {
           name="destination"
           defaultValue={channel?.destination ?? ""}
           maxLength={2048}
-          placeholder={channelType === "email" ? "oncall@example.com" : "https://hooks.example.com/…"}
+          placeholder={channelType === "email" ? "oncall@example.com" : "https://hooks.example.com/..."}
           className={fieldInputClass}
         />
       </DialogField>
@@ -217,6 +227,12 @@ export default function ProjectAlertChannelsPage() {
   const enabledCount = channels.filter((channel) => channel.enabled).length;
   const defaultChannel = channels.find((channel) => channel.isDefault);
 
+  // Sort: enabled first, disabled at bottom
+  const sortedChannels = [...channels].sort((a, b) => {
+    if (a.enabled === b.enabled) return 0;
+    return a.enabled ? -1 : 1;
+  });
+
   return (
     <div className="flex flex-col gap-6">
       <SectionHeading
@@ -275,14 +291,22 @@ export default function ProjectAlertChannelsPage() {
         </Panel>
       ) : (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-          {channels.map((channel) => {
+          {sortedChannels.map((channel) => {
             const Icon = CHANNEL_ICON[channel.channelType] ?? Bell;
             const preference = preferenceFor(channel.id);
+            const accent = CHANNEL_ACCENT[channel.channelType] ?? "var(--brand)";
             return (
               <div
                 key={channel.id}
-                className="pulse-edge flex flex-col gap-3.5 rounded-[14px] border border-[var(--border)] bg-[var(--bg1)] p-4"
+                className="pulse-edge relative flex flex-col gap-3.5 overflow-hidden rounded-[14px] border border-[var(--border)] bg-[var(--bg1)] p-4 transition-opacity"
+                style={{ opacity: channel.enabled ? 1 : 0.6 }}
               >
+                {/* Channel-type accent bar at top */}
+                <span
+                  className="absolute inset-x-0 top-0 h-[3px]"
+                  style={{ background: `linear-gradient(90deg, ${accent}, transparent 80%)` }}
+                />
+
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex min-w-0 items-start gap-3">
                     <IconChip icon={Icon} tone={channel.enabled ? "brand" : "neutral"} />
@@ -315,19 +339,19 @@ export default function ProjectAlertChannelsPage() {
                   <p className="text-[12.5px] leading-relaxed text-[var(--text2)]">{channel.description}</p>
                 )}
 
-                <div className="rounded-[10px] border border-[var(--border)] bg-[var(--bg2)] px-3.5 py-2.5">
-                  <p className="mb-1 text-[10.5px] font-semibold uppercase tracking-[0.1em] text-[var(--text3)]">
-                    My delivery preference
-                  </p>
+                {/* Preference badge strip */}
+                <div className="flex flex-wrap items-center gap-1.5">
                   {preference ? (
-                    <p className="text-[12.5px] text-[var(--text2)]">
+                    <>
                       <Pill tone={preference.enabled ? "green" : "neutral"} dot>
-                        {preference.enabled ? "on" : "muted"}
-                      </Pill>{" "}
-                      {preference.severityThreshold}+ · {preference.digestMode} · {preference.category}
-                    </p>
+                        {preference.enabled ? "delivering" : "muted"}
+                      </Pill>
+                      <Pill tone="blue">{preference.severityThreshold}+</Pill>
+                      <Pill tone="neutral">{preference.digestMode}</Pill>
+                      <Pill tone="neutral">{preference.category}</Pill>
+                    </>
                   ) : (
-                    <p className="text-[12px] text-[var(--text3)]">Using project defaults.</p>
+                    <span className="text-[11.5px] text-[var(--text3)]">Using project defaults</span>
                   )}
                 </div>
 
@@ -336,6 +360,14 @@ export default function ProjectAlertChannelsPage() {
                     Updated <Timestamp value={channel.updatedAt} />
                   </span>
                   <div className="flex items-center gap-1.5">
+                    <UiButton
+                      variant="outline"
+                      size="sm"
+                      disabled
+                      title="Coming soon"
+                    >
+                      <Zap className="mr-1 size-3.5" /> Test delivery
+                    </UiButton>
                     <UiButton variant="outline" size="sm" onClick={() => setTuning(channel)}>
                       <Settings2 className="mr-1 size-3.5" /> Preferences
                     </UiButton>

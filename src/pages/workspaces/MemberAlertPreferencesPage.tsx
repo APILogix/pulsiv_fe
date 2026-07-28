@@ -25,6 +25,7 @@ import {
   StatCard,
   Toggle,
   fieldInputClass,
+  type SurfaceTone,
 } from "@/shared/ui/pulse";
 import { Timestamp } from "@/shared/observe";
 import { Button as UiButton } from "@/components/ui/button";
@@ -42,10 +43,18 @@ const CHANNEL_ICON: Record<string, LucideIcon> = {
   sms: Send,
 };
 
+const CHANNEL_ACCENT: Record<string, string> = {
+  email: "var(--blue)",
+  slack: "var(--brand)",
+  webhook: "var(--violet)",
+  push: "var(--amber)",
+  sms: "var(--green)",
+};
+
 const SEVERITY_CHOICES = ["info", "warning", "error", "critical"] as const;
 const DIGEST_CHOICES = ["immediate", "hourly", "daily", "weekly"] as const;
 
-const SEVERITY_TONE: Record<string, "blue" | "amber" | "red" | "neutral"> = {
+const SEVERITY_TONE: Record<string, SurfaceTone> = {
   info: "blue",
   warning: "amber",
   error: "red",
@@ -145,21 +154,28 @@ export default function MemberAlertPreferencesPage() {
       ) : (
         Object.entries(byChannel).map(([channel, entries]) => {
           const Icon = CHANNEL_ICON[channel] ?? Bell;
+          const accent = CHANNEL_ACCENT[channel] ?? "var(--brand)";
+          const activeCount = entries.filter((entry) => entry.enabled).length;
           return (
             <Panel
               key={channel}
               title={channel}
-              description={`${entries.filter((entry) => entry.enabled).length} of ${entries.length} categories delivering.`}
+              description={`${activeCount} of ${entries.length} categories delivering.`}
               icon={Icon}
               bodyClassName="p-0"
             >
+              {/* Channel accent bar */}
+              <div className="absolute inset-x-0 top-0 h-[2px] rounded-t-[14px]" style={{ background: `linear-gradient(90deg, ${accent}, transparent 70%)` }} />
               <ul className="divide-y divide-[var(--border)]">
-                {entries.map((preference) => {
+                {entries.map((preference, index) => {
                   const quiet = quietHoursOf(preference);
                   return (
                     <li
                       key={preference.id}
-                      className="flex flex-wrap items-center justify-between gap-3 px-5 py-3.5"
+                      className={cn(
+                        "flex flex-wrap items-center justify-between gap-3 px-5 py-3.5",
+                        index % 2 === 1 && "bg-[var(--bg2)]/20",
+                      )}
                     >
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
@@ -172,7 +188,7 @@ export default function MemberAlertPreferencesPage() {
                           <Pill tone="neutral">{preference.digestMode}</Pill>
                           {quiet.enabled && (
                             <Pill tone="violet">
-                              quiet {quiet.start}–{quiet.end} {quiet.timezone}
+                              quiet {quiet.start}-{quiet.end} {quiet.timezone}
                             </Pill>
                           )}
                         </div>

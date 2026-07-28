@@ -2,7 +2,7 @@
   "id": "FEAT-005",
   "type": "feat",
   "description": "Redesign the Alerting pages (Thresholds, Channels, Connectors, Routes, Delivery Logs, Dead Letters, Member Preferences) and Team pages (Members) with modern UI/UX. Improve card-based layouts, table density, and form experiences. Also redesign the Usage page and Activity page for consistency.",
-  "status": "pending",
+  "status": "in_progress",
   "steps": [
     "Redesign src/pages/workspaces/ProjectThresholdsPage.tsx: (a) Add visual threshold cards in addition to the table view showing the metric being monitored with a gauge-like visual. (b) Improve the threshold form with better preset selection (visual cards with icons). (c) Add a 'status at a glance' panel showing currently firing vs healthy thresholds. (d) Better severity color coding with stronger visual indicators.",
     "Redesign src/pages/workspaces/ProjectAlertChannelsPage.tsx: (a) Improve channel cards with channel-type specific icons and better visual organization. (b) Add delivery success rate indicator per channel. (c) Improve the preferences section with a matrix-style editor. (d) Better toggle interaction with animated state transitions.",

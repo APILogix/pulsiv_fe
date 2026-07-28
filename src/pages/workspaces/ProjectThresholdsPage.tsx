@@ -10,6 +10,7 @@ import {
   Power,
   Trash2,
   TrendingUp,
+  Zap,
 } from "lucide-react";
 import { useThresholdMutations, useThresholds } from "@/modules/projects/hooks/useProjectAlerting";
 import { useEnvironments } from "@/modules/projects/hooks/useEnvironments";
@@ -26,7 +27,6 @@ import {
   IconChip,
   Notice,
   Panel,
-  Pill,
   SectionHeading,
   StatCard,
   Toggle,
@@ -84,9 +84,37 @@ const SEVERITY_FILTER_OPTIONS = [
   ...SEVERITY_CHOICES.map((severity) => ({ value: severity, label: severity })),
 ];
 
-const THRESHOLD_HEADERS = ["Threshold", "Condition", "Window", "Severity", "State", "Last fired", ""];
+const THRESHOLD_HEADERS = ["Threshold", "Condition", "Gauge", "Window", "Severity", "State", "Last fired", ""];
 
 const asMessage = apiErrorMessage;
+
+// ── threshold gauge visual ───────────────────────────────────
+
+function ThresholdGauge({ threshold }: { threshold: ProjectAlertThreshold }) {
+  // Visual gauge showing a representation of where a metric might be relative to threshold
+  // Since we don't have live metric values, we show the threshold point on a bar
+  const severity = threshold.severity;
+  const accent = severity === "critical" || severity === "error" ? "var(--red)" : severity === "warning" ? "var(--amber)" : "var(--blue)";
+  const position = 65; // threshold marker position (percentage along bar)
+
+  return (
+    <div className="flex items-center gap-2">
+      <div className="relative h-1.5 w-16 overflow-hidden rounded-full bg-[var(--bg3)]">
+        <div
+          className="absolute inset-y-0 left-0 rounded-full opacity-40"
+          style={{ width: `${position}%`, background: accent }}
+        />
+        <div
+          className="absolute top-0 h-full w-0.5 rounded-full"
+          style={{ left: `${position}%`, background: accent }}
+        />
+      </div>
+      <span className="text-[10px] tabular-nums text-[var(--text3)]">
+        {threshold.comparisonOperator}{formatNumber(threshold.thresholdValue)}
+      </span>
+    </div>
+  );
+}
 
 // ── threshold form ───────────────────────────────────────────
 
@@ -356,6 +384,25 @@ export default function ProjectThresholdsPage() {
         }
       />
 
+      {/* Status overview strip */}
+      {thresholds.length > 0 && (
+        <div className="flex flex-wrap items-center gap-3 rounded-[12px] border border-[var(--border)] bg-[var(--bg1)] px-4 py-3">
+          <span className="text-[11px] font-medium uppercase tracking-[0.1em] text-[var(--text3)]">Status overview</span>
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--green-bg)] px-2.5 py-1 text-[12px] font-semibold text-[var(--green)]">
+              <CheckCircle2 className="size-3" aria-hidden="true" />
+              {thresholds.length - firingRecently} all OK
+            </span>
+            {firingRecently > 0 && (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--red-bg)] px-2.5 py-1 text-[12px] font-semibold text-[var(--red)]">
+                <Zap className="size-3" aria-hidden="true" />
+                {firingRecently} firing
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
         <StatCard label="Thresholds" value={data?.total ?? thresholds.length} icon={BellRing} tone="brand" />
         <StatCard label="Enabled" value={enabledCount} icon={CheckCircle2} tone="green" />
@@ -388,12 +435,25 @@ export default function ProjectThresholdsPage() {
             ))}
           </div>
         ) : thresholds.length === 0 ? (
-          <div className="flex flex-col items-center gap-3 py-12 text-center">
+          <div className="flex flex-col items-center gap-4 py-12 text-center">
             <IconChip icon={BellRing} size="lg" tone="brand" />
             <p className="text-[13.5px] font-semibold text-[var(--text)]">No thresholds configured</p>
             <p className="max-w-[48ch] text-[12.5px] text-[var(--text2)]">
               Start with an error-rate or p95-latency threshold. Presets are available in the create dialog.
             </p>
+            {/* Preset suggestions */}
+            <div className="flex flex-wrap justify-center gap-2">
+              {METRIC_PRESETS.slice(0, 3).map((preset) => (
+                <button
+                  key={preset.metricName}
+                  type="button"
+                  onClick={() => setCreating(true)}
+                  className="rounded-[8px] border border-[var(--border)] bg-[var(--bg2)] px-3 py-1.5 text-[11.5px] font-medium text-[var(--text2)] transition-colors hover:border-[var(--brand)] hover:text-[var(--brand)]"
+                >
+                  {preset.label}
+                </button>
+              ))}
+            </div>
             <UiButton size="lg" onClick={() => setCreating(true)}>
               <Plus className="mr-1.5 size-4" /> New threshold
             </UiButton>
@@ -416,6 +476,9 @@ export default function ProjectThresholdsPage() {
                   </code>
                 </Td>
                 <Td>
+                  <ThresholdGauge threshold={threshold} />
+                </Td>
+                <Td>
                   <span className="text-[12px] text-[var(--text2)]">
                     {threshold.evaluationWindowMinutes}m
                     <span className="text-[var(--text3)]">
@@ -425,7 +488,16 @@ export default function ProjectThresholdsPage() {
                   </span>
                 </Td>
                 <Td>
-                  <Pill tone={SEVERITY_TONE[threshold.severity] ?? "neutral"}>{threshold.severity}</Pill>
+                  <span
+                    className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11.5px] font-bold uppercase tracking-[0.04em]"
+                    style={{
+                      background: `var(--${SEVERITY_TONE[threshold.severity] ?? "neutral"}-bg)`,
+                      color: `var(--${SEVERITY_TONE[threshold.severity] ?? "text3"})`,
+                    }}
+                  >
+                    {threshold.severity === "critical" && <AlertTriangle className="size-3" aria-hidden="true" />}
+                    {threshold.severity}
+                  </span>
                 </Td>
                 <Td>
                   <Toggle

@@ -48,11 +48,57 @@ const STATUS_TONE: Record<string, SurfaceTone> = {
   pending: "amber",
 };
 
+const ACTION_BG_COLOR: Record<string, string> = {
+  create: "bg-[var(--green-bg)]",
+  add: "bg-[var(--green-bg)]",
+  invite: "bg-[var(--green-bg)]",
+  enable: "bg-[var(--green-bg)]",
+  update: "bg-[var(--amber-bg)]",
+  patch: "bg-[var(--amber-bg)]",
+  rotate: "bg-[var(--amber-bg)]",
+  regenerate: "bg-[var(--amber-bg)]",
+  toggle: "bg-[var(--amber-bg)]",
+  delete: "bg-[var(--red-bg)]",
+  revoke: "bg-[var(--red-bg)]",
+  remove: "bg-[var(--red-bg)]",
+  archive: "bg-[var(--red-bg)]",
+};
+
 function actionTone(action: string): SurfaceTone {
   if (/delete|revoke|remove|archive/i.test(action)) return "red";
   if (/create|add|invite|enable/i.test(action)) return "green";
   if (/update|patch|rotate|regenerate|toggle/i.test(action)) return "amber";
   return "neutral";
+}
+
+function actionBgClass(action: string): string {
+  const verb = action.split(".")[0] ?? "";
+  for (const [key, cls] of Object.entries(ACTION_BG_COLOR)) {
+    if (verb.toLowerCase().includes(key)) return cls;
+  }
+  // Check full action string
+  for (const [key, cls] of Object.entries(ACTION_BG_COLOR)) {
+    if (action.toLowerCase().includes(key)) return cls;
+  }
+  return "bg-[var(--bg2)]";
+}
+
+/** Group items by relative time period */
+function getTimeGroup(dateStr: string): string {
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+  if (diffDays === 0) {
+    // Check if same calendar day
+    if (date.toDateString() === now.toDateString()) return "Today";
+    return "Yesterday";
+  }
+  if (diffDays === 1) return "Yesterday";
+  if (diffDays < 7) return "This week";
+  if (diffDays < 30) return "This month";
+  return "Older";
 }
 
 // ── activity row ─────────────────────────────────────────────
@@ -63,63 +109,66 @@ function ActivityRow({ item }: { item: AuditLog }) {
   const hasDetail = Object.keys(item.metadata ?? {}).length > 0 || (item.changedFields?.length ?? 0) > 0;
 
   return (
-    <li className="flex flex-col">
-      <div className="flex items-start gap-3 px-5 py-3.5">
-        <IconChip icon={Icon} tone={actionTone(item.action)} size="sm" className="mt-0.5" />
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <code className="font-[family-name:var(--mono)] text-[12.5px] font-medium text-[var(--text)]">
-              {item.action}
-            </code>
-            <Pill tone={STATUS_TONE[item.status?.toLowerCase()] ?? "neutral"} dot>
-              {item.status || "unknown"}
-            </Pill>
-            {item.isSensitive && (
-              <Pill tone="red">
-                <ShieldAlert className="size-3" aria-hidden="true" /> sensitive
-              </Pill>
-            )}
-          </div>
-          <p className="mt-1 text-[12.5px] text-[var(--text2)]">
-            <span className="text-[var(--text3)]">{item.entityType.replace(/_/g, " ")}</span>
-            {item.entityName && <> · {item.entityName}</>}
-            {item.actorEmail && <> · by {item.actorEmail}</>}
-          </p>
-          {(item.changedFields?.length ?? 0) > 0 && (
-            <div className="mt-1.5 flex flex-wrap gap-1">
-              {item.changedFields!.map((field) => (
-                <code
-                  key={field}
-                  className="rounded-[4px] bg-[var(--bg2)] px-1.5 py-0.5 font-[family-name:var(--mono)] text-[10.5px] text-[var(--text3)]"
-                >
-                  {field}
-                </code>
-              ))}
-            </div>
-          )}
-        </div>
-        <div className="flex shrink-0 items-center gap-2">
-          <span className="text-[11.5px] text-[var(--text3)]">
-            <Timestamp value={item.createdAt} />
-          </span>
-          {hasDetail && (
-            <UiButton
-              variant="ghost"
-              size="icon-sm"
-              aria-label={expanded ? "Hide details" : "Show details"}
-              aria-expanded={expanded}
-              onClick={() => setExpanded((current) => !current)}
-            >
-              <ChevronDown className={cn("size-4 transition-transform", expanded && "rotate-180")} />
-            </UiButton>
-          )}
-        </div>
+    <li className="relative flex gap-3 pl-5 pr-5 py-3.5">
+      {/* Timeline connector line */}
+      <div className="absolute left-[33px] top-0 bottom-0 w-px bg-[var(--border)]" />
+
+      <div className={cn("relative z-10 flex size-8 shrink-0 items-center justify-center rounded-full", actionBgClass(item.action))}>
+        <Icon className="size-4" style={{ color: `var(--${actionTone(item.action)})` }} />
       </div>
-      {expanded && (
-        <div className="border-t border-[var(--border)] bg-[var(--bg2)]/50 px-5 py-3">
-          <JsonViewer data={item.metadata} />
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <code className="font-[family-name:var(--mono)] text-[12.5px] font-medium text-[var(--text)]">
+            {item.action}
+          </code>
+          <Pill tone={STATUS_TONE[item.status?.toLowerCase()] ?? "neutral"} dot>
+            {item.status || "unknown"}
+          </Pill>
+          {item.isSensitive && (
+            <Pill tone="red">
+              <ShieldAlert className="size-3" aria-hidden="true" /> sensitive
+            </Pill>
+          )}
         </div>
-      )}
+        <p className="mt-1 text-[12.5px] text-[var(--text2)]">
+          <span className="text-[var(--text3)]">{item.entityType.replace(/_/g, " ")}</span>
+          {item.entityName && <> · {item.entityName}</>}
+          {item.actorEmail && <> · by {item.actorEmail}</>}
+        </p>
+        {(item.changedFields?.length ?? 0) > 0 && (
+          <div className="mt-1.5 flex flex-wrap gap-1">
+            {item.changedFields!.map((field) => (
+              <code
+                key={field}
+                className="rounded-[4px] bg-[var(--bg2)] px-1.5 py-0.5 font-[family-name:var(--mono)] text-[10.5px] text-[var(--text3)]"
+              >
+                {field}
+              </code>
+            ))}
+          </div>
+        )}
+        {expanded && (
+          <div className="mt-3 rounded-[10px] border border-[var(--border)] bg-[var(--bg2)]/50 p-3">
+            <JsonViewer data={item.metadata} />
+          </div>
+        )}
+      </div>
+      <div className="flex shrink-0 items-start gap-2 pt-0.5">
+        <span className="text-[11.5px] text-[var(--text3)]">
+          <Timestamp value={item.createdAt} />
+        </span>
+        {hasDetail && (
+          <UiButton
+            variant="ghost"
+            size="icon-sm"
+            aria-label={expanded ? "Hide details" : "Show details"}
+            aria-expanded={expanded}
+            onClick={() => setExpanded((current) => !current)}
+          >
+            <ChevronDown className={cn("size-4 transition-transform", expanded && "rotate-180")} />
+          </UiButton>
+        )}
+      </div>
     </li>
   );
 }
@@ -146,6 +195,19 @@ export default function ProjectActivityPage() {
   const asMessage = apiErrorMessage;
 
   const sensitiveCount = items.filter((item) => item.isSensitive).length;
+
+  // Group items by time period
+  const groupedItems: Array<{ group: string; items: AuditLog[] }> = [];
+  let currentGroup = "";
+  for (const item of items) {
+    const group = getTimeGroup(item.createdAt);
+    if (group !== currentGroup) {
+      groupedItems.push({ group, items: [item] });
+      currentGroup = group;
+    } else {
+      groupedItems[groupedItems.length - 1].items.push(item);
+    }
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -214,11 +276,23 @@ export default function ProjectActivityPage() {
             </p>
           </div>
         ) : (
-          <ul className="divide-y divide-[var(--border)]">
-            {items.map((item) => (
-              <ActivityRow key={item.id} item={item} />
+          <div>
+            {groupedItems.map((section) => (
+              <div key={section.group}>
+                {/* Time group header */}
+                <div className="sticky top-0 z-10 border-b border-[var(--border)] bg-[var(--bg2)]/80 px-5 py-2 backdrop-blur-sm">
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[var(--text3)]">
+                    {section.group}
+                  </span>
+                </div>
+                <ul className="divide-y divide-[var(--border)]">
+                  {section.items.map((item) => (
+                    <ActivityRow key={item.id} item={item} />
+                  ))}
+                </ul>
+              </div>
             ))}
-          </ul>
+          </div>
         )}
       </Panel>
 

@@ -213,9 +213,10 @@ export const PROJECT_SEGMENT_ALIASES: Record<string, string> = {
  */
 export function resolveActiveProjectNav(
   pathname: string,
-  projectId: string,
+  publicId: string,
+  orgSlug: string,
 ): { groupId: string; segment: string } | null {
-  const base = `/projects/${projectId}`;
+  const base = `/${orgSlug}/p/${publicId}`;
   if (!pathname.startsWith(base)) return null;
 
   const rest = pathname.slice(base.length).replace(/^\/+/, "").replace(/\/+$/, "");

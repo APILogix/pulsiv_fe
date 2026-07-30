@@ -22,6 +22,7 @@ import {
   type ApiKeyStatus,
   type ApiKeyUsageGranularity,
   type CreateApiKeyBody,
+  EnvironmentType,
   type ProjectApiKey,
 } from "@/modules/projects/api/types";
 import { useCurrentProject } from "./ProjectShellPage";
@@ -93,6 +94,10 @@ const STATUS_FILTER_OPTIONS = [
 const KEY_TABLE_HEADERS = ["Key", "Environment", "Status", "Expires", "Last used", ""];
 
 const asMessage = apiErrorMessage;
+
+function publicApiKeyPrefix(environment: { type: EnvironmentType; slug: string } | undefined): "pv_live_" | "pv_test_" {
+  return environment?.type === EnvironmentType.PRODUCTION || environment?.slug === "production" ? "pv_live_" : "pv_test_";
+}
 
 // ── per-key usage sheet ──────────────────────────────────────
 
@@ -225,6 +230,7 @@ export default function ProjectApiKeysPage() {
   const [inspecting, setInspecting] = useState<ProjectApiKey | null>(null);
   const [revealed, setRevealed] = useState<{ value: string; label: string } | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
+  const [createEnvironmentId, setCreateEnvironmentId] = useState("");
 
   const activeCount = keys.filter((key) => key.status === "active").length;
   const suspendedCount = keys.filter((key) => key.status === "suspended").length;
@@ -241,6 +247,8 @@ export default function ProjectApiKeysPage() {
       label: `${environment.name} · ${environmentTypeLabel(environment.type)}`,
     })),
   ];
+
+  const createEnvironment = activeEnvironments.find((environment) => environment.id === createEnvironmentId);
 
   const handleCreate = (form: FormData) => {
     setFormError(null);
@@ -455,10 +463,13 @@ export default function ProjectApiKeysPage() {
         open={creating}
         onOpenChange={(open) => {
           setCreating(open);
-          if (!open) setFormError(null);
+          if (!open) {
+            setFormError(null);
+            setCreateEnvironmentId("");
+          }
         }}
         title="New ingestion key"
-        description="The secret is returned once. You can optionally set a hard expiry."
+        description="The secret is returned once. Leave expiry empty for a key that never expires."
         submitLabel="Create key"
         pending={createKey.isPending}
         error={formError}
@@ -466,7 +477,14 @@ export default function ProjectApiKeysPage() {
         width="sm:max-w-[640px]"
       >
         <DialogField label="Environment" name="environmentId" required>
-          <select id="environmentId" name="environmentId" required className={fieldInputClass}>
+          <select
+            id="environmentId"
+            name="environmentId"
+            required
+            className={fieldInputClass}
+            value={createEnvironmentId}
+            onChange={(event) => setCreateEnvironmentId(event.target.value)}
+          >
             <option value="">Select an environment…</option>
             {activeEnvironments.map((environment) => (
               <option key={environment.id} value={environment.id}>
@@ -477,10 +495,16 @@ export default function ProjectApiKeysPage() {
           </select>
         </DialogField>
 
+        <Notice tone="neutral" icon={KeyRound} title="Public key prefix">
+          {createEnvironment
+            ? `${publicApiKeyPrefix(createEnvironment)} is used for ${createEnvironment.name}. The real environment stays stored internally.`
+            : "Production keys use pv_live_. Every non-production environment uses pv_test_."}
+        </Notice>
+
         <DialogField label="Name" name="name">
           <input id="name" name="name" maxLength={255} placeholder="Web SDK" className={fieldInputClass} />
         </DialogField>
-        <DialogField label="Expires at" name="expiresAt" hint="Optional hard expiry.">
+        <DialogField label="Expires at" name="expiresAt" hint="Leave empty for never expires.">
           <input id="expiresAt" name="expiresAt" type="datetime-local" className={fieldInputClass} />
         </DialogField>
       </FormDialog>

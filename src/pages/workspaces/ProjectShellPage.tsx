@@ -2,7 +2,7 @@ import { createContext, useContext } from "react";
 import { Link, Navigate, Outlet, useParams } from "react-router";
 import { FolderOpen } from "lucide-react";
 
-import { useProject } from "@/modules/projects/hooks/useProjects";
+import { useProjectByPublicId } from "@/modules/projects/hooks/useProjects";
 import type { Project, ProjectStatus } from "@/modules/projects/api/types";
 import { ProjectHeaderBar } from "@/modules/projects/components/ProjectHeaderBar";
 import { DetailSkeleton } from "@/shared/observe";
@@ -12,7 +12,12 @@ import { IconChip, type SurfaceTone } from "@/shared/ui/pulse";
 
 interface ProjectContextValue {
   project: Project;
+  /** Internal UUID — used for all backend API calls. Never put in the URL. */
   projectId: string;
+  /** Public immutable identifier — used in URL routing. */
+  publicId: string;
+  /** Organization slug — used in URL routing. */
+  orgSlug: string;
 }
 
 const ProjectContext = createContext<ProjectContextValue | null>(null);
@@ -36,17 +41,19 @@ export const PROJECT_STATUS_TONE: Record<ProjectStatus, SurfaceTone> = {
 /**
  * Project shell — chrome only, no navigation.
  *
- * The app has exactly two sidebars: the global icon rail and the contextual
- * workspace flyout. Project pages are navigated from the flyout's "Active
- * project" section, so this shell owns only the context bar (breadcrumb,
- * status, environment scope, lifecycle actions) and the content area.
+ * Reads `:orgSlug` and `:projectPublicId` from the URL (new format).
+ * Resolves the project via its public ID, then exposes the internal UUID
+ * via ProjectContext for all child pages. Child pages are unchanged —
+ * they continue calling APIs with the UUID.
+ *
+ * URL format: /:orgSlug/p/:projectPublicId/*
  */
 export function ProjectShellPage() {
-  const { projectId } = useParams<{ projectId: string }>();
-  const safeProjectId = projectId ?? "";
-  const { data: project, isLoading, error } = useProject(safeProjectId);
+  const { orgSlug, projectPublicId } = useParams<{ orgSlug: string; projectPublicId: string }>();
+  const safePublicId = projectPublicId ?? "";
+  const { data: project, isLoading, error } = useProjectByPublicId(safePublicId);
 
-  if (!projectId) return <Navigate to="/projects" replace />;
+  if (!projectPublicId || !orgSlug) return <Navigate to="/projects" replace />;
 
   if (isLoading) {
     return (
@@ -67,7 +74,7 @@ export function ProjectShellPage() {
           This project does not exist, was deleted, or your account does not have access to it.
         </p>
         <Link
-          to="/projects"
+          to={`/${orgSlug}/projects`}
           className="mt-1 text-[13px] font-medium text-[var(--brand)] hover:underline"
         >
           Back to all projects
@@ -77,7 +84,7 @@ export function ProjectShellPage() {
   }
 
   return (
-    <ProjectContext.Provider value={{ project, projectId: safeProjectId }}>
+    <ProjectContext.Provider value={{ project, projectId: project.id, publicId: project.publicId, orgSlug }}>
       <div className="flex h-full min-h-0 w-full flex-col overflow-hidden bg-[var(--bg)]">
         <ProjectHeaderBar project={project} />
         <div className="sidebar-scroll min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-6 sm:py-6">

@@ -16,6 +16,8 @@ function storeSession(p: AuthSession) {
   tokenService.setCurrentOrgId(p.current_org_id);
   if (p.current_org_id !== undefined) {
     useOrgStore.getState().setActiveOrgId(p.current_org_id ?? null);
+    const activeOrg = p.organizations?.find(o => o.id === p.current_org_id);
+    useOrgStore.getState().setActiveOrgSlug(activeOrg?.slug ?? null);
   }
 }
 

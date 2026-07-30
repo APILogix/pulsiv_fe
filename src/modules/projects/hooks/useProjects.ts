@@ -32,6 +32,16 @@ export function useProject(projectId: string) {
   });
 }
 
+export function useProjectByPublicId(publicId: string) {
+  const { activeOrgId } = useProjectScope();
+  return useQuery({
+    queryKey: [...projectKeys.all, "by-public-id", activeOrgId, publicId] as const,
+    queryFn: () => projectsApi.getByPublicId(activeOrgId!, publicId),
+    enabled: !!activeOrgId && !!publicId,
+    staleTime: 30_000,
+  });
+}
+
 export function useProjectOverview(projectId: string) {
   const { activeOrgId } = useProjectScope();
   return useQuery({

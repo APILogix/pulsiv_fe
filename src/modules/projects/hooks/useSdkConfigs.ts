@@ -11,7 +11,7 @@ export const sdkConfigQueryKeys = {
   deployments: (orgId: string, configId: string) => [...sdkConfigQueryKeys.detail(orgId, configId), "deployments"] as const,
 };
 
-export const useSdkConfigs = (orgId: string, projectId?: string, filters?: { environment?: string; configKey?: string; includeInactive?: boolean }) => {
+export const useSdkConfigs = (orgId: string, projectId?: string, filters?: { environmentId?: string }) => {
   return useQuery({
     queryKey: [...(projectId ? sdkConfigQueryKeys.projectList(orgId, projectId) : sdkConfigQueryKeys.orgList(orgId)), filters],
     queryFn: () => projectId ? sdkConfigsApi.listProjectConfigs(orgId, projectId, filters) : sdkConfigsApi.listOrgConfigs(orgId),
@@ -38,8 +38,8 @@ export const useSdkConfigDeployments = (orgId: string, configId: string) => {
 export const useResolveSdkConfig = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ orgId, projectId, environment, platform }: { orgId: string; projectId?: string; environment: string; platform?: string }) =>
-      projectId ? sdkConfigsApi.resolveProjectConfig(orgId, projectId, { environment, platform }) : sdkConfigsApi.resolveOrgConfig(orgId, { environment, platform }),
+    mutationFn: ({ orgId, projectId, environmentId, platform }: { orgId: string; projectId?: string; environmentId: string; platform?: string }) =>
+      projectId ? sdkConfigsApi.resolveProjectConfig(orgId, projectId, { environmentId, platform }) : sdkConfigsApi.resolveOrgConfig(orgId, { environmentId, platform }),
     onSuccess: (_data, { orgId, projectId }) => {
       queryClient.invalidateQueries({
         queryKey: projectId ? sdkConfigQueryKeys.projectList(orgId, projectId) : sdkConfigQueryKeys.orgList(orgId),
@@ -52,14 +52,6 @@ export const useSdkConfigMutations = () => {
   const queryClient = useQueryClient();
 
   return {
-    createConfig: useMutation({
-      mutationFn: ({ orgId, projectId, data }: { orgId: string; projectId?: string; data: any }) =>
-        sdkConfigsApi.createOrgConfig(orgId, projectId ? { ...data, projectId } : data),
-      onSuccess: (_, { orgId, projectId }) => {
-      queryClient.invalidateQueries({ queryKey: ['auth'] });
-        queryClient.invalidateQueries({ queryKey: projectId ? sdkConfigQueryKeys.projectList(orgId, projectId) : sdkConfigQueryKeys.orgList(orgId) });
-      },
-    }),
     updateConfig: useMutation({
       mutationFn: ({ orgId, configId, projectId, data }: { orgId: string; configId: string; projectId?: string; data: any }) => 
         projectId ? sdkConfigsApi.updateProjectConfig(orgId, projectId, configId, data) : sdkConfigsApi.updateOrgConfig(orgId, configId, data),
@@ -70,21 +62,13 @@ export const useSdkConfigMutations = () => {
       },
     }),
     rollbackConfig: useMutation({
-      mutationFn: ({ orgId, configId, version, reason }: { orgId: string; configId: string; version: number; reason?: string }) =>
-        sdkConfigsApi.rollbackOrgConfig(orgId, configId, version, reason ?? `Rollback to version ${version}`),
+      mutationFn: ({ orgId, configId, revision, reason }: { orgId: string; configId: string; revision: number; reason?: string }) =>
+        sdkConfigsApi.rollbackOrgConfig(orgId, configId, revision, reason ?? `Rollback to revision ${revision}`),
       onSuccess: (_, { orgId, configId }) => {
       queryClient.invalidateQueries({ queryKey: ['auth'] });
         queryClient.invalidateQueries({ queryKey: sdkConfigQueryKeys.detail(orgId, configId) });
         queryClient.invalidateQueries({ queryKey: sdkConfigQueryKeys.versions(orgId, configId) });
       }
     }),
-    ackVersion: useMutation({
-      mutationFn: ({ orgId, configId, version }: { orgId: string; configId: string; version: number }) => sdkConfigsApi.ackOrgConfigVersion(orgId, configId, version),
-      onSuccess: (_, { orgId, configId }) => {
-      queryClient.invalidateQueries({ queryKey: ['auth'] });
-        queryClient.invalidateQueries({ queryKey: sdkConfigQueryKeys.deployments(orgId, configId) });
-        queryClient.invalidateQueries({ queryKey: sdkConfigQueryKeys.versions(orgId, configId) });
-      }
-    })
   };
 };

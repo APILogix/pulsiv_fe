@@ -19,6 +19,7 @@ interface OrgFormState {
   error: string | null;
   success: boolean;
   orgId?: string;
+  slug?: string;
 }
 
 const INDUSTRIES = [
@@ -81,6 +82,7 @@ export default function CreateOrganizationPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const setActiveOrgId = useOrgStore((s) => s.setActiveOrgId);
+  const setActiveOrgSlug = useOrgStore((s) => s.setActiveOrgSlug);
   const [orgName, setOrgName] = useState('');
   const [countryName, setCountryName] = useState('');
   const derivedSlug = slugify(orgName);
@@ -130,7 +132,7 @@ export default function CreateOrganizationPage() {
         });
 
         queryClient.invalidateQueries({ queryKey: orgQueryKeys.lists() });
-        return { success: true, error: null, orgId: org.id };
+        return { success: true, error: null, orgId: org.id, slug: org.slug };
       } catch (error: unknown) {
         const responseError = error as { response?: { data?: { message?: string } }; message?: string };
         return {
@@ -146,10 +148,11 @@ export default function CreateOrganizationPage() {
     if (state.success && state.orgId) {
       toast.success('Organization created');
       setActiveOrgId(state.orgId);
+      setActiveOrgSlug(state.slug ?? null);
       markOrganizationSetup();
       navigate('/dashboard');
     }
-  }, [state, navigate, setActiveOrgId]);
+  }, [state, navigate, setActiveOrgId, setActiveOrgSlug]);
 
   useEffect(() => {
     if (state.error) toast.error(state.error);

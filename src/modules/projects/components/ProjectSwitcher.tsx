@@ -1,5 +1,7 @@
 import { useNavigate } from "react-router";
 import { Check, ChevronsUpDown, FolderOpen, Plus } from "lucide-react";
+import { useOrgStore } from "@/modules/organizations/store/org.store";
+import { projectPath, projectsListPath } from "@/modules/projects/navigation/project-routes";
 
 import { useProjects } from "@/modules/projects/hooks/useProjects";
 import type { Project } from "@/modules/projects/api/types";
@@ -33,6 +35,7 @@ export function ProjectSwitcher({
   collapsed?: boolean;
 }) {
   const navigate = useNavigate();
+  const activeOrgSlug = useOrgStore((s) => s.activeOrgSlug);
   const { data } = useProjects({ limit: 100, sortBy: "updated_at", sortOrder: "desc" });
   const projects = data?.data ?? [];
 
@@ -82,7 +85,7 @@ export function ProjectSwitcher({
             return (
               <DropdownMenuItem
                 key={candidate.id}
-                onSelect={() => navigate(`/projects/${candidate.id}/overview`)}
+                onSelect={() => navigate(activeOrgSlug ? projectPath(activeOrgSlug, candidate.publicId, "overview") : `/projects/${candidate.id}/overview`)}
                 className="gap-2"
               >
                 <span
@@ -96,10 +99,10 @@ export function ProjectSwitcher({
           })}
         </div>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onSelect={() => navigate("/projects")} className="text-[13px]">
+        <DropdownMenuItem onSelect={() => navigate(projectsListPath(activeOrgSlug ?? 'legacy'))} className="text-[13px]">
           All projects
         </DropdownMenuItem>
-        <DropdownMenuItem onSelect={() => navigate("/projects/new")} className="gap-2 text-[13px]">
+        <DropdownMenuItem onSelect={() => navigate(activeOrgSlug ? `/${activeOrgSlug}/projects/new` : "/projects/new")} className="gap-2 text-[13px]">
           <Plus className="size-3.5" aria-hidden="true" /> New project
         </DropdownMenuItem>
       </DropdownMenuContent>

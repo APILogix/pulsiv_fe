@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router";
+import { projectPath } from "@/modules/projects/navigation/project-routes";
 import { Activity, CheckCircle2, GitBranch, Pencil, Plus, Route, Trash2 } from "lucide-react";
 import { useAlertRouteMutations, useAlertRoutes } from "@/modules/projects/hooks/useAlertRoutes";
 import { useCurrentProject } from "./ProjectShellPage";
@@ -28,7 +29,7 @@ function isActiveOf(route: AlertRouteRow) {
 
 export default function ProjectAlertRoutesPage() {
   const navigate = useNavigate();
-  const { projectId } = useCurrentProject();
+  const { projectId, orgSlug, publicId } = useCurrentProject();
   const { data, isLoading, error } = useAlertRoutes(projectId);
   const { deleteRoute, toggleRoute } = useAlertRouteMutations(projectId);
 
@@ -42,7 +43,7 @@ export default function ProjectAlertRoutesPage() {
         title="Alert routes"
         description="Condition-based routing: match an alert on severity, category, or environment, then fan it out to selected connectors."
         actions={
-          <UiButton size="lg" onClick={() => navigate(`/projects/${projectId}/routes/new`)}>
+          <UiButton size="lg" onClick={() => navigate(projectPath(orgSlug, publicId, "routes/new"))}>
             <Plus className="mr-1.5 size-4" /> New route
           </UiButton>
         }
@@ -71,7 +72,7 @@ export default function ProjectAlertRoutesPage() {
               Without a route, alerts fall back to the project's default channel. Add a route to send specific
               categories to specific destinations.
             </p>
-            <UiButton size="lg" onClick={() => navigate(`/projects/${projectId}/routes/new`)}>
+            <UiButton size="lg" onClick={() => navigate(projectPath(orgSlug, publicId, "routes/new"))}>
               <Plus className="mr-1.5 size-4" /> New route
             </UiButton>
           </div>
@@ -82,7 +83,7 @@ export default function ProjectAlertRoutesPage() {
                 <Td>
                   <button
                     type="button"
-                    onClick={() => navigate(`/projects/${projectId}/routes/${route.id}`)}
+                    onClick={() => navigate(projectPath(orgSlug, publicId, `routes/${route.id}`))}
                     className="truncate text-left text-[13px] font-medium text-[var(--text)] hover:text-[var(--brand)] hover:underline"
                   >
                     {route.name}
@@ -110,7 +111,7 @@ export default function ProjectAlertRoutesPage() {
                       variant="ghost"
                       size="icon-sm"
                       aria-label={`Edit ${route.name}`}
-                      onClick={() => navigate(`/projects/${projectId}/routes/${route.id}`)}
+                      onClick={() => navigate(projectPath(orgSlug, publicId, `routes/${route.id}`))}
                     >
                       <Pencil className="size-3.5" />
                     </UiButton>
@@ -137,7 +138,7 @@ export default function ProjectAlertRoutesPage() {
           multiple notifications. Per-member severity floors and quiet hours are applied after routing — see{" "}
           <button
             type="button"
-            onClick={() => navigate(`/projects/${projectId}/preferences`)}
+            onClick={() => navigate(projectPath(orgSlug, publicId, "preferences"))}
             className="font-medium text-[var(--brand)] hover:underline"
           >
             My notifications

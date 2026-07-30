@@ -26,7 +26,7 @@ export const orgQueryKeys = {
 };
 
 export function useOrganizations() {
-  const { activeOrgId, setActiveOrgId } = useOrgStore();
+  const { activeOrgId, setActiveOrgId, activeOrgSlug, setActiveOrgSlug } = useOrgStore();
 
   const query = useQuery({
     queryKey: orgQueryKeys.lists(),
@@ -39,16 +39,22 @@ export function useOrganizations() {
 
     const currentOrgId = tokenService.getCurrentOrgId();
     const currentOrg = query.data.data.find((org) => org.id === currentOrgId);
-    const nextOrgId = currentOrg?.id ?? query.data.data[0].id;
-    void orgApi.switchOrganization(nextOrgId)
+    const nextOrg = currentOrg ?? query.data.data[0];
+    void orgApi.switchOrganization(nextOrg.id)
       .catch(() => undefined)
-      .finally(() => setActiveOrgId(nextOrgId));
-  }, [query.data, activeOrgId, setActiveOrgId]);
+      .finally(() => {
+        setActiveOrgId(nextOrg.id);
+        setActiveOrgSlug(nextOrg.slug);
+      });
+  }, [query.data, activeOrgId, setActiveOrgId, setActiveOrgSlug]);
 
   return {
     ...query,
     organizations: query.data?.data ?? [],
     activeOrgId,
+    activeOrgSlug,
     setActiveOrgId,
+    setActiveOrgSlug,
   };
 }
+

@@ -220,9 +220,9 @@ export function SecretField({
   const display = revealed ? value : "•".repeat(Math.min(28, Math.max(12, value.length)));
 
   return (
-    <div className={cn("flex flex-col gap-1.5", className)}>
+    <div className={cn("flex min-w-0 flex-col gap-1.5", className)}>
       {label && <span className="text-[11px] font-medium uppercase tracking-[0.1em] text-[var(--text3)]">{label}</span>}
-      <div className="flex items-center gap-2 rounded-[9px] border border-[var(--border)] bg-[var(--bg2)] pl-3 pr-1.5 py-1.5">
+      <div className="flex min-w-0 items-center gap-2 rounded-[9px] border border-[var(--border)] bg-[var(--bg2)] pl-3 pr-1.5 py-1.5">
         <code className="min-w-0 flex-1 truncate font-[family-name:var(--mono)] text-[12.5px] text-[var(--text)]" title={revealed ? value : undefined}>
           {display}
         </code>

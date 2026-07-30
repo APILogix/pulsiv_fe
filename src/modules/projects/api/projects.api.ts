@@ -44,9 +44,14 @@ export const projectsApi = {
     return data.data;
   },
 
+  getByPublicId: async (orgId: string, publicId: string): Promise<Project> => {
+    const { data } = await apiClient.get(`${projectBase(orgId)}/by-public-id/${publicId}`);
+    return data.data;
+  },
+
   create: async (orgId: string, payload: CreateProjectBody): Promise<Project> => {
     const { data } = await apiClient.post(projectBase(orgId), payload, idempotencyHeaders());
-    return data.data;
+    return data.data.project;
   },
 
   update: async (orgId: string, projectId: string, payload: UpdateProjectBody): Promise<Project> => {

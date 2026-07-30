@@ -10,6 +10,7 @@
 const ACCESS_TOKEN_KEY = 'pulse_access_token';
 const EXPIRES_AT_KEY = 'pulse_access_token_expires_at';
 const CURRENT_ORG_ID_KEY = 'pulse_current_org_id';
+const CURRENT_ORG_SLUG_KEY = 'pulse_current_org_slug';
 
 class TokenService {
   getAccessToken(): string | null {
@@ -43,6 +44,18 @@ class TokenService {
     }
   }
 
+  getCurrentOrgSlug(): string | null {
+    return localStorage.getItem(CURRENT_ORG_SLUG_KEY);
+  }
+
+  setCurrentOrgSlug(slug: string | null | undefined): void {
+    if (slug) {
+      localStorage.setItem(CURRENT_ORG_SLUG_KEY, slug);
+    } else {
+      localStorage.removeItem(CURRENT_ORG_SLUG_KEY);
+    }
+  }
+
   /**
    * @deprecated use setAccessToken — kept for call sites that still pass a
    * second argument that should now be ignored (refresh is cookie-managed).
@@ -55,6 +68,7 @@ class TokenService {
     localStorage.removeItem(ACCESS_TOKEN_KEY);
     localStorage.removeItem(EXPIRES_AT_KEY);
     localStorage.removeItem(CURRENT_ORG_ID_KEY);
+    localStorage.removeItem(CURRENT_ORG_SLUG_KEY);
   }
 }
 

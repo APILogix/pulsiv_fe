@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
+import { useOrgStore } from "@/modules/organizations/store/org.store";
+import { projectPath } from "@/modules/projects/navigation/project-routes";
 import { AlertTriangle, Building2, Check, Globe, Loader2, Lock, Package, Palette, Tag } from "lucide-react";
 import { useProjectMutations } from "@/modules/projects/hooks/useProjects";
 import type { CreateProjectBody, ProjectVisibility } from "@/modules/projects/api/types";
@@ -67,6 +69,7 @@ const DEFAULT_TIMEZONE = Intl.DateTimeFormat().resolvedOptions().timeZone || "UT
 
 export default function CreateProjectWizardPage() {
   const navigate = useNavigate();
+  const activeOrgSlug = useOrgStore((s) => s.activeOrgSlug);
   const { createProject } = useProjectMutations();
   const [visibility, setVisibility] = useState<ProjectVisibility>("private");
   const [color, setColor] = useState<string>(COLOR_CHOICES[0].value);
@@ -96,7 +99,14 @@ export default function CreateProjectWizardPage() {
     };
 
     createProject.mutate(payload, {
-      onSuccess: (project) => navigate(`/projects/${project.id}/overview`),
+      onSuccess: (project) => {
+        const orgSlug = useOrgStore.getState().activeOrgSlug;
+        if (orgSlug) {
+          navigate(projectPath(orgSlug, project.publicId, "overview"));
+        } else {
+          navigate(`/projects/${project.id}/overview`);
+        }
+      },
       onError: (mutationError) =>
         setError(apiErrorMessage(mutationError, "Could not create the project.")),
     });
@@ -109,7 +119,7 @@ export default function CreateProjectWizardPage() {
         title="New project"
         description="A project groups environments, ingestion keys, members, and alert routing for a single application or service."
         icon={Package}
-        breadcrumbs={[{ label: "Workspaces" }, { label: "Projects", to: "/projects" }, { label: "New" }]}
+        breadcrumbs={[{ label: "Workspaces" }, { label: "Projects", to: activeOrgSlug ? `/${activeOrgSlug}/projects` : "/projects" }, { label: "New" }]}
       />
 
       <form onSubmit={handleSubmit}>
@@ -246,7 +256,7 @@ export default function CreateProjectWizardPage() {
           )}
 
           <div className="flex items-center justify-end gap-2">
-            <UiButton type="button" variant="ghost" size="lg" onClick={() => navigate("/projects")}>
+            <UiButton type="button" variant="ghost" size="lg" onClick={() => navigate(activeOrgSlug ? `/${activeOrgSlug}/projects` : "/projects")}>
               Cancel
             </UiButton>
             <UiButton type="submit" size="lg" disabled={createProject.isPending}>

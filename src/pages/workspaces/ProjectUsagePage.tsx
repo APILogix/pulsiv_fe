@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router";
+import { projectPath } from "@/modules/projects/navigation/project-routes";
 import {
   Activity,
   ArrowRight,
@@ -62,7 +63,7 @@ function counterLabel(counterType: string) {
 // ── page ─────────────────────────────────────────────────────
 
 export default function ProjectUsagePage() {
-  const { projectId } = useCurrentProject();
+  const { projectId, orgSlug, publicId } = useCurrentProject();
   const [usageRange, setUsageRange] = useState<UsageRangeKey>("90d");
   const [usageGranularity, setUsageGranularity] = useState<Extract<UsageGranularity, "daily" | "monthly">>("daily");
   const usageWindow = useMemo(() => {
@@ -97,7 +98,7 @@ export default function ProjectUsagePage() {
             <UiButton variant="outline" size="lg" onClick={() => refetch()} disabled={isFetching}>
               <RefreshCcw className="mr-1.5 size-4" /> Refresh
             </UiButton>
-            <Link to={`/projects/${projectId}/analytics`}>
+            <Link to={projectPath(orgSlug, publicId, "analytics")}>
               <UiButton size="lg">
                 Analytics <ArrowRight className="ml-1.5 size-4" />
               </UiButton>

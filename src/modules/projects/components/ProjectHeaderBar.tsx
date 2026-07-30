@@ -15,6 +15,8 @@ import { useProjectMutations } from "@/modules/projects/hooks/useProjects";
 import { useEnvironmentScope } from "@/modules/projects/hooks/useEnvironmentScope";
 import type { Project, ProjectStatus } from "@/modules/projects/api/types";
 import { resolveActiveProjectNav, projectNavCrumb } from "@/modules/projects/navigation/project-nav";
+import { projectPath } from "@/modules/projects/navigation/project-routes";
+import { useOrgStore } from "@/modules/organizations/store/org.store";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -38,7 +40,7 @@ const STATUS_STYLE: Record<ProjectStatus, string> = {
 // The environment is a scope over every project page, so it lives here and
 // never in the navigation tree.
 
-function EnvironmentSelector({ projectId }: { projectId: string }) {
+function EnvironmentSelector({ projectId, publicId, orgSlug }: { projectId: string; publicId: string; orgSlug: string }) {
   const { environments, environment, isLoading, select } = useEnvironmentScope(projectId);
 
   if (isLoading) {
@@ -48,7 +50,7 @@ function EnvironmentSelector({ projectId }: { projectId: string }) {
   if (environments.length === 0) {
     return (
       <Link
-        to={`/projects/${projectId}/environments`}
+        to={projectPath(orgSlug, publicId, "environments")}
         className="inline-flex h-7 items-center gap-1.5 rounded-[7px] border border-dashed border-[var(--border2)] px-2 text-[12px] text-[var(--text3)] transition-colors hover:text-[var(--text2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
       >
         <Layers className="size-3.5" aria-hidden="true" />
@@ -97,7 +99,7 @@ function EnvironmentSelector({ projectId }: { projectId: string }) {
         ))}
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild>
-          <Link to={`/projects/${projectId}/environments`} className="text-[13px]">
+          <Link to={projectPath(orgSlug, publicId, "environments")} className="text-[13px]">
             Manage environments
           </Link>
         </DropdownMenuItem>
@@ -152,7 +154,8 @@ function LifecycleMenu({ project }: { project: Project }) {
 
 export function ProjectHeaderBar({ project }: { project: Project }) {
   const location = useLocation();
-  const active = resolveActiveProjectNav(location.pathname, project.id);
+  const activeOrgSlug = useOrgStore((state) => state.activeOrgSlug) ?? "legacy";
+  const active = resolveActiveProjectNav(location.pathname, project.publicId, activeOrgSlug);
   const crumb = active ? projectNavCrumb(active.segment) : null;
 
   return (
@@ -160,7 +163,7 @@ export function ProjectHeaderBar({ project }: { project: Project }) {
       {/* breadcrumb + identity */}
       <nav aria-label="Breadcrumb" className="flex min-w-0 flex-1 items-center gap-1.5 text-[12.5px]">
         <Link
-          to="/projects"
+          to={activeOrgSlug !== "legacy" ? `/${activeOrgSlug}/projects` : "/projects"}
           className="hidden shrink-0 rounded-sm text-[var(--text3)] transition-colors hover:text-[var(--text2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] sm:inline"
         >
           Projects
@@ -169,7 +172,7 @@ export function ProjectHeaderBar({ project }: { project: Project }) {
           /
         </span>
         <Link
-          to={`/projects/${project.id}/overview`}
+          to={projectPath(activeOrgSlug, project.publicId, "overview")}
           className="min-w-0 shrink truncate rounded-sm text-[13px] font-semibold text-[var(--text)] transition-colors hover:text-[var(--brand)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
         >
           {project.name}
@@ -207,7 +210,7 @@ export function ProjectHeaderBar({ project }: { project: Project }) {
           {project.timezone}
         </span>
 
-        <EnvironmentSelector projectId={project.id} />
+        <EnvironmentSelector projectId={project.id} publicId={project.publicId} orgSlug={activeOrgSlug} />
 
         <LifecycleMenu project={project} />
       </div>

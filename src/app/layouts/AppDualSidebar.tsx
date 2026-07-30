@@ -14,6 +14,7 @@ import {
   activeProjectIdFromPath,
 } from '@/modules/projects/components/ActiveProjectNav';
 import { useOrganizations } from '@/modules/organizations/hooks/useOrganizations';
+import { useOrgStore } from '@/modules/organizations/store/org.store';
 import { useSidebarStore } from '@/stores/sidebarStore';
 
 import { PrimaryRail } from './PrimaryRail';
@@ -42,24 +43,31 @@ export function AppDualSidebar() {
     location.pathname === '/settings' ||
     location.pathname.startsWith('/settings/');
 
+  const activeOrgSlug = useOrgStore((s) => s.activeOrgSlug);
+  const matchPath = (p: string) => (p === '/projects' && activeOrgSlug) ? `/${activeOrgSlug}/projects` : p;
+
   // Project pages live inside this flyout as an "Active project" section —
   // there is no third sidebar.
   const activeProjectId = activeProjectIdFromPath(location.pathname);
 
   const derivedActive = accountRoute
     ? null
+    : activeProjectId
+    ? mainNavigation.find((item) => item.label === 'Workspaces')
     : mainNavigation.find(
         (item) => {
-          if (location.pathname === item.path || location.pathname.startsWith(`${item.path}/`)) {
+          const p = matchPath(item.path);
+          if (location.pathname === p || location.pathname.startsWith(`${p}/`)) {
             return true;
           }
           return item.children?.some((child) => {
+            const cp = matchPath(child.path);
             if (child.exact) {
-              return location.pathname === child.path;
+              return location.pathname === cp;
             }
             return (
-              location.pathname === child.path ||
-              location.pathname.startsWith(`${child.path}/`)
+              location.pathname === cp ||
+              location.pathname.startsWith(`${cp}/`)
             );
           });
         }
@@ -82,7 +90,7 @@ export function AppDualSidebar() {
   const selectedRailItem = selectedRailItemLabel
     ? mainNavigation.find((item) => item.label === selectedRailItemLabel) ?? null
     : null;
-  const activeRailItem = accountRoute ? null : selectedRailItem ?? derivedActive;
+  const activeRailItem = accountRoute ? null : selectedRailItem ?? derivedActive ?? null;
   const navItemsToRender = getDynamicChildren(activeRailItem, location.pathname);
 
   const { organizations, activeOrgId } = useOrganizations();
@@ -247,10 +255,11 @@ export function AppDualSidebar() {
                       )}
                     >
                       {items.map((child) => {
+                        const cp = matchPath(child.path);
                         const isChildActive = child.exact
-                          ? location.pathname === child.path
-                          : location.pathname === child.path ||
-                            location.pathname.startsWith(`${child.path}/`);
+                          ? location.pathname === cp
+                          : location.pathname === cp ||
+                            location.pathname.startsWith(`${cp}/`);
 
                         if (child.external) {
                           return (
@@ -273,7 +282,7 @@ export function AppDualSidebar() {
                         return (
                           <Link
                             key={child.path}
-                            to={child.path}
+                            to={matchPath(child.path)}
                             className={clsx(
                               'flex items-center py-2 px-3 pl-6 my-0.5 rounded-md cursor-pointer text-[13px] no-underline relative',
                               isChildActive
@@ -298,7 +307,7 @@ export function AppDualSidebar() {
           {activeRailItem?.label === 'Workspaces' && (
             <div className="grow overflow-y-auto p-2 pt-0 sidebar-scroll">
               {activeProjectId ? (
-                <ActiveProjectNav projectId={activeProjectId} />
+                <ActiveProjectNav publicId={activeProjectId.publicId} orgSlug={activeProjectId.orgSlug} />
               ) : (
                 <WorkspaceProjectList />
               )}

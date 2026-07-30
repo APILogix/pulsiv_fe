@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
+import { useOrgStore } from "@/modules/organizations/store/org.store";
+import { projectPath } from "@/modules/projects/navigation/project-routes";
 import {
   Archive,
   FolderOpen,
@@ -48,10 +50,10 @@ const SORT_OPTIONS: SegmentOption<"created_at" | "updated_at" | "name">[] = [
 
 // ── project card ─────────────────────────────────────────────
 
-function ProjectCard({ project }: { project: ProjectListItem }) {
+function ProjectCard({ project, activeOrgSlug }: { project: ProjectListItem; activeOrgSlug: string | null }) {
   return (
     <Link
-      to={`/projects/${project.id}/overview`}
+      to={activeOrgSlug ? projectPath(activeOrgSlug, project.publicId, "overview") : `/projects/${project.id}/overview`}
       className="pulse-edge pulse-lift group flex flex-col gap-3.5 rounded-[14px] border border-[var(--border)] bg-[var(--bg1)] p-4 transition-colors hover:border-[var(--border2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
     >
       <div className="flex items-start justify-between gap-3">
@@ -120,6 +122,7 @@ function ProjectCard({ project }: { project: ProjectListItem }) {
 
 export default function ProjectsPage() {
   const navigate = useNavigate();
+  const activeOrgSlug = useOrgStore((state) => state.activeOrgSlug);
   const [status, setStatus] = useState<StatusFilter>("all");
   const [sortBy, setSortBy] = useState<"created_at" | "updated_at" | "name">("created_at");
   const [search, setSearch] = useState("");
@@ -156,7 +159,7 @@ export default function ProjectsPage() {
         icon={Package}
         breadcrumbs={[{ label: "Workspaces" }, { label: "Projects" }]}
         actions={
-          <UiButton size="lg" onClick={() => navigate("/projects/new")}>
+          <UiButton size="lg" onClick={() => navigate(activeOrgSlug ? `/${activeOrgSlug}/projects/new` : "/projects/new")}>
             <Plus className="mr-1.5 size-4" /> New project
           </UiButton>
         }
@@ -226,7 +229,7 @@ export default function ProjectsPage() {
               Clear filters
             </UiButton>
           ) : (
-            <UiButton size="lg" onClick={() => navigate("/projects/new")}>
+            <UiButton size="lg" onClick={() => navigate(activeOrgSlug ? `/${activeOrgSlug}/projects/new` : "/projects/new")}>
               <Plus className="mr-1.5 size-4" /> New project
             </UiButton>
           )
@@ -235,7 +238,7 @@ export default function ProjectsPage() {
       >
         <div className="grid grid-cols-1 gap-4 p-4 sm:grid-cols-2 xl:grid-cols-3">
           {projects.map((project) => (
-            <ProjectCard key={project.id} project={project} />
+            <ProjectCard key={project.id} project={project} activeOrgSlug={activeOrgSlug} />
           ))}
         </div>
       </AsyncPanel>

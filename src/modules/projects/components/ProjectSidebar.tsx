@@ -10,6 +10,8 @@ import {
 import { useProjectNavStore } from "@/stores/projectNavStore";
 import { cn } from "@/lib/utils";
 
+import { useOrgStore } from "@/modules/organizations/store/org.store";
+import { projectPath } from "@/modules/projects/navigation/project-routes";
 import { ProjectSwitcher } from "./ProjectSwitcher";
 
 /**
@@ -45,7 +47,8 @@ export function ProjectSidebar({
   const [railCollapsed, setRailCollapsed] = useState(collapsed);
   const toggleRail = () => setRailCollapsed((current) => !current);
 
-  const active = resolveActiveProjectNav(location.pathname, project.id);
+  const activeOrgSlug = useOrgStore((state) => state.activeOrgSlug) ?? "legacy";
+  const active = resolveActiveProjectNav(location.pathname, project.publicId, activeOrgSlug);
 
   // Landing inside a collapsed group (deep link, redirect, command palette)
   // must reveal the row that is now current — otherwise the active state is
@@ -117,7 +120,7 @@ export function ProjectSidebar({
                     return (
                       <Link
                         key={item.segment}
-                        to={`/projects/${project.id}/${item.segment}`}
+                        to={projectPath(activeOrgSlug, project.publicId, item.segment)}
                         data-nav-row
                         onClick={onNavigate}
                         aria-current={isActive ? "page" : undefined}
@@ -206,7 +209,7 @@ export function ProjectSidebar({
                     return (
                       <li key={item.segment}>
                         <Link
-                          to={`/projects/${project.id}/${item.segment}`}
+                          to={projectPath(activeOrgSlug, project.publicId, item.segment)}
                           data-nav-row
                           onClick={onNavigate}
                           aria-current={isActive ? "page" : undefined}

@@ -1,4 +1,5 @@
 import { Link } from "react-router";
+import { projectPath } from "@/modules/projects/navigation/project-routes";
 import {
   Activity,
   ArrowRight,
@@ -116,7 +117,7 @@ function Breakdown({ data, emptyLabel }: { data: Record<string, number>; emptyLa
 // ── page ─────────────────────────────────────────────────────
 
 export default function ProjectOverviewPage() {
-  const { projectId, project } = useCurrentProject();
+  const { projectId, project, orgSlug, publicId } = useCurrentProject();
   const { data: overview, isLoading, error } = useProjectOverview(projectId);
   const { data: stats } = useProjectStats(projectId);
 
@@ -197,7 +198,7 @@ export default function ProjectOverviewPage() {
           icon={BarChart3}
           actions={
             <Link
-              to={`/projects/${projectId}/analytics`}
+              to={projectPath(orgSlug, publicId, "analytics")}
               className="inline-flex items-center gap-1 text-[12.5px] font-medium text-[var(--brand)] hover:underline"
             >
               Full analytics <ArrowRight className="size-3.5" aria-hidden="true" />
@@ -270,7 +271,7 @@ export default function ProjectOverviewPage() {
           icon={ShieldCheck}
           actions={
             <Link
-              to={`/projects/${projectId}/settings/general`}
+              to={projectPath(orgSlug, publicId, "settings/general")}
               className="inline-flex items-center gap-1 text-[12.5px] font-medium text-[var(--brand)] hover:underline"
             >
               Edit <Sliders className="size-3.5" aria-hidden="true" />

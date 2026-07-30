@@ -72,6 +72,7 @@ const ProjectOverviewPage = lazy(() => import("@/pages/workspaces/ProjectOvervie
 
 // Project Shell
 const ProjectShellPage = lazy(() => import("@/pages/workspaces/ProjectShellPage").then(m => ({ default: m.ProjectShellPage })));
+const ProjectUuidRedirect = lazy(() => import("@/pages/workspaces/ProjectUuidRedirect").then(m => ({ default: m.ProjectUuidRedirect })));
 const ProjectAnalyticsPage = lazy(() => import("@/pages/workspaces/ProjectAnalyticsPage"));
 const ProjectUsagePage = lazy(() => import("@/pages/workspaces/ProjectUsagePage"));
 const ProjectSettingsPage = lazy(() => import("@/pages/workspaces/ProjectSettingsPage"));
@@ -90,6 +91,7 @@ const AlertRouteWizardPage = lazy(() => import("@/pages/workspaces/AlertRouteWiz
 const MemberAlertPreferencesPage = lazy(() => import("@/pages/workspaces/MemberAlertPreferencesPage"));
 const AlertDeliveryLogsPage = lazy(() => import("@/pages/workspaces/AlertDeliveryLogsPage"));
 const DeadLetterQueuePage = lazy(() => import("@/pages/workspaces/DeadLetterQueuePage"));
+
 
 // Act
 const IncidentsPage = lazy(() => import("@/pages/act/IncidentsPage"));
@@ -231,17 +233,22 @@ export const protectedRoutes: RouteObject[] = [
           },
 
           {
-            path: "projects",
+            path: ":orgSlug",
             children: [
               {
-                element: <ModuleLayout />,
+                path: "projects",
                 children: [
-                  { index: true, element: <ProjectsPage /> },
-                  { path: "new", element: <CreateProjectWizardPage /> },
-                ]
+                  {
+                    element: <ModuleLayout />,
+                    children: [
+                      { index: true, element: <ProjectsPage /> },
+                      { path: "new", element: <CreateProjectWizardPage /> },
+                    ]
+                  }
+                ],
               },
               {
-                path: ":projectId",
+                path: "p/:projectPublicId",
                 element: <ProjectShellPage />,
                 children: [
                   { index: true, element: <Navigate to="overview" replace /> },
@@ -281,6 +288,14 @@ export const protectedRoutes: RouteObject[] = [
                 ]
               }
             ],
+          },
+          {
+            path: "projects",
+            children: [
+              { index: true, element: <Navigate to="/" replace /> },
+              { path: "new", element: <Navigate to="/" replace /> },
+              { path: ":projectId/*", element: <ProjectUuidRedirect /> },
+            ]
           },
           {
             path: "alerts",

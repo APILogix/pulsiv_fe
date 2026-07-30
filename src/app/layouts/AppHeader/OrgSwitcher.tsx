@@ -14,7 +14,7 @@ import { orgApi } from '@/modules/organizations/api/org.api';
 import { useState } from 'react';
 
 export function OrgSwitcher() {
-  const { organizations, activeOrgId, setActiveOrgId, isLoading } = useOrganizations();
+  const { organizations, activeOrgId, setActiveOrgId, setActiveOrgSlug, isLoading } = useOrganizations();
   const navigate = useNavigate();
   const [switchingOrgId, setSwitchingOrgId] = useState<string | null>(null);
 
@@ -24,7 +24,11 @@ export function OrgSwitcher() {
     setSwitchingOrgId(orgId);
     try {
       await orgApi.switchOrganization(orgId);
+      const targetOrg = organizations.find((o) => o.id === orgId);
       setActiveOrgId(orgId);
+      if (targetOrg) {
+        setActiveOrgSlug(targetOrg.slug);
+      }
       setSwitchingOrgId(null);
     } catch {
       setSwitchingOrgId(null);

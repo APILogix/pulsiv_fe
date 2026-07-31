@@ -1,10 +1,13 @@
 import { useMemo, useState } from "react";
 import {
+  Activity,
   AlertTriangle,
   Ban,
   BarChart3,
   CalendarClock,
   CheckCircle2,
+  Gauge,
+  HardDrive,
   KeyRound,
   Layers,
   MoreHorizontal,
@@ -13,7 +16,9 @@ import {
   Power,
   RefreshCcw,
   ShieldAlert,
+  ShieldOff,
   Trash2,
+  Zap,
 } from "lucide-react";
 import { useApiKey, useApiKeyMutations, useApiKeyUsage, useApiKeys } from "@/modules/projects/hooks/useApiKeys";
 import { useEnvironments } from "@/modules/projects/hooks/useEnvironments";
@@ -28,14 +33,18 @@ import {
 import { useCurrentProject } from "./ProjectShellPage";
 import {
   IconChip,
+  KeyValueGrid,
   Notice,
   Panel,
   Pill,
+  Ring,
   SecretField,
   SectionHeading,
+  SegmentedControl,
   StatCard,
   Toolbar,
   fieldInputClass,
+  type KeyValueItem,
   type SurfaceTone,
 } from "@/shared/ui/pulse";
 import { CopyButton, FilterSelect, Table, Td, Timestamp, Tr, formatBytes, formatCompact } from "@/shared/observe";
@@ -68,17 +77,25 @@ const KEY_STATUS_TONE: Record<ApiKeyStatus, SurfaceTone> = {
 };
 
 const USAGE_RANGE_OPTIONS = [
-  { value: "24h", label: "Last 24 hours" },
-  { value: "7d", label: "Last 7 days" },
-  { value: "30d", label: "Last 30 days" },
-  { value: "90d", label: "Last 90 days" },
+  { value: "24h", label: "24h" },
+  { value: "7d", label: "7d" },
+  { value: "30d", label: "30d" },
+  { value: "90d", label: "90d" },
 ];
 
-const USAGE_GRANULARITY_OPTIONS = [
+const USAGE_GRANULARITY_OPTIONS: { value: ApiKeyUsageGranularity; label: string }[] = [
   { value: "hourly", label: "Hourly" },
   { value: "daily", label: "Daily" },
   { value: "monthly", label: "Monthly" },
 ];
+
+const KEY_STATUS_ICON: Record<ApiKeyStatus, typeof CheckCircle2> = {
+  active: CheckCircle2,
+  revoked: ShieldOff,
+  expired: CalendarClock,
+  rotated: RefreshCcw,
+  suspended: Power,
+};
 
 const USAGE_RANGE_HOURS: Record<string, number> = { "24h": 24, "7d": 168, "30d": 720, "90d": 2160 };
 
@@ -125,64 +142,136 @@ function KeyUsageSheet({
   const { data: fresh } = useApiKey(projectId, apiKey?.id);
   const detail = fresh ?? apiKey;
 
+  const errorRate = usage?.summary.errorRate ?? 0;
+  const ringTone: SurfaceTone = errorRate > 5 ? "red" : errorRate > 1 ? "amber" : "green";
+  const StatusIcon = detail ? KEY_STATUS_ICON[detail.status] : KeyRound;
+
+  const metaItems: KeyValueItem[] = detail
+    ? [
+        { label: "Environment", value: detail.environment?.name ?? "—" },
+        { label: "Created", value: <Timestamp value={detail.createdAt} /> },
+        { label: "Expires", value: detail.expiresAt ? <Timestamp value={detail.expiresAt} /> : "Never" },
+        {
+          label: "Rotated from",
+          value: detail.rotatedFromKeyId ? (
+            <code className="font-[family-name:var(--mono)] text-[11px]">{detail.rotatedFromKeyId.slice(0, 12)}…</code>
+          ) : (
+            "—"
+          ),
+        },
+      ]
+    : [];
+
   return (
     <Sheet open={!!apiKey} onOpenChange={onOpenChange}>
-      <SheetContent className="w-full sm:max-w-[900px]">
-        <SheetHeader>
-          <SheetTitle>{detail?.name || "Ingestion key"}</SheetTitle>
-          <SheetDescription><code className="font-[family-name:var(--mono)]">{detail?.publicKey}</code></SheetDescription>
+      <SheetContent className="w-full gap-0 sm:max-w-[960px]">
+        {/* ── identity header ── */}
+        <SheetHeader className="gap-0 border-b border-[var(--border)] p-5">
+          <div className="flex items-start gap-3">
+            <IconChip icon={StatusIcon} tone={detail ? KEY_STATUS_TONE[detail.status] : "brand"} size="lg" />
+            <div className="min-w-0 flex-1 pr-8">
+              <div className="flex flex-wrap items-center gap-2">
+                <SheetTitle className="text-[16px]">{detail?.name || "Ingestion key"}</SheetTitle>
+                {detail && <Pill tone={KEY_STATUS_TONE[detail.status]} dot>{detail.status}</Pill>}
+              </div>
+              <SheetDescription className="mt-1 flex items-center gap-1.5">
+                <code className="font-[family-name:var(--mono)] text-[12px]">{detail?.publicKey}</code>
+                {detail?.publicKey && <CopyButton value={detail.publicKey} label="" className="h-5 border-0 bg-transparent px-1 py-0" />}
+              </SheetDescription>
+            </div>
+          </div>
         </SheetHeader>
-        <div className="sidebar-scroll flex flex-col gap-5 overflow-y-auto px-4 pb-6">
-          <Toolbar>
-            <FilterSelect label="Range" value={range} onChange={setRange} options={USAGE_RANGE_OPTIONS} />
-            <FilterSelect
-              label="Granularity"
+
+        <div className="sidebar-scroll flex flex-col gap-6 overflow-y-auto p-5">
+          <Toolbar
+            trailing={
+              usage?.lastUsedAt ? (
+                <span className="flex items-center gap-1.5 text-[11.5px] text-[var(--text3)]">
+                  <Zap className="size-3.5" aria-hidden="true" /> Last used <Timestamp value={usage.lastUsedAt} />
+                </span>
+              ) : (
+                <span className="text-[11.5px] text-[var(--text3)]">Never used</span>
+              )
+            }
+          >
+            <SegmentedControl value={range} onChange={setRange} options={USAGE_RANGE_OPTIONS} ariaLabel="Usage range" />
+            <SegmentedControl
               value={granularity}
               onChange={(value) => setGranularity(value as ApiKeyUsageGranularity)}
               options={USAGE_GRANULARITY_OPTIONS}
+              ariaLabel="Usage granularity"
             />
           </Toolbar>
-          {isLoading && <div className="h-64 animate-pulse rounded-[12px] bg-[var(--bg2)]" />}
+
+          {isLoading && (
+            <div className="flex flex-col gap-5">
+              <div className="h-28 animate-pulse rounded-[var(--radius-lg)] bg-[var(--bg2)]" />
+              <div className="h-64 animate-pulse rounded-[var(--radius-lg)] bg-[var(--bg2)]" />
+            </div>
+          )}
           {error && <Notice tone="red">{asMessage(error)}</Notice>}
+
           {usage && (
             <>
-              <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-[12px] border border-[var(--border)] bg-[var(--border)] sm:grid-cols-4">
+              {/* ── health snapshot: error-rate ring + headline metrics ── */}
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-[auto_1fr]">
+                <div className="flex items-center justify-center gap-4 rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] px-6 py-4 sm:px-8">
+                  <Ring value={errorRate} max={100} size={84} tone={ringTone} label={`${errorRate.toFixed(1)}%`} sublabel="Error rate" />
+                </div>
+                <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+                  <StatCard label="Requests" value={formatCompact(usage.summary.requests)} icon={Gauge} tone="brand" />
+                  <StatCard label="Accepted" value={formatCompact(usage.summary.acceptedEvents)} icon={CheckCircle2} tone="green" />
+                  <StatCard label="Failures" value={formatCompact(usage.summary.ingestionFailures)} icon={ShieldAlert} tone={usage.summary.ingestionFailures > 0 ? "amber" : "neutral"} />
+                </div>
+              </div>
+
+              <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--border)] sm:grid-cols-4">
                 {[
-                  { label: "Requests", value: formatCompact(usage.summary.requests) },
-                  { label: "Accepted events", value: formatCompact(usage.summary.acceptedEvents) },
-                  { label: "Error events", value: formatCompact(usage.summary.errorEvents) },
-                  { label: "Failures", value: formatCompact(usage.summary.ingestionFailures) },
-                  { label: "Accepted bytes", value: formatBytes(usage.summary.acceptedBytes) },
-                  { label: "Rate limited", value: formatCompact(usage.summary.rateLimitedRequests) },
-                  { label: "Error rate", value: `${usage.summary.errorRate.toFixed(2)}%` },
-                  { label: "Last used", value: usage.lastUsedAt ? <Timestamp value={usage.lastUsedAt} /> : "Never" },
+                  { label: "Error events", value: formatCompact(usage.summary.errorEvents), icon: AlertTriangle },
+                  { label: "Accepted bytes", value: formatBytes(usage.summary.acceptedBytes), icon: HardDrive },
+                  { label: "Rate limited", value: formatCompact(usage.summary.rateLimitedRequests), icon: Activity },
+                  { label: "Key prefix", value: <code className="font-[family-name:var(--mono)] text-[12px]">{usage.keyPrefix}</code>, icon: KeyRound },
                 ].map((item) => (
-                  <div key={item.label} className="flex flex-col gap-1 bg-[var(--bg1)] px-3.5 py-3">
-                    <dt className="text-[10.5px] font-medium uppercase tracking-[0.1em] text-[var(--text3)]">{item.label}</dt>
+                  <div key={item.label} className="flex flex-col gap-1.5 bg-[var(--bg1)] px-3.5 py-3">
+                    <dt className="flex items-center gap-1.5 text-[10.5px] font-medium uppercase tracking-[0.1em] text-[var(--text3)]">
+                      <item.icon className="size-3" aria-hidden="true" />
+                      {item.label}
+                    </dt>
                     <dd className="text-[14px] font-semibold tabular-nums text-[var(--text)]">{item.value}</dd>
                   </div>
                 ))}
               </dl>
-              <UsageTrendChart
-                ariaLabel={`Usage for ${detail?.name || usage.keyPrefix}`}
-                showTable
-                points={usage.series.map((point) => ({ ...point }))}
-                series={[
-                  { key: "requests", label: "Requests", color: "var(--brand)" },
-                  { key: "acceptedEvents", label: "Accepted", color: "var(--green)" },
-                  { key: "errorEvents", label: "Errors", color: "var(--red)" },
-                  { key: "ingestionFailures", label: "Failures", color: "var(--amber)" },
-                ]}
-                tableSeries={[
-                  { key: "requests", label: "Requests", color: "var(--brand)" },
-                  { key: "acceptedEvents", label: "Accepted events", color: "var(--green)" },
-                  { key: "errorEvents", label: "Error events", color: "var(--red)" },
-                  { key: "ingestionFailures", label: "Failures", color: "var(--amber)" },
-                  { key: "acceptedBytes", label: "Accepted bytes", color: "var(--blue)" },
-                  { key: "rateLimitedRequests", label: "Rate limited", color: "var(--violet)" },
-                ]}
-                emptyMessage="No API-key usage was recorded in this range."
-              />
+
+              {/* ── trend ── */}
+              <Panel title="Usage over time" description="Requests, accepted events, errors, and failures for the selected range." icon={BarChart3} bodyClassName="pt-4">
+                <UsageTrendChart
+                  ariaLabel={`Usage for ${detail?.name || usage.keyPrefix}`}
+                  showTable
+                  points={usage.series.map((point) => ({ ...point }))}
+                  series={[
+                    { key: "requests", label: "Requests", color: "var(--brand)" },
+                    { key: "acceptedEvents", label: "Accepted", color: "var(--green)" },
+                    { key: "errorEvents", label: "Errors", color: "var(--red)" },
+                    { key: "ingestionFailures", label: "Failures", color: "var(--amber)" },
+                  ]}
+                  tableSeries={[
+                    { key: "requests", label: "Requests", color: "var(--brand)" },
+                    { key: "acceptedEvents", label: "Accepted events", color: "var(--green)" },
+                    { key: "errorEvents", label: "Error events", color: "var(--red)" },
+                    { key: "ingestionFailures", label: "Failures", color: "var(--amber)" },
+                    { key: "acceptedBytes", label: "Accepted bytes", color: "var(--blue)" },
+                    { key: "rateLimitedRequests", label: "Rate limited", color: "var(--violet)" },
+                  ]}
+                  emptyMessage="No API-key usage was recorded in this range."
+                />
+              </Panel>
+
+              {/* ── key metadata ── */}
+              {detail && (
+                <Panel title="Key details" icon={KeyRound} bodyClassName="pt-4">
+                  <KeyValueGrid items={metaItems} columns={2} />
+                </Panel>
+              )}
             </>
           )}
         </div>

@@ -32,7 +32,7 @@ export function ActiveProjectNav({ publicId, orgSlug }: { publicId: string; orgS
     <section aria-label="Active project navigation" className="mt-1 flex flex-col">
       {/* section divider + eyebrow */}
       <div className="mx-1 mb-2 mt-1 h-px bg-[var(--border)]" aria-hidden="true" />
-      <p className="px-3 pb-1 font-[family-name:var(--mono)] text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--text3)]">
+      <p className="px-3 pb-1 font-[family-name:var(--mono)] text-[10px] font-medium uppercase tracking-[0.09em] text-[var(--text3)]">
         Active project
       </p>
 
@@ -40,8 +40,8 @@ export function ActiveProjectNav({ publicId, orgSlug }: { publicId: string; orgS
       <Link
         to={projectPath(orgSlug, publicId, "overview")}
         className={cn(
-          "mx-1 mb-1 flex items-center gap-2 rounded-[6px] px-2 py-1.5 transition-colors",
-          "hover:bg-[var(--bg2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]",
+          "mx-1 mb-1 flex items-center gap-2 rounded-[var(--radius)] px-2 py-1.5 transition-colors duration-150",
+          "hover:bg-[var(--bg2)] focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-[var(--brand-bg)]",
         )}
         title={project?.name}
       >
@@ -78,8 +78,8 @@ export function ActiveProjectNav({ publicId, orgSlug }: { publicId: string; orgS
                 aria-expanded={!isCollapsed}
                 aria-controls={panelId}
                 className={cn(
-                  "w-full flex items-center justify-between px-3 py-2 rounded-md cursor-pointer text-[13.5px] font-medium transition-colors hover:bg-[var(--bg2)] hover:text-[var(--text)]",
-                  !isCollapsed ? "text-[var(--text)]" : "text-[var(--text2)]"
+                  "w-full flex items-center justify-between px-3 h-[34px] rounded-[var(--radius)] cursor-pointer font-[family-name:var(--mono)] text-[10px] font-medium uppercase tracking-[0.09em] transition-colors duration-150 hover:bg-[var(--bg2)] hover:text-[var(--text2)]",
+                  !isCollapsed ? "text-[var(--text2)]" : "text-[var(--text3)]"
                 )}
               >
                 <div className="flex items-center gap-2.5">{group.label}</div>
@@ -110,10 +110,10 @@ export function ActiveProjectNav({ publicId, orgSlug }: { publicId: string; orgS
                         aria-current={isActive ? "page" : undefined}
                         title={item.description}
                         className={cn(
-                          "flex items-center py-2 px-3 pl-6 my-0.5 rounded-md cursor-pointer text-[13px] no-underline relative",
+                          "flex items-center h-[34px] px-3 pl-6 my-0.5 rounded-[var(--radius)] cursor-pointer text-[13px] no-underline relative transition-colors duration-150",
                           isActive
-                            ? "text-[var(--brand)] font-medium bg-[var(--bg2)]"
-                            : "text-[var(--text3)] hover:text-[var(--text2)] hover:bg-[var(--bg2)]",
+                            ? "text-[var(--brand)] font-medium bg-[var(--brand-bg)]"
+                            : "text-[var(--text2)] hover:text-[var(--text)] hover:bg-[var(--bg2)]",
                         )}
                       >
                         <div className="absolute left-2 top-0 bottom-0 w-[1px] bg-[var(--border)]" />
@@ -173,7 +173,7 @@ export function WorkspaceProjectList() {
     return (
       <div className="ml-[17px] mr-1 flex flex-col gap-1 border-l border-[var(--border)] pl-1.5">
         {[0, 1, 2].map((row) => (
-          <span key={row} className="h-[30px] animate-pulse rounded-[6px] bg-[var(--bg2)]" />
+          <span key={row} className="loading-skeleton h-[30px] rounded-[var(--radius)] bg-[var(--bg2)]" />
         ))}
       </div>
     );
@@ -191,7 +191,7 @@ export function WorkspaceProjectList() {
           <Link
             to={activeOrgSlug ? projectPath(activeOrgSlug, project.publicId, "overview") : `/projects/${project.id}/overview`}
             title={project.name}
-            className="flex h-[30px] items-center gap-2 rounded-[6px] px-2 text-[12.5px] text-[var(--text3)] transition-colors hover:bg-[var(--bg2)] hover:text-[var(--text2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
+            className="flex h-[30px] items-center gap-2 rounded-[var(--radius)] px-2 text-[12px] text-[var(--text2)] transition-colors duration-150 hover:bg-[var(--bg2)] hover:text-[var(--text)] focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-[var(--brand-bg)]"
           >
             <span
               aria-hidden="true"

@@ -1,3 +1,4 @@
+import { useRef, useState } from "react";
 import { Link } from "react-router";
 import { projectPath } from "@/modules/projects/navigation/project-routes";
 import {
@@ -16,11 +17,13 @@ import {
 import { useProjectOverview, useProjectStats } from "@/modules/projects/hooks/useProjects";
 import { useCurrentProject } from "./ProjectShellPage";
 import {
+  ChartTooltip,
   KeyValueGrid,
   Panel,
   Pill,
   Sparkline,
   StatCard,
+  type ChartTooltipState,
   type KeyValueItem,
 } from "@/shared/ui/pulse";
 import { DetailSkeleton, Timestamp, formatBytes, formatCompact, formatNumber } from "@/shared/observe";
@@ -46,26 +49,46 @@ function HourlyBars({ hours }: { hours: Array<{ hour: number; eventCount: number
   const byHour = new Array(24).fill(0);
   for (const entry of hours) byHour[entry.hour] = entry.eventCount;
   const max = Math.max(...byHour, 1);
+  const [hoverHour, setHoverHour] = useState<number | null>(null);
+  const rowRef = useRef<HTMLDivElement>(null);
+
+  const tooltip: ChartTooltipState | null =
+    hoverHour !== null
+      ? {
+          x: `${((hoverHour + 0.5) / 24) * 100}%`,
+          y: 0,
+          title: `${String(hoverHour).padStart(2, "0")}:00`,
+          rows: [{ label: "Events", value: formatNumber(byHour[hoverHour]), color: "var(--brand)" }],
+        }
+      : null;
 
   return (
     <div className="flex flex-col gap-2">
-      <div className="flex h-28 items-end gap-[3px]">
+      <div ref={rowRef} className="relative flex h-28 items-end gap-[3px]" onPointerLeave={() => setHoverHour(null)}>
         {byHour.map((value, hour) => {
           const pct = (value / max) * 100;
+          const isHovered = hoverHour === hour;
           return (
             <div
               key={hour}
-              title={`${String(hour).padStart(2, "0")}:00 — ${formatNumber(value)} events`}
-              className="group relative flex-1 rounded-t-[3px] bg-[var(--bg3)] transition-colors hover:bg-[var(--brand)]/40"
+              onPointerEnter={() => setHoverHour(hour)}
+              className="group relative flex-1 cursor-pointer rounded-t-[3px] bg-[var(--bg3)] transition-colors hover:bg-[var(--brand)]/15"
               style={{ height: "100%" }}
             >
               <div
-                className="absolute bottom-0 w-full rounded-t-[3px] bg-[var(--brand)] transition-[height] duration-500"
-                style={{ height: `${Math.max(pct, value > 0 ? 3 : 0)}%` }}
+                className={cn(
+                  "absolute bottom-0 w-full rounded-t-[3px] bg-[var(--brand)] transition-[height,opacity,transform] duration-300 origin-bottom",
+                  isHovered && "brightness-125 shadow-[0_0_12px_var(--brand-glow)]",
+                )}
+                style={{
+                  height: `${Math.max(pct, value > 0 ? 3 : 0)}%`,
+                  transform: isHovered ? "scaleX(1.15)" : "scaleX(1)",
+                }}
               />
             </div>
           );
         })}
+        <ChartTooltip state={tooltip} />
       </div>
       <div className="flex justify-between font-[family-name:var(--mono)] text-[10.5px] text-[var(--text3)]">
         <span>00:00</span>
@@ -95,16 +118,18 @@ function Breakdown({ data, emptyLabel }: { data: Record<string, number>; emptyLa
   return (
     <ul className="flex flex-col gap-2.5">
       {entries.map(([key, value]) => (
-        <li key={key} className="flex flex-col gap-1">
+        <li key={key} className="group flex flex-col gap-1" title={`${key.replace(/_/g, " ")} — ${formatNumber(value)} events`}>
           <div className="flex items-baseline justify-between gap-3">
-            <span className="truncate text-[12.5px] text-[var(--text2)]">{key.replace(/_/g, " ")}</span>
+            <span className="truncate text-[12.5px] text-[var(--text2)] transition-colors group-hover:text-[var(--text)]">
+              {key.replace(/_/g, " ")}
+            </span>
             <span className="text-[12.5px] font-semibold tabular-nums text-[var(--text)]">
               {formatCompact(value)}
             </span>
           </div>
           <div className="h-1.5 overflow-hidden rounded-full bg-[var(--bg3)]">
             <div
-              className="h-full rounded-full bg-[var(--brand)] transition-[width] duration-500"
+              className="h-full rounded-full bg-[var(--brand)] transition-[width,filter] duration-500 group-hover:brightness-125 group-hover:shadow-[0_0_8px_var(--brand-glow)]"
               style={{ width: `${(value / max) * 100}%` }}
             />
           </div>
@@ -217,13 +242,19 @@ export default function ProjectOverviewPage() {
         <Panel title="Daily trend" description="Rolling event volume." icon={Activity}>
           {trend.length > 1 ? (
             <div className="flex flex-col gap-3">
-              <Sparkline data={trend} height={72} />
+              <Sparkline
+                data={trend}
+                labels={(usage.dailyTrend ?? []).map((point) => point.date)}
+                height={72}
+                interactive
+                valueFormatter={formatCompact}
+              />
               <ul className="flex flex-col divide-y divide-[var(--border)]">
                 {(usage.dailyTrend ?? [])
                   .slice(-5)
                   .reverse()
                   .map((point) => (
-                    <li key={point.date} className="flex items-center justify-between gap-3 py-2">
+                    <li key={point.date} className="flex items-center justify-between gap-3 py-2 transition-colors hover:bg-[var(--bg2)]/60">
                       <span className="font-[family-name:var(--mono)] text-[11.5px] text-[var(--text3)]">
                         {point.date}
                       </span>

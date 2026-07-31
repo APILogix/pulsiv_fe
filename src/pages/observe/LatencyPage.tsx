@@ -4,7 +4,7 @@ import { seededSeries, percentile } from "@/pages/dashboards/lib";
 import { useRequestEvents } from "@/hooks/useDummyData";
 import { useTimeRangeStore, TIME_RANGES } from "@/stores/timeRangeStore";
 import {
-  PageHeader, KpiCard, SectionCard, Table, Tr, Td, LatencyBar, StatusCodeBadge, formatLatency, FilterSelect
+  PageHeader, KpiCard, SectionCard, Table, Tr, Td, LatencyBar, StatusCodeBadge, EnvironmentBadge, AskAiButton, formatLatency, FilterSelect
 } from "@/shared/observe";
 import { cn } from "@/lib/utils";
 
@@ -99,12 +99,14 @@ export default function LatencyPage() {
       </SectionCard>
 
       <SectionCard title="Slowest requests" className="p-0">
-        <Table headers={["Status", "Route", "Latency"]}>
+        <Table headers={["Status", "Route", "Latency", "Environment", ""]}>
           {slowest.map((r) => (
             <Tr key={r.eventId}>
               <Td><StatusCodeBadge code={r.statusCode} /></Td>
               <Td className="font-[family-name:var(--mono)] text-[12px] text-[var(--text2)]">{r.url}</Td>
               <Td><LatencyBar value={r.latency} /></Td>
+              <Td><EnvironmentBadge environment={r.metadata.environment} /></Td>
+              <Td><AskAiButton question={`Why is ${r.url} slow? Latency was ${formatLatency(r.latency)} with status ${r.statusCode}.`} /></Td>
             </Tr>
           ))}
         </Table>

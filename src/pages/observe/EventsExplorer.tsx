@@ -5,7 +5,7 @@ import {
 } from "@/hooks/useDummyData";
 import {
   PageHeader, FilterBar, SearchInput, ListShell, EventTypeBadge,
-  SeverityBadge, StatusCodeBadge, Timestamp, VirtualList, useInfiniteScroll,
+  SeverityBadge, StatusCodeBadge, EnvironmentBadge, AskAiButton, Timestamp, VirtualList, useInfiniteScroll,
 } from "@/shared/observe";
 import { cn } from "@/lib/utils";
 
@@ -87,7 +87,9 @@ export default function EventsExplorer() {
               <Row onClick={() => navigate(`/observability/events/${e.eventId}`)}>
                 <EventTypeBadge type="error" /><SeverityBadge severity={e.severity} />
                 <span className="min-w-0 flex-1 truncate text-[13px] text-[var(--text2)]">{e.message}</span>
+                <EnvironmentBadge environment={e.metadata.environment} />
                 <Timestamp value={e.timestamp} />
+                <AskAiButton question={`Investigate this error: ${e.message} (service ${e.metadata.service}).`} />
               </Row>
             )} />
         )}
@@ -97,7 +99,9 @@ export default function EventsExplorer() {
               <Row onClick={() => navigate(`/observability/requests/${r.requestId}`)}>
                 <EventTypeBadge type="request" /><StatusCodeBadge code={r.statusCode} />
                 <span className="min-w-0 flex-1 truncate font-[family-name:var(--mono)] text-[12px] text-[var(--text2)]">{r.method} {r.url}</span>
+                <EnvironmentBadge environment={r.metadata.environment} />
                 <Timestamp value={r.timestamp} />
+                <AskAiButton question={`Investigate this request: ${r.method} ${r.url} returned ${r.statusCode}.`} />
               </Row>
             )} />
         )}
@@ -107,7 +111,9 @@ export default function EventsExplorer() {
               <Row onClick={() => navigate(`/observability/logs/${l.eventId}`)}>
                 <EventTypeBadge type="log" /><SeverityBadge severity={l.level} />
                 <span className="min-w-0 flex-1 truncate text-[13px] text-[var(--text2)]">{l.message}</span>
+                <EnvironmentBadge environment={l.metadata.environment} />
                 <Timestamp value={l.timestamp} />
+                <AskAiButton question={`Explain this log message: "${l.message}" (service ${l.metadata.service}).`} />
               </Row>
             )} />
         )}
@@ -118,7 +124,9 @@ export default function EventsExplorer() {
                 <EventTypeBadge type="span" />
                 <span className="min-w-0 flex-1 truncate font-[family-name:var(--mono)] text-[12px] text-[var(--text2)]">{s.name}</span>
                 <span className="text-[12px] tabular-nums text-[var(--text3)]">{s.duration}ms</span>
+                <EnvironmentBadge environment={s.metadata.environment} />
                 <Timestamp value={s.startTime} />
+                <AskAiButton question={`Investigate span "${s.name}" (${s.duration}ms) on trace ${s.traceId}.`} />
               </Row>
             )} />
         )}
@@ -129,7 +137,9 @@ export default function EventsExplorer() {
                 <EventTypeBadge type="metric" />
                 <span className="min-w-0 flex-1 truncate font-[family-name:var(--mono)] text-[12px] text-[var(--text2)]">{m.metricName}</span>
                 <span className="text-[12px] tabular-nums text-[var(--text3)]">{m.value.toFixed(1)} {m.unit}</span>
+                <EnvironmentBadge environment={m.metadata.environment} />
                 <Timestamp value={m.timestamp} />
+                <AskAiButton question={`Explain the trend for metric "${m.metricName}", current value ${m.value.toFixed(1)} ${m.unit}.`} />
               </Row>
             )} />
         )}

@@ -63,14 +63,14 @@ export default function AiOverviewPage() {
   return (
     <div className="flex flex-col gap-6">
       <PageHero
-        eyebrow="Artificial Intelligence"
-        title="AI Overview"
+        eyebrow="AI core"
+        title="AI overview"
         description="A single view of your organization's AI health, recommendations, recent work, and credit consumption."
         icon={Sparkles}
         actions={
           <Button variant="primary" onClick={() => navigate("/ai/assistant")}>
             <MessagesSquare className="size-4" />
-            Open Assistant
+            Open assistant
           </Button>
         }
       />
@@ -94,7 +94,7 @@ export default function AiOverviewPage() {
             tone="brand"
           />
           <StatCard label="Conversations" value={formatNumber(conversations.length)} icon={MessagesSquare} tone="violet" />
-          <StatCard label="Reports generated" value={formatNumber(reports.length)} icon={FileBarChart} tone="green" />
+          <StatCard label="Reports generated" value={formatNumber(reports.length)} icon={FileBarChart} tone="brand" />
         </div>
       )}
 
@@ -117,7 +117,7 @@ export default function AiOverviewPage() {
                 sublabel="credit headroom"
                 tone={headroom >= 50 ? "green" : headroom >= 20 ? "amber" : "red"}
               />
-              <p className="text-center text-[12.5px] text-[var(--text2)]">
+              <p className="text-center text-[12px] leading-[1.5] text-[var(--text2)]">
                 {headroom >= 50
                   ? "Healthy. Ample AI credits remain this cycle."
                   : headroom >= 20
@@ -129,19 +129,19 @@ export default function AiOverviewPage() {
         </Panel>
 
         {/* Recommendations (derived from real signals, no fabricated data) */}
-        <Panel title="AI Recommendations" icon={Lightbulb} tone="brand">
+        <Panel title="AI recommendations" icon={Lightbulb} tone="ai">
           <div className="flex flex-col gap-3">
             {headroom !== null && headroom < 20 && (
               <Notice icon={CreditCard} tone="amber" title="Credits running low">
                 Only {credit ? formatNumber(credit.remaining) : "a few"} credits remain. Raise the budget or limits in{" "}
                 <Link to="/ai/settings" className="underline">
-                  AI Settings
+                  AI settings
                 </Link>
                 .
               </Notice>
             )}
             {conversations.length === 0 && (
-              <Notice icon={MessagesSquare} tone="ai" title="Start with the Assistant">
+              <Notice icon={MessagesSquare} tone="ai" title="Start with the assistant">
                 Ask a grounded question about your errors, latency, or a recent deployment to see how the
                 Assistant cites your monitoring data.
               </Notice>
@@ -156,7 +156,7 @@ export default function AiOverviewPage() {
               </Notice>
             )}
             {headroom !== null && headroom >= 20 && conversations.length > 0 && reports.length > 0 && (
-              <Notice icon={Lightbulb} tone="green" title="You're all set">
+              <Notice icon={Lightbulb} tone="neutral" title="AI is configured">
                 AI is configured and in use. Investigate an incident or schedule a weekly report to get more value.
               </Notice>
             )}
@@ -170,17 +170,17 @@ export default function AiOverviewPage() {
           <Link
             key={a.to}
             to={a.to}
-            className="group flex items-start gap-3 rounded-[12px] border border-[var(--border)] bg-[var(--bg1)] p-4 transition-colors hover:border-[var(--ai)]/40"
+            className="group flex items-start gap-3 rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] p-4 transition-colors duration-150 hover:border-[var(--ai-d)]"
           >
-            <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-[10px] bg-[var(--ai-bg)] text-[var(--ai)] ring-1 ring-inset ring-[var(--ai)]/25">
+            <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-[var(--radius)] bg-[var(--ai-bg)] text-[var(--ai)] ring-1 ring-inset ring-[var(--ai)]/25">
               <a.icon className="size-4" />
             </span>
             <div className="min-w-0">
-              <div className="flex items-center gap-1.5 font-semibold text-[var(--text)]">
+              <div className="flex items-center gap-1.5 text-[14px] font-semibold text-[var(--text)]">
                 {a.title}
                 <ArrowRight className="size-3.5 text-[var(--text3)] transition-transform group-hover:translate-x-0.5" />
               </div>
-              <p className="mt-0.5 text-[12.5px] text-[var(--text2)]">{a.desc}</p>
+              <p className="mt-0.5 text-[12px] leading-[1.5] text-[var(--text2)]">{a.desc}</p>
             </div>
           </Link>
         ))}
@@ -207,7 +207,7 @@ export default function AiOverviewPage() {
                   to={item.to}
                   className="flex items-center gap-3 py-3 transition-colors hover:text-[var(--text)]"
                 >
-                  <Pill tone={item.kind === "Report" ? "green" : "ai"}>{item.kind}</Pill>
+                  <Pill tone={item.kind === "Report" ? "brand" : "ai"}>{item.kind}</Pill>
                   <span className="min-w-0 flex-1 truncate text-[13px] text-[var(--text)]">{item.title}</span>
                   <span className="shrink-0 text-[12px] text-[var(--text3)]">
                     <Timestamp value={item.at} />

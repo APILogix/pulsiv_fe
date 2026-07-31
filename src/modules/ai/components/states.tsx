@@ -1,5 +1,4 @@
 import { AlertTriangle, CreditCard, Lock, ServerOff, WifiOff } from "lucide-react";
-import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyPanel, Notice } from "@/shared/ui/pulse";
 import { Button } from "@/shared/observe";
 import { normalizeAiError } from "../lib/errors";
@@ -48,7 +47,7 @@ export function AiErrorState({
   if (normalized.outOfCredits) {
     return (
       <Notice icon={CreditCard} tone="amber" title="Out of AI credits">
-        {normalized.message} Top up credits or adjust budgets in AI Settings.
+        {normalized.message} Top up credits or adjust budgets in AI settings.
       </Notice>
     );
   }
@@ -71,17 +70,19 @@ export function AiErrorState({
   );
 }
 
-export function AiLoadingBlock({ rows = 3 }: { rows?: number }) {
+export function AiLoadingBlock({ rows = 3, label = "analyzing pattern…" }: { rows?: number; label?: string }) {
   const keys = Array.from({ length: rows }, (_, i) => `sk-${i}`);
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-3" aria-busy="true" aria-live="polite">
       {keys.map((k) => (
-        <div key={k} className="flex flex-col gap-2 rounded-[12px] border border-[var(--border)] bg-[var(--bg1)] p-4">
-          <Skeleton className="h-4 w-40" />
-          <Skeleton className="h-3 w-full" />
-          <Skeleton className="h-3 w-4/5" />
+        <div key={k} className="flex flex-col gap-2 rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] p-4">
+          {/* §7 — "AI analyzing" is a cyan shimmer over --bg2, never a spinner. */}
+          <div className="shimmer h-4 w-40 rounded-[var(--radius)] bg-[var(--bg2)]" />
+          <div className="shimmer h-3 w-full rounded-[var(--radius)] bg-[var(--bg2)]" />
+          <div className="shimmer h-3 w-4/5 rounded-[var(--radius)] bg-[var(--bg2)]" />
         </div>
       ))}
+      <span className="font-mono text-[10px] text-[var(--ai)]">{label}</span>
     </div>
   );
 }

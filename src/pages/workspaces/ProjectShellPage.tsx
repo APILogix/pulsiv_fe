@@ -54,6 +54,11 @@ export function ProjectShellPage() {
   const { data: project, isLoading, error } = useProjectByPublicId(safePublicId);
 
   if (!projectPublicId || !orgSlug) return <Navigate to="/projects" replace />;
+  
+  // If a UUID sneaks into the URL, bounce to the legacy router to resolve it
+  if (safePublicId && !safePublicId.startsWith("prj_")) {
+    return <Navigate to={`/projects/${safePublicId}`} replace />;
+  }
 
   if (isLoading) {
     return (

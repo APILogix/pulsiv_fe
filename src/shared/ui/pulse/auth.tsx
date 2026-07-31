@@ -27,14 +27,14 @@ export function AuthHeading({
     <div className={cn("mb-7 flex flex-col gap-3", centered && "items-center text-center")}>
       {icon && <IconChip icon={icon} tone={tone} size="lg" />}
       {eyebrow && (
-        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--ai)]">{eyebrow}</p>
+        <p className="font-mono text-[10px] font-medium uppercase tracking-[0.09em] text-[var(--text3)]">{eyebrow}</p>
       )}
       <div className={cn("flex flex-col gap-2", centered && "items-center")}>
-        <h1 className="font-[family-name:var(--display)] text-[27px] font-semibold leading-tight tracking-[-0.03em] text-[var(--text)]">
+        <h1 className="font-[family-name:var(--display)] text-[26px] font-semibold leading-tight tracking-[-0.03em] text-[var(--text)]">
           {title}
         </h1>
         {description && (
-          <p className={cn("text-[14px] leading-relaxed text-[var(--text2)]", centered ? "max-w-[38ch]" : "max-w-[44ch]")}>
+          <p className={cn("text-[13px] leading-[1.6] text-[var(--text2)]", centered ? "max-w-[38ch]" : "max-w-[44ch]")}>
             {description}
           </p>
         )}
@@ -49,15 +49,12 @@ export function AuthCard({ children, className }: { children: React.ReactNode; c
   return (
     <div
       className={cn(
-        "pulse-edge relative overflow-hidden rounded-[14px] border border-[var(--border)] bg-[var(--bg1)] p-5 shadow-[0_18px_50px_-24px_color-mix(in_srgb,var(--brand)_35%,transparent)]",
+        // §6 — a hairline border carries the card; no gradient chrome, no
+        // decorative brand glow (§3).
+        "relative overflow-hidden rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] p-5",
         className
       )}
     >
-      <span
-        className="pointer-events-none absolute inset-x-0 top-0 h-px"
-        style={{ background: "linear-gradient(90deg, transparent, var(--brand), var(--ai), transparent)" }}
-        aria-hidden="true"
-      />
       {children}
     </div>
   );
@@ -69,7 +66,7 @@ export function AuthDivider({ children }: { children: React.ReactNode }) {
   return (
     <div className="my-5 flex items-center">
       <span className="h-px flex-1 bg-[var(--border)]" />
-      <span className="px-3 text-[10.5px] font-semibold uppercase tracking-[0.18em] text-[var(--text3)]">{children}</span>
+      <span className="px-3 font-mono text-[10px] font-medium uppercase tracking-[0.09em] text-[var(--text3)]">{children}</span>
       <span className="h-px flex-1 bg-[var(--border)]" />
     </div>
   );
@@ -95,7 +92,7 @@ export function OAuthButton({
       type="button"
       onClick={onClick}
       disabled={disabled || pending}
-      className="flex h-11 w-full items-center justify-center gap-2.5 rounded-[9px] border border-[var(--border)] bg-[var(--bg2)] text-[13.5px] font-medium text-[var(--text)] transition-colors hover:border-[var(--border2)] hover:bg-[var(--bg3)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] disabled:cursor-not-allowed disabled:opacity-55"
+      className="flex h-10 w-full items-center justify-center gap-2.5 rounded-[var(--radius)] border border-[var(--border2)] bg-transparent text-[13px] font-medium text-[var(--text2)] transition-colors duration-150 hover:border-[var(--text3)] hover:text-[var(--text)] focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-[var(--brand-bg)] disabled:cursor-not-allowed disabled:opacity-55"
     >
       {pending ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : icon}
       {pending ? "Redirecting…" : children}
@@ -124,7 +121,7 @@ export function AuthButton({
 }) {
   const tone =
     variant === "ghost"
-      ? "border border-[var(--border)] bg-[var(--bg2)] text-[var(--text)] hover:border-[var(--border2)] hover:bg-[var(--bg3)]"
+      ? "border border-[var(--border2)] bg-transparent text-[var(--text2)] hover:border-[var(--text3)] hover:text-[var(--text)]"
       : variant === "danger"
         ? "bg-[var(--red)] text-white hover:bg-[var(--red-d)]"
         : "bg-[var(--brand)] text-[var(--brand-fg)] hover:bg-[var(--brand-d)]";
@@ -135,7 +132,7 @@ export function AuthButton({
       disabled={disabled || pending}
       aria-busy={pending}
       className={cn(
-        "inline-flex h-11 w-full items-center justify-center gap-2 rounded-[9px] text-[13.5px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg1)] disabled:cursor-not-allowed disabled:opacity-55",
+        "inline-flex h-10 w-full items-center justify-center gap-2 rounded-[var(--radius)] text-[13px] font-semibold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-[var(--brand-bg)] disabled:cursor-not-allowed disabled:opacity-55",
         tone,
         className
       )}
@@ -190,7 +187,7 @@ export function AuthResult({
       <h1 className="font-[family-name:var(--display)] text-[24px] font-semibold leading-tight tracking-[-0.02em] text-[var(--text)]">
         {title}
       </h1>
-      {description && <p className="mt-2.5 max-w-[42ch] text-[14px] leading-relaxed text-[var(--text2)]">{description}</p>}
+      {description && <p className="mt-2.5 max-w-[42ch] text-[13px] leading-[1.6] text-[var(--text2)]">{description}</p>}
       {children && <div className="mt-6 w-full">{children}</div>}
       {actions && <div className="mt-7 flex w-full flex-col gap-2.5">{actions}</div>}
     </div>
@@ -207,7 +204,7 @@ export function AuthLink({ to, children }: { to: string; children: React.ReactNo
   return (
     <Link
       to={to}
-      className="rounded-sm font-medium text-[var(--brand)] transition-colors hover:text-[var(--brand-d)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
+      className="rounded-sm font-medium text-[var(--brand)] transition-colors hover:text-[var(--brand-d)] focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-[var(--brand-bg)]"
     >
       {children}
     </Link>
@@ -234,7 +231,7 @@ export function AuthField({
   return (
     <div className="flex flex-col gap-1.5">
       <div className="flex items-baseline justify-between gap-3">
-        <label htmlFor={htmlFor} className="text-[11px] font-medium uppercase tracking-[0.12em] text-[var(--text3)]">
+        <label htmlFor={htmlFor} className="font-mono text-[10px] font-medium uppercase tracking-[0.09em] text-[var(--text3)]">
           {label}
         </label>
         {trailing}

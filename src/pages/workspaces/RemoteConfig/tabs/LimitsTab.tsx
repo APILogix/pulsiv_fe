@@ -1,76 +1,159 @@
-import { SectionBanner } from '../components/HelpSystem';
-import { Lock } from 'lucide-react';
+import { SectionBanner, FieldTooltip } from '../components/HelpSystem';
+import { NumberField } from '../components/NumberField';
+import type { SdkConfigState } from '../schema';
+import { BOUNDS, type FieldError } from '../bounds';
+import { Switch } from '@/components/ui/switch';
+import { cn } from '@/lib/utils';
 
-export function LimitsTab() {
-  const securityLimits = [
-    { key: 'maxPayloadSize', label: 'Max Payload Size', value: '1.0 MB', note: 'Prevents memory-exhaustion attacks on ingestion. A larger payload × full queue = OOM.' },
-    { key: 'maxAttributeLength', label: 'Max Attribute Length', value: '4,096 chars', note: 'Prevents log injection and stored XSS in dashboards.' },
-    { key: 'maxCpuOverheadPercent', label: 'Max CPU Overhead', value: '5%', note: 'Hard ceiling on SDK CPU usage. Protects your application\'s performance SLA.' },
-  ];
+interface LimitsTabProps {
+  limits: SdkConfigState['limits'];
+  onChange: (key: keyof Omit<SdkConfigState['limits'], 'tenantGovernance'>, value: number | 'auto') => void;
+  onChangeTenant: (key: keyof SdkConfigState['limits']['tenantGovernance'], value: number | boolean) => void;
+  errors: FieldError[];
+}
 
-  const adminLimits = [
-    { key: 'maxMemoryMb', label: 'Max Memory', value: '256 MB', note: 'Adjustable up to 512 MB with org-admin approval.' },
-    { key: 'maxQueueSize', label: 'Max Queue Size', value: '10,000', note: 'Adjustable up to 25,000 for high-throughput orgs.' },
-    { key: 'maxSpansPerTrace', label: 'Max Spans / Trace', value: '2,000', note: 'Adjustable up to 5,000 for complex microservice graphs.' },
-    { key: 'maxSpanAttributes', label: 'Max Span Attributes', value: '128', note: 'Adjustable up to 256.' },
-  ];
+export function LimitsTab({ limits, onChange, onChangeTenant, errors }: LimitsTabProps) {
+  const errorFor = (path: string) => errors.find((e) => e.path === path)?.message;
+  const isAutoMemory = limits.maxMemoryMb === 'auto';
 
   return (
     <div className="animate-in fade-in duration-300">
-      <SectionBanner
-        title="Platform Limits"
-        type="warning"
-      >
-        These limits are platform-enforced safety boundaries. They protect your application from resource exhaustion and protect the ingestion pipeline from abuse. They cannot be modified from this panel. Contact your organization admin to request changes.
+      <SectionBanner title="Limits" type="warning">
+        These caps protect your application from resource exhaustion and the ingestion pipeline from abuse. They are fully
+        editable within the ranges shown, but the backend rejects any value outside its documented bounds.
       </SectionBanner>
 
-      <div className="grid gap-6 md:grid-cols-2">
-        {/* Security Boundaries */}
-        <div>
-          <div className="mb-4 flex items-center gap-2">
-            <h3 className="font-semibold text-[var(--text)]">Security Boundaries</h3>
-            <span className="text-[12px] text-[var(--text3)]">(Never editable)</span>
-          </div>
-          <div className="flex flex-col gap-3">
-            {securityLimits.map((limit) => (
-              <div key={limit.key} className="flex flex-col justify-between overflow-hidden rounded-[12px] border border-[var(--border)] border-l-[4px] border-l-red-500 bg-[var(--bg1)] p-4 shadow-sm">
-                <div className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-[var(--text3)]">
-                  {limit.label}
-                </div>
-                <div className="mb-3 font-mono text-[24px] font-bold text-[var(--text)]">
-                  {limit.value}
-                </div>
-                <div className="flex items-start gap-1.5 text-[12px] text-red-500/80">
-                  <Lock className="mt-0.5 size-3 shrink-0" />
-                  <span className="leading-relaxed">{limit.note}</span>
-                </div>
-              </div>
-            ))}
+      <div className="rounded-[12px] border border-[var(--border)] bg-[var(--bg1)] shadow-sm">
+        <div className="border-b border-[var(--border)] px-5 py-4">
+          <h3 className="font-semibold text-[var(--text)]">Resource Caps</h3>
+        </div>
+        <div className="grid gap-6 p-5 sm:grid-cols-2 lg:grid-cols-3">
+          <NumberField
+            label="Max Spans / Trace"
+            value={limits.maxSpansPerTrace}
+            onChange={(v) => onChange('maxSpansPerTrace', v)}
+            bound={BOUNDS['limits.maxSpansPerTrace']}
+            tooltip="Maximum spans a single trace may contain before extras are dropped."
+            error={errorFor('limits.maxSpansPerTrace')}
+          />
+          <NumberField
+            label="Max Span Attributes"
+            value={limits.maxSpanAttributes}
+            onChange={(v) => onChange('maxSpanAttributes', v)}
+            bound={BOUNDS['limits.maxSpanAttributes']}
+            tooltip="Maximum custom attributes attachable to a single span."
+            error={errorFor('limits.maxSpanAttributes')}
+          />
+          <NumberField
+            label="Max Attribute Length"
+            value={limits.maxAttributeLength}
+            onChange={(v) => onChange('maxAttributeLength', v)}
+            bound={BOUNDS['limits.maxAttributeLength']}
+            tooltip="Maximum character length for any single attribute value. Longer values are truncated."
+            suffix="chars"
+            error={errorFor('limits.maxAttributeLength')}
+          />
+          <NumberField
+            label="Max Payload Size"
+            value={limits.maxPayloadSize}
+            onChange={(v) => onChange('maxPayloadSize', v)}
+            bound={BOUNDS['limits.maxPayloadSize']}
+            tooltip="Maximum size in bytes for a single ingestion payload. Prevents memory-exhaustion attacks."
+            suffix="bytes"
+            error={errorFor('limits.maxPayloadSize')}
+          />
+          <NumberField
+            label="Max Queue Size"
+            value={limits.maxQueueSize}
+            onChange={(v) => onChange('maxQueueSize', v)}
+            bound={BOUNDS['limits.maxQueueSize']}
+            tooltip="Maximum events buffered in memory before sending. Must be ≤ Transport → Queue max size."
+            error={errorFor('limits.maxQueueSize')}
+          />
+          <div>
+            <label className="mb-2 flex items-center font-medium text-[13px] text-[var(--text)]">
+              Max Memory
+              <FieldTooltip definition="Memory ceiling for the SDK's internal buffers. Use 'auto' to let the SDK size itself based on available system memory, or pin an explicit MB value." />
+            </label>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => onChange('maxMemoryMb', isAutoMemory ? 256 : 'auto')}
+                className={cn(
+                  'flex h-[34px] shrink-0 items-center rounded-[8px] border px-3 text-[13px] font-medium transition-colors',
+                  isAutoMemory
+                    ? 'border-[var(--brand)] bg-[var(--brand)]/10 text-[var(--brand)]'
+                    : 'border-[var(--border)] bg-[var(--bg2)] text-[var(--text2)] hover:border-[var(--input)]',
+                )}
+              >
+                Auto
+              </button>
+              <input
+                type="number"
+                disabled={isAutoMemory}
+                value={isAutoMemory ? '' : limits.maxMemoryMb}
+                placeholder={isAutoMemory ? 'auto' : undefined}
+                onChange={(e) => onChange('maxMemoryMb', Number(e.target.value))}
+                min={BOUNDS['limits.maxMemoryMb'].min}
+                max={BOUNDS['limits.maxMemoryMb'].max}
+                className="w-full rounded-[8px] border border-[var(--border)] bg-[var(--bg2)] px-3 py-1.5 text-[13px] text-[var(--text)] outline-none transition-colors focus:border-[var(--brand)] focus:ring-1 focus:ring-[var(--brand)] disabled:opacity-40"
+              />
+              <span className="shrink-0 text-[12px] text-[var(--text3)]">MB</span>
+            </div>
+            {errorFor('limits.maxMemoryMb') ? (
+              <p className="mt-1 text-[11px] text-red-500">{errorFor('limits.maxMemoryMb')}</p>
+            ) : (
+              <p className="mt-1 text-[11px] text-[var(--text3)]">
+                {isAutoMemory ? "'auto' or " : ''}
+                {BOUNDS['limits.maxMemoryMb'].min}–{BOUNDS['limits.maxMemoryMb'].max} MB
+              </p>
+            )}
           </div>
         </div>
+      </div>
 
-        {/* Org-Admin Adjustable */}
-        <div>
-          <div className="mb-4 flex items-center gap-2">
-            <h3 className="font-semibold text-[var(--text)]">Organization Limits</h3>
-            <span className="text-[12px] text-[var(--text3)]">(Requires admin approval)</span>
+      <div className="mt-6 rounded-[12px] border border-[var(--border)] bg-[var(--bg1)] shadow-sm">
+        <div className="flex items-center justify-between border-b border-[var(--border)] px-5 py-4">
+          <div className="flex items-center">
+            <h3 className="font-semibold text-[var(--text)]">Tenant Governance</h3>
+            <FieldTooltip definition="Per-tenant fairness controls for multi-tenant deployments. When enabled, the SDK tracks per-tenant usage against a rolling quota window." />
           </div>
-          <div className="flex flex-col gap-3">
-            {adminLimits.map((limit) => (
-              <div key={limit.key} className="flex flex-col justify-between overflow-hidden rounded-[12px] border border-[var(--border)] border-l-[4px] border-l-amber-500 bg-[var(--bg1)] p-4 shadow-sm">
-                <div className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-[var(--text3)]">
-                  {limit.label}
-                </div>
-                <div className="mb-3 font-mono text-[24px] font-bold text-[var(--text)]">
-                  {limit.value}
-                </div>
-                <div className="flex items-start gap-1.5 text-[12px] text-amber-500/80">
-                  <Lock className="mt-0.5 size-3 shrink-0" />
-                  <span className="leading-relaxed">{limit.note}</span>
-                </div>
-              </div>
-            ))}
-          </div>
+          <Switch checked={limits.tenantGovernance.enabled} onCheckedChange={(val) => onChangeTenant('enabled', val)} />
+        </div>
+        <div className={cn('grid gap-6 p-5 sm:grid-cols-2 lg:grid-cols-4 transition-opacity', !limits.tenantGovernance.enabled && 'opacity-50 pointer-events-none')}>
+          <NumberField
+            label="Max Tenants Tracked"
+            value={limits.tenantGovernance.maxTenantsTracked}
+            onChange={(v) => onChangeTenant('maxTenantsTracked', v)}
+            bound={BOUNDS['tenant.maxTenantsTracked']}
+            tooltip="Upper bound on distinct tenant identifiers tracked in memory."
+            error={errorFor('limits.tenantGovernance.maxTenantsTracked')}
+          />
+          <NumberField
+            label="Quota / Window"
+            value={limits.tenantGovernance.quotaPerWindow}
+            onChange={(v) => onChangeTenant('quotaPerWindow', v)}
+            bound={BOUNDS['tenant.quotaPerWindow']}
+            tooltip="Maximum events a single tenant may emit within one window."
+            error={errorFor('limits.tenantGovernance.quotaPerWindow')}
+          />
+          <NumberField
+            label="Window Duration"
+            value={limits.tenantGovernance.windowDurationMs}
+            onChange={(v) => onChangeTenant('windowDurationMs', v)}
+            bound={BOUNDS['tenant.windowDurationMs']}
+            tooltip="Length of the rolling quota window."
+            suffix="ms"
+            error={errorFor('limits.tenantGovernance.windowDurationMs')}
+          />
+          <NumberField
+            label="Critical Reserve"
+            value={limits.tenantGovernance.criticalReserve}
+            onChange={(v) => onChangeTenant('criticalReserve', v)}
+            bound={BOUNDS['tenant.criticalReserve']}
+            tooltip="Slots reserved for critical-priority tenants. Must be ≤ Quota / Window."
+            error={errorFor('limits.tenantGovernance.criticalReserve')}
+          />
         </div>
       </div>
     </div>

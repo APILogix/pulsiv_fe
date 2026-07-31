@@ -123,7 +123,7 @@ export function NotificationCenter() {
         >
           <Bell className="h-5 w-5" />
           {unreadCount > 0 && (
-            <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--red)] px-1 text-[10px] font-semibold leading-none text-foreground ring-2 ring-[var(--bg)]">
+            <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--red)] px-1 font-mono text-[9px] font-semibold leading-none tabular-nums text-white ring-2 ring-[var(--bg1)]">
               {unreadCount > 9 ? '9+' : unreadCount}
             </span>
           )}
@@ -133,14 +133,14 @@ export function NotificationCenter() {
       <DropdownMenuContent
         align="end"
         sideOffset={8}
-        className="w-[380px] overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--bg1)] p-0 text-[var(--text)] shadow-[0_16px_48px_rgba(0,0,0,0.45)]"
+        className="w-[380px] overflow-hidden rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] p-0 text-[var(--text)] shadow-[var(--shadow-modal)]"
       >
         {/* Header */}
         <div className="flex items-center justify-between gap-2 border-b border-[var(--border)] px-4 py-3">
           <div className="flex items-center gap-2">
-            <h3 className="text-sm font-semibold text-[var(--text)]">Notifications</h3>
+            <h3 className="text-[14px] font-semibold text-[var(--text)]">Notifications</h3>
             {unreadCount > 0 && (
-              <span className="rounded-full bg-[var(--brand-bg)] px-2 py-0.5 text-[11px] font-medium text-[var(--brand)]">
+              <span className="rounded-full bg-[var(--brand-bg)] px-2 py-0.5 font-mono text-[10px] font-medium tabular-nums text-[var(--brand)]">
                 {unreadCount} new
               </span>
             )}
@@ -149,7 +149,7 @@ export function NotificationCenter() {
             <button
               type="button"
               onClick={markAllRead}
-              className="flex items-center gap-1 text-[12px] text-[var(--text2)] transition-colors hover:text-[var(--brand)]"
+              className="flex items-center gap-1 text-[12px] text-[var(--text2)] transition-colors hover:text-[var(--text)]"
             >
               <CheckCheck className="size-3.5" />
               Mark all read
@@ -184,10 +184,10 @@ export function NotificationCenter() {
 
                   <span className="min-w-0 flex-1">
                     <span className="flex items-center gap-2">
-                      <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">
+                      <span className="font-mono text-[10px] font-medium uppercase tracking-[0.09em] text-[var(--text3)]">
                         {n.category}
                       </span>
-                      <span className="text-[11px] text-[var(--text3)]">· {n.time}</span>
+                      <span className="font-mono text-[10px] tabular-nums text-[var(--text3)]">· {n.time}</span>
                     </span>
                     <span className={cn('mt-0.5 block truncate text-[13px]', n.unread ? 'font-semibold text-[var(--text)]' : 'font-medium text-[var(--text2)]')}>
                       {n.title}
@@ -209,7 +209,7 @@ export function NotificationCenter() {
           <button
             type="button"
             onClick={() => navigate('/alerts')}
-            className="w-full rounded-lg py-2 text-center text-[13px] font-medium text-[var(--brand)] transition-colors hover:bg-[var(--bg2)]"
+            className="w-full rounded-[var(--radius)] py-2 text-center text-[13px] font-medium text-[var(--brand)] transition-colors hover:bg-[var(--bg2)]"
           >
             View all notifications
           </button>

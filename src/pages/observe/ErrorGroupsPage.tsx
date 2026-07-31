@@ -4,7 +4,7 @@ import { AlertTriangle, TrendingUp } from "lucide-react";
 import { useErrorGroups } from "@/hooks/useDummyData";
 import {
   PageHeader, KpiCard, FillPage, FilterBar, SearchInput, FilterSelect,
-  SeverityBadge, Timestamp, InfiniteCards, formatCompact,
+  SeverityBadge, EnvironmentBadge, AskAiButton, Timestamp, InfiniteCards, formatCompact,
 } from "@/shared/observe";
 
 const SEV_OPTS = [
@@ -65,7 +65,10 @@ export default function ErrorGroupsPage() {
             <div className="flex items-start gap-3">
               <SeverityBadge severity={g.severity} />
               <div className="min-w-0 flex-1">
-                <div className="truncate text-sm font-semibold text-[var(--text)]">{g.name}</div>
+                <div className="flex items-center gap-2">
+                  <span className="truncate text-sm font-semibold text-[var(--text)]">{g.name}</span>
+                  <EnvironmentBadge environment={g.occurrences[0]?.metadata.environment ?? "production"} />
+                </div>
                 <div className="truncate text-[13px] text-[var(--text2)]">{g.message}</div>
                 <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-[12px] text-[var(--text3)]">
                   <span>{Array.from(g.services).join(", ")}</span>
@@ -74,10 +77,13 @@ export default function ErrorGroupsPage() {
                   <span>first seen <Timestamp value={g.firstSeen} /></span>
                 </div>
               </div>
-              <div className="text-right">
-                <div className="text-xl font-semibold tabular-nums text-[var(--text)]">{formatCompact(g.count)}</div>
-                <div className="text-[12px] text-[var(--text3)]">events</div>
-                <div className="mt-1 text-[12px] text-[var(--text3)]">last <Timestamp value={g.lastSeen} /></div>
+              <div className="flex flex-col items-end gap-2">
+                <div className="text-right">
+                  <div className="text-xl font-semibold tabular-nums text-[var(--text)]">{formatCompact(g.count)}</div>
+                  <div className="text-[12px] text-[var(--text3)]">events</div>
+                  <div className="mt-1 text-[12px] text-[var(--text3)]">last <Timestamp value={g.lastSeen} /></div>
+                </div>
+                <AskAiButton question={`Investigate the "${g.name}" error group: ${g.message}`} />
               </div>
             </div>
           </div>

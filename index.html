@@ -1,10 +1,27 @@
 <!doctype html>
-<html lang="en" class="dark">
+<html lang="en" data-theme="indigo" style="color-scheme: dark">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Pulse — API observability</title>
+    <meta name="theme-color" content="#0a0c12" />
+    <title>Sentinel — AI-powered API observability</title>
+    <!--
+      Anti-FOUC theme boot (sentinel-design.md §1).
+      Two dark themes only: indigo (default) and mono. The persisted choice is
+      applied before first paint so users never see a flash of the wrong theme.
+      There is no prefers-color-scheme branch — both themes are dark.
+    -->
+    <script>
+      (function () {
+        try {
+          var stored = localStorage.getItem('sentinel-theme');
+          document.documentElement.setAttribute('data-theme', stored === 'mono' ? 'mono' : 'indigo');
+        } catch (e) {
+          document.documentElement.setAttribute('data-theme', 'indigo');
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

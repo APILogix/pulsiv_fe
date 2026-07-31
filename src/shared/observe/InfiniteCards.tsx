@@ -79,7 +79,7 @@ export function InfiniteCards<T>({
             {rows.map((item) => <div key={getKey(item)}>{renderCard(item)}</div>)}
           </div>
           <div ref={sentinelRef} />
-          <div className="flex h-12 items-center justify-center text-[12px] text-[var(--text3)]">
+          <div className="flex h-12 items-center justify-center font-[family-name:var(--mono)] text-[11px] tabular-nums text-[var(--text3)]">
             {query.isFetchingNextPage ? (
               <span className="flex items-center gap-2"><Loader2 className="size-3.5 animate-spin" /> Loading more…</span>
             ) : query.hasNextPage ? <span>Scroll for more</span> : <span>{total} total · end of results</span>}

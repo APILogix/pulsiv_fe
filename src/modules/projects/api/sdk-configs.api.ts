@@ -1,5 +1,11 @@
 import { apiClient } from "@/infrastructure/api-client/axios";
 
+/**
+ * Mirrors SdkConfigDto (pulse/src/modules/organization/sdk-config/sdk-config.types.ts).
+ * The backend field is `compiledSnapshot` — the full read-only schema-v1
+ * document. It is never sent back to the server; PATCH requests send only an
+ * `editableConfig` object built from the allowlisted subset (see mapping.ts).
+ */
 export type SdkConfigView = {
   id: string;
   orgId: string;
@@ -10,8 +16,8 @@ export type SdkConfigView = {
   publishedRevisionId: string;
   revision: number;
   revisionHash: string;
-  configValue: Record<string, any>;
-  schemaVersion: string | null;
+  compiledSnapshot: Record<string, any>;
+  schemaVersion: number;
   publishedAt: string;
   createdAt: string;
   updatedAt: string;
@@ -28,8 +34,8 @@ export type SdkConfigVersionView = {
   environmentSlug: string;
   changeType?: string;
   changeSummary?: string | null;
-  changeDiff?: Record<string, any> | null;
-  configValue?: Record<string, any>;
+  rolledBackToRevision?: number | null;
+  compiledSnapshot?: Record<string, any>;
   publishedAt: string;
 };
 
@@ -71,7 +77,16 @@ export const sdkConfigsApi = {
     const { data } = await apiClient.get(`/organizations/${orgId}/sdk-configs/${configId}`);
     return data.data;
   },
-  updateOrgConfig: async (orgId: string, configId: string, payload: any): Promise<SdkConfigView> => {
+  /**
+   * `payload` must be `{ editableConfig, changeSummary? }` — the primary
+   * backend contract (sdk-config.types.ts). `editableConfig` must contain
+   * only allowlisted fields; anything else is rejected with a 422.
+   */
+  updateOrgConfig: async (
+    orgId: string,
+    configId: string,
+    payload: { editableConfig: Record<string, unknown>; changeSummary?: string },
+  ): Promise<SdkConfigView> => {
     const { data } = await apiClient.patch(`/organizations/${orgId}/sdk-configs/${configId}`, payload);
     return data.data;
   },
@@ -105,8 +120,13 @@ export const sdkConfigsApi = {
     const { data } = await apiClient.get(`/organizations/${orgId}/projects/${projectId}/sdk-configs/${configId}`);
     return data.data;
   },
-  updateProjectConfig: async (orgId: string, projectId: string, configId: string, payload: any): Promise<SdkConfigView> => {
+  updateProjectConfig: async (
+    orgId: string,
+    projectId: string,
+    configId: string,
+    payload: { editableConfig: Record<string, unknown>; changeSummary?: string },
+  ): Promise<SdkConfigView> => {
     const { data } = await apiClient.patch(`/organizations/${orgId}/projects/${projectId}/sdk-configs/${configId}`, payload);
     return data.data;
-  }
+  },
 };

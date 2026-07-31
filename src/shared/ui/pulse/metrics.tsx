@@ -1,7 +1,9 @@
+import { useRef, useState } from "react";
 import { ArrowDownRight, ArrowUpRight, Minus } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { IconChip, type SurfaceTone } from "./surfaces";
+import { ChartTooltip } from "./chart-tooltip";
 
 // ── module-level constants (rules.md §1.2) ──
 
@@ -26,7 +28,7 @@ export function TrendPill({ trend, children }: { trend: Trend; children: React.R
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold tabular-nums",
+        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-[family-name:var(--mono)] text-[10px] font-medium tabular-nums",
         TREND_TONE[trend]
       )}
     >
@@ -41,17 +43,28 @@ export function TrendPill({ trend, children }: { trend: Trend; children: React.R
 
 export function Sparkline({
   data,
+  labels,
   color = "var(--brand)",
   height = 36,
   fill = true,
+  interactive = false,
+  valueFormatter,
   className,
 }: {
   data: number[];
+  /** Optional per-point labels shown in the hover tooltip (e.g. dates). */
+  labels?: string[];
   color?: string;
   height?: number;
   fill?: boolean;
+  /** Enables hover crosshair + tooltip + a live dot on the nearest point. */
+  interactive?: boolean;
+  valueFormatter?: (value: number) => string;
   className?: string;
 }) {
+  const [hoverIndex, setHoverIndex] = useState<number | null>(null);
+  const svgRef = useRef<SVGSVGElement>(null);
+
   if (data.length < 2) return null;
 
   const width = 100;
@@ -59,39 +72,89 @@ export function Sparkline({
   const min = Math.min(...data);
   const range = max - min || 1;
   const step = width / (data.length - 1);
-  const points = data.map((value, index) => `${(index * step).toFixed(2)},${(height - ((value - min) / range) * height).toFixed(2)}`);
-  const gradientId = `spark-${color.replace(/[^a-z0-9]/gi, "")}-${data.length}`;
+  const xAt = (index: number) => index * step;
+  const yAt = (value: number) => height - ((value - min) / range) * height;
+  const points = data.map((value, index) => `${xAt(index).toFixed(2)},${yAt(value).toFixed(2)}`);
+  const fmt = valueFormatter ?? ((value: number) => value.toLocaleString("en-US"));
+
+  const handleMove = (event: React.PointerEvent<SVGSVGElement>) => {
+    if (!interactive || !svgRef.current) return;
+    const rect = svgRef.current.getBoundingClientRect();
+    const ratio = rect.width === 0 ? 0 : (event.clientX - rect.left) / rect.width;
+    const index = Math.round(Math.max(0, Math.min(1, ratio)) * (data.length - 1));
+    setHoverIndex(index);
+  };
+
+  const hovered = hoverIndex !== null ? data[hoverIndex] : null;
 
   return (
-    <svg
-      viewBox={`0 0 ${width} ${height}`}
-      preserveAspectRatio="none"
-      height={height}
-      className={cn("w-full", className)}
-      aria-hidden="true"
-      focusable="false"
-    >
-      {fill && (
-        <>
-          <defs>
-            <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={color} stopOpacity="0.28" />
-              <stop offset="100%" stopColor={color} stopOpacity="0" />
-            </linearGradient>
-          </defs>
-          <polygon points={`0,${height} ${points.join(" ")} ${width},${height}`} fill={`url(#${gradientId})`} />
-        </>
+    <div className="relative">
+      <svg
+        ref={svgRef}
+        viewBox={`0 0 ${width} ${height}`}
+        preserveAspectRatio="none"
+        height={height}
+        className={cn("w-full", interactive && "cursor-crosshair", className)}
+        aria-hidden="true"
+        focusable="false"
+        onPointerMove={handleMove}
+        onPointerLeave={() => setHoverIndex(null)}
+      >
+        {/* §3 — chart fills are a flat low-alpha version of the series colour,
+            never a gradient. */}
+        {fill && (
+          <polygon
+            points={`0,${height} ${points.join(" ")} ${width},${height}`}
+            fill={color}
+            fillOpacity="0.14"
+          />
+        )}
+        <polyline
+          points={points.join(" ")}
+          fill="none"
+          stroke={color}
+          strokeWidth="1.75"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          vectorEffect="non-scaling-stroke"
+          className={interactive ? "transition-[stroke-width] duration-150" : undefined}
+        />
+        {interactive && hoverIndex !== null && (
+          <>
+            <line
+              x1={xAt(hoverIndex)}
+              x2={xAt(hoverIndex)}
+              y1={0}
+              y2={height}
+              stroke="var(--border2)"
+              strokeWidth="1"
+              strokeDasharray="2 2"
+              vectorEffect="non-scaling-stroke"
+            />
+            <circle
+              cx={xAt(hoverIndex)}
+              cy={yAt(data[hoverIndex])}
+              r="2.5"
+              fill={color}
+              stroke="var(--bg1)"
+              strokeWidth="1.5"
+              vectorEffect="non-scaling-stroke"
+              className="animate-in zoom-in-50 duration-150"
+            />
+          </>
+        )}
+      </svg>
+      {interactive && hoverIndex !== null && hovered !== null && (
+        <ChartTooltip
+          state={{
+            x: `${(xAt(hoverIndex) / width) * 100}%`,
+            y: 0,
+            title: labels?.[hoverIndex],
+            rows: [{ label: "Value", value: fmt(hovered), color }],
+          }}
+        />
       )}
-      <polyline
-        points={points.join(" ")}
-        fill="none"
-        stroke={color}
-        strokeWidth="1.75"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        vectorEffect="non-scaling-stroke"
-      />
-    </svg>
+    </div>
   );
 }
 
@@ -124,28 +187,27 @@ export function StatCard({
   return (
     <div
       className={cn(
-        "pulse-edge pulse-lift relative flex flex-col overflow-hidden rounded-[14px] border border-[var(--border)] bg-[var(--bg1)]",
+        "pulse-lift relative flex flex-col overflow-hidden rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)]",
         className
       )}
     >
-      <span className="absolute inset-x-0 top-0 h-px" style={{ background: `linear-gradient(90deg, ${accent}, transparent)` }} />
       <div className="flex flex-1 flex-col gap-3 p-4">
         <div className="flex items-start justify-between gap-2">
-          <span className="text-[11px] font-medium uppercase tracking-[0.12em] text-[var(--text3)]">{label}</span>
+          <span className="font-[family-name:var(--mono)] text-[10px] font-medium uppercase tracking-[0.09em] text-[var(--text3)]">{label}</span>
           {icon && <IconChip icon={icon} tone={tone} size="sm" />}
         </div>
         <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-          <span className="font-[family-name:var(--display)] text-[26px] font-semibold leading-none tabular-nums tracking-[-0.02em] text-[var(--text)]">
+          <span className="font-[family-name:var(--mono)] text-[26px] font-medium leading-none tabular-nums tracking-[-0.02em] text-[var(--text)]">
             {value}
           </span>
-          {unit && <span className="text-[12px] font-medium text-[var(--text3)]">{unit}</span>}
+          {unit && <span className="font-[family-name:var(--mono)] text-[11px] font-medium text-[var(--text3)]">{unit}</span>}
           {trend && delta && <TrendPill trend={trend}>{delta}</TrendPill>}
         </div>
         {footnote && <p className="text-[12px] leading-snug text-[var(--text3)]">{footnote}</p>}
       </div>
       {series && series.length > 1 && (
         <div className="-mb-px">
-          <Sparkline data={series} color={accent} height={38} />
+          <Sparkline data={series} color={accent} height={38} interactive />
         </div>
       )}
     </div>
@@ -182,8 +244,8 @@ export function Meter({
   return (
     <div className={cn("flex flex-col gap-2", className)}>
       <div className="flex items-baseline justify-between gap-3">
-        <span className="text-[12.5px] font-medium text-[var(--text2)]">{label}</span>
-        <span className="text-[12.5px] font-semibold tabular-nums text-[var(--text)]">
+        <span className="text-[13px] font-medium text-[var(--text2)]">{label}</span>
+        <span className="font-[family-name:var(--mono)] text-[12px] font-medium tabular-nums text-[var(--text)]">
           {fmt(used)}
           <span className="ml-1 font-normal text-[var(--text3)]">/ {unlimited ? "∞" : fmt(limit)}</span>
         </span>
@@ -199,9 +261,9 @@ export function Meter({
         <div className="h-full rounded-full transition-[width] duration-500" style={{ width: `${pct}%`, background: accent }} />
       </div>
       {hint ? (
-        <p className="text-[11.5px] text-[var(--text3)]">{hint}</p>
+        <p className="text-[12px] text-[var(--text3)]">{hint}</p>
       ) : (
-        !unlimited && <p className="text-[11.5px] tabular-nums text-[var(--text3)]">{pct.toFixed(1)}% used</p>
+        !unlimited && <p className="font-[family-name:var(--mono)] text-[11px] tabular-nums text-[var(--text3)]">{pct.toFixed(1)}% used</p>
       )}
     </div>
   );
@@ -250,11 +312,11 @@ export function Ring({
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center gap-0.5">
         {label && (
-          <span className="font-[family-name:var(--display)] text-[17px] font-semibold tabular-nums leading-none text-[var(--text)]">
+          <span className="font-[family-name:var(--mono)] text-[17px] font-medium tabular-nums leading-none text-[var(--text)]">
             {label}
           </span>
         )}
-        {sublabel && <span className="text-[10px] uppercase tracking-[0.1em] text-[var(--text3)]">{sublabel}</span>}
+        {sublabel && <span className="font-[family-name:var(--mono)] text-[10px] uppercase tracking-[0.09em] text-[var(--text3)]">{sublabel}</span>}
       </div>
     </div>
   );
@@ -273,7 +335,7 @@ export function KeyValueGrid({ items, columns = 2 }: { items: KeyValueItem[]; co
     <dl className={cn("grid grid-cols-1 gap-x-6 gap-y-4", grid)}>
       {items.map((item) => (
         <div key={item.label} className="flex flex-col gap-1">
-          <dt className="text-[11px] font-medium uppercase tracking-[0.1em] text-[var(--text3)]">{item.label}</dt>
+          <dt className="font-[family-name:var(--mono)] text-[10px] font-medium uppercase tracking-[0.09em] text-[var(--text3)]">{item.label}</dt>
           <dd className="min-w-0 break-words text-[13px] text-[var(--text)]">{item.value}</dd>
         </div>
       ))}

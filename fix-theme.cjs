@@ -1,3 +1,13 @@
+/**
+ * ⚠️ STALE CODEMOD — do not run.
+ *
+ * This one-shot script rewrites colours toward the retired emerald "Refined"
+ * palette (bg-primary/text-primary-foreground with #34d399 as the brand).
+ * The current contract is sentinel-design.md: brand is indigo (#7c6cf5) in the
+ * Indigo theme and white (#fafafa) in Mono, and green is reserved for the truth
+ * channel. Running this again would reintroduce the green-as-brand mistake the
+ * design system exists to fix.
+ */
 const fs = require('fs');
 const path = require('path');
 

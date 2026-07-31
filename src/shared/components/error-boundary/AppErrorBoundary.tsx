@@ -5,8 +5,8 @@ import NotFoundPage from '@/shared/components/NotFoundPage';
 
 function AppErrorFallback({ error, resetErrorBoundary }: FallbackProps) {
   return (
-    <div className="min-h-screen w-full bg-[var(--bg)] flex flex-col items-start justify-start p-8 relative overflow-hidden font-[family-name:var(--sans)] text-[var(--text)] selection:bg-[var(--red)] selection:text-foreground">
-      {/* Top red bar indicating system panic */}
+    <div className="min-h-screen w-full bg-[var(--bg)] flex flex-col items-start justify-start p-8 relative overflow-hidden font-[family-name:var(--sans)] text-[var(--text)] selection:bg-[var(--red-bg)] selection:text-[var(--red)]">
+      {/* Top red bar — the truth channel reporting a fact (§2.2) */}
       <div className="absolute top-0 left-0 w-full h-1 bg-[var(--red)]" />
       
       <div className="w-full max-w-5xl flex flex-col items-start gap-6 border-l border-[var(--border)] pl-8 py-8 mt-12 relative">
@@ -15,31 +15,31 @@ function AppErrorFallback({ error, resetErrorBoundary }: FallbackProps) {
 
         <div className="flex items-center gap-3 text-[var(--red)]">
           <AlertTriangle className="h-6 w-6 stroke-[1.5]" />
-          <h1 className="text-xl font-bold tracking-widest uppercase font-[family-name:var(--mono)]">
-            System_Panic // Critical_Exception
+          <h1 className="font-[family-name:var(--display)] text-[22px] font-semibold tracking-[-0.02em]">
+            Critical exception
           </h1>
         </div>
         
-        <p className="text-[var(--text2)] text-base max-w-2xl leading-relaxed">
-          The application encountered a critical runtime error. Telemetry has automatically captured the stack trace for engineering review. Halting execution to prevent data corruption.
+        <p className="max-w-2xl text-[13px] leading-[1.6] text-[var(--text2)]">
+          The application hit a critical runtime error. Telemetry captured the stack trace for engineering review. Execution halted to prevent data corruption.
         </p>
 
         {/* Error Details Pane */}
-        <div className="w-full bg-[var(--bg1)] border border-[var(--border)] relative mt-4">
+        <div className="w-full rounded-[var(--radius-lg)] bg-[var(--bg1)] border border-[var(--border)] relative mt-4 overflow-hidden">
           <div className="flex items-center justify-between border-b border-[var(--border)] bg-[var(--bg2)] px-4 py-2">
-            <div className="flex items-center gap-2 text-[var(--text2)]">
+            <div className="flex items-center gap-2 text-[var(--text3)]">
               <Terminal className="h-4 w-4" />
-              <span className="font-[family-name:var(--mono)] text-xs tracking-wider uppercase">Diagnostics.log</span>
+              <span className="font-[family-name:var(--mono)] text-[10px] uppercase tracking-[0.09em]">diagnostics.log</span>
             </div>
-            <span className="font-[family-name:var(--mono)] text-[10px] text-[var(--red)] font-bold">ERR_NAME: {error.name || 'UNKNOWN'}</span>
+            <span className="font-[family-name:var(--mono)] text-[10px] text-[var(--red)]">{error.name || 'unknown'}</span>
           </div>
           <div className="p-6 overflow-auto">
-            <pre className="font-[family-name:var(--mono)] text-sm text-[var(--text)] whitespace-pre-wrap break-words leading-relaxed">
-              <span className="text-[var(--red)] font-bold">Exception: </span>
+            <pre className="font-[family-name:var(--mono)] text-[13px] text-[var(--text)] whitespace-pre-wrap break-words leading-[1.7]">
+              <span className="text-[var(--red)]">Exception: </span>
               {error.message}
             </pre>
             {error.stack && (
-              <pre className="mt-6 font-[family-name:var(--mono)] text-xs text-[var(--text3)] whitespace-pre-wrap break-words border-t border-[var(--border)] pt-4">
+              <pre className="mt-6 font-[family-name:var(--mono)] text-[12px] text-[var(--text3)] whitespace-pre-wrap break-words border-t border-[var(--border)] pt-4 leading-[1.7]">
                 {error.stack}
               </pre>
             )}
@@ -47,20 +47,20 @@ function AppErrorFallback({ error, resetErrorBoundary }: FallbackProps) {
         </div>
 
         {/* Actions */}
-        <div className="flex items-center gap-4 mt-8 w-full border-t border-[var(--border)] pt-8">
+        <div className="flex items-center gap-3 mt-8 w-full border-t border-[var(--border)] pt-8">
           <button type="button" 
             onClick={resetErrorBoundary} 
-            className="flex items-center gap-2 px-6 py-3 bg-[var(--red-bg)] text-[var(--red)] border border-[var(--red)] hover:bg-[var(--red)] hover:text-foreground transition-colors font-[family-name:var(--mono)] text-sm uppercase tracking-wider font-semibold cursor-pointer"
+            className="flex items-center gap-2 rounded-[var(--radius)] border border-[rgba(239,68,68,0.35)] bg-[var(--red-bg)] px-4 h-9 text-[13px] font-medium text-[var(--red)] transition-colors hover:bg-[rgba(239,68,68,0.16)] cursor-pointer"
           >
             <RefreshCcw className="h-4 w-4" />
-            Reload_System
+            Reload application
           </button>
           <button type="button" 
             onClick={() => window.location.href = '/'}
-            className="flex items-center gap-2 px-6 py-3 bg-transparent text-[var(--text2)] border border-[var(--border)] hover:bg-[var(--bg2)] hover:text-[var(--text)] transition-colors font-[family-name:var(--mono)] text-sm uppercase tracking-wider font-semibold cursor-pointer"
+            className="flex items-center gap-2 rounded-[var(--radius)] border border-[var(--border2)] bg-transparent px-4 h-9 text-[13px] font-medium text-[var(--text2)] transition-colors hover:border-[var(--text3)] hover:text-[var(--text)] cursor-pointer"
           >
             <Home className="h-4 w-4" />
-            Return_to_Dashboard
+            Back to dashboard
           </button>
         </div>
       </div>

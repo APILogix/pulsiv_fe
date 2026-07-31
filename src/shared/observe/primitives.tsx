@@ -28,7 +28,7 @@ const SEVERITY_STYLES: Record<string, string> = {
 
 export function SeverityBadge({ severity }: { severity: string }) {
   return (
-    <span className={cn("inline-flex items-center rounded-[5px] px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide font-[family-name:var(--mono)]", SEVERITY_STYLES[severity] ?? SEVERITY_STYLES.debug)}>
+    <span className={cn("inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.08em] font-[family-name:var(--mono)]", SEVERITY_STYLES[severity] ?? SEVERITY_STYLES.debug)}>
       {severity}
     </span>
   );
@@ -40,18 +40,23 @@ export function StatusCodeBadge({ code }: { code: number }) {
     : code >= 400 ? "bg-[var(--amber-bg)] text-[var(--amber)]"
     : code >= 300 ? "bg-[var(--blue-bg)] text-[var(--blue)]"
     : "bg-[var(--green-bg)] text-[var(--green)]";
-  return <span className={cn("inline-flex items-center rounded-[5px] px-2 py-0.5 text-[11px] font-semibold font-[family-name:var(--mono)]", tone)}>{code}</span>;
+  return <span className={cn("inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium tabular-nums font-[family-name:var(--mono)]", tone)}>{code}</span>;
 }
 
+/* §2.6 — method badges are a tinted background plus saturated text. */
 const METHOD_TONE: Record<string, string> = {
-  GET: "text-[var(--get)]",
-  POST: "text-[var(--green)]",
-  PUT: "text-[var(--amber)]",
-  PATCH: "text-[var(--violet)]",
-  DELETE: "text-[var(--red)]",
+  GET: "bg-[var(--blue-bg)] text-[var(--blue)]",
+  POST: "bg-[var(--green-bg)] text-[var(--green)]",
+  PUT: "bg-[var(--amber-bg)] text-[var(--amber)]",
+  PATCH: "bg-[var(--amber-bg)] text-[var(--amber)]",
+  DELETE: "bg-[var(--red-bg)] text-[var(--red)]",
 };
 export function MethodBadge({ method }: { method: string }) {
-  return <span className={cn("font-[family-name:var(--mono)] text-[11px] font-bold", METHOD_TONE[method] ?? "text-[var(--text2)]")}>{method}</span>;
+  return (
+    <span className={cn("inline-flex items-center rounded-full px-2 py-0.5 font-[family-name:var(--mono)] text-[10px] font-medium uppercase tracking-[0.08em]", METHOD_TONE[method] ?? "bg-[var(--bg3)] text-[var(--text2)]")}>
+      {method}
+    </span>
+  );
 }
 
 const STATUS_TONE: Record<string, string> = {
@@ -88,7 +93,7 @@ const STATUS_TONE: Record<string, string> = {
 };
 export function StatusBadge({ status }: { status: string }) {
   return (
-    <span className={cn("inline-flex items-center gap-1.5 rounded-[5px] px-2 py-0.5 text-[11px] font-medium capitalize", STATUS_TONE[status] ?? "bg-[var(--bg3)] text-[var(--text2)]")}>
+    <span className={cn("inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 font-[family-name:var(--mono)] text-[10px] font-medium uppercase tracking-[0.08em]", STATUS_TONE[status] ?? "bg-[var(--bg3)] text-[var(--text2)]")}>
       <span className="size-1.5 rounded-full bg-current" />
       {status.replace(/[-_]/g, " ")}
     </span>
@@ -97,7 +102,7 @@ export function StatusBadge({ status }: { status: string }) {
 
 const EVENT_ICONS: Record<string, { icon: LucideIcon; tone: string }> = {
   error: { icon: Bug, tone: "text-[var(--red)]" },
-  request: { icon: Globe, tone: "text-[var(--get)]" },
+  request: { icon: Globe, tone: "text-[var(--blue)]" },
   span: { icon: GitBranch, tone: "text-[var(--violet)]" },
   trace: { icon: GitBranch, tone: "text-[var(--violet)]" },
   metric: { icon: Gauge, tone: "text-[var(--blue)]" },
@@ -110,16 +115,38 @@ export function EventTypeBadge({ type }: { type: string }) {
   const entry = EVENT_ICONS[type] ?? EVENT_ICONS.log;
   const Icon = entry.icon;
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-[5px] bg-[var(--bg2)] px-2 py-0.5 text-[11px] font-medium text-[var(--text2)]">
+    <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--bg2)] px-2 py-0.5 font-[family-name:var(--mono)] text-[10px] font-medium uppercase tracking-[0.08em] text-[var(--text2)]">
       <Icon className={cn("size-3", entry.tone)} />
       {type.replace("_", " ")}
     </span>
   );
 }
 
+/* Environment pill — reused across every observe table/card (traces, logs,
+   requests, errors, metrics, profiling, crons, replay, …). Tone follows the
+   same red=prod / amber=staging / blue=dev convention as the environments
+   management page (see modules/projects/environment.constants.ts). */
+const ENVIRONMENT_TONE: Record<string, string> = {
+  production: "bg-[var(--red-bg)] text-[var(--red)]",
+  pre_production: "bg-[var(--amber-bg)] text-[var(--amber)]",
+  staging: "bg-[var(--amber-bg)] text-[var(--amber)]",
+  pre_staging: "bg-[var(--amber-bg)] text-[var(--amber)]",
+  development: "bg-[var(--blue-bg)] text-[var(--blue)]",
+  testing: "bg-[var(--violet-bg)] text-[var(--violet)]",
+  preview: "bg-[var(--violet-bg)] text-[var(--violet)]",
+  pre_deployment: "bg-[var(--blue-bg)] text-[var(--blue)]",
+};
+export function EnvironmentBadge({ environment }: { environment: string }) {
+  return (
+    <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.08em] font-[family-name:var(--mono)]", ENVIRONMENT_TONE[environment] ?? "bg-[var(--bg3)] text-[var(--text2)]")}>
+      {environment.replace(/_/g, " ")}
+    </span>
+  );
+}
+
 export function Timestamp({ value }: { value: number | string | Date }) {
   return (
-    <time title={formatAbsoluteTime(value)} className="text-[var(--text2)] tabular-nums">
+    <time title={formatAbsoluteTime(value)} className="font-[family-name:var(--mono)] text-[12px] text-[var(--text3)] tabular-nums">
       {formatRelativeTime(value)}
     </time>
   );
@@ -137,7 +164,7 @@ export function CopyButton({ value, label, className }: { value: string; label?:
     <button
       type="button"
       onClick={handleCopy}
-      className={cn("inline-flex shrink-0 whitespace-nowrap cursor-pointer items-center gap-1.5 rounded-[6px] border border-[var(--border)] bg-[var(--bg2)] px-2 py-1 text-[12px] text-[var(--text2)] transition-colors hover:text-[var(--text)] hover:border-[var(--input)]", className)}
+      className={cn("inline-flex shrink-0 whitespace-nowrap cursor-pointer items-center gap-1.5 rounded-[var(--radius)] border border-[var(--border2)] bg-transparent px-2 py-1 text-[12px] text-[var(--text2)] transition-colors hover:text-[var(--text)] hover:border-[var(--text3)]", className)}
     >
       {copied ? <Check className="size-3.5 text-[var(--green)]" /> : <Copy className="size-3.5" />}
       {label ?? (copied ? "Copied" : "Copy")}
@@ -178,8 +205,8 @@ export function PageHeader({ title, description, breadcrumbs, actions }: {
             })}
           </div>
         )}
-        <h1 className="text-2xl font-semibold text-[var(--text)]">{title}</h1>
-        {description && <p className="mt-1 text-sm text-[var(--text2)]">{description}</p>}
+        <h1 className="font-[family-name:var(--display)] text-[22px] font-semibold tracking-[-0.02em] text-[var(--text)]">{title}</h1>
+        {description && <p className="mt-1 text-[13px] leading-[1.5] text-[var(--text2)]">{description}</p>}
       </div>
       {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
     </div>
@@ -193,10 +220,10 @@ export function SectionCard({ title, action, children, className }: {
   className?: string;
 }) {
   return (
-    <div className={cn("rounded-[12px] border border-[var(--border)] bg-[var(--bg1)]", className)}>
+    <div className={cn("rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)]", className)}>
       {title && (
         <div className="flex items-center justify-between border-b border-[var(--border)] px-5 py-3">
-          <h3 className="text-sm font-semibold text-[var(--text)]">{title}</h3>
+          <h3 className="text-[14px] font-semibold text-[var(--text)]">{title}</h3>
           {action}
         </div>
       )}
@@ -228,13 +255,13 @@ export function KpiCard({ label, value, delta, trend = "neutral", icon: Icon }: 
   icon?: LucideIcon;
 }) {
   return (
-    <div className="rounded-[12px] border border-[var(--border)] bg-[var(--bg1)] p-4">
+    <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] p-4">
       <div className="flex items-center justify-between">
-        <span className="text-[12px] font-medium uppercase tracking-wider text-[var(--text3)]">{label}</span>
+        <span className="font-[family-name:var(--mono)] text-[10px] font-medium uppercase tracking-[0.09em] text-[var(--text3)]">{label}</span>
         {Icon && <Icon className="size-4 text-[var(--text3)]" />}
       </div>
-      <div className="mt-2 text-2xl font-semibold tabular-nums text-[var(--text)]">{value}</div>
-      {delta && <div className={cn("mt-1 text-[12px] font-medium", TREND_TONE[trend])}>{delta}</div>}
+      <div className="mt-2 font-[family-name:var(--mono)] text-[26px] font-medium leading-[1.1] tracking-[-0.02em] tabular-nums text-[var(--text)]">{value}</div>
+      {delta && <div className={cn("mt-1 font-[family-name:var(--mono)] text-[11px] font-medium tabular-nums", TREND_TONE[trend])}>{delta}</div>}
     </div>
   );
 }

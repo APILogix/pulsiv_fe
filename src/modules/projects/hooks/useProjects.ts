@@ -37,7 +37,7 @@ export function useProjectByPublicId(publicId: string) {
   return useQuery({
     queryKey: [...projectKeys.all, "by-public-id", activeOrgId, publicId] as const,
     queryFn: () => projectsApi.getByPublicId(activeOrgId!, publicId),
-    enabled: !!activeOrgId && !!publicId,
+    enabled: !!activeOrgId && !!publicId && publicId.startsWith("prj_"),
     staleTime: 30_000,
   });
 }

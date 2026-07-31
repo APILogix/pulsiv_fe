@@ -1,4 +1,19 @@
 /**
+ * ⚠️ DEPRECATED — superseded by the Sentinel design system.
+ *
+ * sentinel-design.md §1 defines exactly TWO dark themes (indigo + mono) whose
+ * tokens live in `src/app/index.css` and are consumed via `var(--token)`. The
+ * ten-theme `--pulse-*` system below is dead code: nothing imports it, the
+ * generated stylesheet (`src/styles/themes.css`) is not linked from
+ * `src/app/index.css` or `src/main.tsx`, and `scripts/gen-themes.mjs` points at
+ * a `_generate.ts` entry that no longer exists.
+ *
+ * Do not wire this back in — a second palette breaks the three-channel law.
+ * Use `@/theme` (ThemeProvider, ThemeSwitcher, tokens) instead.
+ * Safe to delete once you have confirmed no imports remain.
+ */
+
+/**
  * The ten Pulse themes.
  *
  * Each entry is a complete semantic color system + metadata. Adding a new

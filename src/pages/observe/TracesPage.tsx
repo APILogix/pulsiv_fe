@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router";
 import { useTraceEvents } from "@/hooks/useDummyData";
 import {
-  PageHeader, KpiCard, FillPage, InfiniteTable, StatusBadge, formatLatency,
+  PageHeader, KpiCard, FillPage, InfiniteTable, StatusBadge, EnvironmentBadge, AskAiButton, formatLatency,
 } from "@/shared/observe";
 import type { Column } from "@/shared/observe";
 import type { TraceEvent } from "@/types/events";
@@ -20,6 +20,8 @@ export default function TracesPage() {
     { key: "spans", header: "Spans", width: "70px", align: "right", cell: (t) => <span className="tabular-nums">{t.spanCount}</span> },
     { key: "dur", header: "Duration", width: "100px", align: "right", cell: (t) => <span className="tabular-nums">{formatLatency(t.totalDuration)}</span> },
     { key: "status", header: "Status", width: "110px", cell: (t) => <StatusBadge status={t.isPartial ? "degraded" : "ok"} /> },
+    { key: "env", header: "Environment", width: "120px", cell: (t) => <EnvironmentBadge environment={t.metadata.environment} /> },
+    { key: "ai", header: "", width: "90px", cell: (t) => <AskAiButton question={`Investigate trace ${t.traceId} on ${t.metadata.service} (${t.rootSpan.name}, ${formatLatency(t.totalDuration)}).`} /> },
   ];
 
   return (

@@ -903,3 +903,82 @@ export const dummyReleases = Array.from({ length: 12 }, (_, i) => ({
   status: i % 4 === 0 ? "regression" : "stable",
 }));
 export type Release = (typeof dummyReleases)[number];
+
+// ============================================
+// RUNTIME METRICS (V8/Node internals)
+// ============================================
+export const dummyRuntimeMetricSamples = Array.from({ length: 120 }, (_, i) => {
+  const heapTotal = 200 + (i % 20) * 4;
+  const heapUsed = Math.round(heapTotal * (0.4 + Math.random() * 0.45));
+  return {
+    type: "runtime_metric" as const,
+    eventId: `evt-runtime-${uuid()}`,
+    timestamp: Date.now() - Math.floor(Math.random() * 24 * 60 * 60 * 1000),
+    heapUsedMb: heapUsed,
+    heapTotalMb: heapTotal,
+    externalMb: Math.round(10 + Math.random() * 40),
+    rssMb: Math.round(heapTotal * 1.3),
+    activeHandles: Math.floor(Math.random() * 80) + 10,
+    metadata: {
+      sdkName: "pulse-node",
+      sdkVersion: "1.5.0",
+      service: ["api-gateway", "user-service", "payment-service"][i % 3],
+      environment: ["production", "staging", "development"][i % 3],
+      release: `v2.${Math.floor(i / 10)}.${i % 10}`,
+      serverName: `server-${(i % 6) + 1}.us-east-1.pulse.io`,
+    },
+  };
+});
+export type RuntimeMetricSample = (typeof dummyRuntimeMetricSamples)[number];
+
+// ============================================
+// EVENT LOOP SAMPLES
+// ============================================
+export const dummyEventLoopSamples = Array.from({ length: 120 }, (_, i) => {
+  const lag = Math.max(0.1, Math.random() * (i % 17 === 0 ? 180 : 12));
+  return {
+    type: "event_loop" as const,
+    eventId: `evt-eventloop-${uuid()}`,
+    timestamp: Date.now() - Math.floor(Math.random() * 24 * 60 * 60 * 1000),
+    lagMs: Number(lag.toFixed(2)),
+    p95LagMs: Number((lag * 1.6).toFixed(2)),
+    utilizationPercent: Math.round(Math.min(99, lag * 2 + Math.random() * 20)),
+    metadata: {
+      sdkName: "pulse-node",
+      sdkVersion: "1.5.0",
+      service: ["api-gateway", "user-service", "payment-service"][i % 3],
+      environment: ["production", "staging", "development"][i % 3],
+      release: `v2.${Math.floor(i / 10)}.${i % 10}`,
+      serverName: `server-${(i % 6) + 1}.us-east-1.pulse.io`,
+    },
+  };
+});
+export type EventLoopSample = (typeof dummyEventLoopSamples)[number];
+
+// ============================================
+// GC PAUSE EVENTS
+// ============================================
+export const dummyGcPauseEvents = Array.from({ length: 90 }, (_, i) => {
+  const types = ["scavenge", "mark-sweep-compact", "incremental-marking", "weak-callback"] as const;
+  const gcType = types[i % types.length];
+  const pause = gcType === "mark-sweep-compact" ? Math.random() * 250 + 50 : Math.random() * 20 + 1;
+  const heapBefore = 180 + Math.random() * 120;
+  return {
+    type: "gc_pause" as const,
+    eventId: `evt-gc-${uuid()}`,
+    timestamp: Date.now() - Math.floor(Math.random() * 24 * 60 * 60 * 1000),
+    gcType,
+    pauseDurationMs: Number(pause.toFixed(2)),
+    heapBeforeMb: Math.round(heapBefore),
+    heapAfterMb: Math.round(heapBefore * (gcType === "mark-sweep-compact" ? 0.6 : 0.92)),
+    metadata: {
+      sdkName: "pulse-node",
+      sdkVersion: "1.5.0",
+      service: ["api-gateway", "user-service", "payment-service"][i % 3],
+      environment: ["production", "staging", "development"][i % 3],
+      release: `v2.${Math.floor(i / 10)}.${i % 10}`,
+      serverName: `server-${(i % 6) + 1}.us-east-1.pulse.io`,
+    },
+  };
+});
+export type GcPauseEvent = (typeof dummyGcPauseEvents)[number];

@@ -21,15 +21,15 @@ export const AvatarButton = forwardRef<HTMLButtonElement, AvatarButtonProps>(
       ref={ref}
       type="button"
       className={clsx(
-        'inline-flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full p-0 text-muted-foreground outline-none transition-colors hover:bg-[#2a2d3a] hover:text-[#f1f5f9] focus-visible:ring-1 focus-visible:ring-[#3b82f6]',
+        'inline-flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full p-0 text-[var(--text2)] outline-none transition-colors hover:bg-[var(--bg2)] hover:text-[var(--text)] focus-visible:ring-2 focus-visible:ring-[var(--brand)]',
         className,
       )}
       aria-label="Open account menu"
       {...props}
     >
-      <Avatar className="size-8 border border-[#2a2d3a] bg-[#1a1d27]">
+      <Avatar className="size-8 border border-[var(--border)] bg-[var(--bg2)]">
         {avatarUrl && <AvatarImage src={avatarUrl} alt="" />}
-        <AvatarFallback className="bg-[rgba(59,130,246,0.16)] text-[12px] font-semibold text-[#f1f5f9]">
+        <AvatarFallback className="bg-[var(--brand-bg)] font-mono text-[11px] font-semibold text-[var(--text)]">
           {getInitials(email)}
         </AvatarFallback>
       </Avatar>

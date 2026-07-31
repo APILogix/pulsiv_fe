@@ -134,10 +134,10 @@ export function ConfirmDialog({
 // ── Labeled field for dialogs ────────────────────────────────
 
 export const dialogInputClass =
-  "h-9 w-full rounded-[8px] border border-[var(--border)] bg-[var(--bg2)] px-3 text-[13px] text-[var(--text)] outline-none transition-colors placeholder:text-[var(--text3)] hover:border-[var(--border2)] focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand)]/20";
+  "h-9 w-full rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg2)] px-3 text-[13px] text-[var(--text)] outline-none transition-colors placeholder:text-[var(--text3)] hover:border-[var(--border2)] focus:border-[var(--brand)] focus:ring-3 focus:ring-[var(--brand-bg)]";
 
 export const dialogTextareaClass =
-  "min-h-[80px] w-full rounded-[8px] border border-[var(--border)] bg-[var(--bg2)] p-3 text-[13px] leading-relaxed text-[var(--text)] outline-none transition-colors placeholder:text-[var(--text3)] hover:border-[var(--border2)] focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand)]/20";
+  "min-h-[80px] w-full rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg2)] p-3 text-[13px] leading-[1.5] text-[var(--text)] outline-none transition-colors placeholder:text-[var(--text3)] hover:border-[var(--border2)] focus:border-[var(--brand)] focus:ring-3 focus:ring-[var(--brand-bg)]";
 
 export function DialogField({
   label,
@@ -156,12 +156,12 @@ export function DialogField({
 }) {
   return (
     <div className={cn("flex flex-col gap-1.5", className)}>
-      <label htmlFor={name} className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[var(--text3)]">
+      <label htmlFor={name} className="font-[family-name:var(--mono)] text-[10px] font-medium uppercase tracking-[0.09em] text-[var(--text3)]">
         {label}
         {required && <span className="ml-1 text-[var(--red)]">*</span>}
       </label>
       {children}
-      {hint && <span className="text-[11.5px] leading-snug text-[var(--text3)]">{hint}</span>}
+      {hint && <span className="text-[11px] leading-snug text-[var(--text3)]">{hint}</span>}
     </div>
   );
 }
@@ -269,7 +269,7 @@ export function AsyncPanel({
     body = (
       <div className="flex flex-col gap-2 py-1">
         {[0, 1, 2, 3].map((row) => (
-          <div key={row} className="h-9 animate-pulse rounded-[8px] bg-[var(--bg2)]" />
+          <div key={row} className="loading-skeleton h-9 rounded-[var(--radius)] bg-[var(--bg2)]" />
         ))}
       </div>
     );
@@ -289,9 +289,9 @@ export function AsyncPanel({
           <EmptyIcon className="size-5" aria-hidden="true" />
         </span>
         <div>
-          <p className="text-[13.5px] font-semibold text-[var(--text)]">{emptyTitle ?? "Nothing here yet"}</p>
+          <p className="text-[14px] font-semibold text-[var(--text)]">{emptyTitle ?? "Nothing here yet"}</p>
           {emptyDescription && (
-            <p className="mt-1 max-w-[46ch] text-[12.5px] leading-relaxed text-[var(--text2)]">
+            <p className="mt-1 max-w-[46ch] text-[12px] leading-[1.5] text-[var(--text2)]">
               {emptyDescription}
             </p>
           )}

@@ -13,7 +13,7 @@ import {
 } from '@/shared/ui/pulse';
 
 const CHECKBOX_CLASS =
-  'mt-0.5 size-3.5 shrink-0 cursor-pointer rounded border-[var(--border)] bg-[var(--bg2)] accent-[var(--brand)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]';
+  'mt-0.5 size-3.5 shrink-0 cursor-pointer rounded border-[var(--border)] bg-[var(--bg2)] accent-[var(--brand)] focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-[var(--brand-bg)]';
 
 export function RegisterForm() {
   const { mutate: registerUser, isPending } = useRegister();
@@ -37,7 +37,7 @@ export function RegisterForm() {
           autoComplete="name"
           {...register('full_name')}
           disabled={isPending}
-          className={cn(fieldInputClass, 'h-11')}
+          className={cn(fieldInputClass, 'h-10')}
         />
       </AuthField>
 
@@ -49,7 +49,7 @@ export function RegisterForm() {
           autoComplete="email"
           {...register('email')}
           disabled={isPending}
-          className={cn(fieldInputClass, 'h-11 font-[family-name:var(--mono)] text-[13px]')}
+          className={cn(fieldInputClass, 'h-10 font-[family-name:var(--mono)] text-[13px]')}
         />
       </AuthField>
 
@@ -70,7 +70,7 @@ export function RegisterForm() {
         </div>
       </AuthField>
 
-      <div className="flex flex-col gap-2.5 rounded-[10px] border border-[var(--border)] bg-[var(--bg2)]/60 px-3.5 py-3">
+      <div className="flex flex-col gap-2.5 rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg2)]/60 px-3.5 py-3">
         <div className="flex items-start gap-2.5">
           <input type="checkbox" id="accept_terms" {...register('accept_terms')} className={CHECKBOX_CLASS} />
           <label htmlFor="accept_terms" className="cursor-pointer text-[12px] leading-relaxed text-[var(--text2)]">

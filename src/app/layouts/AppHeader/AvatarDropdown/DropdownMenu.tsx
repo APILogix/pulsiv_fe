@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { KeyboardEvent } from 'react';
 import { useLocation, useNavigation } from 'react-router';
-import { LogOut, Moon, Sun } from 'lucide-react';
+import { LogOut } from 'lucide-react';
 
 import {
   DropdownMenu as RadixDropdownMenu,
@@ -18,7 +18,7 @@ import {
 } from '@/components/ui/sheet';
 import { useAuth } from '@/modules/auth/hooks/useAuth';
 import { useLogout } from '@/modules/auth/hooks/useLogout';
-import { useTheme } from '@/theme';
+import { ThemeSwitcher } from '@/theme';
 
 import { AvatarButton } from './AvatarButton';
 import { avatarMenuGroups } from './config';
@@ -37,7 +37,6 @@ function AccountMenuContent({
 }) {
   const location = useLocation();
   const logout = useLogout();
-  const { resolvedTheme, toggleTheme } = useTheme();
   const handleMenuKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
 
@@ -58,12 +57,12 @@ function AccountMenuContent({
 
   return (
     <div
-      className="max-h-[600px] overflow-y-auto scroll-smooth bg-[#1a1d27] p-4 text-[#f1f5f9] sidebar-scroll"
+      className="max-h-[600px] overflow-y-auto scroll-smooth bg-[var(--bg1)] p-4 text-[var(--text)] sidebar-scroll"
       onKeyDown={handleMenuKeyDown}
     >
       <div className="pb-4">
-        <div className="text-[13px] font-medium text-[#f1f5f9]">Account settings</div>
-        <div className="truncate text-[12px] text-[#94a3b8]">{email}</div>
+        <div className="text-[13px] font-medium text-[var(--text)]">Account settings</div>
+        <div className="truncate font-mono text-[12px] text-[var(--text3)]">{email}</div>
       </div>
 
       <div className="flex flex-col gap-3">
@@ -86,19 +85,13 @@ function AccountMenuContent({
       </div>
 
       <MenuDivider />
-      <button
-        type="button"
-        title="Toggle appearance"
-        aria-label="Toggle appearance"
-        onClick={() => {
-          toggleTheme();
-          onSelect?.();
-        }}
-        className="flex h-8 w-full cursor-pointer items-center gap-3 rounded-md px-3 text-left text-[14px] text-[#94a3b8] transition-colors duration-100 hover:bg-[rgba(59,130,246,0.10)] hover:text-[#f1f5f9] focus-visible:bg-[rgba(59,130,246,0.10)] focus-visible:text-[#f1f5f9] focus-visible:outline-none"
-      >
-        {resolvedTheme === 'dark' ? <Sun className="size-4 text-[#64748b]" /> : <Moon className="size-4 text-[#64748b]" />}
-        <span>Appearance</span>
-      </button>
+      {/* Theme lives in user settings as well as the topbar (§1). */}
+      <div className="flex h-8 items-center justify-between px-3">
+        <span className="font-mono text-[10px] uppercase tracking-[0.09em] text-[var(--text3)]">
+          Theme
+        </span>
+        <ThemeSwitcher />
+      </div>
       <button
         type="button"
         title="Sign out"
@@ -108,10 +101,10 @@ function AccountMenuContent({
           logout.mutate();
           onSelect?.();
         }}
-        className="mt-1 flex h-8 w-full cursor-pointer items-center gap-3 rounded-md px-3 text-left text-[var(--red)] transition-colors duration-100 hover:bg-[rgba(239,68,68,0.08)] focus-visible:bg-[rgba(239,68,68,0.08)] focus-visible:outline-none disabled:pointer-events-none disabled:opacity-60"
+        className="mt-1 flex h-8 w-full cursor-pointer items-center gap-3 rounded-[var(--radius)] px-3 text-left text-[13px] text-[var(--red)] transition-colors duration-100 hover:bg-[var(--red-bg)] focus-visible:bg-[var(--red-bg)] focus-visible:outline-none disabled:pointer-events-none disabled:opacity-60"
       >
         <LogOut className="size-4" />
-        <span>{logout.isPending ? 'Signing out...' : 'Sign out'}</span>
+        <span>{logout.isPending ? 'Signing out…' : 'Sign out'}</span>
       </button>
     </div>
   );
@@ -144,7 +137,7 @@ export function DropdownMenu() {
           <DropdownMenuContent
             align="end"
             sideOffset={8}
-            className="min-w-[320px] overflow-hidden rounded-lg border-[#2a2d3a] bg-[#1a1d27] p-0 text-[#f1f5f9] shadow-[0_18px_50px_rgba(0,0,0,0.45)] ring-0 data-[side=bottom]:slide-in-from-top-2 data-open:duration-150"
+            className="min-w-[320px] overflow-hidden rounded-[var(--radius-lg)] border-[var(--border2)] bg-[var(--bg1)] p-0 text-[var(--text)] shadow-[var(--shadow-modal)] ring-0 data-[side=bottom]:slide-in-from-top-2 data-open:duration-150"
           >
             <AccountMenuContent
               email={email}
@@ -162,7 +155,7 @@ export function DropdownMenu() {
           </SheetTrigger>
           <SheetContent
             side="bottom"
-            className="max-h-[90vh] rounded-t-xl border-[#2a2d3a] bg-[#1a1d27] p-0 text-[#f1f5f9]"
+            className="max-h-[90vh] rounded-t-[var(--radius-lg)] border-[var(--border2)] bg-[var(--bg1)] p-0 text-[var(--text)]"
           >
             <SheetHeader className="sr-only">
               <SheetTitle>Account settings</SheetTitle>

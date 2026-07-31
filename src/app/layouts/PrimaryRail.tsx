@@ -18,8 +18,8 @@ export function PrimaryRail({
           const Icon = item.icon;
           const isActive = activeRailItem?.label === item.label;
           const sharedClasses = clsx(
-            "rail-item w-9 h-9 rounded-md flex items-center justify-center cursor-pointer transition-all relative group",
-            isActive ? "bg-[var(--bg2)] text-[var(--brand)]" : "text-[var(--text2)] hover:bg-[var(--bg2)] hover:text-[var(--text)]"
+            "rail-item w-9 h-9 rounded-[var(--radius)] flex items-center justify-center cursor-pointer transition-colors duration-150 relative group",
+            isActive ? "bg-[var(--brand-bg)] text-[var(--brand)]" : "text-[var(--text2)] hover:bg-[var(--bg2)] hover:text-[var(--text)]"
           );
 
           if (!item.children || item.children.length === 0) {

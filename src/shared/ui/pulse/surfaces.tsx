@@ -123,7 +123,7 @@ export function Pill({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] ring-1 ring-inset",
+        "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-mono text-[10px] font-medium uppercase tracking-[0.08em] ring-1 ring-inset",
         TONE_CHIP[tone],
         className
       )}
@@ -160,7 +160,7 @@ export function PageHero({
   return (
     <header
       className={cn(
-        "pulse-grid pulse-aurora pulse-edge relative overflow-hidden rounded-[16px] border border-[var(--border)] bg-[var(--bg1)]",
+        "pulse-grid pulse-aurora relative overflow-hidden rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)]",
         className
       )}
     >
@@ -175,13 +175,13 @@ export function PageHero({
                 </div>
               )}
               {eyebrow && (
-                <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--ai)]">{eyebrow}</p>
+                <p className="mb-1.5 font-mono text-[10px] font-medium uppercase tracking-[0.09em] text-[var(--text3)]">{eyebrow}</p>
               )}
-              <h1 className="font-[family-name:var(--display)] text-[26px] font-semibold leading-tight tracking-[-0.02em] text-[var(--text)]">
+              <h1 className="font-[family-name:var(--display)] text-[24px] font-semibold leading-tight tracking-[-0.02em] text-[var(--text)]">
                 {title}
               </h1>
               {description && (
-                <p className="mt-2 max-w-[68ch] text-[13.5px] leading-relaxed text-[var(--text2)]">{description}</p>
+                <p className="mt-2 max-w-[68ch] text-[13px] leading-[1.5] text-[var(--text2)]">{description}</p>
               )}
             </div>
           </div>
@@ -206,16 +206,16 @@ export interface HeroFact {
 export function HeroFacts({ facts }: { facts: HeroFact[] }) {
   if (facts.length === 0) return null;
   return (
-    <dl className="grid gap-px overflow-hidden rounded-[12px] border border-[var(--border)] bg-[var(--border)] sm:grid-cols-2 lg:grid-cols-4">
+    <dl className="grid gap-px overflow-hidden rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--border)] sm:grid-cols-2 lg:grid-cols-4">
       {facts.map((fact) => (
         <div key={fact.label} className="flex flex-col gap-1.5 bg-[var(--bg1)] px-4 py-3">
-          <dt className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.1em] text-[var(--text3)]">
+          <dt className="flex items-center gap-1.5 font-mono text-[10px] font-medium uppercase tracking-[0.09em] text-[var(--text3)]">
             {fact.icon && <fact.icon className="size-3.5" aria-hidden="true" />}
             {fact.label}
           </dt>
           <dd
             className={cn(
-              "font-[family-name:var(--display)] text-[19px] font-semibold tabular-nums leading-none",
+              "font-mono text-[19px] font-medium tabular-nums leading-none tracking-[-0.02em]",
               toneText(fact.tone)
             )}
           >
@@ -256,7 +256,7 @@ export function Panel({
   return (
     <section
       className={cn(
-        "pulse-edge overflow-hidden rounded-[14px] border bg-[var(--bg1)]",
+        "overflow-hidden rounded-[var(--radius-lg)] border bg-[var(--bg1)]",
         danger ? "border-[var(--red)]/30" : "border-[var(--border)]",
         className
       )}
@@ -272,7 +272,7 @@ export function Panel({
             {icon && <IconChip icon={icon} tone={danger ? "red" : tone} size="sm" className="mt-0.5" />}
             <div className="min-w-0">
               {title && <h2 className="text-[14px] font-semibold tracking-[-0.01em] text-[var(--text)]">{title}</h2>}
-              {description && <p className="mt-1 max-w-[76ch] text-[12.5px] leading-relaxed text-[var(--text2)]">{description}</p>}
+              {description && <p className="mt-1 max-w-[76ch] text-[12px] leading-[1.5] text-[var(--text2)]">{description}</p>}
             </div>
           </div>
           {actions && <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>}
@@ -308,7 +308,7 @@ export function Toolbar({
   return (
     <div
       className={cn(
-        "flex flex-wrap items-center gap-2 rounded-[12px] border border-[var(--border)] bg-[var(--bg1)] p-2.5",
+        "flex flex-wrap items-center gap-2 rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] p-2.5",
         className
       )}
     >
@@ -332,7 +332,7 @@ export function SectionHeading({
   return (
     <div className="flex flex-wrap items-end justify-between gap-3">
       <div>
-        <h2 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--text3)]">{title}</h2>
+        <h2 className="font-mono text-[10px] font-medium uppercase tracking-[0.09em] text-[var(--text3)]">{title}</h2>
         {description && <p className="mt-1.5 text-[13px] text-[var(--text2)]">{description}</p>}
       </div>
       {actions}
@@ -358,15 +358,15 @@ export function EmptyPanel({
   return (
     <div
       className={cn(
-        "flex flex-col items-center justify-center rounded-[14px] border border-dashed border-[var(--border)] bg-[var(--bg1)] px-6 py-14 text-center",
+        "flex flex-col items-center justify-center rounded-[var(--radius-lg)] border border-dashed border-[var(--border)] bg-[var(--bg1)] px-6 py-14 text-center",
         className
       )}
     >
       <span className="mb-4 inline-flex size-12 items-center justify-center rounded-full bg-[var(--bg2)] text-[var(--text3)] ring-1 ring-inset ring-[var(--border)]">
         <Icon className="size-5" aria-hidden="true" />
       </span>
-      <h3 className="text-[14px] font-semibold text-[var(--text)]">{title}</h3>
-      {description && <p className="mt-1.5 max-w-[42ch] text-[13px] leading-relaxed text-[var(--text2)]">{description}</p>}
+      <h3 className="font-[family-name:var(--display)] text-[16px] font-semibold text-[var(--text)]">{title}</h3>
+      {description && <p className="mt-1.5 max-w-[42ch] text-[13px] leading-[1.5] text-[var(--text2)]">{description}</p>}
       {action && <div className="mt-5">{action}</div>}
     </div>
   );
@@ -401,11 +401,11 @@ export function Notice({
   className?: string;
 }) {
   return (
-    <div className={cn("flex items-start gap-3 rounded-[12px] border px-4 py-3", NOTICE_TONE[tone], className)}>
+    <div className={cn("flex items-start gap-3 rounded-[var(--radius-lg)] border px-4 py-3", NOTICE_TONE[tone], className)}>
       {Icon && <Icon className="mt-0.5 size-4 shrink-0" aria-hidden="true" />}
       <div className="min-w-0 flex-1">
         {title && <p className="text-[13px] font-semibold">{title}</p>}
-        {children && <div className={cn("text-[12.5px] leading-relaxed text-[var(--text2)]", title && "mt-1")}>{children}</div>}
+        {children && <div className={cn("text-[12px] leading-[1.5] text-[var(--text2)]", title && "mt-1")}>{children}</div>}
       </div>
       {action && <div className="shrink-0">{action}</div>}
     </div>
@@ -435,7 +435,7 @@ export function SettingRow({
         <label htmlFor={htmlFor} className="block text-[13px] font-medium text-[var(--text)]">
           {label}
         </label>
-        {description && <p className="mt-1 max-w-[68ch] text-[12.5px] leading-relaxed text-[var(--text2)]">{description}</p>}
+        {description && <p className="mt-1 max-w-[68ch] text-[12px] leading-[1.5] text-[var(--text2)]">{description}</p>}
       </div>
       {children && <div className="flex shrink-0 items-center gap-2">{children}</div>}
     </div>
@@ -480,17 +480,19 @@ export function Toggle({
       disabled={disabled}
       onClick={() => onChange(!checked)}
       className={cn(
-        "relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg1)] disabled:cursor-not-allowed disabled:opacity-50",
-        checked ? "bg-[var(--brand)]" : "bg-[var(--bg3)]"
+        "relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors duration-150 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-[var(--brand-bg)] disabled:cursor-not-allowed disabled:opacity-50",
+        checked ? "bg-[var(--brand)] shadow-[0_0_10px_var(--brand-glow)]" : "bg-[var(--bg3)]"
       )}
     >
-      {/* The thumb keeps a hairline ring so it stays visible against the pale
-          off-track in the light theme, where a plain white thumb would vanish. */}
+      {/* §7 — the knob consumes var(--brand-fg), so Mono gets a dark knob on a
+          white track and Indigo a white knob on indigo. */}
       <span
         aria-hidden="true"
         className={cn(
-          "inline-block size-4 rounded-full bg-white shadow-sm ring-1 ring-inset transition-transform duration-150",
-          checked ? "translate-x-[18px] ring-transparent" : "translate-x-[2px] ring-[var(--border2)]"
+          "inline-block size-4 rounded-full transition-transform duration-150",
+          checked
+            ? "translate-x-[18px] bg-[var(--brand-fg)]"
+            : "translate-x-[2px] bg-[var(--text3)]"
         )}
       />
     </button>
@@ -525,7 +527,7 @@ export function SetupSteps({ steps }: { steps: SetupStepItem[] }) {
           <div className="min-w-0">
             <p className="text-[13px] font-medium text-[var(--text)]">{step.title}</p>
             {step.description && (
-              <div className="mt-1 text-[12.5px] leading-relaxed text-[var(--text2)]">{step.description}</div>
+              <div className="mt-1 text-[12px] leading-[1.5] text-[var(--text2)]">{step.description}</div>
             )}
           </div>
         </li>

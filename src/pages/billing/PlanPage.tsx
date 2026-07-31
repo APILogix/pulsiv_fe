@@ -57,6 +57,13 @@ interface PlanSummary {
   };
 }
 
+interface EntitlementValue {
+  booleanValue?: boolean | null;
+  integerValue?: number | null;
+  decimalValue?: number | null;
+  stringValue?: string | null;
+}
+
 const STATUS_TONE: Record<string, SurfaceTone> = {
   active: "green",
   trialing: "green",
@@ -91,6 +98,28 @@ function statusTone(status: string | null | undefined): SurfaceTone {
 function titleCase(value: string | null | undefined, fallback: string): string {
   if (!value) return fallback;
   return value.replace(/[-_]/g, " ").replace(/\b\w/g, (character) => character.toUpperCase());
+}
+
+function entitlementLabel(featureKey: string): string {
+  return featureKey
+    .replace(/[._-]/g, " ")
+    .replace(/\b\w/g, (character) => character.toUpperCase());
+}
+
+function entitlementDisplay(value: EntitlementValue): { value: string; enabled: boolean } {
+  if (value.booleanValue !== null && value.booleanValue !== undefined) {
+    return { value: value.booleanValue ? "Included" : "Off", enabled: value.booleanValue };
+  }
+  if (value.integerValue !== null && value.integerValue !== undefined) {
+    return { value: formatLimit(value.integerValue), enabled: value.integerValue !== 0 };
+  }
+  if (value.decimalValue !== null && value.decimalValue !== undefined) {
+    return { value: String(value.decimalValue), enabled: value.decimalValue !== 0 };
+  }
+  if (value.stringValue !== null && value.stringValue !== undefined) {
+    return { value: value.stringValue, enabled: true };
+  }
+  return { value: "Not configured", enabled: false };
 }
 
 /* ── One-off rows for the plan cards ─────────────────────────────── */
@@ -144,6 +173,11 @@ export default function PlanPage() {
     queryFn: () => orgApi.getBillingSummary(activeOrgId!),
     enabled: !!activeOrgId,
   });
+  const { data: entitlements } = useQuery({
+    queryKey: [...orgQueryKeys.billing(activeOrgId!), "entitlements"],
+    queryFn: () => orgApi.getEntitlements(activeOrgId!),
+    enabled: !!activeOrgId,
+  });
 
   if (isLoading) return <PlanSkeleton />;
 
@@ -175,6 +209,9 @@ export default function PlanPage() {
   const tone = statusTone(status);
   const planName = titleCase(plan.planTier, "Unassigned");
   const eventCeiling = plan.eventLimitMonthly ?? events?.limit ?? null;
+  const entitlementRows = Object.entries(entitlements ?? {})
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([featureKey, value]) => ({ featureKey, ...entitlementDisplay(value) }));
 
   const facts: HeroFact[] = [
     { label: "Plan", value: planName, icon: CreditCard },
@@ -234,21 +271,16 @@ export default function PlanPage() {
           }
         >
           <div className="divide-y divide-[var(--border)]">
-            <EntitlementLine label="Monthly events" value={formatLimit(eventCeiling)} enabled />
-            <EntitlementLine label="Team seats" value={formatLimit(seats?.limit)} enabled />
-            {aiCredits && (
-              <EntitlementLine label="AI credits" value={formatLimit(aiCredits.limit)} enabled={(aiCredits.limit ?? 0) !== 0} />
+            {entitlementRows.length > 0 ? entitlementRows.map((entitlement) => (
+              <EntitlementLine
+                key={entitlement.featureKey}
+                label={entitlementLabel(entitlement.featureKey)}
+                value={entitlement.value}
+                enabled={entitlement.enabled}
+              />
+            )) : (
+              <EntitlementLine label="Monthly events" value={formatLimit(eventCeiling)} enabled />
             )}
-            <EntitlementLine
-              label="SAML single sign-on"
-              value={ssoEnabled ? formatLimit(sso?.limit) : "Off"}
-              enabled={ssoEnabled}
-            />
-            <EntitlementLine
-              label="SCIM provisioning"
-              value={scimEnabled ? formatLimit(scim?.limit) : "Off"}
-              enabled={scimEnabled}
-            />
           </div>
         </Panel>
 

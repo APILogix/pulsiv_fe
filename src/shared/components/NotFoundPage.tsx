@@ -19,25 +19,24 @@ export default function NotFoundPage() {
           
           {/* Center dot */}
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-[var(--brand)] pulse-dot z-20" />
-          
-          {/* Radar sweep using conic gradient */}
-          <div className="absolute inset-0 rounded-full animate-[radar-spin_4s_linear_infinite]"
-               style={{ background: 'conic-gradient(from 0deg, transparent 0deg, transparent 270deg, var(--brand) 360deg)', opacity: 0.15 }} />
 
-          {/* Glow */}
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[200px] h-[200px] rounded-full bg-[var(--brand)] opacity-[0.03] blur-[60px]" />
+          {/* Radar sweep — a single brand hairline, not a gradient (§3). */}
+          <div className="absolute inset-0 animate-[radar-spin_4s_linear_infinite]">
+            <div className="absolute left-1/2 top-1/2 h-px w-1/2 origin-left bg-[var(--brand)] opacity-30" />
+          </div>
         </div>
       </div>
 
       {/* Content */}
       <div className="relative z-10 flex flex-col items-center text-center max-w-md">
-        {/* 404 number */}
+        {/* 404 number — solid, never gradient-filled text (§4) */}
         <div className="relative mb-6">
-          <span className="text-[120px] font-bold leading-none tracking-tighter text-[var(--bg2)] font-[family-name:var(--mono)] select-none">
+          <span className="text-[120px] font-medium leading-none tracking-tighter text-[var(--bg2)] font-[family-name:var(--mono)] select-none tabular-nums">
             404
           </span>
-          <span className="absolute inset-0 flex items-center justify-center text-[120px] font-bold leading-none tracking-tighter text-transparent bg-clip-text font-[family-name:var(--mono)] select-none animate-[glitch-text_2s_ease-in-out_infinite]"
-            style={{ backgroundImage: 'linear-gradient(135deg, var(--brand) 0%, var(--green-d) 100%)' }}
+          <span
+            className="absolute inset-0 flex items-center justify-center text-[120px] font-medium leading-none tracking-tighter text-[var(--brand)] font-[family-name:var(--mono)] select-none tabular-nums opacity-90"
+            aria-hidden="true"
           >
             404
           </span>
@@ -72,11 +71,11 @@ export default function NotFoundPage() {
 
         {/* Meta info */}
         <div className="mt-12 flex items-center gap-3 text-[var(--text3)]">
-          <span className="font-[family-name:var(--mono)] text-[10px] uppercase tracking-wider">
-            Pulse monitoring
+          <span className="font-[family-name:var(--mono)] text-[10px] uppercase tracking-[0.09em]">
+            Route not found
           </span>
           <span className="w-1 h-1 rounded-full bg-[var(--text3)]" />
-          <span className="font-[family-name:var(--mono)] text-[10px]">
+          <span className="font-[family-name:var(--mono)] text-[10px] tabular-nums">
             {new Date().toISOString().slice(0, 19)}Z
           </span>
         </div>
@@ -93,12 +92,9 @@ export default function NotFoundPage() {
           50%  { opacity: 0.1; transform: scale(1.02); }
           100% { opacity: 0.3; transform: scale(0.95); }
         }
-        @keyframes glitch-text {
-          0%, 100% { opacity: 1; transform: translate(0); }
-          20%  { opacity: 0.8; transform: translate(-2px, 1px); }
-          40%  { opacity: 1; transform: translate(0); }
-          60%  { opacity: 0.9; transform: translate(1px, -1px); }
-          80%  { opacity: 1; transform: translate(0); }
+        @media (prefers-reduced-motion: reduce) {
+          .animate-\\[radar-spin_4s_linear_infinite\\],
+          [class*="pulse-ring"] { animation: none !important; }
         }
       `}</style>
     </div>

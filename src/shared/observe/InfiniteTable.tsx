@@ -70,9 +70,10 @@ export function InfiniteTable<T>({
   const gridTemplate = columns.map((c) => c.width ?? "1fr").join(" ");
 
   return (
-    <div className={cn("flex min-h-0 flex-col overflow-hidden rounded-[12px] border border-[var(--border)] bg-[var(--bg1)]", className)}>
+    <div className={cn("flex min-h-0 flex-col overflow-hidden rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)]", className)}>
+      {/* Sticky header row: --bg2, mono 10px uppercase --text3 (§7) */}
       <div
-        className="grid shrink-0 gap-3 border-b border-[var(--border)] px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wider text-[var(--text3)]"
+        className="grid shrink-0 gap-3 border-b border-[var(--border)] bg-[var(--bg2)] px-4 py-2.5 font-[family-name:var(--mono)] text-[10px] font-medium uppercase tracking-[0.09em] text-[var(--text3)]"
         style={{ gridTemplateColumns: gridTemplate }}
       >
         {columns.map((c) => (
@@ -97,7 +98,7 @@ export function InfiniteTable<T>({
           </div>
         </div>
       ) : rows.length === 0 ? (
-        <div className="sidebar-scroll min-h-0 flex-1 flex items-center justify-center text-[var(--text3)]">
+        <div className="sidebar-scroll min-h-0 flex-1 flex items-center justify-center text-[13px] text-[var(--text3)]">
           {emptyMessage}
         </div>
       ) : (
@@ -130,7 +131,7 @@ export function InfiniteTable<T>({
             </div>
           )}
           footer={
-            <div className="flex h-12 shrink-0 items-center justify-center text-[12px] text-[var(--text3)] border-t border-[var(--border)]">
+            <div className="flex h-12 shrink-0 items-center justify-center border-t border-[var(--border)] font-[family-name:var(--mono)] text-[11px] tabular-nums text-[var(--text3)]">
               {query.isFetchingNextPage ? (
                 <span className="flex items-center gap-2"><Loader2 className="size-3.5 animate-spin" /> Loading more…</span>
               ) : query.hasNextPage ? (

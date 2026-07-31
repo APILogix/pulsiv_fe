@@ -58,7 +58,7 @@ function Sentinel({ onLoadMore, loading, hasMore, footerNote }: {
   }, []);
 
   return (
-    <div ref={ref} className="py-4 text-center text-[12px] text-[var(--text3)]">
+    <div ref={ref} className="py-4 text-center font-[family-name:var(--mono)] text-[11px] text-[var(--text3)]">
       {hasMore ? (loading ? "Loading more…" : "Scroll to load more") : (footerNote ?? "End of results")}
     </div>
   );
@@ -84,13 +84,13 @@ export function InfiniteTable<T>({
   footerNote?: string;
 }) {
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-[12px] border border-[var(--border)] bg-[var(--bg1)]">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)]">
       <div className="sidebar-scroll min-h-0 flex-1 overflow-y-auto">
-        <table className="w-full text-sm">
-          <thead className="sticky top-0 z-10 bg-[var(--bg1)]">
+        <table className="w-full text-[13px]">
+          <thead className="sticky top-0 z-10 bg-[var(--bg2)]">
             <tr className="border-b border-[var(--border)] text-left">
               {headers.map((h) => (
-                <th key={h} className="px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wider text-[var(--text3)]">{h}</th>
+                <th key={h} className="px-4 py-2.5 font-[family-name:var(--mono)] text-[10px] font-medium uppercase tracking-[0.09em] text-[var(--text3)]">{h}</th>
               ))}
             </tr>
           </thead>

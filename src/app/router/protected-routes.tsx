@@ -64,6 +64,13 @@ const TracesPage = lazy(() => import("@/pages/observe/TracesPage"));
 const TraceDetailPage = lazy(() => import("@/pages/observe/TraceDetailPage"));
 const LogsPage = lazy(() => import("@/pages/observe/LogsPage"));
 const LogDetailPage = lazy(() => import("@/pages/observe/LogDetailPage"));
+const MetricsPage = lazy(() => import("@/pages/observe/MetricsPage"));
+const ProfilingPage = lazy(() => import("@/pages/observe/ProfilingPage"));
+const CronsPage = lazy(() => import("@/pages/observe/CronsPage"));
+const ReplayPage = lazy(() => import("@/pages/observe/ReplayPage"));
+const RuntimeMetricsPage = lazy(() => import("@/pages/observe/RuntimeMetricsPage"));
+const EventLoopPage = lazy(() => import("@/pages/observe/EventLoopPage"));
+const GcMonitoringPage = lazy(() => import("@/pages/observe/GcMonitoringPage"));
 
 // Workspaces
 const ProjectsPage = lazy(() => import("@/pages/workspaces/ProjectsPage"));
@@ -94,14 +101,17 @@ const DeadLetterQueuePage = lazy(() => import("@/pages/workspaces/DeadLetterQueu
 
 
 // Act
-const IncidentsPage = lazy(() => import("@/pages/act/IncidentsPage"));
-const IncidentDetailPage = lazy(() => import("@/pages/act/IncidentDetailPage"));
+const AlertEventsPage = lazy(() => import("@/pages/act/AlertEventsPage"));
+const AlertEventDetailPage = lazy(() => import("@/pages/act/AlertEventDetailPage"));
 const AlertRulesPage = lazy(() => import("@/pages/act/AlertRulesPage"));
 const AlertRuleDetailPage = lazy(() => import("@/pages/act/AlertRuleDetailPage"));
 const EscalationsPage = lazy(() => import("@/pages/act/EscalationsPage"));
 const EscalationDetailPage = lazy(() => import("@/pages/act/EscalationDetailPage"));
-const ChannelsPage = lazy(() => import("@/pages/act/ChannelsPage"));
-const ChannelDetailPage = lazy(() => import("@/pages/act/ChannelDetailPage"));
+const AlertTemplatesPage = lazy(() => import("@/pages/act/ChannelsPage"));
+const SilencesPage = lazy(() => import("@/pages/act/SilencesPage"));
+const RoutingRulesPage = lazy(() => import("@/pages/act/RoutingRulesPage"));
+const AlertMetricsPage = lazy(() => import("@/pages/act/AlertMetricsPage"));
+const AlertDeadLettersPage = lazy(() => import("@/pages/act/DeadLettersPage"));
 
 // Workflows (automation)
 const AutomationOverviewPage = lazy(() => import("@/pages/automation/AutomationOverviewPage"));
@@ -219,6 +229,13 @@ export const protectedRoutes: RouteObject[] = [
               { path: "traces/:traceId/spans/:spanId", element: <TraceDetailPage /> },
               { path: "logs", element: <LogsPage /> },
               { path: "logs/:eventId", element: <LogDetailPage /> },
+              { path: "metrics", element: <MetricsPage /> },
+              { path: "profiling", element: <ProfilingPage /> },
+              { path: "crons", element: <CronsPage /> },
+              { path: "replay", element: <ReplayPage /> },
+              { path: "runtime-metrics", element: <RuntimeMetricsPage /> },
+              { path: "event-loop", element: <EventLoopPage /> },
+              { path: "gc-monitoring", element: <GcMonitoringPage /> },
             ],
           },
 
@@ -301,14 +318,20 @@ export const protectedRoutes: RouteObject[] = [
             path: "alerts",
             element: <ModuleLayout />,
             children: [
-              { index: true, element: <IncidentsPage /> },
-              { path: ":incidentId", element: <IncidentDetailPage /> },
+              { index: true, element: <AlertEventsPage /> },
+              { path: ":incidentId", element: <AlertEventDetailPage /> },
               { path: "rules", element: <AlertRulesPage /> },
               { path: "rules/:ruleId", element: <AlertRuleDetailPage /> },
               { path: "escalations", element: <EscalationsPage /> },
               { path: "escalations/:policyId", element: <EscalationDetailPage /> },
-              { path: "channels", element: <ChannelsPage /> },
-              { path: "channels/:channelId", element: <ChannelDetailPage /> },
+              { path: "templates", element: <AlertTemplatesPage /> },
+              { path: "silences", element: <SilencesPage /> },
+              { path: "routing", element: <RoutingRulesPage /> },
+              { path: "metrics", element: <AlertMetricsPage /> },
+              { path: "dead-letters", element: <AlertDeadLettersPage /> },
+              // Legacy paths — kept so existing links and bookmarks resolve.
+              { path: "channels", element: <Navigate to="../templates" replace /> },
+              { path: "channels/:channelId", element: <Navigate to="../templates" replace /> },
             ],
           },
           {

@@ -24,7 +24,8 @@ function TabsList({
     <TabsPrimitive.List
       data-slot="tabs-list"
       className={cn(
-        "inline-flex h-9 w-fit items-center gap-1 rounded-[10px] border border-[var(--border)] bg-[var(--bg1)] p-1",
+        // Underline tabs (§7): a hairline rail, no pill container.
+        "inline-flex h-9 w-full items-center gap-4 border-b border-[var(--border)]",
         className
       )}
       {...props}
@@ -40,7 +41,7 @@ function TabsTrigger({
     <TabsPrimitive.Trigger
       data-slot="tabs-trigger"
       className={cn(
-        "inline-flex h-7 flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-[7px] px-3 text-[12.5px] font-medium text-[var(--text3)] outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[var(--ring)] disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-[var(--bg3)] data-[state=active]:text-[var(--text)] data-[state=active]:shadow-[inset_0_1px_0_0_color-mix(in_srgb,var(--text)_8%,transparent)] [&_svg]:pointer-events-none [&_svg]:size-3.5 [&_svg]:shrink-0",
+        "relative inline-flex h-9 items-center justify-center gap-1.5 whitespace-nowrap border-b-2 border-transparent px-0.5 text-[13px] font-medium text-[var(--text3)] outline-none transition-colors duration-150 hover:text-[var(--text2)] focus-visible:ring-2 focus-visible:ring-[var(--brand-bg)] disabled:pointer-events-none disabled:opacity-50 data-[state=active]:border-[var(--brand)] data-[state=active]:text-[var(--text)] [&_svg]:pointer-events-none [&_svg]:size-3.5 [&_svg]:shrink-0",
         className
       )}
       {...props}

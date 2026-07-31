@@ -6,15 +6,22 @@
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-// Shared chart palette (CSS vars defined in theme).
+// Shared chart palette — fixed series order per sentinel-design.md §2.7:
+// brand → ai → green → amber → violet → blue.
+// (In Mono the first series is white — correct: the product's own data speaks
+// in the brand channel.)
 export const CHART_COLORS = [
   "var(--brand)",
-  "var(--blue)",
+  "var(--ai)",
   "var(--green)",
   "var(--amber)",
-  "var(--red)",
   "var(--violet)",
+  "var(--blue)",
 ] as const;
+
+/** Forecast/prediction overlays always draw in --ai-d, dashed 4/4 (§2.7). */
+export const FORECAST_STROKE = "var(--ai-d)";
+export const FORECAST_DASH = "4 4";
 
 export function toneForThreshold(value: number, good: number, warn: number, invert = false): string {
   if (invert) {
@@ -67,7 +74,7 @@ export function Gauge({
           />
         </svg>
         <div className="absolute inset-0 flex items-center justify-center">
-          <span className="text-3xl font-semibold tabular-nums text-[var(--text)]">{label ?? Math.round(value)}</span>
+          <span className="font-[family-name:var(--mono)] text-[28px] font-medium tabular-nums tracking-[-0.02em] text-[var(--text)]">{label ?? Math.round(value)}</span>
         </div>
       </div>
       {sublabel && (
@@ -111,8 +118,8 @@ export function Donut({ segments, centerLabel, centerSub, size = 160 }: {
         </svg>
         {centerLabel && (
           <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <span className="text-xl font-semibold tabular-nums text-[var(--text)]">{centerLabel}</span>
-            {centerSub && <span className="text-[11px] text-[var(--text3)]">{centerSub}</span>}
+            <span className="font-[family-name:var(--mono)] text-[19px] font-medium tabular-nums text-[var(--text)]">{centerLabel}</span>
+            {centerSub && <span className="font-[family-name:var(--mono)] text-[10px] uppercase tracking-[0.09em] text-[var(--text3)]">{centerSub}</span>}
           </div>
         )}
       </div>
@@ -121,8 +128,8 @@ export function Donut({ segments, centerLabel, centerSub, size = 160 }: {
           <div key={seg.label} className="flex items-center gap-2 text-[12px]">
             <span className="size-2.5 rounded-[3px]" style={{ background: seg.color }} />
             <span className="flex-1 truncate text-[var(--text2)]">{seg.label}</span>
-            <span className="tabular-nums font-medium text-[var(--text)]">{seg.value.toLocaleString()}</span>
-            <span className="w-10 text-right tabular-nums text-[var(--text3)]">{Math.round((seg.value / total) * 100)}%</span>
+            <span className="font-[family-name:var(--mono)] tabular-nums font-medium text-[var(--text)]">{seg.value.toLocaleString()}</span>
+            <span className="w-10 text-right font-[family-name:var(--mono)] tabular-nums text-[var(--text3)]">{Math.round((seg.value / total) * 100)}%</span>
           </div>
         ))}
       </div>
@@ -140,16 +147,16 @@ export function BarList({ items, valueFormat }: { items: BarListItem[]; valueFor
         <button type="button"
           key={item.label}
           onClick={item.onClick}
-          className={cn("group relative block w-full overflow-hidden rounded-[7px] text-left", item.onClick && "cursor-pointer")}
+          className={cn("group relative block w-full overflow-hidden rounded-[var(--radius)] text-left", item.onClick && "cursor-pointer")}
         >
           <div
-            className="absolute inset-y-0 left-0 rounded-[7px] opacity-25 transition-all"
+            className="absolute inset-y-0 left-0 rounded-[var(--radius)] opacity-25 transition-all"
             style={{ width: `${(item.value / max) * 100}%`, background: item.color ?? "var(--brand)" }}
           />
           <div className="relative flex items-center justify-between px-2.5 py-1.5">
             <span className="min-w-0 flex-1 truncate font-[family-name:var(--mono)] text-[12px] text-[var(--text)]">{item.label}</span>
             {item.sub && <span className="mr-3 shrink-0 text-[11px] text-[var(--text3)]">{item.sub}</span>}
-            <span className="shrink-0 tabular-nums text-[12px] font-semibold text-[var(--text)]">
+            <span className="shrink-0 font-[family-name:var(--mono)] tabular-nums text-[12px] font-medium text-[var(--text)]">
               {valueFormat ? valueFormat(item.value) : item.value.toLocaleString()}
             </span>
           </div>
@@ -209,7 +216,6 @@ export function AreaChart({ data, color = "var(--brand)", height = 220, label }:
 }) {
   const width = 720;
   const pad = 10;
-  const gradId = `area-grad-${label?.replace(/\W/g, "") ?? "x"}`;
   const max = Math.max(...data, 1);
   const min = Math.min(...data, 0);
   const range = max - min || 1;
@@ -218,17 +224,13 @@ export function AreaChart({ data, color = "var(--brand)", height = 220, label }:
   const line = pts.map(([x, y]) => `${x},${y}`).join(" ");
   const area = `${pad},${height - pad} ${line} ${pad + (data.length - 1) * step},${height - pad}`;
   return (
-    <svg width="100%" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" className="w-full">
-      <defs>
-        <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={color} stopOpacity={0.35} />
-          <stop offset="100%" stopColor={color} stopOpacity={0} />
-        </linearGradient>
-      </defs>
+    <svg width="100%" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" className="w-full" role={label ? "img" : undefined}>
+      {label && <title>{label}</title>}
       {[0.25, 0.5, 0.75].map((g) => (
         <line key={g} x1={0} x2={width} y1={height * g} y2={height * g} stroke="var(--border)" strokeWidth={1} strokeDasharray="3 4" vectorEffect="non-scaling-stroke" />
       ))}
-      <polygon points={area} fill={`url(#${gradId})`} />
+      {/* §3 — chart fills are a flat low-alpha version of the series colour. */}
+      <polygon points={area} fill={color} fillOpacity={0.16} />
       <polyline points={line} fill="none" stroke={color} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
     </svg>
   );
@@ -300,7 +302,7 @@ export function StackedBars({ groups, horizontal = false }: { groups: StackGroup
                 <div key={si} style={{ height: `${(seg.value / total) * 100}%`, background: seg.color }} />
               ))}
             </div>
-            <span className="w-full truncate text-center text-[10px] text-[var(--text3)]">{g.label}</span>
+            <span className="w-full truncate text-center font-[family-name:var(--mono)] text-[10px] text-[var(--text3)]">{g.label}</span>
           </div>
         );
       })}
@@ -349,15 +351,15 @@ export function Funnel({ stages }: { stages: FunnelStage[] }) {
         return (
           <div key={stage.label} className="flex items-center gap-3">
             <span className="w-44 shrink-0 truncate text-[12px] text-[var(--text2)]">{stage.label}</span>
-            <div className="relative h-7 flex-1 overflow-hidden rounded-[6px] bg-[var(--bg3)]">
+            <div className="relative h-7 flex-1 overflow-hidden rounded-[var(--radius)] bg-[var(--bg3)]">
               <div
-                className="flex h-full items-center justify-end rounded-[6px] pr-2 text-[11px] font-semibold text-[var(--brand-fg)]"
+                className="flex h-full items-center justify-end rounded-[var(--radius)] pr-2 font-[family-name:var(--mono)] text-[11px] font-medium tabular-nums text-[var(--bg)]"
                 style={{ width: `${pct}%`, background: CHART_COLORS[i % CHART_COLORS.length] }}
               >
                 {stage.value.toLocaleString()}
               </div>
             </div>
-            <span className="w-12 shrink-0 text-right tabular-nums text-[11px] text-[var(--text3)]">{conv}%</span>
+            <span className="w-12 shrink-0 text-right font-[family-name:var(--mono)] tabular-nums text-[11px] text-[var(--text3)]">{conv}%</span>
           </div>
         );
       })}
@@ -379,7 +381,7 @@ export function Banner({ tone = "amber", icon: Icon, title, action }: {
   action?: React.ReactNode;
 }) {
   return (
-    <div className={cn("flex items-center gap-3 rounded-[10px] border px-4 py-3 text-[13px]", BANNER_TONE[tone])}>
+    <div className={cn("flex items-center gap-3 rounded-[var(--radius-lg)] border px-4 py-3 text-[13px]", BANNER_TONE[tone])}>
       {Icon && <Icon className="size-4 shrink-0" />}
       <span className="flex-1">{title}</span>
       {action}
@@ -400,11 +402,11 @@ export function ChartCard({ title, legend, headline, headlineLabel, action, chil
   className?: string;
 }) {
   return (
-    <div className={cn("flex flex-col rounded-[12px] border border-[var(--border)] bg-[var(--bg1)]", className)}>
+    <div className={cn("flex flex-col rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)]", className)}>
       <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2 px-5 pt-4">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <h3 className="text-[13px] font-semibold text-[var(--text)]">{title}</h3>
+            <h3 className="text-[14px] font-semibold text-[var(--text)]">{title}</h3>
             {action}
           </div>
           {legend && legend.length > 0 && (
@@ -413,7 +415,7 @@ export function ChartCard({ title, legend, headline, headlineLabel, action, chil
                 <span key={l.label} className="flex items-center gap-1.5 text-[11px] text-[var(--text2)]">
                   <span className="size-2 rounded-full" style={{ background: l.color }} />
                   {l.label}
-                  {l.value && <strong className="tabular-nums font-semibold text-[var(--text)]">{l.value}</strong>}
+                  {l.value && <strong className="font-[family-name:var(--mono)] font-medium tabular-nums text-[var(--text)]">{l.value}</strong>}
                 </span>
               ))}
             </div>
@@ -421,16 +423,16 @@ export function ChartCard({ title, legend, headline, headlineLabel, action, chil
         </div>
         {headline && (
           <div className="text-right">
-            <div className="text-xl font-semibold tabular-nums leading-tight text-[var(--text)]">{headline}</div>
-            {headlineLabel && <div className="text-[11px] text-[var(--text3)]">{headlineLabel}</div>}
+            <div className="font-[family-name:var(--mono)] text-[26px] font-medium tabular-nums leading-tight tracking-[-0.02em] text-[var(--text)]">{headline}</div>
+            {headlineLabel && <div className="font-[family-name:var(--mono)] text-[10px] uppercase tracking-[0.09em] text-[var(--text3)]">{headlineLabel}</div>}
           </div>
         )}
       </div>
       <div className="flex-1 px-5 pb-2 pt-3">{children}</div>
       {timeAxis && (
-        <div className="flex items-center justify-between px-5 pb-3 text-[10px] uppercase tracking-wider text-[var(--text3)]">
+        <div className="flex items-center justify-between px-5 pb-3 font-[family-name:var(--mono)] text-[10px] uppercase tracking-[0.09em] text-[var(--text3)]">
           <span>{timeAxis}</span>
-          <span>Now</span>
+          <span>now</span>
         </div>
       )}
     </div>
@@ -453,15 +455,15 @@ const HERO_TREND: Record<string, string> = {
 };
 export function HeroBand({ metrics }: { metrics: HeroMetric[] }) {
   return (
-    <div className="grid grid-cols-2 divide-[var(--border)] overflow-hidden rounded-[12px] border border-[var(--border)] bg-[var(--bg1)] max-lg:gap-px max-lg:bg-[var(--border)] lg:grid-cols-none lg:auto-cols-fr lg:grid-flow-col lg:divide-x">
+    <div className="grid grid-cols-2 divide-[var(--border)] overflow-hidden rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] max-lg:gap-px max-lg:bg-[var(--border)] lg:grid-cols-none lg:auto-cols-fr lg:grid-flow-col lg:divide-x">
       {metrics.map((m) => (
         <div key={m.label} className="flex flex-col gap-1 bg-[var(--bg1)] px-5 py-4">
-          <span className="text-[11px] font-medium uppercase tracking-wider text-[var(--text3)]">{m.label}</span>
+          <span className="font-[family-name:var(--mono)] text-[10px] font-medium uppercase tracking-[0.09em] text-[var(--text3)]">{m.label}</span>
           <div className="flex items-end justify-between gap-2">
-            <span className="text-[22px] font-semibold tabular-nums leading-none text-[var(--text)]">{m.value}</span>
+            <span className="font-[family-name:var(--mono)] text-[26px] font-medium tabular-nums leading-none tracking-[-0.02em] text-[var(--text)]">{m.value}</span>
             {m.spark && <MiniSpark data={m.spark} color={m.sparkColor ?? "var(--brand)"} />}
           </div>
-          {m.delta && <span className={cn("text-[11px] font-medium", HERO_TREND[m.trend ?? "neutral"])}>{m.delta}</span>}
+          {m.delta && <span className={cn("font-[family-name:var(--mono)] text-[11px] font-medium tabular-nums", HERO_TREND[m.trend ?? "neutral"])}>{m.delta}</span>}
         </div>
       ))}
     </div>
@@ -488,7 +490,7 @@ function MiniSpark({ data, color }: { data: number[]; color: string }) {
 export function ZoneLabel({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex items-center gap-3 pt-1">
-      <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--text3)]">{children}</span>
+      <span className="font-[family-name:var(--mono)] text-[10px] font-medium uppercase tracking-[0.09em] text-[var(--text3)]">{children}</span>
       <span className="h-px flex-1 bg-[var(--border)]" />
     </div>
   );
@@ -503,10 +505,10 @@ export function StatTile({ label, value, delta, tone, footer }: {
   footer?: React.ReactNode;
 }) {
   return (
-    <div className="rounded-[12px] border border-[var(--border)] bg-[var(--bg1)] p-4">
-      <div className="text-[12px] font-medium uppercase tracking-wider text-[var(--text3)]">{label}</div>
-      <div className="mt-2 text-2xl font-semibold tabular-nums" style={{ color: tone ?? "var(--text)" }}>{value}</div>
-      {delta && <div className="mt-1 text-[12px] text-[var(--text2)]">{delta}</div>}
+    <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] p-4">
+      <div className="font-[family-name:var(--mono)] text-[10px] font-medium uppercase tracking-[0.09em] text-[var(--text3)]">{label}</div>
+      <div className="mt-2 font-[family-name:var(--mono)] text-[26px] font-medium tabular-nums tracking-[-0.02em]" style={{ color: tone ?? "var(--text)" }}>{value}</div>
+      {delta && <div className="mt-1 font-[family-name:var(--mono)] text-[11px] tabular-nums text-[var(--text2)]">{delta}</div>}
       {footer && <div className="mt-2">{footer}</div>}
     </div>
   );

@@ -21,10 +21,14 @@ export function ParticleField() {
     window.addEventListener('resize', handleResize);
 
     const particles: {x: number, y: number, r: number, vx: number, vy: number}[] = [];
+    // Canvas cannot read var(), so resolve the live token value (§2.1).
+    const tokenColor = getComputedStyle(document.documentElement)
+      .getPropertyValue('--text2')
+      .trim();
     const config = {
       count: window.innerWidth > 1000 ? 150 : 75,
       speed: 0.3,
-      color: 'rgba(255, 255, 255, 0.8)'
+      color: tokenColor || '#9aa3b8'
     };
 
     for(let i = 0; i < config.count; i++) {

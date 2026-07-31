@@ -12,7 +12,7 @@ export function MenuGroup({ label, children }: MenuGroupProps) {
     <section aria-labelledby={headerId}>
       <div
         id={headerId}
-        className="px-3 mt-2 mb-1 text-[12px] font-medium uppercase tracking-[0.05em] text-[#64748b]"
+        className="px-3 mt-2 mb-1 font-mono text-[10px] font-medium uppercase tracking-[0.09em] text-[var(--text3)]"
       >
         {label}
       </div>

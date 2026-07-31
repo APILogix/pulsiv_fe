@@ -3,7 +3,7 @@ import { useNavigate } from "react-router";
 import { useRequestEvents } from "@/hooks/useDummyData";
 import {
   PageHeader, KpiCard, FillPage, FilterBar, FilterSelect, SearchInput,
-  MethodBadge, StatusCodeBadge, LatencyBar, Timestamp, InfiniteTable, formatCompact,
+  MethodBadge, StatusCodeBadge, LatencyBar, EnvironmentBadge, AskAiButton, Timestamp, InfiniteTable, formatCompact,
 } from "@/shared/observe";
 import type { Column } from "@/shared/observe";
 import type { RequestEvent } from "@/types/events";
@@ -41,6 +41,8 @@ export default function RequestsPage() {
     { key: "status", header: "Status", width: "70px", cell: (r) => <StatusCodeBadge code={r.statusCode} /> },
     { key: "latency", header: "Latency", width: "150px", cell: (r) => <LatencyBar value={r.latency} /> },
     { key: "time", header: "Time", width: "120px", cell: (r) => <Timestamp value={r.timestamp} /> },
+    { key: "env", header: "Environment", width: "120px", cell: (r) => <EnvironmentBadge environment={r.metadata.environment} /> },
+    { key: "ai", header: "", width: "90px", cell: (r) => <AskAiButton question={`Investigate this request: ${r.method} ${r.url} returned ${r.statusCode} in ${r.latency}ms.`} /> },
   ];
 
   return (

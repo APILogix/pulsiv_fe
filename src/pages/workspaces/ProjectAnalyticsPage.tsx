@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   Activity,
   AlertTriangle,
@@ -29,12 +29,14 @@ import {
 } from "@/modules/projects/api/types";
 import { useCurrentProject } from "./ProjectShellPage";
 import {
+  ChartTooltip,
   Meter,
   Notice,
   Panel,
   SegmentedControl,
   StatCard,
   Toolbar,
+  type ChartTooltipState,
   type SegmentOption,
 } from "@/shared/ui/pulse";
 import { FilterSelect, Table, Td, Tr, formatBytes, formatCompact, formatNumber } from "@/shared/observe";
@@ -98,28 +100,33 @@ const COMPARISON_HEADERS = ["Series", "Events", "Errors", "Requests", "Error rat
 function VolumeChart({ points }: { points: UsageTimeSeriesPoint[] }) {
   const width = 1000;
   const height = 220;
+  const svgRef = useRef<SVGSVGElement>(null);
+  const [hoverIndex, setHoverIndex] = useState<number | null>(null);
 
-  const paths = useMemo(() => {
-    if (points.length < 2) return [];
+  const chart = useMemo(() => {
+    if (points.length < 2) return null;
     const max = Math.max(
       1,
       ...points.flatMap((point) => CHART_SERIES.map((series) => Number(point[series.key] ?? 0))),
     );
     const step = width / (points.length - 1);
-    return CHART_SERIES.map((series) => {
-      const coords = points.map((point, index) => {
-        const value = Number(point[series.key] ?? 0);
-        return `${(index * step).toFixed(2)},${(height - (value / max) * height).toFixed(2)}`;
-      });
-      return {
-        ...series,
-        line: coords.join(" "),
-        area: `0,${height} ${coords.join(" ")} ${width},${height}`,
-      };
+    const xAt = (index: number) => index * step;
+    const yAt = (value: number) => height - (value / max) * height;
+    const series = CHART_SERIES.map((item) => {
+      const coords = points.map((point, index) => `${xAt(index).toFixed(2)},${yAt(Number(point[item.key] ?? 0)).toFixed(2)}`);
+      return { ...item, line: coords.join(" "), area: `0,${height} ${coords.join(" ")} ${width},${height}` };
     });
+    return { series, xAt, yAt };
   }, [points]);
 
-  if (points.length < 2) {
+  const handleMove = (event: React.PointerEvent<SVGSVGElement>) => {
+    if (!svgRef.current) return;
+    const rect = svgRef.current.getBoundingClientRect();
+    const ratio = rect.width === 0 ? 0 : (event.clientX - rect.left) / rect.width;
+    setHoverIndex(Math.round(Math.max(0, Math.min(1, ratio)) * (points.length - 1)));
+  };
+
+  if (!chart || points.length < 2) {
     return (
       <p className="py-12 text-center text-[12.5px] text-[var(--text3)]">
         Not enough data points in this range to draw a trend.
@@ -129,6 +136,21 @@ function VolumeChart({ points }: { points: UsageTimeSeriesPoint[] }) {
 
   const first = points[0]?.bucket;
   const last = points[points.length - 1]?.bucket;
+  const hoveredPoint = hoverIndex !== null ? points[hoverIndex] : null;
+
+  const tooltip: ChartTooltipState | null =
+    hoveredPoint && hoverIndex !== null
+      ? {
+          x: `${(chart.xAt(hoverIndex) / width) * 100}%`,
+          y: 0,
+          title: new Date(hoveredPoint.bucket).toLocaleString(),
+          rows: CHART_SERIES.map((series) => ({
+            label: series.label,
+            value: formatCompact(Number(hoveredPoint[series.key] ?? 0)),
+            color: series.color,
+          })),
+        }
+      : null;
 
   return (
     <div className="flex flex-col gap-3">
@@ -140,40 +162,73 @@ function VolumeChart({ points }: { points: UsageTimeSeriesPoint[] }) {
           </span>
         ))}
       </div>
-      <svg
-        viewBox={`0 0 ${width} ${height}`}
-        preserveAspectRatio="none"
-        className="h-[220px] w-full"
-        role="img"
-        aria-label="Event volume over the selected range"
-      >
-        {[0.25, 0.5, 0.75].map((ratio) => (
-          <line
-            key={ratio}
-            x1={0}
-            x2={width}
-            y1={height * ratio}
-            y2={height * ratio}
-            stroke="var(--border)"
-            strokeWidth="1"
-            vectorEffect="non-scaling-stroke"
-          />
-        ))}
-        {paths.map((series) => (
-          <g key={series.key}>
-            <polygon points={series.area} fill={series.color} opacity="0.08" />
-            <polyline
-              points={series.line}
-              fill="none"
-              stroke={series.color}
-              strokeWidth="1.75"
-              strokeLinecap="round"
-              strokeLinejoin="round"
+      <div className="relative">
+        <svg
+          ref={svgRef}
+          viewBox={`0 0 ${width} ${height}`}
+          preserveAspectRatio="none"
+          className="h-[220px] w-full cursor-crosshair"
+          role="img"
+          aria-label="Event volume over the selected range"
+          onPointerMove={handleMove}
+          onPointerLeave={() => setHoverIndex(null)}
+        >
+          {[0.25, 0.5, 0.75].map((ratio) => (
+            <line
+              key={ratio}
+              x1={0}
+              x2={width}
+              y1={height * ratio}
+              y2={height * ratio}
+              stroke="var(--border)"
+              strokeWidth="1"
               vectorEffect="non-scaling-stroke"
             />
-          </g>
-        ))}
-      </svg>
+          ))}
+          {chart.series.map((series) => (
+            <g key={series.key}>
+              <polygon points={series.area} fill={series.color} opacity="0.08" />
+              <polyline
+                points={series.line}
+                fill="none"
+                stroke={series.color}
+                strokeWidth="1.75"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                vectorEffect="non-scaling-stroke"
+              />
+            </g>
+          ))}
+          {hoverIndex !== null && (
+            <>
+              <line
+                x1={chart.xAt(hoverIndex)}
+                x2={chart.xAt(hoverIndex)}
+                y1={0}
+                y2={height}
+                stroke="var(--border2)"
+                strokeWidth="1"
+                strokeDasharray="3 3"
+                vectorEffect="non-scaling-stroke"
+              />
+              {CHART_SERIES.map((series) => (
+                <circle
+                  key={series.key}
+                  cx={chart.xAt(hoverIndex)}
+                  cy={chart.yAt(Number(points[hoverIndex][series.key] ?? 0))}
+                  r="3.5"
+                  fill={series.color}
+                  stroke="var(--bg1)"
+                  strokeWidth="1.5"
+                  vectorEffect="non-scaling-stroke"
+                  className="animate-in zoom-in-50 duration-150"
+                />
+              ))}
+            </>
+          )}
+        </svg>
+        <ChartTooltip state={tooltip} />
+      </div>
       <div className="flex justify-between font-[family-name:var(--mono)] text-[10.5px] text-[var(--text3)]">
         <span>{first ? new Date(first).toLocaleString() : ""}</span>
         <span>{last ? new Date(last).toLocaleString() : ""}</span>
@@ -185,6 +240,9 @@ function VolumeChart({ points }: { points: UsageTimeSeriesPoint[] }) {
 // ── heatmap grid ─────────────────────────────────────────────
 
 function HeatmapGrid({ cells }: { cells: Array<{ x: string; y: string; value: number }> }) {
+  const [hovered, setHovered] = useState<{ x: string; y: string; value: number; left: number; top: number } | null>(null);
+  const gridRef = useRef<HTMLDivElement>(null);
+
   const rows = useMemo(() => {
     const yKeys = Array.from(new Set(cells.map((cell) => cell.y)));
     const xKeys = Array.from(new Set(cells.map((cell) => cell.x)));
@@ -197,8 +255,17 @@ function HeatmapGrid({ cells }: { cells: Array<{ x: string; y: string; value: nu
     return <p className="py-10 text-center text-[12.5px] text-[var(--text3)]">No activity recorded in this range.</p>;
   }
 
+  const tooltip: ChartTooltipState | null = hovered
+    ? {
+        x: hovered.left,
+        y: hovered.top,
+        title: `${hovered.x} · ${hovered.y}`,
+        rows: [{ label: "Events", value: formatNumber(hovered.value), color: "var(--brand)" }],
+      }
+    : null;
+
   return (
-    <div className="sidebar-scroll overflow-x-auto">
+    <div ref={gridRef} className="sidebar-scroll relative overflow-x-auto">
       <table className="border-separate border-spacing-[2px]">
         <tbody>
           {rows.yKeys.map((yKey) => (
@@ -209,11 +276,27 @@ function HeatmapGrid({ cells }: { cells: Array<{ x: string; y: string; value: nu
               {rows.xKeys.map((xKey) => {
                 const value = rows.lookup.get(`${xKey}|${yKey}`) ?? 0;
                 const intensity = value === 0 ? 0 : 0.15 + (value / rows.max) * 0.85;
+                const isHovered = hovered?.x === xKey && hovered?.y === yKey;
                 return (
                   <td key={xKey}>
                     <div
-                      title={`${xKey} · ${yKey} — ${formatNumber(value)} events`}
-                      className="size-4 rounded-[3px] ring-1 ring-inset ring-[var(--border)]"
+                      onPointerEnter={(event) => {
+                        const gridRect = gridRef.current?.getBoundingClientRect();
+                        const cellRect = event.currentTarget.getBoundingClientRect();
+                        if (!gridRect) return;
+                        setHovered({
+                          x: xKey,
+                          y: yKey,
+                          value,
+                          left: cellRect.left - gridRect.left + cellRect.width / 2,
+                          top: cellRect.top - gridRect.top,
+                        });
+                      }}
+                      onPointerLeave={() => setHovered(null)}
+                      className={cn(
+                        "size-4 cursor-pointer rounded-[3px] ring-1 ring-inset ring-[var(--border)] transition-transform duration-150",
+                        isHovered && "scale-125 ring-[var(--brand)]",
+                      )}
                       style={{
                         background:
                           value === 0
@@ -228,6 +311,7 @@ function HeatmapGrid({ cells }: { cells: Array<{ x: string; y: string; value: nu
           ))}
         </tbody>
       </table>
+      <ChartTooltip state={tooltip} />
     </div>
   );
 }
@@ -445,13 +529,17 @@ export default function ProjectAnalyticsPage() {
           ) : (
             <ol className="flex flex-col gap-2.5">
               {(topQuery.data ?? []).map((item, index) => (
-                <li key={`${item.key}-${index}`} className="flex flex-col gap-1">
+                <li
+                  key={`${item.key}-${index}`}
+                  className="group flex flex-col gap-1 rounded-[8px] px-1 py-0.5 transition-colors hover:bg-[var(--bg2)]"
+                  title={item.key}
+                >
                   <div className="flex items-baseline justify-between gap-3">
                     <span className="flex min-w-0 items-baseline gap-2">
                       <span className="w-4 shrink-0 font-[family-name:var(--mono)] text-[10.5px] text-[var(--text3)]">
                         {index + 1}
                       </span>
-                      <span className="truncate text-[12.5px] text-[var(--text2)]" title={item.key}>
+                      <span className="truncate text-[12.5px] text-[var(--text2)] transition-colors group-hover:text-[var(--text)]">
                         {item.key || "(unknown)"}
                       </span>
                     </span>
@@ -466,7 +554,7 @@ export default function ProjectAnalyticsPage() {
                   </div>
                   <div className="h-1.5 overflow-hidden rounded-full bg-[var(--bg3)]">
                     <div
-                      className="h-full rounded-full bg-[var(--brand)]"
+                      className="h-full rounded-full bg-[var(--brand)] transition-[filter] duration-200 group-hover:brightness-125 group-hover:shadow-[0_0_8px_var(--brand-glow)]"
                       style={{ width: `${(item.totalEvents / topMax) * 100}%` }}
                     />
                   </div>

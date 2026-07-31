@@ -60,7 +60,7 @@ export function RouteConditionBuilder({ value, onChange }: RouteConditionBuilder
     <div className="space-y-6">
       {/* Event Types */}
       <div className="space-y-3">
-        <Label>Event Types</Label>
+        <Label>Event types</Label>
         <div className="flex flex-wrap gap-2">
           {EVENT_TYPES.map(type => (
             <Badge
@@ -77,14 +77,16 @@ export function RouteConditionBuilder({ value, onChange }: RouteConditionBuilder
 
       {/* Severities */}
       <div className="space-y-3">
-        <Label>Severity Levels</Label>
+        <Label>Severity levels</Label>
         <div className="flex flex-wrap gap-3">
           {SEVERITIES.map(sev => (
             <button
               key={sev}
               type="button"
-              className={`cursor-pointer rounded-full transition-all ${
-                value.severities.includes(sev) ? "ring-2 ring-primary ring-offset-2" : "opacity-60 grayscale"
+              className={`cursor-pointer rounded-full transition-opacity duration-150 ${
+                value.severities.includes(sev)
+                  ? "ring-2 ring-[var(--brand)] ring-offset-2 ring-offset-[var(--bg1)]"
+                  : "opacity-55"
               }`}
               aria-pressed={value.severities.includes(sev)}
               aria-label={`Toggle ${sev} severity`}
@@ -98,10 +100,10 @@ export function RouteConditionBuilder({ value, onChange }: RouteConditionBuilder
 
       {/* Source Services */}
       <div className="space-y-3">
-        <Label>Source Services</Label>
+        <Label>Source services</Label>
         <div className="flex flex-col gap-2">
           <Input 
-            placeholder="Type service name and press Enter..." 
+            placeholder="Type a service name and press Enter" 
             value={serviceInput}
             onChange={(e) => setServiceInput(e.target.value)}
             onKeyDown={addService}
@@ -109,13 +111,14 @@ export function RouteConditionBuilder({ value, onChange }: RouteConditionBuilder
           {value.source_services.length > 0 && (
             <div className="flex flex-wrap gap-2 pt-1">
               {value.source_services.map(svc => (
-                <Badge key={svc} variant="secondary" className="pl-2 pr-1 py-1 gap-1">
+                <Badge key={svc} variant="secondary" className="pl-2 pr-1 py-1 gap-1 normal-case tracking-normal">
                   {svc}
                   <Button
                     variant="ghost"
-                    size="icon"
-                    className="h-4 w-4 rounded-full hover:bg-muted"
+                    size="icon-xs"
+                    className="h-4 w-4 rounded-full"
                     onClick={() => removeService(svc)}
+                    aria-label={`Remove ${svc}`}
                   >
                     <X className="h-3 w-3" />
                   </Button>

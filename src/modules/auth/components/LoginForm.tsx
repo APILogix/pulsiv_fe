@@ -29,7 +29,7 @@ function StepIndicator({ step }: { step: 'email' | 'password' }) {
             {index > 0 && <span className="h-px w-5 bg-[var(--border)]" aria-hidden="true" />}
             <span
               className={cn(
-                'inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.1em] ring-1 ring-inset transition-colors',
+                'inline-flex items-center gap-1.5 rounded-full px-2 py-1 font-[family-name:var(--mono)] text-[10px] font-medium uppercase tracking-[0.08em] ring-1 ring-inset transition-colors duration-150',
                 active
                   ? 'bg-[var(--brand-bg)] text-[var(--brand)] ring-[var(--brand)]/30'
                   : done
@@ -83,7 +83,7 @@ export function LoginForm({ login, isPending }: LoginFormProps) {
               autoFocus
               {...register('email')}
               disabled={isPending}
-              className={cn(fieldInputClass, 'h-11 font-[family-name:var(--mono)] text-[13px]')}
+              className={cn(fieldInputClass, 'h-10 font-[family-name:var(--mono)] text-[13px]')}
             />
           </AuthField>
 
@@ -97,10 +97,10 @@ export function LoginForm({ login, isPending }: LoginFormProps) {
         </>
       ) : (
         <>
-          <div className="flex items-center justify-between gap-3 rounded-[9px] border border-[var(--border)] bg-[var(--bg2)] px-3 py-2.5">
+          <div className="flex items-center justify-between gap-3 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg2)] px-3 py-2.5">
             <div className="min-w-0">
-              <p className="text-[10.5px] font-semibold uppercase tracking-[0.14em] text-[var(--text3)]">Signing in as</p>
-              <span className="mt-0.5 block min-w-0 truncate font-[family-name:var(--mono)] text-[12.5px] text-[var(--text)]">
+              <p className="font-[family-name:var(--mono)] text-[10px] font-medium uppercase tracking-[0.09em] text-[var(--text3)]">Signing in as</p>
+              <span className="mt-0.5 block min-w-0 truncate font-[family-name:var(--mono)] text-[12px] text-[var(--text)]">
                 {getValues('email')}
               </span>
             </div>
@@ -108,7 +108,7 @@ export function LoginForm({ login, isPending }: LoginFormProps) {
               type="button"
               onClick={() => setStep('email')}
               disabled={isPending}
-              className="shrink-0 rounded-sm text-[12.5px] font-medium text-[var(--brand)] transition-colors hover:text-[var(--brand-d)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] disabled:opacity-50"
+              className="shrink-0 rounded-sm text-[12px] font-medium text-[var(--brand)] transition-colors hover:text-[var(--brand-d)] focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-[var(--brand-bg)] disabled:opacity-50"
             >
               Change
             </button>
@@ -121,7 +121,7 @@ export function LoginForm({ login, isPending }: LoginFormProps) {
             trailing={
               <Link
                 to="/auth/forgot-password"
-                className="rounded-sm text-[12px] font-medium text-[var(--text3)] transition-colors hover:text-[var(--text2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
+                className="rounded-sm text-[12px] font-medium text-[var(--text3)] transition-colors hover:text-[var(--text2)] focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-[var(--brand-bg)]"
               >
                 Forgot password?
               </Link>

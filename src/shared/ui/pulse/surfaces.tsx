@@ -2,6 +2,7 @@ import { Link } from "react-router";
 import { Check, ChevronRight } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Switch } from "@/components/ui/switch";
 
 // ── module-level constants (rules.md §1.2 — no inline objects in JSX) ──
 
@@ -471,31 +472,13 @@ export function Toggle({
   id?: string;
 }) {
   return (
-    <button
-      type="button"
+    <Switch
       id={id}
-      role="switch"
-      aria-checked={checked}
+      checked={checked}
+      onCheckedChange={onChange}
       aria-label={label}
       disabled={disabled}
-      onClick={() => onChange(!checked)}
-      className={cn(
-        "relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors duration-150 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-[var(--brand-bg)] disabled:cursor-not-allowed disabled:opacity-50",
-        checked ? "bg-[var(--brand)] shadow-[0_0_10px_var(--brand-glow)]" : "bg-[var(--bg3)]"
-      )}
-    >
-      {/* §7 — the knob consumes var(--brand-fg), so Mono gets a dark knob on a
-          white track and Indigo a white knob on indigo. */}
-      <span
-        aria-hidden="true"
-        className={cn(
-          "inline-block size-4 rounded-full transition-transform duration-150",
-          checked
-            ? "translate-x-[18px] bg-[var(--brand-fg)]"
-            : "translate-x-[2px] bg-[var(--text3)]"
-        )}
-      />
-    </button>
+    />
   );
 }
 

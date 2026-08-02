@@ -13,20 +13,26 @@ import { useEffect } from "react";
 import { Navigate, useNavigate, useParams } from "react-router";
 import { useProject } from "@/modules/projects/hooks/useProjects";
 import { useOrgStore } from "@/modules/organizations/store/org.store";
+import { useOrganizations } from "@/modules/organizations/hooks/useOrganizations";
 import { projectPath } from "@/modules/projects/navigation/project-routes";
 import { DetailSkeleton } from "@/shared/observe";
 
 export function ProjectUuidRedirect() {
   const { projectId = "", "*": rest = "" } = useParams<{ projectId: string; "*": string }>();
-  const { data: project, isLoading, error } = useProject(projectId);
+  const { organizations, isLoading: orgsLoading } = useOrganizations();
+  const { activeOrgId, activeOrgSlug } = useOrgStore();
+  const { data: project, isLoading: projectLoading, error } = useProject(projectId);
   const navigate = useNavigate();
-  const activeOrgSlug = useOrgStore((state) => state.activeOrgSlug);
+
+  const resolvedOrgSlug = activeOrgSlug || (organizations.length > 0 ? organizations[0].slug : null);
 
   useEffect(() => {
-    if (!project || !activeOrgSlug) return;
+    if (!project || !resolvedOrgSlug) return;
     const segment = rest || "overview";
-    navigate(projectPath(activeOrgSlug, project.publicId, segment), { replace: true });
-  }, [project, activeOrgSlug, rest, navigate]);
+    navigate(projectPath(resolvedOrgSlug, project.publicId, segment), { replace: true });
+  }, [project, resolvedOrgSlug, rest, navigate]);
+
+  const isLoading = orgsLoading || projectLoading || (!activeOrgId && organizations.length === 0);
 
   if (isLoading) {
     return (
@@ -38,7 +44,7 @@ export function ProjectUuidRedirect() {
     );
   }
 
-  if (error || !project || !activeOrgSlug) {
+  if (error || !project || !resolvedOrgSlug) {
     // If we can't resolve, fall back to the projects list.
     return <Navigate to="/projects" replace />;
   }

@@ -7,18 +7,26 @@ import { cn } from "@/lib/utils"
  * --bg1 surface · 10px radius (--radius-lg) · 1px solid --border · 16–24px
  * padding. A card carries a hairline border OR a tiny shadow, never both
  * heavily (§6). Borders are what hold Mono together — never remove them.
+ *
+ * `interactive` opts a card into hover elevation (Phase 8). It is opt-in rather
+ * than default because most cards in this app are read-only panels, and a panel
+ * that lifts under the cursor promises a click that isn't there.
  */
 function Card({
   className,
   size = "default",
+  interactive = false,
   ...props
-}: React.ComponentProps<"div"> & { size?: "default" | "sm" }) {
+}: React.ComponentProps<"div"> & { size?: "default" | "sm"; interactive?: boolean }) {
   return (
     <div
       data-slot="card"
       data-size={size}
+      data-interactive={interactive || undefined}
       className={cn(
         "group/card flex flex-col gap-(--card-spacing) overflow-hidden rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] py-(--card-spacing) text-[13px] text-[var(--text)] [--card-spacing:--spacing(4)] has-data-[slot=card-footer]:pb-0 has-[>img:first-child]:pt-0 data-[size=sm]:[--card-spacing:--spacing(3)] data-[size=sm]:has-data-[slot=card-footer]:pb-0",
+        interactive &&
+          "transition-[transform,border-color,box-shadow] duration-150 ease-out hover:-translate-y-0.5 hover:border-[var(--border2)] hover:shadow-[0_10px_30px_-12px_color-mix(in_srgb,var(--brand)_28%,transparent)] motion-reduce:transition-none motion-reduce:hover:translate-y-0",
         className
       )}
       {...props}

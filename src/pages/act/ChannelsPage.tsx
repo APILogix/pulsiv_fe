@@ -4,7 +4,6 @@
  * rule actions, escalation steps, and routing rules.
  */
 import { useState } from "react";
-import { useNavigate } from "react-router";
 import { toast } from "sonner";
 import { Plus, Eye, MoreHorizontal, Trash2 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";

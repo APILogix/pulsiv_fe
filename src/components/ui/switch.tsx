@@ -1,58 +1,40 @@
-import React from "react";
+import * as React from "react"
+import { Switch as SwitchPrimitive } from "radix-ui"
 
-/**
- * Toggle — sentinel-design.md §7.
- * Pill track: --bg3 off → var(--brand) on. The knob consumes var(--brand-fg)
- * so Mono gets a dark knob on a white track. Engaged glow: 0 0 10px
- * var(--brand-glow).
- *
- * Killswitch toggles break the brand rule on purpose (`tone="danger"`): they
- * are operational truth, so on = --red with a red glow, in both themes.
- */
-export interface SwitchProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'onChange'> {
-  checked?: boolean;
-  onCheckedChange?: (checked: boolean) => void;
-  /** `danger` marks killswitch/operational toggles (§7). */
-  tone?: 'brand' | 'danger';
+import { cn } from "@/lib/utils"
+
+function Switch({
+  className,
+  size = "default",
+  ...props
+}: React.ComponentProps<typeof SwitchPrimitive.Root> & {
+  size?: "sm" | "default"
+}) {
+  return (
+    <SwitchPrimitive.Root
+      data-slot="switch"
+      data-size={size}
+      className={cn(
+        "peer group/switch relative inline-flex shrink-0 cursor-pointer items-center rounded-full border border-transparent outline-none transition-[background-color,border-color,box-shadow] duration-200",
+        "focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
+        "bg-[#1b1b1b] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)] data-[state=checked]:border-[#d4d4d4] data-[state=checked]:bg-[#ededed]",
+        "data-[size=default]:h-7 data-[size=default]:w-12 data-[size=sm]:h-5 data-[size=sm]:w-9",
+        className
+      )}
+      {...props}
+    >
+      <SwitchPrimitive.Thumb
+        data-slot="switch-thumb"
+        className={cn(
+          "pointer-events-none block rounded-full ring-0 transition-transform duration-200 ease-[cubic-bezier(0.34,1.56,0.64,1)]",
+          "bg-[#f5f5f5] shadow-[0_1px_3px_rgba(0,0,0,0.45)] data-[state=checked]:bg-[#0a0a0a] data-[state=checked]:shadow-[0_1px_3px_rgba(255,255,255,0.18)]",
+          "group-data-[size=default]/switch:size-6 group-data-[size=sm]/switch:size-4",
+          "group-data-[size=default]/switch:data-[state=checked]:translate-x-[22px] group-data-[size=sm]/switch:data-[state=checked]:translate-x-4",
+          "group-data-[size=default]/switch:data-[state=unchecked]:translate-x-0.5 group-data-[size=sm]/switch:data-[state=unchecked]:translate-x-0.5"
+        )}
+      />
+    </SwitchPrimitive.Root>
+  )
 }
 
-export const Switch = React.forwardRef<HTMLInputElement, SwitchProps>(
-  ({ className, checked, onCheckedChange, tone = 'brand', disabled, ...props }, ref) => {
-    const on = tone === 'danger'
-      ? { track: 'var(--red)', glow: 'rgba(239,68,68,0.45)', knob: '#ffffff' }
-      : { track: 'var(--brand)', glow: 'var(--brand-glow)', knob: 'var(--brand-fg)' };
-
-    return (
-      <label
-        className={`relative inline-flex items-center ${disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'} ${className || ''}`}
-      >
-        <input
-          type="checkbox"
-          className="peer sr-only"
-          checked={checked}
-          disabled={disabled}
-          onChange={(e) => onCheckedChange?.(e.target.checked)}
-          ref={ref}
-          {...props}
-        />
-        <span
-          aria-hidden="true"
-          className="relative block h-5 w-9 rounded-full transition-colors duration-150 ease-out peer-focus-visible:ring-3 peer-focus-visible:ring-[var(--brand-bg)]"
-          style={{
-            background: checked ? on.track : 'var(--bg3)',
-            boxShadow: checked ? `0 0 10px ${on.glow}` : 'none',
-          }}
-        >
-          <span
-            className="absolute top-[2px] left-[2px] block size-4 rounded-full transition-transform duration-150 ease-out"
-            style={{
-              background: checked ? on.knob : 'var(--text3)',
-              transform: checked ? 'translateX(16px)' : 'translateX(0)',
-            }}
-          />
-        </span>
-      </label>
-    );
-  }
-);
-Switch.displayName = "Switch";
+export { Switch }

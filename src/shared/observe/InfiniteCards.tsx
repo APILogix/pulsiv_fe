@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { AnimatedEmptyState, type EmptyIllustration } from "@/shared/motion";
 import { CardSkeleton } from "./Skeletons";
 
 interface InfiniteCardsProps<T> {
@@ -13,6 +14,11 @@ interface InfiniteCardsProps<T> {
   gridClassName?: string;
   className?: string;
   loading?: boolean;
+  /** Empty-state copy + illustration + CTA (Phase 5). */
+  emptyTitle?: string;
+  emptyMessage?: string;
+  emptyIllustration?: EmptyIllustration;
+  emptyAction?: React.ReactNode;
 }
 
 // Infinite-scrolling card grid (initial 20, auto-fetch next page on scroll).
@@ -25,6 +31,10 @@ export function InfiniteCards<T>({
   gridClassName = "grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3",
   className,
   loading = false,
+  emptyTitle = "Nothing here yet",
+  emptyMessage,
+  emptyIllustration = "folder",
+  emptyAction,
 }: InfiniteCardsProps<T>) {
   const itemsRef = useRef(items);
   useEffect(() => {
@@ -73,6 +83,15 @@ export function InfiniteCards<T>({
             <CardSkeleton key={i} />
           ))}
         </div>
+      ) : rows.length === 0 ? (
+        /* Previously an empty grid rendered nothing but "0 total · end of
+           results" — a dead screen with no way forward (Phase 5). */
+        <AnimatedEmptyState
+          illustration={emptyIllustration}
+          title={emptyTitle}
+          description={emptyMessage}
+          action={emptyAction}
+        />
       ) : (
         <>
           <div className={gridClassName}>

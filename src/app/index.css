@@ -416,7 +416,8 @@
   -ms-overflow-style: none;
 }
 
-/* Tooltip for rail icons */
+/* Tooltip for rail icons — appears only when the flyout is collapsed (§6).
+   Slides 4px as it fades so it reads as attached to the icon, not stamped. */
 .rail-item::after {
   content: attr(data-title);
   position: absolute;
@@ -429,22 +430,75 @@
   font-weight: 500;
   white-space: nowrap;
   opacity: 0;
+  transform: translateX(-4px);
   pointer-events: none;
-  transition: opacity 0.2s;
+  transition: opacity 150ms ease-out, transform 150ms cubic-bezier(0.22, 1, 0.36, 1);
   z-index: 110;
+  box-shadow: var(--shadow-toast);
 }
-.rail-item:hover::after {
+.rail-item:hover::after,
+.rail-item:focus-visible::after {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* Flyout accordion.
+   The original clamp was `max-height: 400px`, which silently truncated long
+   module lists — the Observability group alone has 21 children (~800px), so
+   roughly half its rows were unreachable.
+
+   Raising the clamp would only move the cliff, so the height is derived from the
+   content instead: the row wraps a single grid item and animates
+   `grid-template-rows` from `0fr` to `1fr`. No group can outgrow it.
+
+   `grid-template-rows` interpolation needs Chrome 107+ / Firefox 66+ /
+   Safari 16+. Where it isn't supported the panel still opens and closes
+   correctly — only the transition is lost — because `1fr` applies immediately.
+   That degrades to "instant", never to "clipped". */
+.nav-group-children {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition:
+    grid-template-rows 240ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 160ms ease-out;
+}
+/* The single grid child does the clipping. `min-height: 0` is required or the
+   row refuses to collapse below its content height. */
+.nav-group-children > .nav-group-rows {
+  min-height: 0;
+  overflow: hidden;
+}
+.nav-group-children.open {
+  grid-template-rows: 1fr;
   opacity: 1;
 }
 
-/* Flyout Accordion logic */
-.nav-group-children {
-  max-height: 0;
-  overflow: hidden;
-  transition: max-height 0.3s ease;
+/* Sidebar nav row — active indicator scales in from the rail edge (§6).
+   Horizontal position is left to the call site (a Tailwind `left-*` utility)
+   because unlayered CSS would otherwise beat the utility. */
+.nav-row-indicator {
+  position: absolute;
+  top: 50%;
+  height: 14px;
+  width: 2px;
+  translate: 0 -50%;
+  border-radius: 2px;
+  background: var(--brand);
+  transform-origin: center;
+  animation: nav-indicator-in 200ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
-.nav-group-children.open {
-  max-height: 400px;
+@keyframes nav-indicator-in {
+  from { opacity: 0; scale: 1 0.3; }
+  to   { opacity: 1; scale: 1 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rail-item::after { transition: opacity 100ms linear; transform: none; }
+  .rail-item:hover::after,
+  .rail-item:focus-visible::after { transform: none; }
+  .nav-group-children { transition: none; }
+  .nav-row-indicator { animation: none; }
 }
 
 /* Dim main content when flyout is unpinned and open */
@@ -570,6 +624,25 @@ body.flyout-overlay-active #main-content {
 }
 .loading-skeleton { animation: loading-skeleton-shift 1.6s ease-in-out infinite; }
 
+/* ── Phase 3 — page-shaped skeletons ──────────────────────────────────────
+   `.skeleton-block` carries the entrance rise AND the shimmer in a single
+   `animation` shorthand, so one `animation-delay: <d>, <d>` staggers both at
+   once (see shared/skeletons/primitives.tsx). Only opacity/transform and
+   background-color animate, so a 200-block skeleton still costs no layout. */
+@keyframes skeleton-rise {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: none; }
+}
+.skeleton-rise {
+  animation: skeleton-rise 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.skeleton-block {
+  background-color: var(--bg2);
+  animation:
+    skeleton-rise 260ms cubic-bezier(0.22, 1, 0.36, 1) both,
+    loading-skeleton-shift 1.6s ease-in-out infinite;
+}
+
 .metric-loader-grid { stroke: var(--border); stroke-width: 1; }
 .metric-loader-trace {
   fill: none;
@@ -595,10 +668,46 @@ body.flyout-overlay-active #main-content {
 @media (prefers-reduced-motion: reduce) {
   .app-loader-scan,
   .loading-skeleton,
+  .skeleton-block,
+  .skeleton-rise,
   .metric-loader-trace,
   .metric-loader-node,
   .metric-loader-bar,
   .auth-transition-progress {
     animation: none !important;
   }
+  /* `skeleton-rise` uses fill-mode `both`; without the animation the element
+     must not stay at its from-state. */
+  .skeleton-block,
+  .skeleton-rise {
+    opacity: 1 !important;
+    transform: none !important;
+  }
 }
+
+/* ══════════════════════════════════════════════════════════════
+   Phase 9 — scroll experience.
+   Smooth scrolling and anchor offsets, opted out for reduced motion.
+   No JS scroll listeners are involved; the app's scroll containers keep
+   their own passive rAF-throttled handlers (shared/motion/scroll.tsx).
+   ══════════════════════════════════════════════════════════════ */
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+/* Applied to every long scroll region in the shell. `overscroll-behavior`
+   stops a nested table from scroll-chaining the whole page, which is the most
+   common source of "the page jumped" reports. */
+.scroll-region {
+  overscroll-behavior: contain;
+  scroll-padding-top: 1rem;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Reserve the scrollbar gutter so toggling overflow can't shift layout (CLS). */
+.scroll-stable {
+  scrollbar-gutter: stable;
+}
+

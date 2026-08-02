@@ -16,6 +16,7 @@ import {
 import { useOrganizations } from '@/modules/organizations/hooks/useOrganizations';
 import { useOrgStore } from '@/modules/organizations/store/org.store';
 import { useSidebarStore } from '@/stores/sidebarStore';
+import { prefetchRoute } from '@/app/router/route-prefetch';
 
 import { PrimaryRail } from './PrimaryRail';
 
@@ -188,9 +189,18 @@ export function AppDualSidebar() {
       <div
         ref={flyoutRef}
         className={clsx(
-          'flyout-container font-sans bg-[var(--sidebar)] border-r border-[var(--border)] flex flex-col z-[90] transition-all duration-300 ease-in-out overflow-hidden whitespace-nowrap relative shrink-0',
+          // Only `width` and `opacity` transition. The previous `transition-all`
+          // put every animatable property (colours, borders, shadows, transforms)
+          // on the clock for 300ms each time the flyout toggled.
+          'flyout-container font-sans bg-[var(--sidebar)] border-r border-[var(--border)] flex flex-col z-[90] transition-[width,opacity] duration-[240ms] ease-[cubic-bezier(0.22,1,0.36,1)] overflow-hidden whitespace-nowrap relative shrink-0 motion-reduce:transition-none',
           isFlyoutOpen ? 'w-[var(--flyout-width)] opacity-100' : 'w-0 opacity-0 border-r-0',
         )}
+        aria-hidden={!isFlyoutOpen}
+        // `inert` (React 19) removes the collapsed flyout from the tab order and
+        // the accessibility tree. Without it, `aria-hidden` alone would leave
+        // focusable links inside a hidden region — a WCAG failure, and the
+        // reason a collapsed sidebar used to swallow Tab presses.
+        {...(!isFlyoutOpen ? { inert: true as any } : {})}
       >
         <div className="h-[var(--header-height)] flex items-center justify-between px-4 border-b border-[var(--border)] shrink-0">
           <div className="min-w-0">
@@ -254,6 +264,10 @@ export function AppDualSidebar() {
                         expandedGroups[groupName] && 'open',
                       )}
                     >
+                      {/* Single grid child — the accordion animates
+                          `grid-template-rows: 0fr → 1fr` on the parent, so the
+                          open height always equals the real content height. */}
+                      <div className="nav-group-rows">
                       {items.map((child) => {
                         const cp = matchPath(child.path);
                         const isChildActive = child.exact
@@ -283,6 +297,9 @@ export function AppDualSidebar() {
                           <Link
                             key={child.path}
                             to={matchPath(child.path)}
+                            aria-current={isChildActive ? 'page' : undefined}
+                            onPointerEnter={() => prefetchRoute(matchPath(child.path))}
+                            onFocus={() => prefetchRoute(matchPath(child.path))}
                             className={clsx(
                               'flex items-center h-[34px] px-3 pl-6 my-0.5 rounded-[var(--radius)] cursor-pointer text-[13px] no-underline relative transition-colors duration-150',
                               isChildActive
@@ -290,11 +307,18 @@ export function AppDualSidebar() {
                                 : 'text-[var(--text2)] hover:text-[var(--text)] hover:bg-[var(--bg2)]',
                             )}
                           >
-                            <div className="absolute left-2 top-0 bottom-0 w-[1px] bg-[var(--border)]" />
+                            {/* Hairline rail for every row; the active row swaps it
+                                for a brand indicator that scales in from the rail. */}
+                            {isChildActive ? (
+                              <div className="nav-row-indicator left-2" aria-hidden="true" />
+                            ) : (
+                              <div className="absolute left-2 top-0 bottom-0 w-[1px] bg-[var(--border)]" aria-hidden="true" />
+                            )}
                             {child.label}
                           </Link>
                         );
                       })}
+                      </div>
                     </div>
                   </div>
                 ))}

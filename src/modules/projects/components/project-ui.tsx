@@ -17,6 +17,11 @@ import {
 } from "@/components/ui/dialog";
 import { Button as UiButton } from "@/components/ui/button";
 import { Notice, Panel, Toggle } from "@/shared/ui/pulse";
+import {
+  WorkflowInline,
+  type WorkflowState,
+  type WorkflowStepDef,
+} from "@/shared/motion";
 import { cn } from "@/lib/utils";
 
 // ── Form dialog ──────────────────────────────────────────────
@@ -34,6 +39,8 @@ export function FormDialog({
   onSubmit,
   children,
   width = "sm:max-w-[560px]",
+  workflowSteps,
+  workflowState,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -45,7 +52,16 @@ export function FormDialog({
   onSubmit: (form: FormData) => void;
   children: ReactNode;
   width?: string;
+  /**
+   * Optional multi-step narration (Phase 4). Pass both to replace the plain
+   * pending spinner with a step list while the request is in flight — for
+   * operations that genuinely do more than one thing server-side.
+   */
+  workflowSteps?: readonly WorkflowStepDef[];
+  workflowState?: WorkflowState;
 }) {
+  const narrating = Boolean(workflowSteps && workflowState && workflowState.status !== "idle");
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className={width}>
@@ -61,7 +77,10 @@ export function FormDialog({
           className="flex flex-col gap-4"
         >
           <div className="flex max-h-[60vh] flex-col gap-4 overflow-y-auto pr-0.5 sidebar-scroll">{children}</div>
-          {error && (
+          {narrating && workflowSteps && workflowState && (
+            <WorkflowInline steps={workflowSteps} state={workflowState} />
+          )}
+          {error && !narrating && (
             <Notice tone="red" icon={AlertTriangle}>
               {error}
             </Notice>
@@ -71,7 +90,7 @@ export function FormDialog({
               Cancel
             </UiButton>
             <UiButton type="submit" size="lg" disabled={pending}>
-              {pending && <Loader2 className="mr-1.5 size-3.5 animate-spin" />}
+              {pending && !narrating && <Loader2 className="mr-1.5 size-3.5 animate-spin" />}
               {submitLabel}
             </UiButton>
           </DialogFooter>
@@ -172,10 +191,32 @@ export function DialogField({
  */
 export function apiErrorMessage(error: unknown, fallback = "Request failed."): string {
   if (!error) return fallback;
-  const response = (error as { response?: { data?: { error?: { message?: unknown } } } }).response;
-  const detail = response?.data?.error?.message;
-  if (typeof detail === "string" && detail.length > 0) return detail;
-  if (error instanceof Error && error.message) return error.message;
+  if (typeof error === "string") return error;
+
+  const response = (error as { response?: { data?: { error?: unknown; message?: unknown } } }).response;
+  const dataError = response?.data?.error;
+  const dataMsg = response?.data?.message;
+
+  if (typeof dataError === "string" && dataError.length > 0) return dataError;
+  if (dataError && typeof dataError === "object") {
+    if ("message" in dataError && typeof (dataError as any).message === "string" && (dataError as any).message.length > 0) {
+      return (dataError as any).message;
+    }
+  }
+
+  if (typeof dataMsg === "string" && dataMsg.length > 0) return dataMsg;
+
+  if (error instanceof Error) {
+    if (typeof error.message === "string" && error.message.length > 0) {
+      return error.message;
+    }
+  }
+
+  if (typeof error === "object" && error !== null && "message" in error) {
+    const msg = (error as any).message;
+    if (typeof msg === "string" && msg.length > 0) return msg;
+  }
+
   return fallback;
 }
 

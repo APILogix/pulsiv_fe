@@ -33,20 +33,31 @@ export function useOrganizations() {
     queryFn: () => orgApi.listOrganizations({ limit: 100 }), // Assume reasonable limit for switcher
   });
 
-  // Auto-select first org if none is active
+  // Auto-select first org if none is active, or ensure activeOrgSlug is synced with activeOrgId
   useEffect(() => {
-    if (!query.data?.data?.length || activeOrgId) return;
+    if (!query.data?.data?.length) return;
+
+    const orgs = query.data.data;
+    if (activeOrgId) {
+      const currentOrg = orgs.find((org) => org.id === activeOrgId);
+      if (currentOrg) {
+        if (currentOrg.slug !== activeOrgSlug) {
+          setActiveOrgSlug(currentOrg.slug);
+        }
+        return;
+      }
+    }
 
     const currentOrgId = tokenService.getCurrentOrgId();
-    const currentOrg = query.data.data.find((org) => org.id === currentOrgId);
-    const nextOrg = currentOrg ?? query.data.data[0];
+    const currentOrg = orgs.find((org) => org.id === currentOrgId);
+    const nextOrg = currentOrg ?? orgs[0];
     void orgApi.switchOrganization(nextOrg.id)
       .catch(() => undefined)
       .finally(() => {
         setActiveOrgId(nextOrg.id);
         setActiveOrgSlug(nextOrg.slug);
       });
-  }, [query.data, activeOrgId, setActiveOrgId, setActiveOrgSlug]);
+  }, [query.data, activeOrgId, activeOrgSlug, setActiveOrgId, setActiveOrgSlug]);
 
   return {
     ...query,

@@ -179,6 +179,123 @@ export interface TestRuleResult {
   [key: string]: unknown;
 }
 
+export const ALERT_SCOPE_TYPES = ["organization", "project", "environment", "service", "endpoint"] as const;
+export type AlertScopeType = (typeof ALERT_SCOPE_TYPES)[number];
+
+export const ALERT_BINDING_MODES = ["inherit", "override", "disable"] as const;
+export type AlertBindingMode = (typeof ALERT_BINDING_MODES)[number];
+
+export const ALERT_ACTION_MERGE_MODES = ["inherit", "merge", "replace"] as const;
+export type AlertActionMergeMode = (typeof ALERT_ACTION_MERGE_MODES)[number];
+
+export const NOTIFICATION_CHANNEL_KINDS = [
+  "in_app", "email", "slack", "discord", "teams", "pagerduty", "webhook", "sms",
+] as const;
+export type NotificationChannelKind = (typeof NOTIFICATION_CHANNEL_KINDS)[number];
+
+export interface AlertRuleBinding {
+  id: string;
+  organizationId: string;
+  ruleId: string;
+  scopeType: AlertScopeType;
+  scopeLevel: number;
+  projectId: string | null;
+  environment: string | null;
+  service: string | null;
+  endpoint: string | null;
+  mode: AlertBindingMode;
+  enabled: boolean;
+  priority: number;
+  severity: AlertSeverity | null;
+  cooldownSeconds: number | null;
+  deduplicationWindowSeconds: number | null;
+  autoResolveAfterMinutes: number | null;
+  evaluationIntervalSeconds: number | null;
+  consecutiveBreaches: number | null;
+  thresholdOverrides: Json;
+  actionMode: AlertActionMergeMode;
+  requestedChannels: NotificationChannelKind[] | null;
+  recipientOverrides: Json | null;
+  escalationPolicyId: string | null;
+  notes: string | null;
+  createdAt: string;
+  deletedAt: string | null;
+}
+
+export type CreateRuleBindingBody = {
+  scopeType: AlertScopeType;
+  projectId?: string;
+  environment?: string;
+  service?: string;
+  endpoint?: string;
+  mode?: AlertBindingMode;
+  enabled?: boolean;
+  priority?: number;
+  severity?: AlertSeverity | null;
+  cooldownSeconds?: number | null;
+  deduplicationWindowSeconds?: number | null;
+  autoResolveAfterMinutes?: number | null;
+  evaluationIntervalSeconds?: number | null;
+  consecutiveBreaches?: number | null;
+  thresholdOverrides?: Json;
+  actionMode?: AlertActionMergeMode;
+  requestedChannels?: NotificationChannelKind[] | null;
+  recipientOverrides?: Json | null;
+  escalationPolicyId?: string | null;
+  notes?: string | null;
+};
+
+export type UpdateRuleBindingBody = Partial<Omit<CreateRuleBindingBody,
+  "scopeType" | "projectId" | "environment" | "service" | "endpoint"
+>>;
+
+export interface EffectiveRuleQuery {
+  projectId?: string;
+  environment?: string;
+  service?: string;
+  endpoint?: string;
+}
+
+export interface EffectiveRuleTraceEntry {
+  bindingId: string | null;
+  scopeType: AlertScopeType | "base";
+  scopeLevel: number;
+  applied: string[];
+}
+
+export interface EffectiveRule extends AlertRule {
+  bindingId: string | null;
+  resolvedScopeType: AlertScopeType | null;
+  resolvedScopeLevel: number;
+  mode: AlertBindingMode;
+  consecutiveBreaches: number;
+  actionMode: AlertActionMergeMode;
+  requestedChannels: NotificationChannelKind[];
+  recipientOverrides: Json | null;
+  escalationPolicyId: string | null;
+  trace: EffectiveRuleTraceEntry[];
+}
+
+export interface EffectiveRuleResult {
+  rule: EffectiveRule;
+  thresholds: unknown[];
+  appliedBindingIds: string[];
+}
+
+export interface AlertRuleRevision {
+  id: string;
+  organizationId: string;
+  ruleId: string;
+  revision: number;
+  operation: string;
+  actorId: string | null;
+  bindingId: string | null;
+  previousState: Json | null;
+  newState: Json | null;
+  changesSummary: Json | null;
+  createdAt: string;
+}
+
 // ── Events ─────────────────────────────────────────────────────
 
 export interface IngestEventBody {

@@ -61,7 +61,7 @@ export function KillswitchesTab({ killswitches, onChange }: KillswitchesTabProps
                   </div>
                 </div>
                 <div className="pl-4">
-                  <Switch checked={isArmed} onCheckedChange={(val) => handleToggle(key, val)} className={isArmed ? '!bg-red-500' : ''} />
+                  <Switch checked={isArmed} onCheckedChange={(val) => handleToggle(key, val)} />
                 </div>
               </div>
             );

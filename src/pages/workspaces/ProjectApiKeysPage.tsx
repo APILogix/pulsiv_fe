@@ -65,6 +65,7 @@ import {
   apiErrorMessage,
   optionalText,
 } from "@/modules/projects/components/project-ui";
+import { API_KEY_WORKFLOW, useWorkflow } from "@/shared/motion";
 
 // ── module-level constants (rules.md §1.2) ───────────────────
 
@@ -339,6 +340,12 @@ export default function ProjectApiKeysPage() {
 
   const createEnvironment = activeEnvironments.find((environment) => environment.id === createEnvironmentId);
 
+  /**
+   * Key creation generates, encrypts and persists a secret — three distinct
+   * server-side steps, so it narrates rather than spins (Phase 4).
+   */
+  const keyWorkflow = useWorkflow(API_KEY_WORKFLOW, { pace: 450, successHold: 320 });
+
   const handleCreate = (form: FormData) => {
     setFormError(null);
     const selectedEnvironment = String(form.get("environmentId") ?? "");
@@ -354,8 +361,9 @@ export default function ProjectApiKeysPage() {
         : null,
     };
 
-    createKey.mutate(payload, {
+    void keyWorkflow.run(() => createKey.mutateAsync(payload), {
       onSuccess: (result) => {
+        keyWorkflow.reset();
         setCreating(false);
         setRevealed({ value: result.fullKey, label: result.apiKey.name || result.apiKey.publicKey });
       },
@@ -555,6 +563,8 @@ export default function ProjectApiKeysPage() {
           if (!open) {
             setFormError(null);
             setCreateEnvironmentId("");
+            // Clear the step list so reopening never shows a stale failure.
+            keyWorkflow.reset();
           }
         }}
         title="New ingestion key"
@@ -564,6 +574,8 @@ export default function ProjectApiKeysPage() {
         error={formError}
         onSubmit={handleCreate}
         width="sm:max-w-[640px]"
+        workflowSteps={API_KEY_WORKFLOW}
+        workflowState={keyWorkflow}
       >
         <DialogField label="Environment" name="environmentId" required>
           <select

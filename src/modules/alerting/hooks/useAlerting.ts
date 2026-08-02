@@ -22,10 +22,12 @@ import type {
   AcknowledgeEventBody,
   CreateEscalationPolicyBody,
   CreateRoutingRuleBody,
+  CreateRuleBindingBody,
   CreateRuleBody,
   CreateSilenceBody,
   CreateTemplateBody,
   DeadLetterListQuery,
+  EffectiveRuleQuery,
   EventListQuery,
   IngestEventBody,
   Json,
@@ -35,6 +37,7 @@ import type {
   SilenceFromEventBody,
   SilenceListQuery,
   TestRoutingBody,
+  UpdateRuleBindingBody,
   UpdateRuleBody,
   UpsertEscalationStepBody,
 } from "../api/types";
@@ -57,6 +60,12 @@ export const alertingKeys = {
   all: ["alerting"] as const,
   rules: (orgId: string | null, query?: unknown) => ["alerting", "rules", orgId, query] as const,
   rule: (orgId: string | null, id: string) => ["alerting", "rule", orgId, id] as const,
+  ruleBindings: (orgId: string | null, id: string) => ["alerting", "rule-bindings", orgId, id] as const,
+  ruleBinding: (orgId: string | null, ruleId: string, bindingId: string) =>
+    ["alerting", "rule-binding", orgId, ruleId, bindingId] as const,
+  effectiveRule: (orgId: string | null, ruleId: string, query?: unknown) =>
+    ["alerting", "effective-rule", orgId, ruleId, query] as const,
+  ruleRevisions: (orgId: string | null, ruleId: string) => ["alerting", "rule-revisions", orgId, ruleId] as const,
   ruleTemplates: (orgId: string | null) => ["alerting", "rule-templates", orgId] as const,
   events: (orgId: string | null, query?: unknown) => ["alerting", "events", orgId, query] as const,
   event: (orgId: string | null, id: string) => ["alerting", "event", orgId, id] as const,
@@ -106,6 +115,42 @@ export function useAlertRuleTemplates() {
   });
 }
 
+export function useAlertRuleBindings(ruleId: string | undefined) {
+  const { activeOrgId } = useAlertingScope();
+  return useQuery({
+    queryKey: alertingKeys.ruleBindings(activeOrgId, ruleId ?? ""),
+    queryFn: () => rulesApi.listBindings(activeOrgId!, ruleId!),
+    enabled: !!activeOrgId && !!ruleId,
+  });
+}
+
+export function useAlertRuleBinding(ruleId: string | undefined, bindingId: string | undefined) {
+  const { activeOrgId } = useAlertingScope();
+  return useQuery({
+    queryKey: alertingKeys.ruleBinding(activeOrgId, ruleId ?? "", bindingId ?? ""),
+    queryFn: () => rulesApi.getBinding(activeOrgId!, ruleId!, bindingId!),
+    enabled: !!activeOrgId && !!ruleId && !!bindingId,
+  });
+}
+
+export function useEffectiveAlertRule(ruleId: string | undefined, query: EffectiveRuleQuery = {}) {
+  const { activeOrgId } = useAlertingScope();
+  return useQuery({
+    queryKey: alertingKeys.effectiveRule(activeOrgId, ruleId ?? "", query),
+    queryFn: () => rulesApi.effective(activeOrgId!, ruleId!, query),
+    enabled: !!activeOrgId && !!ruleId,
+  });
+}
+
+export function useAlertRuleRevisions(ruleId: string | undefined) {
+  const { activeOrgId } = useAlertingScope();
+  return useQuery({
+    queryKey: alertingKeys.ruleRevisions(activeOrgId, ruleId ?? ""),
+    queryFn: () => rulesApi.revisions(activeOrgId!, ruleId!),
+    enabled: !!activeOrgId && !!ruleId,
+  });
+}
+
 export function useAlertRuleMutations() {
   const { requireOrgId } = useAlertingScope();
   const invalidate = useInvalidateAlerting();
@@ -140,6 +185,21 @@ export function useAlertRuleMutations() {
     createFromTemplate: useMutation({
       mutationFn: ({ templateKey, overrides }: { templateKey: string; overrides?: Partial<CreateRuleBody> }) =>
         rulesApi.createFromTemplate(requireOrgId(), templateKey, overrides),
+      onSuccess: invalidate,
+    }),
+    createBinding: useMutation({
+      mutationFn: ({ ruleId, body }: { ruleId: string; body: CreateRuleBindingBody }) =>
+        rulesApi.createBinding(requireOrgId(), ruleId, body),
+      onSuccess: invalidate,
+    }),
+    updateBinding: useMutation({
+      mutationFn: ({ ruleId, bindingId, body }: { ruleId: string; bindingId: string; body: UpdateRuleBindingBody }) =>
+        rulesApi.updateBinding(requireOrgId(), ruleId, bindingId, body),
+      onSuccess: invalidate,
+    }),
+    deleteBinding: useMutation({
+      mutationFn: ({ ruleId, bindingId }: { ruleId: string; bindingId: string }) =>
+        rulesApi.removeBinding(requireOrgId(), ruleId, bindingId),
       onSuccess: invalidate,
     }),
   };

@@ -3,6 +3,7 @@ import { useInfiniteQuery } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
+import { AnimatedEmptyState, type EmptyIllustration } from "@/shared/motion";
 import { VirtualList } from "./VirtualList";
 
 export interface Column<T> {
@@ -22,6 +23,12 @@ interface InfiniteTableProps<T> {
   pageSize?: number;
   className?: string;
   emptyMessage?: string;
+  /** Headline for the empty state. Falls back to `emptyMessage`. */
+  emptyTitle?: string;
+  /** Illustration keyed to the domain (Phase 5). */
+  emptyIllustration?: EmptyIllustration;
+  /** CTA rendered under the empty state — every empty screen should offer one. */
+  emptyAction?: React.ReactNode;
   loading?: boolean;
 }
 
@@ -37,6 +44,9 @@ export function InfiniteTable<T>({
   pageSize = 20,
   className,
   emptyMessage = "No results.",
+  emptyTitle,
+  emptyIllustration = "search",
+  emptyAction,
   loading = false,
 }: InfiniteTableProps<T>) {
   const itemsRef = useRef(items);
@@ -98,8 +108,14 @@ export function InfiniteTable<T>({
           </div>
         </div>
       ) : rows.length === 0 ? (
-        <div className="sidebar-scroll min-h-0 flex-1 flex items-center justify-center text-[13px] text-[var(--text3)]">
-          {emptyMessage}
+        <div className="sidebar-scroll min-h-0 flex-1 flex items-center justify-center">
+          <AnimatedEmptyState
+            illustration={emptyIllustration}
+            title={emptyTitle ?? emptyMessage}
+            description={emptyTitle ? emptyMessage : undefined}
+            action={emptyAction}
+            compact
+          />
         </div>
       ) : (
         <VirtualList

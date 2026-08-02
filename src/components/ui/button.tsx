@@ -14,10 +14,16 @@ import { cn } from "@/lib/utils"
  * ai        → --ai-bg fill, 1px --ai-d, --ai text — ONLY for model-suggested
  *             actions ("Apply fix", "Auto-scale", "Silence anomaly").
  *
- * Radius is 6px (--radius) for every button. Hovers fade; they never scale.
+ * Radius is 6px (--radius) for every button.
+ *
+ * Motion (Phase 8): colour fades stay at 150ms and the only movement is a 1%
+ * press compression via `active:scale`. Hovers still never scale — the lift is
+ * reserved for `AnimatedButton` on primary async actions — so dense toolbars
+ * don't wobble under the cursor. `transform` is composited, so the press costs
+ * nothing on the main thread.
  */
 const buttonVariants = cva(
-  "group/button inline-flex shrink-0 items-center justify-center gap-1.5 rounded-[var(--radius)] border border-transparent bg-clip-padding text-[13px] font-medium whitespace-nowrap transition-colors duration-150 ease-out outline-none select-none focus-visible:ring-3 focus-visible:ring-[var(--brand-bg)] focus-visible:border-[var(--brand)] disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-[var(--red)] [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 cursor-pointer",
+  "group/button inline-flex shrink-0 items-center justify-center gap-1.5 rounded-[var(--radius)] border border-transparent bg-clip-padding text-[13px] font-medium whitespace-nowrap transition-[color,background-color,border-color,box-shadow,transform] duration-150 ease-out active:scale-[0.99] motion-reduce:transition-none motion-reduce:active:scale-100 outline-none select-none focus-visible:ring-3 focus-visible:ring-[var(--brand-bg)] focus-visible:border-[var(--brand)] disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-[var(--red)] [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 cursor-pointer",
   {
     variants: {
       variant: {

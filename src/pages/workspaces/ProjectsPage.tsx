@@ -1,6 +1,7 @@
-import { useState } from "react";
-import { Link, useNavigate } from "react-router";
+import { useEffect, useState } from "react";
+import { Link, useNavigate, useParams } from "react-router";
 import { useOrgStore } from "@/modules/organizations/store/org.store";
+import { useOrganizations } from "@/modules/organizations/hooks/useOrganizations";
 import { projectPath } from "@/modules/projects/navigation/project-routes";
 import {
   Archive,
@@ -122,7 +123,23 @@ function ProjectCard({ project, activeOrgSlug }: { project: ProjectListItem; act
 
 export default function ProjectsPage() {
   const navigate = useNavigate();
-  const activeOrgSlug = useOrgStore((state) => state.activeOrgSlug);
+  const { orgSlug: paramOrgSlug } = useParams<{ orgSlug: string }>();
+  const storeOrgSlug = useOrgStore((state) => state.activeOrgSlug);
+  const activeOrgSlug = paramOrgSlug || storeOrgSlug;
+  const { organizations } = useOrganizations();
+
+  const setActiveOrgId = useOrgStore((s) => s.setActiveOrgId);
+  const setActiveOrgSlug = useOrgStore((s) => s.setActiveOrgSlug);
+
+  useEffect(() => {
+    if (paramOrgSlug && organizations.length > 0) {
+      const matchingOrg = organizations.find((o) => o.slug === paramOrgSlug);
+      if (matchingOrg && (useOrgStore.getState().activeOrgId !== matchingOrg.id || useOrgStore.getState().activeOrgSlug !== matchingOrg.slug)) {
+        setActiveOrgId(matchingOrg.id);
+        setActiveOrgSlug(matchingOrg.slug);
+      }
+    }
+  }, [paramOrgSlug, organizations, setActiveOrgId, setActiveOrgSlug]);
   const [status, setStatus] = useState<StatusFilter>("all");
   const [sortBy, setSortBy] = useState<"created_at" | "updated_at" | "name">("created_at");
   const [search, setSearch] = useState("");

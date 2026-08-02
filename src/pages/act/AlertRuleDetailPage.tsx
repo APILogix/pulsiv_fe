@@ -46,7 +46,7 @@ export default function AlertRuleDetailPage() {
   const handleSaveConditionsActions = () => {
     setError(null);
     try {
-      const body: { conditions?: unknown[]; actions?: unknown[] } = {};
+      const body: any = {};
       if (conditionsJson !== null) body.conditions = JSON.parse(conditionsJson);
       if (actionsJson !== null) body.actions = JSON.parse(actionsJson);
       updateRule.mutate(

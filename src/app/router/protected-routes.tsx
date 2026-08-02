@@ -1,10 +1,11 @@
-import { lazy, type ReactNode } from "react";
+import { lazy } from "react";
 import { RouteObject, Navigate } from "react-router";
 import { RequireAuth } from "./route-guards";
-import { MetricRouteBoundary } from "@/shared/ui/loading";
 import NotFoundPage from "@/shared/components/NotFoundPage";
 
 import { AuthenticatedAppLayout } from "../layouts/AuthenticatedAppLayout";
+import { useOrganizations } from "@/modules/organizations/hooks/useOrganizations";
+import { useOrgStore } from "@/modules/organizations/store/org.store";
 
 const DashboardPage = lazy(() => import("@/modules/dashboard/index").then((m) => ({ default: m.DashboardPage ?? (() => null) })));
 const SecurityCenterPage = lazy(() => import("@/modules/auth/pages/SecurityCenterPage").then((m) => ({ default: m.default })));
@@ -178,33 +179,51 @@ const BillingPlansPage = lazy(() => import("@/pages/admin/BillingPlansPage"));
 // New Roles Page
 const RolesPermissionsPage = lazy(() => import("@/pages/team/RolesPermissionsPage"));
 
-const withMetricLoading = (content: ReactNode) => (
-  <MetricRouteBoundary>{content}</MetricRouteBoundary>
-);
+function LegacyProjectsRedirect({ segment }: { segment?: "new" }) {
+  const activeOrgSlug = useOrgStore((state) => state.activeOrgSlug);
+  const { organizations, isLoading } = useOrganizations();
 
+  if (isLoading) return null;
+
+  const orgSlug = activeOrgSlug ?? organizations[0]?.slug ?? null;
+
+  if (orgSlug) {
+    return <Navigate to={`/${orgSlug}/projects${segment ? `/${segment}` : ""}`} replace />;
+  }
+
+  return <Navigate to="/dashboard" replace />;
+}
+
+/**
+ * Route elements are plain lazy components. Loading UI is owned by the layout
+ * boundaries (AppLayout → module scope, ModuleLayout/SettingsLayout/
+ * ProjectShellPage → page scope), which resolve a route-shaped skeleton from the
+ * URL. A per-route wrapper here would render a generic loader on top of that and
+ * defeat the point.
+ */
 export const protectedRoutes: RouteObject[] = [
   {
     element: <AuthenticatedAppLayout />,
     children: [
-          { index: true, element: withMetricLoading(<DashboardPage />) },
-          { path: "dashboard", element: withMetricLoading(<DashboardPage />) },
+          { index: true, element: <DashboardPage /> },
+          { path: "dashboard", element: <DashboardPage /> },
 
           {
             path: "dashboards",
             element: <ModuleLayout />,
             children: [
-              { index: true, element: withMetricLoading(<DashboardsOverview />) },
-              { path: "overview", element: withMetricLoading(<DashboardsOverview />) },
-              { path: "executive", element: withMetricLoading(<ExecutiveCommandCenter />) },
-              { path: "performance", element: withMetricLoading(<PerformanceDeepDive />) },
-              { path: "errors", element: withMetricLoading(<ErrorTriage />) },
-              { path: "geo", element: withMetricLoading(<GeoAnalytics />) },
-              { path: "realtime", element: withMetricLoading(<RealtimeTraffic />) },
-              { path: "tracing", element: withMetricLoading(<TracingDependencyMap />) },
-              { path: "infrastructure", element: withMetricLoading(<InfrastructureCost />) },
-              { path: "security", element: withMetricLoading(<SecurityThreat />) },
-              { path: "releases", element: withMetricLoading(<ReleaseQuality />) },
-              { path: "business", element: withMetricLoading(<BusinessMetrics />) },
+              { index: true, element: <DashboardsOverview /> },
+              { path: "overview", element: <DashboardsOverview /> },
+              { path: "executive", element: <ExecutiveCommandCenter /> },
+              { path: "performance", element: <PerformanceDeepDive /> },
+              { path: "errors", element: <ErrorTriage /> },
+              { path: "geo", element: <GeoAnalytics /> },
+              { path: "realtime", element: <RealtimeTraffic /> },
+              { path: "tracing", element: <TracingDependencyMap /> },
+              { path: "infrastructure", element: <InfrastructureCost /> },
+              { path: "security", element: <SecurityThreat /> },
+              { path: "releases", element: <ReleaseQuality /> },
+              { path: "business", element: <BusinessMetrics /> },
               { path: "reports", element: <ScheduledReportsPage /> },
               { path: "reports/new", element: <CreateReportPage /> },
             ],
@@ -309,8 +328,8 @@ export const protectedRoutes: RouteObject[] = [
           {
             path: "projects",
             children: [
-              { index: true, element: <Navigate to="/" replace /> },
-              { path: "new", element: <Navigate to="/" replace /> },
+              { index: true, element: <LegacyProjectsRedirect /> },
+              { path: "new", element: <LegacyProjectsRedirect segment="new" /> },
               { path: ":projectId/*", element: <ProjectUuidRedirect /> },
             ]
           },
@@ -366,13 +385,13 @@ export const protectedRoutes: RouteObject[] = [
             path: "ai",
             element: <ModuleLayout />,
             children: [
-              { index: true, element: withMetricLoading(<AiOverviewPage />) },
-              { path: "assistant", element: withMetricLoading(<AiAssistantPage />) },
-              { path: "investigations", element: withMetricLoading(<AiInvestigationsPage />) },
-              { path: "reports", element: withMetricLoading(<AiReportsPage />) },
-              { path: "usage", element: withMetricLoading(<AiUsagePage />) },
-              { path: "knowledge", element: withMetricLoading(<AiKnowledgePage />) },
-              { path: "settings", element: withMetricLoading(<AiSettingsPage />) },
+              { index: true, element: <AiOverviewPage /> },
+              { path: "assistant", element: <AiAssistantPage /> },
+              { path: "investigations", element: <AiInvestigationsPage /> },
+              { path: "reports", element: <AiReportsPage /> },
+              { path: "usage", element: <AiUsagePage /> },
+              { path: "knowledge", element: <AiKnowledgePage /> },
+              { path: "settings", element: <AiSettingsPage /> },
             ],
           },
           {

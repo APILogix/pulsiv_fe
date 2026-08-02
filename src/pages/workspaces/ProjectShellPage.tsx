@@ -1,11 +1,14 @@
-import { createContext, useContext } from "react";
+import { useEffect, createContext, useContext, useRef } from "react";
 import { Link, Navigate, Outlet, useParams } from "react-router";
 import { FolderOpen } from "lucide-react";
 
 import { useProjectByPublicId } from "@/modules/projects/hooks/useProjects";
 import type { Project, ProjectStatus } from "@/modules/projects/api/types";
 import { ProjectHeaderBar } from "@/modules/projects/components/ProjectHeaderBar";
-import { DetailSkeleton } from "@/shared/observe";
+import { useOrgStore } from "@/modules/organizations/store/org.store";
+import { useOrganizations } from "@/modules/organizations/hooks/useOrganizations";
+import { RouteBoundary, useScrollRestoration } from "@/shared/motion";
+import { RouteSkeleton } from "@/shared/skeletons";
 import { IconChip, type SurfaceTone } from "@/shared/ui/pulse";
 
 // ── project context ──────────────────────────────────────────
@@ -51,7 +54,22 @@ export const PROJECT_STATUS_TONE: Record<ProjectStatus, SurfaceTone> = {
 export function ProjectShellPage() {
   const { orgSlug, projectPublicId } = useParams<{ orgSlug: string; projectPublicId: string }>();
   const safePublicId = projectPublicId ?? "";
-  const { data: project, isLoading, error } = useProjectByPublicId(safePublicId);
+  const { organizations, isLoading: orgsLoading } = useOrganizations();
+  const { activeOrgId, setActiveOrgId, setActiveOrgSlug } = useOrgStore();
+
+  useEffect(() => {
+    if (orgSlug && organizations.length > 0) {
+      const matchingOrg = organizations.find((o) => o.slug === orgSlug);
+      if (matchingOrg && (useOrgStore.getState().activeOrgId !== matchingOrg.id || useOrgStore.getState().activeOrgSlug !== matchingOrg.slug)) {
+        setActiveOrgId(matchingOrg.id);
+        setActiveOrgSlug(matchingOrg.slug);
+      }
+    }
+  }, [orgSlug, organizations, setActiveOrgId, setActiveOrgSlug]);
+
+  const { data: project, isLoading: projectLoading, error } = useProjectByPublicId(safePublicId);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  useScrollRestoration(scrollRef);
 
   if (!projectPublicId || !orgSlug) return <Navigate to="/projects" replace />;
   
@@ -60,11 +78,15 @@ export function ProjectShellPage() {
     return <Navigate to={`/projects/${safePublicId}`} replace />;
   }
 
+  const isLoading = orgsLoading || projectLoading || (!activeOrgId && organizations.length === 0);
+
   if (isLoading) {
+    // Shape the wait like the tab being opened, not like a generic detail page:
+    // the header bar is still resolving, so the skeleton is all the user has.
     return (
       <div className="sidebar-scroll h-full w-full overflow-y-auto">
         <div className="px-6 py-6">
-          <DetailSkeleton />
+          <RouteSkeleton />
         </div>
       </div>
     );
@@ -92,8 +114,16 @@ export function ProjectShellPage() {
     <ProjectContext.Provider value={{ project, projectId: project.id, publicId: project.publicId, orgSlug }}>
       <div className="flex h-full min-h-0 w-full flex-col overflow-hidden bg-[var(--bg)]">
         <ProjectHeaderBar project={project} />
-        <div className="sidebar-scroll min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-6 sm:py-6">
-          <Outlet />
+        <div
+          ref={scrollRef}
+          className="scroll-region sidebar-scroll min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-6 sm:py-6"
+        >
+          {/* Each project tab is its own lazy chunk, so it gets its own
+              tab-shaped skeleton. The shell (header bar, project query) stays
+              mounted across tab switches. */}
+          <RouteBoundary scope="page">
+            <Outlet />
+          </RouteBoundary>
         </div>
       </div>
     </ProjectContext.Provider>

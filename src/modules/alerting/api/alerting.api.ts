@@ -18,14 +18,19 @@ import type {
   AlertMetric,
   AlertRoutingRule,
   AlertRule,
+  AlertRuleBinding,
+  AlertRuleRevision,
   AlertSilence,
   AlertTemplate,
   CreateEscalationPolicyBody,
   CreateRoutingRuleBody,
+  CreateRuleBindingBody,
   CreateRuleBody,
   CreateSilenceBody,
   CreateTemplateBody,
   DeadLetterListQuery,
+  EffectiveRuleQuery,
+  EffectiveRuleResult,
   EventListQuery,
   EventStats,
   IngestEventBody,
@@ -41,6 +46,7 @@ import type {
   TestRoutingBody,
   TestRoutingResult,
   TestRuleResult,
+  UpdateRuleBindingBody,
   UpdateRuleBody,
   UpsertEscalationStepBody,
 } from "./types";
@@ -157,6 +163,53 @@ export const rulesApi = {
       overrides,
     );
     return camelizeDeep(data.data);
+  },
+
+  listBindings: async (orgId: string, ruleId: string): Promise<AlertRuleBinding[]> => {
+    const { data } = await apiClient.get(`${alertingBase(orgId)}/rules/${ruleId}/bindings`);
+    return camelizeDeep(data.data ?? []);
+  },
+
+  createBinding: async (
+    orgId: string,
+    ruleId: string,
+    body: CreateRuleBindingBody,
+  ): Promise<AlertRuleBinding> => {
+    const { data } = await apiClient.post(`${alertingBase(orgId)}/rules/${ruleId}/bindings`, body);
+    return camelizeDeep(data.data);
+  },
+
+  getBinding: async (orgId: string, ruleId: string, bindingId: string): Promise<AlertRuleBinding> => {
+    const { data } = await apiClient.get(`${alertingBase(orgId)}/rules/${ruleId}/bindings/${bindingId}`);
+    return camelizeDeep(data.data);
+  },
+
+  updateBinding: async (
+    orgId: string,
+    ruleId: string,
+    bindingId: string,
+    body: UpdateRuleBindingBody,
+  ): Promise<AlertRuleBinding> => {
+    const { data } = await apiClient.patch(`${alertingBase(orgId)}/rules/${ruleId}/bindings/${bindingId}`, body);
+    return camelizeDeep(data.data);
+  },
+
+  removeBinding: async (orgId: string, ruleId: string, bindingId: string): Promise<void> => {
+    await apiClient.delete(`${alertingBase(orgId)}/rules/${ruleId}/bindings/${bindingId}`);
+  },
+
+  effective: async (
+    orgId: string,
+    ruleId: string,
+    query: EffectiveRuleQuery = {},
+  ): Promise<EffectiveRuleResult> => {
+    const { data } = await apiClient.get(`${alertingBase(orgId)}/rules/${ruleId}/effective`, { params: query });
+    return camelizeDeep(data.data);
+  },
+
+  revisions: async (orgId: string, ruleId: string): Promise<AlertRuleRevision[]> => {
+    const { data } = await apiClient.get(`${alertingBase(orgId)}/rules/${ruleId}/revisions`);
+    return camelizeDeep(data.data ?? []);
   },
 };
 

@@ -41,7 +41,12 @@ function TabsTrigger({
     <TabsPrimitive.Trigger
       data-slot="tabs-trigger"
       className={cn(
-        "relative inline-flex h-9 items-center justify-center gap-1.5 whitespace-nowrap border-b-2 border-transparent px-0.5 text-[13px] font-medium text-[var(--text3)] outline-none transition-colors duration-150 hover:text-[var(--text2)] focus-visible:ring-2 focus-visible:ring-[var(--brand-bg)] disabled:pointer-events-none disabled:opacity-50 data-[state=active]:border-[var(--brand)] data-[state=active]:text-[var(--text)] [&_svg]:pointer-events-none [&_svg]:size-3.5 [&_svg]:shrink-0",
+        // The active underline is an ::after element that scales in from the
+        // centre rather than a border colour snap (Phase 8 "tabs: animated
+        // indicator"). scaleX is composited, so switching tabs costs no layout.
+        "relative inline-flex h-9 items-center justify-center gap-1.5 whitespace-nowrap border-b-2 border-transparent px-0.5 text-[13px] font-medium text-[var(--text3)] outline-none transition-colors duration-150 hover:text-[var(--text2)] focus-visible:ring-2 focus-visible:ring-[var(--brand-bg)] disabled:pointer-events-none disabled:opacity-50 data-[state=active]:text-[var(--text)] [&_svg]:pointer-events-none [&_svg]:size-3.5 [&_svg]:shrink-0",
+        "after:absolute after:inset-x-0 after:-bottom-[2px] after:h-[2px] after:origin-center after:scale-x-0 after:rounded-full after:bg-[var(--brand)] after:transition-transform after:duration-200 after:ease-out after:content-['']",
+        "data-[state=active]:after:scale-x-100 motion-reduce:after:transition-none",
         className
       )}
       {...props}

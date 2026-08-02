@@ -17,6 +17,7 @@ import {
 } from "@/shared/ui/pulse";
 import { Button as UiButton } from "@/components/ui/button";
 import { DialogField, apiErrorMessage, parseList } from "@/modules/projects/components/project-ui";
+import { PROJECT_WORKFLOW, WorkflowOverlay, useWorkflow } from "@/shared/motion";
 import { cn } from "@/lib/utils";
 
 // ── module-level constants (rules.md §1.2) ───────────────────
@@ -75,6 +76,15 @@ export default function CreateProjectWizardPage() {
   const [color, setColor] = useState<string>(COLOR_CHOICES[0].value);
   const [error, setError] = useState<string | null>(null);
 
+  /**
+   * Project creation fans out server-side (project row → environment → SDK
+   * config → monitoring → ingestion key), so the wait is narrated rather than
+   * spun (Phase 4). Navigation happens from the workflow's success callback, so
+   * the user reads "done" before the route changes — and never waits on the
+   * animation if the API is fast.
+   */
+  const workflow = useWorkflow(PROJECT_WORKFLOW, { pace: 650 });
+
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError(null);
@@ -98,7 +108,7 @@ export default function CreateProjectWizardPage() {
       ...(tags.length > 0 ? { tags } : {}),
     };
 
-    createProject.mutate(payload, {
+    void workflow.run(() => createProject.mutateAsync(payload), {
       onSuccess: (project) => {
         const orgSlug = useOrgStore.getState().activeOrgSlug;
         if (orgSlug) {
@@ -114,6 +124,15 @@ export default function CreateProjectWizardPage() {
 
   return (
     <div className="flex flex-col gap-6">
+      <WorkflowOverlay
+        open={workflow.isActive}
+        title="Creating your project"
+        description="Provisioning the environment, SDK config, and ingestion key."
+        steps={PROJECT_WORKFLOW}
+        state={workflow}
+        successLabel="Project ready"
+        onCancel={workflow.reset}
+      />
       <PageHero
         eyebrow="Workspaces"
         title="New project"

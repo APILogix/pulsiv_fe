@@ -98,6 +98,12 @@ export const orgApi = {
 
   // Billing Summary
   getBillingSummary: (orgId: string) => apiClient.get(`/organizations/${orgId}/billing-summary`).then(r => r.data.data as t.OrganizationBillingSummary),
+  getEntitlements: (orgId: string) => apiClient.get('/billing/entitlements', withOrgHeaders(orgId)).then(r => r.data.data as Record<string, {
+    booleanValue?: boolean | null;
+    integerValue?: number | null;
+    decimalValue?: number | null;
+    stringValue?: string | null;
+  }>),
   getUsageLimits: (orgId: string) => apiClient.get(`/organizations/${orgId}/usage-limits`).then(r => r.data.data as t.UsageLimitsResponse),
   getCurrentUsage: (orgId: string) => apiClient.get('/billing/usage/current', withOrgHeaders(orgId)).then(r => mapCurrentBillingUsage(r.data.data)),
   getDailyUsage: (orgId: string) => apiClient.get('/billing/usage/daily', withOrgHeaders(orgId)).then(r => r.data.data as { date: string, eventsCount: number }[]),

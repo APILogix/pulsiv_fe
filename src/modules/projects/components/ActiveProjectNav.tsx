@@ -1,12 +1,14 @@
 import { Link, useLocation } from "react-router";
 import { ChevronRight, FolderOpen } from "lucide-react";
 
-import { useProject, useProjects } from "@/modules/projects/hooks/useProjects";
+import { useProjectByPublicId, useProjects } from "@/modules/projects/hooks/useProjects";
 import {
   PROJECT_NAV,
   resolveActiveProjectNav,
 } from "@/modules/projects/navigation/project-nav";
+import { projectPath, publicIdFromPath, orgSlugFromPath } from "@/modules/projects/navigation/project-routes";
 import { useProjectNavStore } from "@/stores/projectNavStore";
+import { useOrgStore } from "@/modules/organizations/store/org.store";
 import { cn } from "@/lib/utils";
 
 /**
@@ -19,27 +21,27 @@ import { cn } from "@/lib/utils";
  * Renders nothing unless the current URL is inside a project, so switching to
  * a non-project surface collapses the section away automatically.
  */
-export function ActiveProjectNav({ projectId }: { projectId: string }) {
+export function ActiveProjectNav({ publicId, orgSlug }: { publicId: string; orgSlug: string }) {
   const location = useLocation();
-  const { data: project } = useProject(projectId);
+  const { data: project } = useProjectByPublicId(publicId);
   const { collapsedGroups, toggleGroup } = useProjectNavStore();
 
-  const active = resolveActiveProjectNav(location.pathname, projectId);
+  const active = resolveActiveProjectNav(location.pathname, publicId, orgSlug);
 
   return (
     <section aria-label="Active project navigation" className="mt-1 flex flex-col">
       {/* section divider + eyebrow */}
       <div className="mx-1 mb-2 mt-1 h-px bg-[var(--border)]" aria-hidden="true" />
-      <p className="px-3 pb-1 font-[family-name:var(--mono)] text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--text3)]">
+      <p className="px-3 pb-1 font-[family-name:var(--mono)] text-[10px] font-medium uppercase tracking-[0.09em] text-[var(--text3)]">
         Active project
       </p>
 
       {/* project identity — click returns to the project's landing page */}
       <Link
-        to={`/projects/${projectId}/overview`}
+        to={projectPath(orgSlug, publicId, "overview")}
         className={cn(
-          "mx-1 mb-1 flex items-center gap-2 rounded-[6px] px-2 py-1.5 transition-colors",
-          "hover:bg-[var(--bg2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]",
+          "mx-1 mb-1 flex items-center gap-2 rounded-[var(--radius)] px-2 py-1.5 transition-colors duration-150",
+          "hover:bg-[var(--bg2)] focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-[var(--brand-bg)]",
         )}
         title={project?.name}
       >
@@ -76,42 +78,27 @@ export function ActiveProjectNav({ projectId }: { projectId: string }) {
                 aria-expanded={!isCollapsed}
                 aria-controls={panelId}
                 className={cn(
-                  "mx-1 flex h-7 items-center gap-1.5 rounded-[6px] px-2 text-left transition-colors",
-                  "hover:bg-[var(--bg2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]",
+                  "w-full flex items-center justify-between px-3 h-[34px] rounded-[var(--radius)] cursor-pointer font-[family-name:var(--mono)] text-[10px] font-medium uppercase tracking-[0.09em] transition-colors duration-150 hover:bg-[var(--bg2)] hover:text-[var(--text2)]",
+                  !isCollapsed ? "text-[var(--text2)]" : "text-[var(--text3)]"
                 )}
               >
+                <div className="flex items-center gap-2.5">{group.label}</div>
                 <ChevronRight
+                  size={14}
                   className={cn(
-                    "size-3 shrink-0 text-[var(--text3)] transition-transform duration-150",
+                    "transition-transform duration-200",
                     !isCollapsed && "rotate-90",
                   )}
                   aria-hidden="true"
                 />
-                <span
-                  className={cn(
-                    "text-[11.5px] font-medium",
-                    groupIsActive ? "text-[var(--text)]" : "text-[var(--text2)]",
-                  )}
-                >
-                  {group.label}
-                </span>
-                {isCollapsed && groupIsActive && (
-                  <span
-                    aria-hidden="true"
-                    className="ml-auto size-1.5 rounded-full bg-[var(--brand)]"
-                    title="Current page is in this group"
-                  />
-                )}
               </button>
 
               <ul
                 id={panelId}
                 hidden={isCollapsed}
                 className={cn(
-                  // The class has to carry the collapse too: an author
-                  // display:flex rule outranks the UA [hidden] rule.
-                  "ml-[17px] mr-1 flex-col gap-px border-l border-[var(--border)] pb-1 pl-1.5",
-                  isCollapsed ? "hidden" : "flex",
+                  "nav-group-children pl-3",
+                  !isCollapsed && "open"
                 )}
               >
                 {group.items.map((item) => {
@@ -119,31 +106,18 @@ export function ActiveProjectNav({ projectId }: { projectId: string }) {
                   return (
                     <li key={item.segment}>
                       <Link
-                        to={`/projects/${projectId}/${item.segment}`}
+                        to={projectPath(orgSlug, publicId, item.segment)}
                         aria-current={isActive ? "page" : undefined}
                         title={item.description}
                         className={cn(
-                          "relative flex h-[30px] items-center gap-2 rounded-[6px] px-2 text-[12.5px] transition-colors",
-                          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]",
+                          "flex items-center h-[34px] px-3 pl-6 my-0.5 rounded-[var(--radius)] cursor-pointer text-[13px] no-underline relative transition-colors duration-150",
                           isActive
-                            ? "bg-[var(--bg2)] font-medium text-[var(--brand)]"
-                            : "text-[var(--text3)] hover:bg-[var(--bg2)] hover:text-[var(--text2)]",
+                            ? "text-[var(--brand)] font-medium bg-[var(--brand-bg)]"
+                            : "text-[var(--text2)] hover:text-[var(--text)] hover:bg-[var(--bg2)]",
                         )}
                       >
-                        {isActive && (
-                          <span
-                            aria-hidden="true"
-                            className="absolute -left-[7px] top-1/2 h-3.5 w-[2px] -translate-y-1/2 rounded-full bg-[var(--brand)]"
-                          />
-                        )}
-                        <item.icon
-                          className={cn(
-                            "size-[13px] shrink-0 stroke-[1.6]",
-                            isActive ? "text-[var(--brand)]" : "text-[var(--text3)]",
-                          )}
-                          aria-hidden="true"
-                        />
-                        <span className="truncate">{item.label}</span>
+                        <div className="absolute left-2 top-0 bottom-0 w-[1px] bg-[var(--border)]" />
+                        {item.label}
                       </Link>
                     </li>
                   );
@@ -157,14 +131,19 @@ export function ActiveProjectNav({ projectId }: { projectId: string }) {
   );
 }
 
-/** `/projects/<id>/...` → id, or null when the URL is not inside a project. */
-export function activeProjectIdFromPath(pathname: string): string | null {
+/** Legacy compat for the parent shell — pulls from new URL format or legacy. */
+export function activeProjectIdFromPath(pathname: string): { publicId: string; orgSlug: string } | null {
+  const publicId = publicIdFromPath(pathname);
+  const orgSlug = orgSlugFromPath(pathname);
+  if (publicId && orgSlug) return { publicId, orgSlug };
+  
+  // Legacy fallback for transition period
   const match = pathname.match(/^\/projects\/([a-zA-Z0-9_-]+)(?:\/|$)/);
-  if (!match) return null;
-  const candidate = match[1];
-  // `/projects/new` is the create wizard, not a project id.
-  return candidate === "new" ? null : candidate;
+  if (match && match[1] !== "new") return { publicId: match[1], orgSlug: "legacy" };
+  
+  return null;
 }
+
 
 // ── project list (no project selected) ───────────────────────
 
@@ -187,13 +166,14 @@ export function WorkspaceProjectList() {
     sortBy: "updated_at",
     sortOrder: "desc",
   });
+  const activeOrgSlug = useOrgStore((state) => state.activeOrgSlug);
   const projects = data?.data ?? [];
 
   if (isLoading) {
     return (
       <div className="ml-[17px] mr-1 flex flex-col gap-1 border-l border-[var(--border)] pl-1.5">
         {[0, 1, 2].map((row) => (
-          <span key={row} className="h-[30px] animate-pulse rounded-[6px] bg-[var(--bg2)]" />
+          <span key={row} className="loading-skeleton h-[30px] rounded-[var(--radius)] bg-[var(--bg2)]" />
         ))}
       </div>
     );
@@ -209,9 +189,9 @@ export function WorkspaceProjectList() {
       {projects.map((project) => (
         <li key={project.id}>
           <Link
-            to={`/projects/${project.id}/overview`}
+            to={activeOrgSlug ? projectPath(activeOrgSlug, project.publicId, "overview") : `/projects/${project.id}/overview`}
             title={project.name}
-            className="flex h-[30px] items-center gap-2 rounded-[6px] px-2 text-[12.5px] text-[var(--text3)] transition-colors hover:bg-[var(--bg2)] hover:text-[var(--text2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
+            className="flex h-[30px] items-center gap-2 rounded-[var(--radius)] px-2 text-[12px] text-[var(--text2)] transition-colors duration-150 hover:bg-[var(--bg2)] hover:text-[var(--text)] focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-[var(--brand-bg)]"
           >
             <span
               aria-hidden="true"

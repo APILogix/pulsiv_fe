@@ -17,6 +17,11 @@ import {
 } from "@/components/ui/dialog";
 import { Button as UiButton } from "@/components/ui/button";
 import { Notice, Panel, Toggle } from "@/shared/ui/pulse";
+import {
+  WorkflowInline,
+  type WorkflowState,
+  type WorkflowStepDef,
+} from "@/shared/motion";
 import { cn } from "@/lib/utils";
 
 // ── Form dialog ──────────────────────────────────────────────
@@ -34,6 +39,8 @@ export function FormDialog({
   onSubmit,
   children,
   width = "sm:max-w-[560px]",
+  workflowSteps,
+  workflowState,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -45,7 +52,16 @@ export function FormDialog({
   onSubmit: (form: FormData) => void;
   children: ReactNode;
   width?: string;
+  /**
+   * Optional multi-step narration (Phase 4). Pass both to replace the plain
+   * pending spinner with a step list while the request is in flight — for
+   * operations that genuinely do more than one thing server-side.
+   */
+  workflowSteps?: readonly WorkflowStepDef[];
+  workflowState?: WorkflowState;
 }) {
+  const narrating = Boolean(workflowSteps && workflowState && workflowState.status !== "idle");
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className={width}>
@@ -61,7 +77,10 @@ export function FormDialog({
           className="flex flex-col gap-4"
         >
           <div className="flex max-h-[60vh] flex-col gap-4 overflow-y-auto pr-0.5 sidebar-scroll">{children}</div>
-          {error && (
+          {narrating && workflowSteps && workflowState && (
+            <WorkflowInline steps={workflowSteps} state={workflowState} />
+          )}
+          {error && !narrating && (
             <Notice tone="red" icon={AlertTriangle}>
               {error}
             </Notice>
@@ -71,7 +90,7 @@ export function FormDialog({
               Cancel
             </UiButton>
             <UiButton type="submit" size="lg" disabled={pending}>
-              {pending && <Loader2 className="mr-1.5 size-3.5 animate-spin" />}
+              {pending && !narrating && <Loader2 className="mr-1.5 size-3.5 animate-spin" />}
               {submitLabel}
             </UiButton>
           </DialogFooter>
@@ -134,10 +153,10 @@ export function ConfirmDialog({
 // ── Labeled field for dialogs ────────────────────────────────
 
 export const dialogInputClass =
-  "h-9 w-full rounded-[8px] border border-[var(--border)] bg-[var(--bg2)] px-3 text-[13px] text-[var(--text)] outline-none transition-colors placeholder:text-[var(--text3)] hover:border-[var(--border2)] focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand)]/20";
+  "h-9 w-full rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg2)] px-3 text-[13px] text-[var(--text)] outline-none transition-colors placeholder:text-[var(--text3)] hover:border-[var(--border2)] focus:border-[var(--brand)] focus:ring-3 focus:ring-[var(--brand-bg)]";
 
 export const dialogTextareaClass =
-  "min-h-[80px] w-full rounded-[8px] border border-[var(--border)] bg-[var(--bg2)] p-3 text-[13px] leading-relaxed text-[var(--text)] outline-none transition-colors placeholder:text-[var(--text3)] hover:border-[var(--border2)] focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand)]/20";
+  "min-h-[80px] w-full rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg2)] p-3 text-[13px] leading-[1.5] text-[var(--text)] outline-none transition-colors placeholder:text-[var(--text3)] hover:border-[var(--border2)] focus:border-[var(--brand)] focus:ring-3 focus:ring-[var(--brand-bg)]";
 
 export function DialogField({
   label,
@@ -156,12 +175,12 @@ export function DialogField({
 }) {
   return (
     <div className={cn("flex flex-col gap-1.5", className)}>
-      <label htmlFor={name} className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[var(--text3)]">
+      <label htmlFor={name} className="font-[family-name:var(--mono)] text-[10px] font-medium uppercase tracking-[0.09em] text-[var(--text3)]">
         {label}
         {required && <span className="ml-1 text-[var(--red)]">*</span>}
       </label>
       {children}
-      {hint && <span className="text-[11.5px] leading-snug text-[var(--text3)]">{hint}</span>}
+      {hint && <span className="text-[11px] leading-snug text-[var(--text3)]">{hint}</span>}
     </div>
   );
 }
@@ -172,10 +191,32 @@ export function DialogField({
  */
 export function apiErrorMessage(error: unknown, fallback = "Request failed."): string {
   if (!error) return fallback;
-  const response = (error as { response?: { data?: { error?: { message?: unknown } } } }).response;
-  const detail = response?.data?.error?.message;
-  if (typeof detail === "string" && detail.length > 0) return detail;
-  if (error instanceof Error && error.message) return error.message;
+  if (typeof error === "string") return error;
+
+  const response = (error as { response?: { data?: { error?: unknown; message?: unknown } } }).response;
+  const dataError = response?.data?.error;
+  const dataMsg = response?.data?.message;
+
+  if (typeof dataError === "string" && dataError.length > 0) return dataError;
+  if (dataError && typeof dataError === "object") {
+    if ("message" in dataError && typeof (dataError as any).message === "string" && (dataError as any).message.length > 0) {
+      return (dataError as any).message;
+    }
+  }
+
+  if (typeof dataMsg === "string" && dataMsg.length > 0) return dataMsg;
+
+  if (error instanceof Error) {
+    if (typeof error.message === "string" && error.message.length > 0) {
+      return error.message;
+    }
+  }
+
+  if (typeof error === "object" && error !== null && "message" in error) {
+    const msg = (error as any).message;
+    if (typeof msg === "string" && msg.length > 0) return msg;
+  }
+
   return fallback;
 }
 
@@ -269,7 +310,7 @@ export function AsyncPanel({
     body = (
       <div className="flex flex-col gap-2 py-1">
         {[0, 1, 2, 3].map((row) => (
-          <div key={row} className="h-9 animate-pulse rounded-[8px] bg-[var(--bg2)]" />
+          <div key={row} className="loading-skeleton h-9 rounded-[var(--radius)] bg-[var(--bg2)]" />
         ))}
       </div>
     );
@@ -289,9 +330,9 @@ export function AsyncPanel({
           <EmptyIcon className="size-5" aria-hidden="true" />
         </span>
         <div>
-          <p className="text-[13.5px] font-semibold text-[var(--text)]">{emptyTitle ?? "Nothing here yet"}</p>
+          <p className="text-[14px] font-semibold text-[var(--text)]">{emptyTitle ?? "Nothing here yet"}</p>
           {emptyDescription && (
-            <p className="mt-1 max-w-[46ch] text-[12.5px] leading-relaxed text-[var(--text2)]">
+            <p className="mt-1 max-w-[46ch] text-[12px] leading-[1.5] text-[var(--text2)]">
               {emptyDescription}
             </p>
           )}

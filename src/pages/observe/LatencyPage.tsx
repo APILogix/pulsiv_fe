@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { MultiLineChart, CHART_COLORS } from "@/pages/dashboards/widgets";
 import { seededSeries, percentile } from "@/pages/dashboards/lib";
-import { useRequestEvents } from "@/hooks/useDummyData";
+import { useObservabilityList } from "./hooks/useObservabilityApi";
 import { useTimeRangeStore, TIME_RANGES } from "@/stores/timeRangeStore";
 import {
-  PageHeader, KpiCard, SectionCard, Table, Tr, Td, LatencyBar, StatusCodeBadge, formatLatency, FilterSelect
+  PageHeader, KpiCard, SectionCard, Table, Tr, Td, LatencyBar, StatusCodeBadge, EnvironmentBadge, AskAiButton, formatLatency, FilterSelect
 } from "@/shared/observe";
 import { cn } from "@/lib/utils";
 
@@ -24,23 +24,23 @@ export default function LatencyPage() {
   const timeRange = useTimeRangeStore((s) => s.timeRange);
   const setTimeRange = useTimeRangeStore((s) => s.setTimeRange);
 
-  const { data } = useRequestEvents(methodFilter !== "all" ? { method: methodFilter } : undefined);
-  const reqs = data ?? [];
+  const { data, isLoading } = useObservabilityList<any>("requests", methodFilter !== "all" ? { method: methodFilter } : undefined);
+  const reqs = data?.items ?? [];
 
-  const lat = reqs.map((r) => r.latency);
+  const lat = reqs.map((r: any) => r.latency ?? r.durationMs ?? 0);
   const p50 = percentile(lat, 50), p90 = percentile(lat, 90), p95 = percentile(lat, 95), p99 = percentile(lat, 99);
 
   const grouped = new Map<string, number[]>();
   for (const r of reqs) {
-    const key = dimension === "route" ? r.route : dimension === "service" ? r.metadata.service : r.method;
+    const key = dimension === "route" ? (r.route ?? r.endpoint ?? r.url) : dimension === "service" ? (r.service ?? r.metadata?.service) : r.method;
     if (!grouped.has(key)) grouped.set(key, []);
-    grouped.get(key)!.push(r.latency);
+    grouped.get(key)!.push(r.latency ?? r.durationMs ?? 0);
   }
   const rows = Array.from(grouped.entries())
     .map(([key, vals]) => ({ key, p95: percentile(vals, 95), avg: Math.round(vals.reduce((s, v) => s + v, 0) / vals.length), count: vals.length }))
     .sort((a, b) => b.p95 - a.p95);
 
-  const slowest = [...reqs].sort((a, b) => b.latency - a.latency).slice(0, 10);
+  const slowest = [...reqs].sort((a: any, b: any) => (b.latency ?? b.durationMs ?? 0) - (a.latency ?? a.durationMs ?? 0)).slice(0, 10);
 
   return (
     <div className="flex flex-col gap-5">
@@ -86,25 +86,31 @@ export default function LatencyPage() {
         }
         className="p-0"
       >
-        <Table headers={[dimension, "p95", "avg", "requests"]}>
-          {rows.map((r) => (
-            <Tr key={r.key}>
-              <Td className="font-[family-name:var(--mono)] text-[12px] text-[var(--text2)]">{r.key}</Td>
-              <Td><LatencyBar value={r.p95} /></Td>
-              <Td className="tabular-nums">{r.avg}ms</Td>
-              <Td className="tabular-nums text-[var(--text2)]">{r.count}</Td>
-            </Tr>
-          ))}
-        </Table>
+        {isLoading ? (
+          <div className="p-4 text-center text-sm text-[var(--text3)]">Loading data...</div>
+        ) : (
+          <Table headers={[dimension, "p95", "avg", "requests"]}>
+            {rows.map((r) => (
+              <Tr key={r.key}>
+                <Td className="font-[family-name:var(--mono)] text-[12px] text-[var(--text2)]">{r.key}</Td>
+                <Td><LatencyBar value={r.p95} /></Td>
+                <Td className="tabular-nums">{r.avg}ms</Td>
+                <Td className="tabular-nums text-[var(--text2)]">{r.count}</Td>
+              </Tr>
+            ))}
+          </Table>
+        )}
       </SectionCard>
 
       <SectionCard title="Slowest requests" className="p-0">
-        <Table headers={["Status", "Route", "Latency"]}>
-          {slowest.map((r) => (
-            <Tr key={r.eventId}>
+        <Table headers={["Status", "Route", "Latency", "Environment", ""]}>
+          {slowest.map((r: any) => (
+            <Tr key={r.id ?? r.requestId}>
               <Td><StatusCodeBadge code={r.statusCode} /></Td>
-              <Td className="font-[family-name:var(--mono)] text-[12px] text-[var(--text2)]">{r.url}</Td>
-              <Td><LatencyBar value={r.latency} /></Td>
+              <Td className="font-[family-name:var(--mono)] text-[12px] text-[var(--text2)]">{r.url ?? r.endpoint}</Td>
+              <Td><LatencyBar value={r.latency ?? r.durationMs} /></Td>
+              <Td><EnvironmentBadge environment={r.environment ?? r.metadata?.environment} /></Td>
+              <Td><AskAiButton question={`Why is ${r.url ?? r.endpoint} slow? Latency was ${formatLatency(r.latency ?? r.durationMs)} with status ${r.statusCode}.`} /></Td>
             </Tr>
           ))}
         </Table>
@@ -112,5 +118,3 @@ export default function LatencyPage() {
     </div>
   );
 }
-
-

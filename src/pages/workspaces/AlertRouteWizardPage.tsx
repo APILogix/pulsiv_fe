@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { FillPage } from "@/shared/observe";
+import { useCurrentProject } from "./ProjectShellPage";
+import { projectPath } from "@/modules/projects/navigation/project-routes";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,7 +26,8 @@ const mockConnectors: Connector[] = [
 
 export default function AlertRouteWizardPage() {
   const navigate = useNavigate();
-  const { projectId, routeId } = useParams<{ projectId: string; routeId?: string }>();
+  const { routeId } = useParams<{ routeId?: string }>();
+  const { projectId, publicId, orgSlug } = useCurrentProject();
   const isEditing = routeId && routeId !== "new";
   
   const { data: routeData } = useAlertRoute(projectId!, isEditing ? routeId : undefined);
@@ -78,7 +81,7 @@ export default function AlertRouteWizardPage() {
         await mutations.createRoute.mutateAsync(payload);
         toast.success("Route created successfully");
       }
-      navigate(`/projects/${projectId}/routes`);
+      navigate(projectPath(orgSlug, publicId, "routes"));
     } catch (err) {
       toast.error("Failed to save route");
       setLoading(false);
@@ -167,7 +170,7 @@ export default function AlertRouteWizardPage() {
           <div className="flex items-center justify-between rounded-b-xl border-t border-[var(--border)] bg-[var(--bg2)]/50 p-4">
             <Button
               variant="outline"
-              onClick={() => step > 1 ? setStep(step - 1) : navigate(`/projects/${projectId}/routes`)}
+              onClick={() => step > 1 ? setStep(step - 1) : navigate(projectPath(orgSlug, publicId, "routes"))}
             >
               {step === 1 ? "Cancel" : "Back"}
             </Button>

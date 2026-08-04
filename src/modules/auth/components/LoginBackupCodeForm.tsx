@@ -40,7 +40,7 @@ export function LoginBackupCodeForm({ challengeId, loginBackupCode, isPending, o
       />
 
       <AuthCard>
-        <div className="flex items-center gap-3 rounded-[12px] border border-[var(--border)] bg-[var(--bg2)] px-3 py-2.5">
+        <div className="flex items-center gap-3 rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg2)] px-3 py-2.5">
           <IconChip icon={ShieldCheck} tone="amber" />
           <div className="min-w-0 flex-1">
             <p className="text-[13px] font-medium text-[var(--text)]">Recovery factor</p>
@@ -75,7 +75,7 @@ export function LoginBackupCodeForm({ challengeId, loginBackupCode, isPending, o
         <button
           type="button"
           onClick={onCancel}
-          className="rounded-sm font-medium text-[var(--brand)] transition-colors hover:text-[var(--brand-d)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
+          className="rounded-sm font-medium text-[var(--brand)] transition-colors hover:text-[var(--brand-d)] focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-[var(--brand-bg)]"
         >
           Use another verification method
         </button>

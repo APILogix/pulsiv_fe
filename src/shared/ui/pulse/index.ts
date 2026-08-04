@@ -10,3 +10,4 @@ export * from "./surfaces";
 export * from "./metrics";
 export * from "./controls";
 export * from "./auth";
+export * from "./chart-tooltip";

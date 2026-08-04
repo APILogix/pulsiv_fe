@@ -3,35 +3,55 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
-@custom-variant dark (&:is([data-theme="dark"] *));
+/* ══════════════════════════════════════════════════════════════
+   SENTINEL DESIGN SYSTEM — sentinel-design.md is the source of truth.
+   Two dark developer themes of one identity: Indigo (default) + Mono.
+   There is NO light theme. `prefers-contrast: more` replaces it (§1).
 
-/* ============ CORE DARK (default) ============ */
-:root, [data-theme="dark"] {
-  /* neutrals */
-  --bg:#0a0c12; --bg1:#10131c; --bg2:#161a26; --bg3:#1e2331;
-  --border:#232939; --border2:#303850;
-  --text:#e9ecf4; --text2:#9aa3b8; --text3:#5c6579;
-  
-  /* brand — identity channel */
-  --brand:#7c6cf5; --brand-d:#6554ec; --brand-fg:#ffffff;
-  --brand-bg:rgba(124,108,245,0.12);
-  
-  /* ai — model channel */
+   Three-channel law (§0):
+     brand  = the product   (indigo → white in Mono)
+     green  = the truth     (system health, never chrome)
+     cyan   = the AI        (model output only, identical in both themes)
+   ══════════════════════════════════════════════════════════════ */
+
+/* Both themes are dark, so the `dark:` variant is always on. Any element
+   inside the themed root resolves dark: utilities. */
+@custom-variant dark (&:is([data-theme] *));
+
+/* ============ MONO (default theme — purist developer theme) ============ */
+:root,
+[data-theme="mono"],
+[data-theme="indigo"] {
+  /* neutrals — pure cool zinc (§11.1) */
+  --bg:#09090b; --bg1:#111113; --bg2:#18181b; --bg3:#232326;
+  --border:#26262a; --border2:#3f3f46;
+  --text:#fafafa; --text2:#a1a1aa; --text3:#8a8a94;
+
+  /* brand — identity channel is white (§2.3) */
+  --brand:#fafafa; --brand-d:#e4e4e7; --brand-fg:#09090b;
+  --brand-bg:rgba(250,250,250,0.08); --brand-glow:rgba(250,250,250,0.35);
+
+  /* ai — model channel (§2.4) */
   --ai:#22d3ee; --ai-d:#06b6d4; --ai-fg:#032a33;
   --ai-bg:rgba(34,211,238,0.10);
-  
-  /* semantic — truth channel */
+
+  /* semantic — truth channel (§2.2) */
   --green:#34d399; --green-d:#10b981; --green-bg:rgba(52,211,153,0.08);
   --red:#ef4444; --red-d:#dc2626; --red-bg:rgba(239,68,68,0.08);
   --amber:#f59e0b; --amber-bg:rgba(245,158,11,0.08);
   --blue:#60a5fa; --blue-bg:rgba(96,165,250,0.10);
   --violet:#a78bfa; --violet-bg:rgba(167,139,250,0.10);
-  
-  /* shadows */
-  --shadow-modal:0 24px 60px rgba(3,5,10,0.65);
-  --shadow-toast:0 8px 24px rgba(3,5,10,0.5);
-  
-  /* type & radii */
+
+  /* legacy alias — GET method colour is the info/blue channel (§2.6). */
+  --get: var(--blue);
+
+  /* shadows (§6) */
+  --shadow-modal:0 24px 60px rgba(0,0,0,0.7);
+  --shadow-toast:0 8px 24px rgba(0,0,0,0.55);
+  --shadow-card:0 1px 2px rgba(0,0,0,0.45);
+  --overlay:rgba(0,0,0,0.66);
+
+  /* type & radii (§4, §6) */
   --display:'Space Grotesk',sans-serif;
   --sans:'Inter',sans-serif;
   --mono:'JetBrains Mono',monospace;
@@ -56,7 +76,7 @@
   --destructive-foreground: #ffffff;
   --input: var(--border2);
   --ring: var(--brand);
-  
+
   /* bridge: sidebar */
   --sidebar: var(--bg1);
   --sidebar-foreground: var(--text);
@@ -66,17 +86,23 @@
   --sidebar-accent-foreground: var(--text);
   --sidebar-border: var(--border);
   --sidebar-ring: var(--brand);
-  
-  /* extra sizes */
+
+  /* shell metrics (§5.2) */
   --rail-width: 64px;
-  --flyout-width: 224px;
+  --flyout-width: 272px;
+  --sidebar-width: 272px;
+  --sidebar-rail: 64px;
   --header-height: 52px;
+  --focus-rail: min(100% - 48px, 720px);
+  --data-rail: 1400px;
+  --row-height: 44px;
+  --nav-item-height: 34px;
 
   /* project shell — the in-project sidebar is the only project nav */
-  --project-nav-width: 236px;
+  --project-nav-width: 272px;
   --project-nav-rail: 60px;
-  
-  /* chart colors */
+
+  /* chart series order (§2.7) */
   --chart-1: var(--brand);
   --chart-2: var(--ai);
   --chart-3: var(--green);
@@ -85,65 +111,20 @@
   --chart-6: var(--blue);
 }
 
-/* ============ CORE LIGHT ============ */
-[data-theme="light"] {
-  --bg:#f6f7fb; --bg1:#ffffff; --bg2:#eef0f6; --bg3:#e3e6f0;
-  --border:#e3e6ef; --border2:#ccd2e0;
-  --text:#171a23; --text2:#5a6272; --text3:#99a1b3;
+/* ============ Contrast accessibility (replaces the light theme, §1) ====== */
+@media (prefers-contrast: more) {
+  :root, [data-theme="indigo"] { --text2:#e9ecf4; --text3:#9aa3b8; }
+  [data-theme="mono"]          { --text2:#fafafa; --text3:#a1a1aa; }
+}
 
-  --brand:#6554ec; --brand-d:#5443d6; --brand-fg:#ffffff;
-  --brand-bg:rgba(101,84,236,0.08);
-
-  --ai:#0891b2; --ai-d:#0e7490; --ai-fg:#ffffff;
-  --ai-bg:rgba(8,145,178,0.08);
-
-  --green:#16a34a; --green-d:#15803d; --green-bg:rgba(22,163,74,0.09);
-  --red:#dc2626; --red-d:#b91c1c; --red-bg:rgba(220,38,38,0.07);
-  --amber:#d97706; --amber-bg:rgba(217,119,6,0.09);
-  --blue:#2563eb; --blue-bg:rgba(37,99,235,0.08);
-  --violet:#7c3aed; --violet-bg:rgba(124,58,237,0.08);
-
-  --shadow-modal:0 24px 60px rgba(23,26,35,0.18);
-  --shadow-toast:0 8px 24px rgba(23,26,35,0.12);
-  --shadow-card:0 1px 2px rgba(23,26,35,0.05);
-
-  /* bridge: shadcn */
-  --background: var(--bg);
-  --foreground: var(--text);
-  --card: var(--bg1);
-  --card-foreground: var(--text);
-  --popover: var(--bg1);
-  --popover-foreground: var(--text);
-  --secondary: var(--bg2);
-  --secondary-foreground: var(--text);
-  --muted: var(--bg2);
-  --muted-foreground: var(--text2);
-  --accent: var(--bg3);
-  --accent-foreground: var(--text);
-  --primary: var(--brand);
-  --primary-foreground: var(--brand-fg);
-  --destructive: var(--red);
-  --destructive-foreground: #ffffff;
-  --input: var(--border2);
-  --ring: var(--brand);
-  
-  /* bridge: sidebar */
-  --sidebar: var(--bg1);
-  --sidebar-foreground: var(--text);
-  --sidebar-primary: var(--brand);
-  --sidebar-primary-foreground: var(--brand-fg);
-  --sidebar-accent: var(--bg2);
-  --sidebar-accent-foreground: var(--text);
-  --sidebar-border: var(--border);
-  --sidebar-ring: var(--brand);
-  
-  /* chart colors */
-  --chart-1: var(--brand);
-  --chart-2: var(--ai);
-  --chart-3: var(--green);
-  --chart-4: var(--amber);
-  --chart-5: var(--violet);
-  --chart-6: var(--blue);
+/* ============ Theme flip = hard cut (§9) ============
+   The provider sets data-theme-flip for one frame while swapping tokens so a
+   mid-swap colour fade can never read as a glitch. */
+[data-theme-flip] *,
+[data-theme-flip] *::before,
+[data-theme-flip] *::after {
+  transition: none !important;
+  animation-duration: 0s !important;
 }
 
 @layer base {
@@ -158,16 +139,55 @@
   }
   html {
     @apply font-sans;
+    color-scheme: dark;
   }
   button {
     cursor: pointer;
+  }
+  /* Numbers are always tabular (§4). */
+  code, kbd, samp, pre, [class*="font-mono"] {
+    font-variant-numeric: tabular-nums;
   }
 }
 
 @theme inline {
   --font-heading: var(--display);
+  --font-display: var(--display);
   --font-sans: var(--sans);
   --font-mono: var(--mono);
+
+  /* three-channel tokens exposed as Tailwind colours */
+  --color-brand: var(--brand);
+  --color-brand-d: var(--brand-d);
+  --color-brand-fg: var(--brand-fg);
+  --color-brand-bg: var(--brand-bg);
+  --color-ai: var(--ai);
+  --color-ai-d: var(--ai-d);
+  --color-ai-fg: var(--ai-fg);
+  --color-ai-bg: var(--ai-bg);
+  --color-ok: var(--green);
+  --color-ok-d: var(--green-d);
+  --color-ok-bg: var(--green-bg);
+  --color-danger: var(--red);
+  --color-danger-d: var(--red-d);
+  --color-danger-bg: var(--red-bg);
+  --color-warn: var(--amber);
+  --color-warn-bg: var(--amber-bg);
+  --color-info: var(--blue);
+  --color-info-bg: var(--blue-bg);
+  --color-series: var(--violet);
+  --color-series-bg: var(--violet-bg);
+
+  /* neutral ramp */
+  --color-surface: var(--bg);
+  --color-surface-1: var(--bg1);
+  --color-surface-2: var(--bg2);
+  --color-surface-3: var(--bg3);
+  --color-hairline: var(--border);
+  --color-hairline-strong: var(--border2);
+  --color-text-1: var(--text);
+  --color-text-2: var(--text2);
+  --color-text-3: var(--text3);
 
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
@@ -211,7 +231,77 @@
   --radius-4xl: calc(var(--radius-lg) * 2.6);
 }
 
-/* Motions & Animations (design.md §9) */
+/* ══════════════════════════════════════════════════════════════
+   §3 — Ambient field. The only chrome gradients in the system.
+   ══════════════════════════════════════════════════════════════ */
+.sentinel-ambient {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: -10;
+  background:
+    radial-gradient(1200px 600px at 80% -10%, var(--brand-bg) 0%, transparent 60%),
+    radial-gradient(900px 500px at -10% 110%, var(--ai-bg) 0%, transparent 55%);
+}
+
+/* AI insight panel glow — top-right inner radial, never a gradient border. */
+.ai-glow::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background: radial-gradient(circle at 100% 0%, var(--ai-bg) 0%, transparent 45%);
+}
+
+/* Landing / auth hero glow. */
+.hero-glow::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 480px;
+  height: 240px;
+  translate: -50% -50%;
+  pointer-events: none;
+  background: radial-gradient(ellipse, var(--brand-bg) 0%, transparent 70%);
+}
+
+/* Logo mark — the ONLY linear gradient in the system (§3). */
+.logo-gradient {
+  background: linear-gradient(135deg, var(--brand) 0%, var(--ai) 100%);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   §5.1 — Dual-width strategy. Never mix the two rails.
+   ══════════════════════════════════════════════════════════════ */
+.focus-rail {
+  width: var(--focus-rail);
+  max-width: 720px;
+  margin-right: auto;
+}
+.data-rail {
+  width: 100%;
+  max-width: var(--data-rail);
+}
+@media (max-width: 1100px) {
+  .data-rail-scroll { overflow-x: auto; }
+}
+
+/* §4 — mono eyebrow / label. */
+.eyebrow {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--text3);
+}
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Motions & Animations (§9) */
 @keyframes pulse-dot {
   0%, 100% { opacity: 1; transform: scale(1); }
   50% { opacity: 0.5; transform: scale(0.85); }
@@ -222,7 +312,7 @@
 
 @keyframes ai-pulse {
   0% { transform: scale(1); opacity: 0.8; }
-  100% { transform: scale(2.5); opacity: 0; }
+  100% { transform: scale(2); opacity: 0; }
 }
 .ai-pulse {
   animation: ai-pulse 2.4s ease-out infinite;
@@ -262,7 +352,19 @@
   animation: fadein 150ms ease-out forwards;
 }
 
-/* Prefers reduced motion */
+/* Chart lines draw once on load (§9). */
+@keyframes chart-draw {
+  from { stroke-dashoffset: 1; }
+  to { stroke-dashoffset: 0; }
+}
+/* Pair with pathLength="1" on the <path> element. */
+.chart-draw {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: chart-draw 600ms ease-out forwards;
+}
+
+/* Prefers reduced motion — kill infinite animations, keep fades. */
 @media (prefers-reduced-motion: reduce) {
   .pulse-dot, .ai-pulse, .shimmer {
     animation: none !important;
@@ -285,7 +387,8 @@
   -ms-overflow-style: none;
 }
 
-/* Tooltip for rail icons */
+/* Tooltip for rail icons — appears only when the flyout is collapsed (§6).
+   Slides 4px as it fades so it reads as attached to the icon, not stamped. */
 .rail-item::after {
   content: attr(data-title);
   position: absolute;
@@ -298,22 +401,75 @@
   font-weight: 500;
   white-space: nowrap;
   opacity: 0;
+  transform: translateX(-4px);
   pointer-events: none;
-  transition: opacity 0.2s;
+  transition: opacity 150ms ease-out, transform 150ms cubic-bezier(0.22, 1, 0.36, 1);
   z-index: 110;
+  box-shadow: var(--shadow-toast);
 }
-.rail-item:hover::after {
+.rail-item:hover::after,
+.rail-item:focus-visible::after {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* Flyout accordion.
+   The original clamp was `max-height: 400px`, which silently truncated long
+   module lists — the Observability group alone has 21 children (~800px), so
+   roughly half its rows were unreachable.
+
+   Raising the clamp would only move the cliff, so the height is derived from the
+   content instead: the row wraps a single grid item and animates
+   `grid-template-rows` from `0fr` to `1fr`. No group can outgrow it.
+
+   `grid-template-rows` interpolation needs Chrome 107+ / Firefox 66+ /
+   Safari 16+. Where it isn't supported the panel still opens and closes
+   correctly — only the transition is lost — because `1fr` applies immediately.
+   That degrades to "instant", never to "clipped". */
+.nav-group-children {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition:
+    grid-template-rows 240ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 160ms ease-out;
+}
+/* The single grid child does the clipping. `min-height: 0` is required or the
+   row refuses to collapse below its content height. */
+.nav-group-children > .nav-group-rows {
+  min-height: 0;
+  overflow: hidden;
+}
+.nav-group-children.open {
+  grid-template-rows: 1fr;
   opacity: 1;
 }
 
-/* Flyout Accordion logic */
-.nav-group-children {
-  max-height: 0;
-  overflow: hidden;
-  transition: max-height 0.3s ease;
+/* Sidebar nav row — active indicator scales in from the rail edge (§6).
+   Horizontal position is left to the call site (a Tailwind `left-*` utility)
+   because unlayered CSS would otherwise beat the utility. */
+.nav-row-indicator {
+  position: absolute;
+  top: 50%;
+  height: 14px;
+  width: 2px;
+  translate: 0 -50%;
+  border-radius: 2px;
+  background: var(--brand);
+  transform-origin: center;
+  animation: nav-indicator-in 200ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
-.nav-group-children.open {
-  max-height: 400px;
+@keyframes nav-indicator-in {
+  from { opacity: 0; scale: 1 0.3; }
+  to   { opacity: 1; scale: 1 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rail-item::after { transition: opacity 100ms linear; transform: none; }
+  .rail-item:hover::after,
+  .rail-item:focus-visible::after { transform: none; }
+  .nav-group-children { transition: none; }
+  .nav-row-indicator { animation: none; }
 }
 
 /* Dim main content when flyout is unpinned and open */
@@ -324,7 +480,7 @@ body.flyout-overlay-active #main-content {
 
 /* ══════════════════════════════════════════════════════════════
    Pulse surface kit — decorative layers for the observability UI.
-   All values derive from theme tokens so light/dark both work.
+   All values derive from theme tokens so both themes stay in sync.
    ══════════════════════════════════════════════════════════════ */
 
 /* Faint blueprint grid — used behind page heroes and auth panels. */
@@ -429,7 +585,7 @@ body.flyout-overlay-active #main-content {
   to { transform: translateX(400%); }
 }
 .app-loader-scan {
-  background: linear-gradient(90deg, transparent, var(--violet), transparent);
+  background: linear-gradient(90deg, transparent, var(--brand), transparent);
   animation: app-loader-scan 1.4s linear infinite;
 }
 
@@ -438,6 +594,25 @@ body.flyout-overlay-active #main-content {
   50% { background-color: var(--bg3); }
 }
 .loading-skeleton { animation: loading-skeleton-shift 1.6s ease-in-out infinite; }
+
+/* ── Phase 3 — page-shaped skeletons ──────────────────────────────────────
+   `.skeleton-block` carries the entrance rise AND the shimmer in a single
+   `animation` shorthand, so one `animation-delay: <d>, <d>` staggers both at
+   once (see shared/skeletons/primitives.tsx). Only opacity/transform and
+   background-color animate, so a 200-block skeleton still costs no layout. */
+@keyframes skeleton-rise {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: none; }
+}
+.skeleton-rise {
+  animation: skeleton-rise 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.skeleton-block {
+  background-color: var(--bg2);
+  animation:
+    skeleton-rise 260ms cubic-bezier(0.22, 1, 0.36, 1) both,
+    loading-skeleton-shift 1.6s ease-in-out infinite;
+}
 
 .metric-loader-grid { stroke: var(--border); stroke-width: 1; }
 .metric-loader-trace {
@@ -464,10 +639,46 @@ body.flyout-overlay-active #main-content {
 @media (prefers-reduced-motion: reduce) {
   .app-loader-scan,
   .loading-skeleton,
+  .skeleton-block,
+  .skeleton-rise,
   .metric-loader-trace,
   .metric-loader-node,
   .metric-loader-bar,
   .auth-transition-progress {
     animation: none !important;
   }
+  /* `skeleton-rise` uses fill-mode `both`; without the animation the element
+     must not stay at its from-state. */
+  .skeleton-block,
+  .skeleton-rise {
+    opacity: 1 !important;
+    transform: none !important;
+  }
 }
+
+/* ══════════════════════════════════════════════════════════════
+   Phase 9 — scroll experience.
+   Smooth scrolling and anchor offsets, opted out for reduced motion.
+   No JS scroll listeners are involved; the app's scroll containers keep
+   their own passive rAF-throttled handlers (shared/motion/scroll.tsx).
+   ══════════════════════════════════════════════════════════════ */
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+/* Applied to every long scroll region in the shell. `overscroll-behavior`
+   stops a nested table from scroll-chaining the whole page, which is the most
+   common source of "the page jumped" reports. */
+.scroll-region {
+  overscroll-behavior: contain;
+  scroll-padding-top: 1rem;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Reserve the scrollbar gutter so toggling overflow can't shift layout (CLS). */
+.scroll-stable {
+  scrollbar-gutter: stable;
+}
+

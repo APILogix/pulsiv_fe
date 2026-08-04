@@ -62,7 +62,7 @@ export default function LoginPage() {
     <div className="w-full">
       <AuthHeading
         eyebrow="Welcome back"
-        title="Sign in to Pulsiv"
+        title="Sign in"
         description="Continue with Google or sign in with your work email."
       />
 

@@ -1,53 +1,133 @@
+/**
+ * Alert rules — `GET/POST/PATCH/DELETE /organizations/:orgId/alerting/rules`
+ * plus `/enable`, `/disable`, `/clone`, `/test`, and the template endpoints.
+ */
 import { useState } from "react";
 import { useNavigate } from "react-router";
-import { Plus } from "lucide-react";
-import { useAlertRules } from "@/hooks/useDummyData";
+import { toast } from "sonner";
+import { Plus, FileStack, Sparkles } from "lucide-react";
 import {
-  PageHeader, KpiCard, FillPage, InfiniteTable, SeverityBadge, Button, Timestamp, demoAction, demoSuccess,
+  PageHeader, KpiCard, FillPage, InfiniteTable, SeverityBadge, Timestamp, Button,
 } from "@/shared/observe";
 import type { Column } from "@/shared/observe";
-import type { AlertRule } from "@/lib/dummy-data";
-import { cn } from "@/lib/utils";
+import { Button as UiButton } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  useAlertRuleMutations,
+  useAlertRuleTemplates,
+  useAlertRules,
+} from "@/modules/alerting/hooks/useAlerting";
+import { apiErrorMessage, DialogField, FormDialog } from "@/modules/projects/components/project-ui";
+import { ALERT_SEVERITIES, type AlertRule, type AlertSeverity } from "@/modules/alerting/api/types";
+
+const dialogFieldInputClass =
+  "h-9 w-full rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg2)] px-3 text-[13px] text-[var(--text)] outline-none transition-colors placeholder:text-[var(--text3)] hover:border-[var(--border2)] focus:border-[var(--brand)] focus:ring-3 focus:ring-[var(--brand-bg)]";
+const dialogFieldTextareaClass =
+  "min-h-[80px] w-full rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg2)] p-3 text-[13px] leading-[1.5] text-[var(--text)] outline-none transition-colors placeholder:text-[var(--text3)] hover:border-[var(--border2)] focus:border-[var(--brand)] focus:ring-3 focus:ring-[var(--brand-bg)]";
 
 export default function AlertRulesPage() {
   const navigate = useNavigate();
-  const { data, isLoading } = useAlertRules();
-  const [enabled, setEnabled] = useState<Record<string, boolean>>({});
-  const rules = data ?? [];
+  const { data, isLoading } = useAlertRules({ limit: 200 });
+  const { createRule, toggleRule, cloneRule, createFromTemplate } = useAlertRuleMutations();
+  const { data: templates } = useAlertRuleTemplates();
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [templatesOpen, setTemplatesOpen] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+  const rules = data?.data ?? [];
 
-  const isOn = (id: string, def: boolean) => enabled[id] ?? def;
+  const toggle = (rule: AlertRule) => {
+    const nextState = !rule.enabled;
+    toast.success(`${rule.name} ${nextState ? "enabled" : "disabled"}`);
+    toggleRule.mutate(
+      { id: rule.id, enabled: nextState },
+      {
+        onError: (err) => toast.error(apiErrorMessage(err, "Could not update rule.")),
+      },
+    );
+  };
 
-  const toggle = (r: AlertRule) => {
-    const next = !isOn(r.id, r.enabled);
-    setEnabled((p) => ({ ...p, [r.id]: next }));
-    demoSuccess(`${r.name} ${next ? "enabled" : "disabled"}`);
+  const handleClone = (rule: AlertRule) => {
+    cloneRule.mutate(rule.id, {
+      onSuccess: () => toast.success(`Cloned "${rule.name}"`),
+      onError: (err) => toast.error(apiErrorMessage(err, "Could not clone rule.")),
+    });
+  };
+
+  const handleCreate = (form: FormData) => {
+    setFormError(null);
+    const name = String(form.get("name") ?? "").trim();
+    if (!name) {
+      setFormError("Name is required.");
+      return;
+    }
+    createRule.mutate(
+      {
+        name,
+        description: String(form.get("description") ?? "").trim() || undefined,
+        severity: form.get("severity") as AlertSeverity,
+        evaluationIntervalSeconds: Number(form.get("evaluationIntervalSeconds") ?? 60),
+        cooldownSeconds: Number(form.get("cooldownSeconds") ?? 300),
+      },
+      {
+        onSuccess: () => {
+          toast.success("Alert rule created");
+          setDialogOpen(false);
+        },
+        onError: (err) => setFormError(apiErrorMessage(err, "Could not create rule.")),
+      },
+    );
+  };
+
+  const handleCreateFromTemplate = (templateKey: string) => {
+    createFromTemplate.mutate(
+      { templateKey },
+      {
+        onSuccess: () => {
+          toast.success("Rule created from template");
+          setTemplatesOpen(false);
+        },
+        onError: (err) => toast.error(apiErrorMessage(err, "Could not create rule from template.")),
+      },
+    );
   };
 
   const columns: Column<AlertRule>[] = [
     { key: "name", header: "Name", width: "1fr", cell: (r) => <span className="truncate font-medium">{r.name}</span> },
-    { key: "type", header: "Type", width: "110px", cell: (r) => <span className="capitalize text-[var(--text2)]">{r.type}</span> },
-    { key: "source", header: "Source", width: "150px", cell: (r) => <span className="truncate font-[family-name:var(--mono)] text-[12px] text-[var(--text2)]">{r.source}</span> },
     { key: "severity", header: "Severity", width: "90px", cell: (r) => <SeverityBadge severity={r.severity} /> },
-    { key: "window", header: "Window", width: "80px", cell: (r) => <span className="tabular-nums text-[var(--text2)]">{r.window}</span> },
-    { key: "triggered", header: "Last triggered", width: "150px", cell: (r) => (r.lastTriggeredAt ? <Timestamp value={r.lastTriggeredAt} /> : <span className="text-[var(--text3)]">—</span>) },
+    { key: "interval", header: "Interval", width: "90px", cell: (r) => <span className="tabular-nums text-[var(--text2)]">{r.evaluationIntervalSeconds}s</span> },
+    { key: "cooldown", header: "Cooldown", width: "90px", cell: (r) => <span className="tabular-nums text-[var(--text2)]">{r.cooldownSeconds}s</span> },
+    { key: "triggered", header: "Last evaluated", width: "150px", cell: (r) => (r.lastEvaluatedAt ? <Timestamp value={r.lastEvaluatedAt} /> : <span className="text-[var(--text3)]">—</span>) },
     {
       key: "enabled",
       header: "Enabled",
       width: "90px",
       cell: (r) => (
-        <button
-          type="button"
-          onClick={(e) => { e.stopPropagation(); toggle(r); }}
-          role="switch"
-          aria-checked={isOn(r.id, r.enabled)}
-          aria-label={`Toggle ${r.name}`}
-          className={cn(
-            "relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors",
-            isOn(r.id, r.enabled) ? "bg-[var(--brand)]" : "bg-[var(--bg3)]"
-          )}
-        >
-          <span className={cn("inline-block size-4 transform rounded-full bg-white shadow-sm transition-transform", isOn(r.id, r.enabled) ? "translate-x-[18px]" : "translate-x-0.5")} />
-        </button>
+        <div onClick={(e) => e.stopPropagation()}>
+          <Switch
+            size="sm"
+            checked={r.enabled}
+            onCheckedChange={() => toggle(r)}
+            aria-label={`Toggle ${r.name}`}
+          />
+        </div>
+      ),
+    },
+    {
+      key: "actions",
+      header: "",
+      width: "70px",
+      align: "right" as const,
+      cell: (r) => (
+        <div onClick={(e) => e.stopPropagation()}>
+          <Button variant="ghost" onClick={() => handleClone(r)}>Clone</Button>
+        </div>
       ),
     },
   ];
@@ -55,16 +135,25 @@ export default function AlertRulesPage() {
   return (
     <FillPage>
       <PageHeader
-        title="Alert Rules"
-        description="Rule authoring for thresholds, anomalies, and conditions."
-        actions={<Button variant="primary" onClick={() => demoAction("Create alert rule")}><Plus className="size-4" /> New rule</Button>}
+        title="Alert rules"
+        description="Rule authoring for thresholds, anomalies, and composite conditions."
+        actions={
+          <div className="flex gap-2">
+            <UiButton variant="outline" onClick={() => setTemplatesOpen(true)}>
+              <FileStack className="size-4" /> Templates
+            </UiButton>
+            <UiButton onClick={() => setDialogOpen(true)}>
+              <Plus className="size-4" /> New rule
+            </UiButton>
+          </div>
+        }
       />
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <KpiCard label="Rules" value={rules.length} />
-        <KpiCard label="Enabled" value={rules.filter((r) => isOn(r.id, r.enabled)).length} />
-        <KpiCard label="Triggered (7d)" value={rules.filter((r) => r.lastTriggeredAt).length} />
-        <KpiCard label="Anomaly rules" value={rules.filter((r) => r.type === "anomaly").length} />
+        <KpiCard label="Enabled" value={rules.filter((r) => r.enabled).length} />
+        <KpiCard label="Evaluated recently" value={rules.filter((r) => r.lastEvaluatedAt).length} />
+        <KpiCard label="Default (preset)" value={rules.filter((r) => r.isDefault).length} />
       </div>
 
       <InfiniteTable
@@ -75,7 +164,74 @@ export default function AlertRulesPage() {
         columns={columns}
         getKey={(r) => r.id}
         onRowClick={(r) => navigate(`/alerts/rules/${r.id}`)}
+        emptyMessage="No alert rules yet. Create one or start from a template."
       />
+
+      <FormDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        title="New alert rule"
+        description="Conditions and actions can be added from the rule detail page after creation."
+        submitLabel="Create rule"
+        pending={createRule.isPending}
+        error={formError}
+        onSubmit={handleCreate}
+      >
+        <DialogField label="Name" name="name" required>
+          <input id="name" name="name" className={dialogFieldInputClass} placeholder="High error rate" />
+        </DialogField>
+        <DialogField label="Description" name="description">
+          <textarea id="description" name="description" className={dialogFieldTextareaClass} placeholder="What does this rule detect?" />
+        </DialogField>
+        <div className="grid grid-cols-2 gap-4">
+          <DialogField label="Severity" name="severity" required>
+            <select id="severity" name="severity" defaultValue="warning" className={dialogFieldInputClass}>
+              {ALERT_SEVERITIES.map((s) => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
+          </DialogField>
+          <DialogField label="Evaluation interval (s)" name="evaluationIntervalSeconds">
+            <input id="evaluationIntervalSeconds" name="evaluationIntervalSeconds" type="number" min={1} defaultValue={60} className={dialogFieldInputClass} />
+          </DialogField>
+        </div>
+        <DialogField label="Cooldown (s)" name="cooldownSeconds" hint="Minimum time between repeat notifications.">
+          <input id="cooldownSeconds" name="cooldownSeconds" type="number" min={0} defaultValue={300} className={dialogFieldInputClass} />
+        </DialogField>
+      </FormDialog>
+
+      <Dialog open={templatesOpen} onOpenChange={setTemplatesOpen}>
+        <DialogContent className="sm:max-w-[560px]">
+          <DialogHeader>
+            <DialogTitle>Rule templates</DialogTitle>
+            <DialogDescription>Prebuilt conditions and actions you can turn into an editable rule.</DialogDescription>
+          </DialogHeader>
+          <div className="flex max-h-[60vh] flex-col gap-2 overflow-y-auto sidebar-scroll">
+            {!templates || templates.length === 0 ? (
+              <p className="py-6 text-center text-[13px] text-[var(--text2)]">No templates available.</p>
+            ) : (
+              templates.map((t) => (
+                <button
+                  key={t.key}
+                  type="button"
+                  onClick={() => handleCreateFromTemplate(t.key)}
+                  disabled={createFromTemplate.isPending}
+                  className="flex items-start justify-between gap-3 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg2)] p-3 text-left transition-colors hover:border-[var(--brand)] disabled:opacity-50"
+                >
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="size-3.5 text-[var(--brand)]" />
+                      <span className="text-[13px] font-medium text-[var(--text)]">{t.name}</span>
+                    </div>
+                    {t.description && <p className="mt-1 text-[12px] text-[var(--text2)]">{t.description}</p>}
+                  </div>
+                  {t.severity && <SeverityBadge severity={t.severity} />}
+                </button>
+              ))
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </FillPage>
   );
 }

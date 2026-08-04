@@ -1,4 +1,10 @@
 /**
+ * ⚠️ DEPRECATED / DEAD CODE — superseded by the Sentinel design system.
+ * Two dark themes only (indigo + mono); tokens live in src/app/index.css and
+ * the switcher lives in @/theme. Do not import this module.
+ */
+
+/**
  * Pulse theme system — type definitions.
  *
  * The theme system is built around a small set of *semantic* color slots

@@ -122,6 +122,24 @@ export const useMetricEvents = () =>
   useSuspenseQuery({ queryKey: ["metrics"], queryFn: async () => { await delay(300); return dummy.dummyMetricEvents; }, staleTime: STALE });
 
 // ---- Profiles / Replays / Cron ----
+export const useProfileEvents = () =>
+  useSuspenseQuery({ queryKey: ["profiles"], queryFn: async () => { await delay(300); return dummy.dummyProfileEvents; }, staleTime: STALE });
+
+export const useCronEvents = () =>
+  useSuspenseQuery({ queryKey: ["crons"], queryFn: async () => { await delay(300); return dummy.dummyCronEvents; }, staleTime: STALE });
+
+export const useReplayEvents = () =>
+  useSuspenseQuery({ queryKey: ["replays"], queryFn: async () => { await delay(300); return dummy.dummyReplayEvents; }, staleTime: STALE });
+
+// ---- Advanced diagnostics ----
+export const useRuntimeMetricSamples = () =>
+  useSuspenseQuery({ queryKey: ["runtimeMetrics"], queryFn: async () => { await delay(300); return dummy.dummyRuntimeMetricSamples; }, staleTime: STALE });
+
+export const useEventLoopSamples = () =>
+  useSuspenseQuery({ queryKey: ["eventLoopSamples"], queryFn: async () => { await delay(300); return dummy.dummyEventLoopSamples; }, staleTime: STALE });
+
+export const useGcPauseEvents = () =>
+  useSuspenseQuery({ queryKey: ["gcPauses"], queryFn: async () => { await delay(300); return dummy.dummyGcPauseEvents; }, staleTime: STALE });
 
 // ---- Projects ----
 export const useProjects = () =>

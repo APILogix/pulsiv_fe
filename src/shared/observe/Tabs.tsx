@@ -2,7 +2,7 @@ import { useState } from "react";
 import { cn } from "@/lib/utils";
 
 export function Tabs({ tabs, defaultTab }: {
-  tabs: { id: string; label: string; content: React.ReactNode }[];
+  tabs: { id: string; label: React.ReactNode; content: React.ReactNode }[];
   defaultTab?: string;
 }) {
   const [active, setActive] = useState(defaultTab ?? tabs[0]?.id);

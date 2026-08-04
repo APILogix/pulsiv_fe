@@ -14,11 +14,13 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { PulsivLogo } from '@/shared/components/PulsivLogo';
 import { markOrganizationSetup } from '@/modules/auth/services/post-login-setup-flag';
+import { ORGANIZATION_WORKFLOW, WorkflowOverlay, useWorkflow } from '@/shared/motion';
 
 interface OrgFormState {
   error: string | null;
   success: boolean;
   orgId?: string;
+  slug?: string;
 }
 
 const INDUSTRIES = [
@@ -81,6 +83,7 @@ export default function CreateOrganizationPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const setActiveOrgId = useOrgStore((s) => s.setActiveOrgId);
+  const setActiveOrgSlug = useOrgStore((s) => s.setActiveOrgSlug);
   const [orgName, setOrgName] = useState('');
   const [countryName, setCountryName] = useState('');
   const derivedSlug = slugify(orgName);
@@ -100,26 +103,36 @@ export default function CreateOrganizationPage() {
     staleTime: 30_000,
   });
 
+  /**
+   * Creating an organization provisions real resources server-side, so it earns
+   * a narrated workflow rather than a spinner (Phase 4). The steps are paced
+   * while the request is in flight and the final one only completes when the API
+   * actually responds — we never claim work that hasn't happened.
+   */
+  const workflow = useWorkflow(ORGANIZATION_WORKFLOW, { pace: 700 });
+
   const [state, submitAction, isPending] = useActionState(
     async (_previousState: OrgFormState, formData: FormData): Promise<OrgFormState> => {
-      try {
-        const name = (formData.get('name') as string)?.trim();
-        const description = normalizeOptional(formData.get('description'));
-        const industry = normalizeOptional(formData.get('industry'));
-        const companySize = normalizeOptional(formData.get('companySize'));
-        const country = normalizeOptional(formData.get('country'));
-        const timezone = normalizeOptional(formData.get('timezone'));
-        const billingEmail = normalizeOptional(formData.get('billingEmail'));
+      const name = (formData.get('name') as string)?.trim();
+      const description = normalizeOptional(formData.get('description'));
+      const industry = normalizeOptional(formData.get('industry'));
+      const companySize = normalizeOptional(formData.get('companySize'));
+      const country = normalizeOptional(formData.get('country'));
+      const timezone = normalizeOptional(formData.get('timezone'));
+      const billingEmail = normalizeOptional(formData.get('billingEmail'));
 
-        if (!name) return { success: false, error: 'Organization name is required.' };
-        if (timezone && !isValidTimezone(timezone)) {
-          return { success: false, error: 'Select a valid timezone from the list.' };
-        }
-        if (billingEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(billingEmail)) {
-          return { success: false, error: 'Enter a valid billing email address.' };
-        }
+      // Client-side validation runs before the overlay, so a bad field never
+      // shows a progress animation it would immediately have to fail.
+      if (!name) return { success: false, error: 'Organization name is required.' };
+      if (timezone && !isValidTimezone(timezone)) {
+        return { success: false, error: 'Select a valid timezone from the list.' };
+      }
+      if (billingEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(billingEmail)) {
+        return { success: false, error: 'Enter a valid billing email address.' };
+      }
 
-        const org = await orgApi.createOrganization({
+      const result = await workflow.run(() =>
+        orgApi.createOrganization({
           name,
           description,
           industry,
@@ -127,17 +140,28 @@ export default function CreateOrganizationPage() {
           country,
           timezone,
           billingEmail,
-        });
+        }),
+      );
 
-        queryClient.invalidateQueries({ queryKey: orgQueryKeys.lists() });
-        return { success: true, error: null, orgId: org.id };
-      } catch (error: unknown) {
-        const responseError = error as { response?: { data?: { message?: string } }; message?: string };
+      if (!result.ok || !result.data) {
+        const responseError = result.error as any;
+        const detail = responseError?.response?.data?.message || responseError?.message;
+        
+        let errorMessage = 'Unable to create the organization. Please try again.';
+        if (typeof detail === 'string') {
+          errorMessage = detail;
+        } else if (detail && typeof detail === 'object' && typeof detail.message === 'string') {
+          errorMessage = detail.message;
+        }
+
         return {
           success: false,
-          error: responseError.response?.data?.message || responseError.message || 'Unable to create the organization. Please try again.',
+          error: errorMessage,
         };
       }
+
+      queryClient.invalidateQueries({ queryKey: orgQueryKeys.lists() });
+      return { success: true, error: null, orgId: result.data.id, slug: result.data.slug };
     },
     { success: false, error: null },
   );
@@ -146,10 +170,11 @@ export default function CreateOrganizationPage() {
     if (state.success && state.orgId) {
       toast.success('Organization created');
       setActiveOrgId(state.orgId);
+      setActiveOrgSlug(state.slug ?? null);
       markOrganizationSetup();
       navigate('/dashboard');
     }
-  }, [state, navigate, setActiveOrgId]);
+  }, [state, navigate, setActiveOrgId, setActiveOrgSlug]);
 
   useEffect(() => {
     if (state.error) toast.error(state.error);
@@ -157,6 +182,15 @@ export default function CreateOrganizationPage() {
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-[var(--bg)] p-3 sm:p-6">
+      <WorkflowOverlay
+        open={workflow.isActive}
+        title="Setting up your organization"
+        description="Provisioning your workspace. This takes a few seconds."
+        steps={ORGANIZATION_WORKFLOW}
+        state={workflow}
+        successLabel="Workspace ready"
+        onCancel={workflow.reset}
+      />
       <section className="w-full max-w-3xl rounded-2xl border border-border bg-[var(--bg1)] shadow-2xl shadow-black/25">
         <div className="border-b border-border px-5 py-5 sm:px-8 sm:py-6">
           <div className="flex items-start gap-4">

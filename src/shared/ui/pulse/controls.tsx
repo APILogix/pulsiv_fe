@@ -6,12 +6,12 @@ import { cn } from "@/lib/utils";
 // ── Field shells ─────────────────────────────────────────────
 
 export const fieldInputClass =
-  "h-10 w-full rounded-[9px] border border-[var(--border)] bg-[var(--bg2)] px-3 text-[13.5px] text-[var(--text)] outline-none transition-colors placeholder:text-[var(--text3)] hover:border-[var(--border2)] focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand)]/20 disabled:cursor-not-allowed disabled:opacity-55";
+  "h-9 w-full rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg2)] px-3 text-[13px] text-[var(--text)] outline-none transition-colors placeholder:text-[var(--text3)] hover:border-[var(--border2)] focus:border-[var(--brand)] focus:ring-3 focus:ring-[var(--brand-bg)] disabled:cursor-not-allowed disabled:opacity-55";
 
 export const fieldTextareaClass =
-  "min-h-[96px] w-full rounded-[9px] border border-[var(--border)] bg-[var(--bg2)] p-3 text-[13.5px] leading-relaxed text-[var(--text)] outline-none transition-colors placeholder:text-[var(--text3)] hover:border-[var(--border2)] focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand)]/20 disabled:cursor-not-allowed disabled:opacity-55";
+  "min-h-[96px] w-full rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg2)] p-3 text-[13px] leading-[1.5] text-[var(--text)] outline-none transition-colors placeholder:text-[var(--text3)] hover:border-[var(--border2)] focus:border-[var(--brand)] focus:ring-3 focus:ring-[var(--brand-bg)] disabled:cursor-not-allowed disabled:opacity-55";
 
-export const fieldMonoClass = `${fieldInputClass} font-[family-name:var(--mono)] text-[12.5px]`;
+export const fieldMonoClass = `${fieldInputClass} font-[family-name:var(--mono)] text-[12px]`;
 
 // ── Segmented control ────────────────────────────────────────
 
@@ -39,7 +39,7 @@ export function SegmentedControl<T extends string>({
     <div
       role="tablist"
       aria-label={ariaLabel}
-      className={cn("inline-flex items-center gap-1 rounded-[10px] border border-[var(--border)] bg-[var(--bg1)] p-1", className)}
+      className={cn("inline-flex items-center gap-1 rounded-full border border-[var(--border)] bg-[var(--bg2)] p-1", className)}
     >
       {options.map((option) => {
         const active = option.value === value;
@@ -51,9 +51,9 @@ export function SegmentedControl<T extends string>({
             aria-selected={active}
             onClick={() => onChange(option.value)}
             className={cn(
-              "inline-flex items-center gap-1.5 rounded-[7px] px-3 py-1.5 text-[12.5px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]",
+              "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[12px] font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-[var(--brand-bg)]",
               active
-                ? "bg-[var(--bg3)] text-[var(--text)] shadow-[inset_0_1px_0_0_color-mix(in_srgb,var(--text)_8%,transparent)]"
+                ? "bg-[var(--brand-bg)] text-[var(--brand)]"
                 : "text-[var(--text3)] hover:text-[var(--text2)]"
             )}
           >
@@ -62,8 +62,8 @@ export function SegmentedControl<T extends string>({
             {option.count !== undefined && (
               <span
                 className={cn(
-                  "rounded-full px-1.5 py-px text-[10.5px] font-semibold tabular-nums",
-                  active ? "bg-[var(--brand-bg)] text-[var(--brand)]" : "bg-[var(--bg2)] text-[var(--text3)]"
+                  "rounded-full px-1.5 py-px font-mono text-[10px] font-medium tabular-nums",
+                  active ? "bg-[var(--brand-bg)] text-[var(--brand)]" : "bg-[var(--bg3)] text-[var(--text3)]"
                 )}
               >
                 {option.count}
@@ -89,7 +89,7 @@ export function PasswordInput({
       <input
         {...props}
         type={visible ? "text" : "password"}
-        className={cn(fieldInputClass, "h-11 pr-11", className)}
+        className={cn(fieldInputClass, "h-10 pr-11", className)}
       />
       <button
         type="button"
@@ -132,7 +132,7 @@ export function PasswordStrength({ value }: { value: string }) {
         ))}
       </div>
       {value.length > 0 && (
-        <span className="text-[11.5px] font-medium" style={{ color: STRENGTH_COLOR[score] }}>
+        <span className="font-mono text-[10px] font-medium tabular-nums" style={{ color: STRENGTH_COLOR[score] }}>
           {STRENGTH_LABEL[score]}
         </span>
       )}
@@ -186,7 +186,7 @@ export function CodeInput({
       onChange={handleChange}
       aria-label={`${length}-character verification code`}
       className={cn(
-        "h-14 w-full rounded-[10px] border border-[var(--border)] bg-[var(--bg2)] text-center font-[family-name:var(--mono)] text-[24px] font-semibold tracking-[0.5em] text-[var(--text)] outline-none transition-colors placeholder:tracking-[0.5em] placeholder:text-[var(--text3)] focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand)]/20 disabled:opacity-55",
+        "h-14 w-full rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg2)] text-center font-[family-name:var(--mono)] text-[24px] font-medium tracking-[0.5em] text-[var(--text)] outline-none transition-colors placeholder:tracking-[0.5em] placeholder:text-[var(--text3)] focus:border-[var(--brand)] focus:ring-3 focus:ring-[var(--brand-bg)] disabled:opacity-55",
         className
       )}
       placeholder={"•".repeat(length)}
@@ -220,10 +220,10 @@ export function SecretField({
   const display = revealed ? value : "•".repeat(Math.min(28, Math.max(12, value.length)));
 
   return (
-    <div className={cn("flex flex-col gap-1.5", className)}>
-      {label && <span className="text-[11px] font-medium uppercase tracking-[0.1em] text-[var(--text3)]">{label}</span>}
-      <div className="flex items-center gap-2 rounded-[9px] border border-[var(--border)] bg-[var(--bg2)] pl-3 pr-1.5 py-1.5">
-        <code className="min-w-0 flex-1 truncate font-[family-name:var(--mono)] text-[12.5px] text-[var(--text)]" title={revealed ? value : undefined}>
+    <div className={cn("flex min-w-0 flex-col gap-1.5", className)}>
+      {label && <span className="font-mono text-[10px] font-medium uppercase tracking-[0.09em] text-[var(--text3)]">{label}</span>}
+      <div className="flex min-w-0 items-center gap-2 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg2)] pl-3 pr-1.5 py-1.5">
+        <code className="min-w-0 flex-1 truncate font-[family-name:var(--mono)] text-[12px] text-[var(--text)]" title={revealed ? value : undefined}>
           {display}
         </code>
         {masked && (
@@ -231,7 +231,7 @@ export function SecretField({
             type="button"
             onClick={() => setRevealed((current) => !current)}
             aria-label={revealed ? "Hide value" : "Reveal value"}
-            className="rounded-[6px] p-1.5 text-[var(--text3)] transition-colors hover:bg-[var(--bg3)] hover:text-[var(--text)]"
+            className="rounded-[var(--radius)] p-1.5 text-[var(--text3)] transition-colors hover:bg-[var(--bg3)] hover:text-[var(--text)]"
           >
             {revealed ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
           </button>
@@ -239,7 +239,7 @@ export function SecretField({
         <button
           type="button"
           onClick={handleCopy}
-          className="rounded-[6px] px-2 py-1 text-[11.5px] font-medium text-[var(--text2)] transition-colors hover:bg-[var(--bg3)] hover:text-[var(--text)]"
+          className="rounded-[var(--radius)] px-2 py-1 text-[11px] font-medium text-[var(--text2)] transition-colors hover:bg-[var(--bg3)] hover:text-[var(--text)]"
         >
           {copied ? "Copied" : "Copy"}
         </button>

@@ -1,5 +1,8 @@
-import { useState } from "react";
-import { Link, useNavigate } from "react-router";
+import { useEffect, useState } from "react";
+import { Link, useNavigate, useParams } from "react-router";
+import { useOrgStore } from "@/modules/organizations/store/org.store";
+import { useOrganizations } from "@/modules/organizations/hooks/useOrganizations";
+import { projectPath } from "@/modules/projects/navigation/project-routes";
 import {
   Archive,
   FolderOpen,
@@ -48,11 +51,11 @@ const SORT_OPTIONS: SegmentOption<"created_at" | "updated_at" | "name">[] = [
 
 // ── project card ─────────────────────────────────────────────
 
-function ProjectCard({ project }: { project: ProjectListItem }) {
+function ProjectCard({ project, activeOrgSlug }: { project: ProjectListItem; activeOrgSlug: string | null }) {
   return (
     <Link
-      to={`/projects/${project.id}/overview`}
-      className="pulse-edge pulse-lift group flex flex-col gap-3.5 rounded-[14px] border border-[var(--border)] bg-[var(--bg1)] p-4 transition-colors hover:border-[var(--border2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
+      to={activeOrgSlug ? projectPath(activeOrgSlug, project.publicId, "overview") : `/projects/${project.id}/overview`}
+      className="pulse-lift group flex flex-col gap-3.5 rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] p-4 transition-colors duration-150 hover:border-[var(--border2)] focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-[var(--brand-bg)]"
     >
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-start gap-3">
@@ -61,7 +64,7 @@ function ProjectCard({ project }: { project: ProjectListItem }) {
             <p className="truncate text-[14px] font-semibold text-[var(--text)] group-hover:text-[var(--brand)]">
               {project.name}
             </p>
-            <code className="font-[family-name:var(--mono)] text-[11.5px] text-[var(--text3)]">{project.slug}</code>
+            <code className="font-[family-name:var(--mono)] text-[11px] text-[var(--text3)]">{project.slug}</code>
           </div>
         </div>
         <Pill tone={PROJECT_STATUS_TONE[project.status]} dot>
@@ -69,7 +72,7 @@ function ProjectCard({ project }: { project: ProjectListItem }) {
         </Pill>
       </div>
 
-      <p className="line-clamp-2 min-h-[34px] text-[12.5px] leading-relaxed text-[var(--text2)]">
+      <p className="line-clamp-2 min-h-[34px] text-[12px] leading-[1.5] text-[var(--text2)]">
         {project.description || "No description provided."}
       </p>
 
@@ -78,35 +81,35 @@ function ProjectCard({ project }: { project: ProjectListItem }) {
           {project.tags.slice(0, 4).map((tag) => (
             <span
               key={tag}
-              className="rounded-full bg-[var(--bg2)] px-2 py-0.5 text-[10.5px] font-medium text-[var(--text3)] ring-1 ring-inset ring-[var(--border)]"
+              className="rounded-full bg-[var(--bg2)] px-2 py-0.5 font-[family-name:var(--mono)] text-[10px] font-medium text-[var(--text3)] ring-1 ring-inset ring-[var(--border)]"
             >
               {tag}
             </span>
           ))}
           {project.tags.length > 4 && (
-            <span className="text-[10.5px] text-[var(--text3)]">+{project.tags.length - 4}</span>
+            <span className="font-[family-name:var(--mono)] text-[10px] text-[var(--text3)]">+{project.tags.length - 4}</span>
           )}
         </div>
       )}
 
-      <dl className="grid grid-cols-3 gap-px overflow-hidden rounded-[10px] border border-[var(--border)] bg-[var(--border)]">
+      <dl className="grid grid-cols-3 gap-px overflow-hidden rounded-[var(--radius)] border border-[var(--border)] bg-[var(--border)]">
         <div className="flex flex-col gap-0.5 bg-[var(--bg1)] px-3 py-2">
-          <dt className="text-[10px] font-medium uppercase tracking-[0.1em] text-[var(--text3)]">Keys</dt>
-          <dd className="text-[13px] font-semibold tabular-nums text-[var(--text)]">{project.apiKeysCount}</dd>
+          <dt className="font-[family-name:var(--mono)] text-[10px] font-medium uppercase tracking-[0.09em] text-[var(--text3)]">Keys</dt>
+          <dd className="font-[family-name:var(--mono)] text-[13px] font-medium tabular-nums text-[var(--text)]">{project.apiKeysCount}</dd>
         </div>
         <div className="flex flex-col gap-0.5 bg-[var(--bg1)] px-3 py-2">
-          <dt className="text-[10px] font-medium uppercase tracking-[0.1em] text-[var(--text3)]">Active</dt>
-          <dd className="text-[13px] font-semibold tabular-nums text-[var(--green)]">
+          <dt className="font-[family-name:var(--mono)] text-[10px] font-medium uppercase tracking-[0.09em] text-[var(--text3)]">Active</dt>
+          <dd className="font-[family-name:var(--mono)] text-[13px] font-medium tabular-nums text-[var(--green)]">
             {project.activeApiKeysCount}
           </dd>
         </div>
         <div className="flex flex-col gap-0.5 bg-[var(--bg1)] px-3 py-2">
-          <dt className="text-[10px] font-medium uppercase tracking-[0.1em] text-[var(--text3)]">Visibility</dt>
-          <dd className="truncate text-[13px] font-semibold capitalize text-[var(--text)]">{project.visibility}</dd>
+          <dt className="font-[family-name:var(--mono)] text-[10px] font-medium uppercase tracking-[0.09em] text-[var(--text3)]">Visibility</dt>
+          <dd className="truncate text-[13px] font-medium capitalize text-[var(--text)]">{project.visibility}</dd>
         </div>
       </dl>
 
-      <div className="flex items-center justify-between border-t border-[var(--border)] pt-3 text-[11.5px] text-[var(--text3)]">
+      <div className="flex items-center justify-between border-t border-[var(--border)] pt-3 text-[11px] text-[var(--text3)]">
         <span>
           Created <Timestamp value={project.createdAt} />
         </span>
@@ -120,6 +123,23 @@ function ProjectCard({ project }: { project: ProjectListItem }) {
 
 export default function ProjectsPage() {
   const navigate = useNavigate();
+  const { orgSlug: paramOrgSlug } = useParams<{ orgSlug: string }>();
+  const storeOrgSlug = useOrgStore((state) => state.activeOrgSlug);
+  const activeOrgSlug = paramOrgSlug || storeOrgSlug;
+  const { organizations } = useOrganizations();
+
+  const setActiveOrgId = useOrgStore((s) => s.setActiveOrgId);
+  const setActiveOrgSlug = useOrgStore((s) => s.setActiveOrgSlug);
+
+  useEffect(() => {
+    if (paramOrgSlug && organizations.length > 0) {
+      const matchingOrg = organizations.find((o) => o.slug === paramOrgSlug);
+      if (matchingOrg && (useOrgStore.getState().activeOrgId !== matchingOrg.id || useOrgStore.getState().activeOrgSlug !== matchingOrg.slug)) {
+        setActiveOrgId(matchingOrg.id);
+        setActiveOrgSlug(matchingOrg.slug);
+      }
+    }
+  }, [paramOrgSlug, organizations, setActiveOrgId, setActiveOrgSlug]);
   const [status, setStatus] = useState<StatusFilter>("all");
   const [sortBy, setSortBy] = useState<"created_at" | "updated_at" | "name">("created_at");
   const [search, setSearch] = useState("");
@@ -156,7 +176,7 @@ export default function ProjectsPage() {
         icon={Package}
         breadcrumbs={[{ label: "Workspaces" }, { label: "Projects" }]}
         actions={
-          <UiButton size="lg" onClick={() => navigate("/projects/new")}>
+          <UiButton size="lg" onClick={() => navigate(activeOrgSlug ? `/${activeOrgSlug}/projects/new` : "/projects/new")}>
             <Plus className="mr-1.5 size-4" /> New project
           </UiButton>
         }
@@ -166,7 +186,7 @@ export default function ProjectsPage() {
 
       <Toolbar
         trailing={
-          <span className="text-[12px] tabular-nums text-[var(--text3)]">
+          <span className="font-[family-name:var(--mono)] text-[11px] tabular-nums text-[var(--text3)]">
             {projects.length} shown{archived > 0 ? ` · ${archived} archived` : ""}
           </span>
         }
@@ -226,7 +246,7 @@ export default function ProjectsPage() {
               Clear filters
             </UiButton>
           ) : (
-            <UiButton size="lg" onClick={() => navigate("/projects/new")}>
+            <UiButton size="lg" onClick={() => navigate(activeOrgSlug ? `/${activeOrgSlug}/projects/new` : "/projects/new")}>
               <Plus className="mr-1.5 size-4" /> New project
             </UiButton>
           )
@@ -235,7 +255,7 @@ export default function ProjectsPage() {
       >
         <div className="grid grid-cols-1 gap-4 p-4 sm:grid-cols-2 xl:grid-cols-3">
           {projects.map((project) => (
-            <ProjectCard key={project.id} project={project} />
+            <ProjectCard key={project.id} project={project} activeOrgSlug={activeOrgSlug} />
           ))}
         </div>
       </AsyncPanel>

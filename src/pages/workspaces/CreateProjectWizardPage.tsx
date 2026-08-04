@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
+import { useOrgStore } from "@/modules/organizations/store/org.store";
+import { projectPath } from "@/modules/projects/navigation/project-routes";
 import { AlertTriangle, Building2, Check, Globe, Loader2, Lock, Package, Palette, Tag } from "lucide-react";
 import { useProjectMutations } from "@/modules/projects/hooks/useProjects";
 import type { CreateProjectBody, ProjectVisibility } from "@/modules/projects/api/types";
@@ -15,6 +17,7 @@ import {
 } from "@/shared/ui/pulse";
 import { Button as UiButton } from "@/components/ui/button";
 import { DialogField, apiErrorMessage, parseList } from "@/modules/projects/components/project-ui";
+import { PROJECT_WORKFLOW, WorkflowOverlay, useWorkflow } from "@/shared/motion";
 import { cn } from "@/lib/utils";
 
 // ── module-level constants (rules.md §1.2) ───────────────────
@@ -67,10 +70,20 @@ const DEFAULT_TIMEZONE = Intl.DateTimeFormat().resolvedOptions().timeZone || "UT
 
 export default function CreateProjectWizardPage() {
   const navigate = useNavigate();
+  const activeOrgSlug = useOrgStore((s) => s.activeOrgSlug);
   const { createProject } = useProjectMutations();
   const [visibility, setVisibility] = useState<ProjectVisibility>("private");
   const [color, setColor] = useState<string>(COLOR_CHOICES[0].value);
   const [error, setError] = useState<string | null>(null);
+
+  /**
+   * Project creation fans out server-side (project row → environment → SDK
+   * config → monitoring → ingestion key), so the wait is narrated rather than
+   * spun (Phase 4). Navigation happens from the workflow's success callback, so
+   * the user reads "done" before the route changes — and never waits on the
+   * animation if the API is fast.
+   */
+  const workflow = useWorkflow(PROJECT_WORKFLOW, { pace: 650 });
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -95,8 +108,15 @@ export default function CreateProjectWizardPage() {
       ...(tags.length > 0 ? { tags } : {}),
     };
 
-    createProject.mutate(payload, {
-      onSuccess: (project) => navigate(`/projects/${project.id}/overview`),
+    void workflow.run(() => createProject.mutateAsync(payload), {
+      onSuccess: (project) => {
+        const orgSlug = useOrgStore.getState().activeOrgSlug;
+        if (orgSlug) {
+          navigate(projectPath(orgSlug, project.publicId, "overview"));
+        } else {
+          navigate(`/projects/${project.id}/overview`);
+        }
+      },
       onError: (mutationError) =>
         setError(apiErrorMessage(mutationError, "Could not create the project.")),
     });
@@ -104,12 +124,21 @@ export default function CreateProjectWizardPage() {
 
   return (
     <div className="flex flex-col gap-6">
+      <WorkflowOverlay
+        open={workflow.isActive}
+        title="Creating your project"
+        description="Provisioning the environment, SDK config, and ingestion key."
+        steps={PROJECT_WORKFLOW}
+        state={workflow}
+        successLabel="Project ready"
+        onCancel={workflow.reset}
+      />
       <PageHero
         eyebrow="Workspaces"
         title="New project"
         description="A project groups environments, ingestion keys, members, and alert routing for a single application or service."
         icon={Package}
-        breadcrumbs={[{ label: "Workspaces" }, { label: "Projects", to: "/projects" }, { label: "New" }]}
+        breadcrumbs={[{ label: "Workspaces" }, { label: "Projects", to: activeOrgSlug ? `/${activeOrgSlug}/projects` : "/projects" }, { label: "New" }]}
       />
 
       <form onSubmit={handleSubmit}>
@@ -246,7 +275,7 @@ export default function CreateProjectWizardPage() {
           )}
 
           <div className="flex items-center justify-end gap-2">
-            <UiButton type="button" variant="ghost" size="lg" onClick={() => navigate("/projects")}>
+            <UiButton type="button" variant="ghost" size="lg" onClick={() => navigate(activeOrgSlug ? `/${activeOrgSlug}/projects` : "/projects")}>
               Cancel
             </UiButton>
             <UiButton type="submit" size="lg" disabled={createProject.isPending}>

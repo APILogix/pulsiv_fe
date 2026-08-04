@@ -13,12 +13,13 @@ import {
 } from '@/shared/ui/pulse';
 
 const CHECKBOX_CLASS =
-  'mt-0.5 size-3.5 shrink-0 cursor-pointer rounded border-[var(--border)] bg-[var(--bg2)] accent-[var(--brand)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]';
+  'mt-0.5 size-3.5 shrink-0 cursor-pointer rounded border-[var(--border)] bg-[var(--bg2)] accent-[var(--brand)] focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-[var(--brand-bg)]';
 
 export function RegisterForm() {
   const { mutate: registerUser, isPending } = useRegister();
   const [passwordValue, setPasswordValue] = useState('');
-  const { register, handleSubmit, formState: { errors } } = useForm<RegisterFormData>({
+  const [agreed, setAgreed] = useState(false);
+  const { register, handleSubmit, setValue, formState: { errors } } = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
   });
 
@@ -27,6 +28,13 @@ export function RegisterForm() {
   };
 
   const passwordField = register('password');
+
+  const handleAgreeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const isChecked = e.target.checked;
+    setAgreed(isChecked);
+    setValue('accept_terms', isChecked, { shouldValidate: true });
+    setValue('accept_privacy', isChecked, { shouldValidate: true });
+  };
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
@@ -37,7 +45,7 @@ export function RegisterForm() {
           autoComplete="name"
           {...register('full_name')}
           disabled={isPending}
-          className={cn(fieldInputClass, 'h-11')}
+          className={cn(fieldInputClass, 'h-10')}
         />
       </AuthField>
 
@@ -49,7 +57,7 @@ export function RegisterForm() {
           autoComplete="email"
           {...register('email')}
           disabled={isPending}
-          className={cn(fieldInputClass, 'h-11 font-[family-name:var(--mono)] text-[13px]')}
+          className={cn(fieldInputClass, 'h-10 font-[family-name:var(--mono)] text-[13px]')}
         />
       </AuthField>
 
@@ -70,10 +78,17 @@ export function RegisterForm() {
         </div>
       </AuthField>
 
-      <div className="flex flex-col gap-2.5 rounded-[10px] border border-[var(--border)] bg-[var(--bg2)]/60 px-3.5 py-3">
+      <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg2)]/60 px-3.5 py-3">
         <div className="flex items-start gap-2.5">
-          <input type="checkbox" id="accept_terms" {...register('accept_terms')} className={CHECKBOX_CLASS} />
-          <label htmlFor="accept_terms" className="cursor-pointer text-[12px] leading-relaxed text-[var(--text2)]">
+          <input
+            type="checkbox"
+            id="accept_terms_and_privacy"
+            checked={agreed}
+            onChange={handleAgreeChange}
+            disabled={isPending}
+            className={CHECKBOX_CLASS}
+          />
+          <label htmlFor="accept_terms_and_privacy" className="cursor-pointer text-[12px] leading-relaxed text-[var(--text2)]">
             I agree to the{' '}
             <a
               href="https://pulsiv.com/terms"
@@ -82,19 +97,8 @@ export function RegisterForm() {
               className="font-medium text-[var(--brand)] hover:text-[var(--brand-d)]"
             >
               Terms of Service
-            </a>
-          </label>
-        </div>
-        {errors.accept_terms && (
-          <p role="alert" className="text-[12px] font-medium text-[var(--red)]">
-            {errors.accept_terms.message}
-          </p>
-        )}
-
-        <div className="flex items-start gap-2.5">
-          <input type="checkbox" id="accept_privacy" {...register('accept_privacy')} className={CHECKBOX_CLASS} />
-          <label htmlFor="accept_privacy" className="cursor-pointer text-[12px] leading-relaxed text-[var(--text2)]">
-            I agree to the{' '}
+            </a>{' '}
+            and{' '}
             <a
               href="https://pulsiv.com/privacy"
               target="_blank"
@@ -105,9 +109,9 @@ export function RegisterForm() {
             </a>
           </label>
         </div>
-        {errors.accept_privacy && (
-          <p role="alert" className="text-[12px] font-medium text-[var(--red)]">
-            {errors.accept_privacy.message}
+        {(errors.accept_terms || errors.accept_privacy) && (
+          <p role="alert" className="mt-1.5 text-[12px] font-medium text-[var(--red)]">
+            {errors.accept_terms?.message || errors.accept_privacy?.message || 'You must accept the terms and privacy policy to continue.'}
           </p>
         )}
       </div>

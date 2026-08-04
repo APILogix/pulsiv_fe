@@ -26,29 +26,46 @@ export const orgQueryKeys = {
 };
 
 export function useOrganizations() {
-  const { activeOrgId, setActiveOrgId } = useOrgStore();
+  const { activeOrgId, setActiveOrgId, activeOrgSlug, setActiveOrgSlug } = useOrgStore();
 
   const query = useQuery({
     queryKey: orgQueryKeys.lists(),
     queryFn: () => orgApi.listOrganizations({ limit: 100 }), // Assume reasonable limit for switcher
   });
 
-  // Auto-select first org if none is active
+  // Auto-select first org if none is active, or ensure activeOrgSlug is synced with activeOrgId
   useEffect(() => {
-    if (!query.data?.data?.length || activeOrgId) return;
+    if (!query.data?.data?.length) return;
+
+    const orgs = query.data.data;
+    if (activeOrgId) {
+      const currentOrg = orgs.find((org) => org.id === activeOrgId);
+      if (currentOrg) {
+        if (currentOrg.slug !== activeOrgSlug) {
+          setActiveOrgSlug(currentOrg.slug);
+        }
+        return;
+      }
+    }
 
     const currentOrgId = tokenService.getCurrentOrgId();
-    const currentOrg = query.data.data.find((org) => org.id === currentOrgId);
-    const nextOrgId = currentOrg?.id ?? query.data.data[0].id;
-    void orgApi.switchOrganization(nextOrgId)
+    const currentOrg = orgs.find((org) => org.id === currentOrgId);
+    const nextOrg = currentOrg ?? orgs[0];
+    void orgApi.switchOrganization(nextOrg.id)
       .catch(() => undefined)
-      .finally(() => setActiveOrgId(nextOrgId));
-  }, [query.data, activeOrgId, setActiveOrgId]);
+      .finally(() => {
+        setActiveOrgId(nextOrg.id);
+        setActiveOrgSlug(nextOrg.slug);
+      });
+  }, [query.data, activeOrgId, activeOrgSlug, setActiveOrgId, setActiveOrgSlug]);
 
   return {
     ...query,
     organizations: query.data?.data ?? [],
     activeOrgId,
+    activeOrgSlug,
     setActiveOrgId,
+    setActiveOrgSlug,
   };
 }
+

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
+import { projectsListPath } from "@/modules/projects/navigation/project-routes";
 import {
   AlertTriangle,
   Archive,
@@ -89,7 +90,7 @@ const asMessage = apiErrorMessage;
 
 export default function ProjectSettingsPage() {
   const navigate = useNavigate();
-  const { projectId, project } = useCurrentProject();
+  const { projectId, project, orgSlug } = useCurrentProject();
   const { data: settings, isLoading } = useProjectSettings(projectId);
   const { updateProject, updateSettings, deleteProject, transition } = useProjectMutations(projectId);
 
@@ -479,7 +480,7 @@ export default function ProjectSettingsPage() {
         pending={deleteProject.isPending}
         onConfirm={() => {
           if (deleteAcknowledged !== project.slug) return;
-          deleteProject.mutate(projectId, { onSuccess: () => navigate("/projects") });
+          deleteProject.mutate(projectId, { onSuccess: () => navigate(projectsListPath(orgSlug)) });
         }}
       >
         <div className="flex flex-col gap-2 px-4">

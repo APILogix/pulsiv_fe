@@ -14,7 +14,9 @@ import {
   activeProjectIdFromPath,
 } from '@/modules/projects/components/ActiveProjectNav';
 import { useOrganizations } from '@/modules/organizations/hooks/useOrganizations';
+import { useOrgStore } from '@/modules/organizations/store/org.store';
 import { useSidebarStore } from '@/stores/sidebarStore';
+import { prefetchRoute } from '@/app/router/route-prefetch';
 
 import { PrimaryRail } from './PrimaryRail';
 
@@ -42,24 +44,31 @@ export function AppDualSidebar() {
     location.pathname === '/settings' ||
     location.pathname.startsWith('/settings/');
 
+  const activeOrgSlug = useOrgStore((s) => s.activeOrgSlug);
+  const matchPath = (p: string) => (p === '/projects' && activeOrgSlug) ? `/${activeOrgSlug}/projects` : p;
+
   // Project pages live inside this flyout as an "Active project" section —
   // there is no third sidebar.
   const activeProjectId = activeProjectIdFromPath(location.pathname);
 
   const derivedActive = accountRoute
     ? null
+    : activeProjectId
+    ? mainNavigation.find((item) => item.label === 'Workspaces')
     : mainNavigation.find(
         (item) => {
-          if (location.pathname === item.path || location.pathname.startsWith(`${item.path}/`)) {
+          const p = matchPath(item.path);
+          if (location.pathname === p || location.pathname.startsWith(`${p}/`)) {
             return true;
           }
           return item.children?.some((child) => {
+            const cp = matchPath(child.path);
             if (child.exact) {
-              return location.pathname === child.path;
+              return location.pathname === cp;
             }
             return (
-              location.pathname === child.path ||
-              location.pathname.startsWith(`${child.path}/`)
+              location.pathname === cp ||
+              location.pathname.startsWith(`${cp}/`)
             );
           });
         }
@@ -82,7 +91,7 @@ export function AppDualSidebar() {
   const selectedRailItem = selectedRailItemLabel
     ? mainNavigation.find((item) => item.label === selectedRailItemLabel) ?? null
     : null;
-  const activeRailItem = accountRoute ? null : selectedRailItem ?? derivedActive;
+  const activeRailItem = accountRoute ? null : selectedRailItem ?? derivedActive ?? null;
   const navItemsToRender = getDynamicChildren(activeRailItem, location.pathname);
 
   const { organizations, activeOrgId } = useOrganizations();
@@ -180,14 +189,23 @@ export function AppDualSidebar() {
       <div
         ref={flyoutRef}
         className={clsx(
-          'flyout-container font-sans bg-[var(--sidebar)] border-r border-[var(--border)] flex flex-col z-[90] transition-all duration-300 ease-in-out overflow-hidden whitespace-nowrap relative shrink-0',
+          // Only `width` and `opacity` transition. The previous `transition-all`
+          // put every animatable property (colours, borders, shadows, transforms)
+          // on the clock for 300ms each time the flyout toggled.
+          'flyout-container font-sans bg-[var(--sidebar)] border-r border-[var(--border)] flex flex-col z-[90] transition-[width,opacity] duration-[240ms] ease-[cubic-bezier(0.22,1,0.36,1)] overflow-hidden whitespace-nowrap relative shrink-0 motion-reduce:transition-none',
           isFlyoutOpen ? 'w-[var(--flyout-width)] opacity-100' : 'w-0 opacity-0 border-r-0',
         )}
+        aria-hidden={!isFlyoutOpen}
+        // `inert` (React 19) removes the collapsed flyout from the tab order and
+        // the accessibility tree. Without it, `aria-hidden` alone would leave
+        // focusable links inside a hidden region — a WCAG failure, and the
+        // reason a collapsed sidebar used to swallow Tab presses.
+        {...(!isFlyoutOpen ? { inert: true as any } : {})}
       >
         <div className="h-[var(--header-height)] flex items-center justify-between px-4 border-b border-[var(--border)] shrink-0">
           <div className="min-w-0">
             {flyoutContext && (
-              <span className="block text-[10px] font-medium uppercase tracking-[0.08em] text-[var(--text3)]">
+              <span className="block font-mono text-[10px] font-medium uppercase tracking-[0.09em] text-[var(--text3)]">
                 {flyoutContext}
               </span>
             )}
@@ -223,10 +241,10 @@ export function AppDualSidebar() {
                     <button
                       type="button"
                       className={clsx(
-                        'w-full flex items-center justify-between px-3 py-2 rounded-md cursor-pointer text-[13.5px] font-medium transition-colors hover:bg-[var(--bg2)] hover:text-[var(--text)]',
+                        'w-full flex items-center justify-between px-3 h-[34px] rounded-[var(--radius)] cursor-pointer font-mono text-[10px] font-medium uppercase tracking-[0.09em] transition-colors duration-150 hover:bg-[var(--bg2)] hover:text-[var(--text2)]',
                         expandedGroups[groupName]
-                          ? 'text-[var(--text)]'
-                          : 'text-[var(--text2)]',
+                          ? 'text-[var(--text2)]'
+                          : 'text-[var(--text3)]',
                       )}
                       onClick={() => toggleGroup(groupName)}
                       aria-expanded={expandedGroups[groupName] ?? false}
@@ -246,11 +264,16 @@ export function AppDualSidebar() {
                         expandedGroups[groupName] && 'open',
                       )}
                     >
+                      {/* Single grid child — the accordion animates
+                          `grid-template-rows: 0fr → 1fr` on the parent, so the
+                          open height always equals the real content height. */}
+                      <div className="nav-group-rows">
                       {items.map((child) => {
+                        const cp = matchPath(child.path);
                         const isChildActive = child.exact
-                          ? location.pathname === child.path
-                          : location.pathname === child.path ||
-                            location.pathname.startsWith(`${child.path}/`);
+                          ? location.pathname === cp
+                          : location.pathname === cp ||
+                            location.pathname.startsWith(`${cp}/`);
 
                         if (child.external) {
                           return (
@@ -260,8 +283,8 @@ export function AppDualSidebar() {
                               target="_blank"
                               rel="noopener noreferrer"
                               className={clsx(
-                                'flex items-center py-2 px-3 pl-6 my-0.5 rounded-md cursor-pointer text-[13px] no-underline relative',
-                                'text-[var(--text3)] hover:text-[var(--text2)] hover:bg-[var(--bg2)]',
+                                'flex items-center h-[34px] px-3 pl-6 my-0.5 rounded-[var(--radius)] cursor-pointer text-[13px] no-underline relative transition-colors duration-150',
+                                'text-[var(--text2)] hover:text-[var(--text)] hover:bg-[var(--bg2)]',
                               )}
                             >
                               <div className="absolute left-2 top-0 bottom-0 w-[1px] bg-[var(--border)]" />
@@ -273,19 +296,29 @@ export function AppDualSidebar() {
                         return (
                           <Link
                             key={child.path}
-                            to={child.path}
+                            to={matchPath(child.path)}
+                            aria-current={isChildActive ? 'page' : undefined}
+                            onPointerEnter={() => prefetchRoute(matchPath(child.path))}
+                            onFocus={() => prefetchRoute(matchPath(child.path))}
                             className={clsx(
-                              'flex items-center py-2 px-3 pl-6 my-0.5 rounded-md cursor-pointer text-[13px] no-underline relative',
+                              'flex items-center h-[34px] px-3 pl-6 my-0.5 rounded-[var(--radius)] cursor-pointer text-[13px] no-underline relative transition-colors duration-150',
                               isChildActive
-                                ? 'text-[var(--brand)] font-medium bg-[var(--bg2)]'
-                                : 'text-[var(--text3)] hover:text-[var(--text2)] hover:bg-[var(--bg2)]',
+                                ? 'text-[var(--brand)] font-medium bg-[var(--brand-bg)]'
+                                : 'text-[var(--text2)] hover:text-[var(--text)] hover:bg-[var(--bg2)]',
                             )}
                           >
-                            <div className="absolute left-2 top-0 bottom-0 w-[1px] bg-[var(--border)]" />
+                            {/* Hairline rail for every row; the active row swaps it
+                                for a brand indicator that scales in from the rail. */}
+                            {isChildActive ? (
+                              <div className="nav-row-indicator left-2" aria-hidden="true" />
+                            ) : (
+                              <div className="absolute left-2 top-0 bottom-0 w-[1px] bg-[var(--border)]" aria-hidden="true" />
+                            )}
                             {child.label}
                           </Link>
                         );
                       })}
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -298,7 +331,7 @@ export function AppDualSidebar() {
           {activeRailItem?.label === 'Workspaces' && (
             <div className="grow overflow-y-auto p-2 pt-0 sidebar-scroll">
               {activeProjectId ? (
-                <ActiveProjectNav projectId={activeProjectId} />
+                <ActiveProjectNav publicId={activeProjectId.publicId} orgSlug={activeProjectId.orgSlug} />
               ) : (
                 <WorkspaceProjectList />
               )}
@@ -306,20 +339,39 @@ export function AppDualSidebar() {
           )}
         </div>
 
-        {/* Fixed Ingest Quota Widget at the bottom */}
+        {/* Fixed Ingest Quota / AI Credit flip widget at the bottom */}
         {navItemsToRender.length > 0 && (
           <div className="shrink-0 p-3 mt-auto border-t border-[var(--border)]">
-            <div className="rounded-[8px] border border-[var(--border)] bg-transparent p-3 flex flex-col gap-2.5">
-              <div className="flex justify-between items-center font-mono">
-                <span className="text-[10px] tracking-widest text-[var(--text3)] uppercase">Ingest Quota</span>
-                <span className="text-[12px] font-bold text-[var(--text)]">68%</span>
-              </div>
-              <div className="h-1.5 w-full bg-[var(--bg3)] rounded-full overflow-hidden">
-                <div className="h-full bg-[var(--brand)] rounded-full" style={{ width: '68%' }} />
-              </div>
-              <div className="text-[11px] font-mono text-[var(--text3)] flex justify-between items-center">
-                <span>6.8 / 10 GB</span>
-                <span>&middot; resets in 9d</span>
+            <div className="group h-[92px] [perspective:1000px]">
+              <div className="relative h-full w-full transition-transform duration-500 [transform-style:preserve-3d] group-hover:[transform:rotateY(180deg)]">
+                {/* Front: Ingest quota */}
+                <div className="absolute inset-0 rounded-[var(--radius)] border border-[var(--border)] bg-transparent p-3 flex flex-col gap-2.5 overflow-hidden [backface-visibility:hidden]">
+                  <div className="flex justify-between items-center font-mono">
+                    <span className="text-[10px] tracking-[0.09em] text-[var(--text3)] uppercase">Ingest quota</span>
+                    <span className="text-[12px] font-medium tabular-nums text-[var(--text)]">68%</span>
+                  </div>
+                  <div className="h-1.5 w-full bg-[var(--bg3)] rounded-full overflow-hidden">
+                    <div className="h-full bg-[var(--brand)] rounded-full" style={{ width: '68%' }} />
+                  </div>
+                  <div className="text-[11px] font-mono tabular-nums text-[var(--text3)] flex justify-between items-center gap-1 min-w-0">
+                    <span className="truncate">6.8 / 10 GB</span>
+                    <span className="shrink-0 whitespace-nowrap">&middot; resets in 9d</span>
+                  </div>
+                </div>
+
+                {/* Back: AI credit usage */}
+                <div className="absolute inset-0 rounded-[var(--radius)] border border-[var(--border)] bg-transparent p-3 flex flex-col gap-2.5 overflow-hidden [backface-visibility:hidden] [transform:rotateY(180deg)]">
+                  <div className="flex justify-between items-center font-mono">
+                    <span className="text-[10px] tracking-[0.09em] text-[var(--text3)] uppercase">AI credit</span>
+                  </div>
+                  <div className="h-1.5 w-full bg-[var(--bg3)] rounded-full overflow-hidden">
+                    <div className="h-full bg-[var(--brand)] rounded-full" style={{ width: '42%' }} />
+                  </div>
+                  <div className="text-[11px] font-mono tabular-nums text-[var(--text3)] flex justify-between items-center gap-1 min-w-0">
+                    <span className="truncate">210 / 500 credits</span>
+                    <span className="shrink-0 whitespace-nowrap">&middot; resets in 9d</span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>

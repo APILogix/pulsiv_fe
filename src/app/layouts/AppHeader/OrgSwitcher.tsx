@@ -14,7 +14,7 @@ import { orgApi } from '@/modules/organizations/api/org.api';
 import { useState } from 'react';
 
 export function OrgSwitcher() {
-  const { organizations, activeOrgId, setActiveOrgId, isLoading } = useOrganizations();
+  const { organizations, activeOrgId, setActiveOrgId, setActiveOrgSlug, isLoading } = useOrganizations();
   const navigate = useNavigate();
   const [switchingOrgId, setSwitchingOrgId] = useState<string | null>(null);
 
@@ -24,7 +24,11 @@ export function OrgSwitcher() {
     setSwitchingOrgId(orgId);
     try {
       await orgApi.switchOrganization(orgId);
+      const targetOrg = organizations.find((o) => o.id === orgId);
       setActiveOrgId(orgId);
+      if (targetOrg) {
+        setActiveOrgSlug(targetOrg.slug);
+      }
       setSwitchingOrgId(null);
     } catch {
       setSwitchingOrgId(null);
@@ -36,50 +40,48 @@ export function OrgSwitcher() {
       <DropdownMenuTrigger asChild>
         <Button
           variant="ghost"
-          className="flex items-center gap-2 px-2 hover:bg-accent text-foreground focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:bg-accent h-9"
+          className="flex items-center gap-2 px-2 h-9 text-[var(--text)] hover:bg-[var(--bg2)] focus-visible:ring-0 focus-visible:ring-offset-0"
           disabled={isLoading}
         >
           {isLoading ? (
-            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+            <Loader2 className="h-4 w-4 animate-spin text-[var(--text3)]" />
           ) : (
             <>
-              <div className="flex h-5 w-5 items-center justify-center rounded-[4px] border border-border bg-transparent text-[11px] font-bold text-foreground uppercase">
+              <div className="flex h-5 w-5 items-center justify-center rounded-[4px] border border-[var(--border)] bg-transparent font-mono text-[10px] font-medium uppercase text-[var(--text2)]">
                 {activeOrg?.name?.charAt(0) || '?'}
               </div>
-              <span className="font-semibold text-[14px] truncate max-w-[120px] md:max-w-[200px]">
-                {activeOrg?.name || 'Select Org'}
+              <span className="font-semibold text-[13px] truncate max-w-[120px] md:max-w-[200px]">
+                {activeOrg?.name || 'Select org'}
               </span>
-              <ChevronDown className="h-3.5 w-3.5 text-muted-foreground opacity-70" />
+              <ChevronDown className="h-3.5 w-3.5 text-[var(--text3)]" />
             </>
           )}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-[240px] bg-popover border-border text-popover-foreground">
-        <DropdownMenuLabel className="font-mono text-xs text-muted-foreground">
-          Organizations
-        </DropdownMenuLabel>
-        <DropdownMenuSeparator className="bg-border" />
+      <DropdownMenuContent align="start" className="w-[240px]">
+        <DropdownMenuLabel>Organizations</DropdownMenuLabel>
+        <DropdownMenuSeparator />
         {organizations.map((org) => (
           <DropdownMenuItem
             key={org.id}
           onClick={() => void switchOrg(org.id)}
-          className="flex items-center justify-between cursor-pointer focus:bg-accent focus:text-accent-foreground"
+          className="flex items-center justify-between cursor-pointer"
         >
           <span>{org.name}</span>
             {switchingOrgId === org.id ? (
-              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+              <Loader2 className="h-4 w-4 animate-spin text-[var(--text3)]" />
             ) : activeOrgId === org.id ? (
-              <Check className="h-4 w-4 text-primary" />
+              <Check className="h-4 w-4 text-[var(--brand)]" />
             ) : null}
           </DropdownMenuItem>
         ))}
-        <DropdownMenuSeparator className="bg-border" />
+        <DropdownMenuSeparator />
         <DropdownMenuItem 
           onClick={() => navigate('/onboarding/organization')} 
-          className="cursor-pointer focus:bg-accent focus:text-primary text-muted-foreground group"
+          className="cursor-pointer text-[var(--text2)] group"
         >
-          <Plus className="h-4 w-4 mr-2 group-hover:text-primary" />
-          Create Organization
+          <Plus className="h-4 w-4 mr-2 group-hover:text-[var(--brand)]" />
+          Create organization
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

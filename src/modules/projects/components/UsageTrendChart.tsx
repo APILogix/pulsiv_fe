@@ -1,5 +1,6 @@
-import { useMemo } from "react";
+import { useMemo, useRef, useState } from "react";
 import { formatCompact } from "@/shared/observe";
+import { ChartTooltip, type ChartTooltipState } from "@/shared/ui/pulse/chart-tooltip";
 
 export interface UsageChartPoint {
   bucket: string;
@@ -39,6 +40,9 @@ export function UsageTrendChart({
   tableSeries,
 }: UsageTrendChartProps) {
   const fallbackSeries = tableSeries ?? series;
+  const svgRef = useRef<SVGSVGElement>(null);
+  const [hoverIndex, setHoverIndex] = useState<number | null>(null);
+
   const chart = useMemo(() => {
     const ordered = [...points].sort((a, b) => new Date(a.bucket).getTime() - new Date(b.bucket).getTime());
     const max = Math.max(1, ...ordered.flatMap((point) => series.map((item) => Number(point[item.key] ?? 0))));
@@ -58,6 +62,40 @@ export function UsageTrendChart({
     ? chart.ordered.map((point, index) => `${chart.x(index)},${chart.y(Number(point[firstSeries.key] ?? 0))}`).join(" ")
     : "";
 
+  const handleMove = (event: React.PointerEvent<SVGSVGElement>) => {
+    if (!svgRef.current) return;
+    const rect = svgRef.current.getBoundingClientRect();
+    if (rect.width === 0) return;
+    // Pointer is in screen px against the rendered box; convert to the
+    // viewBox's own coordinate space before hit-testing against chart.x().
+    const pointerX = ((event.clientX - rect.left) / rect.width) * WIDTH;
+    let nearest = 0;
+    let nearestDistance = Infinity;
+    chart.ordered.forEach((_, index) => {
+      const distance = Math.abs(chart.x(index) - pointerX);
+      if (distance < nearestDistance) {
+        nearestDistance = distance;
+        nearest = index;
+      }
+    });
+    setHoverIndex(nearest);
+  };
+
+  const hoveredPoint = hoverIndex !== null ? chart.ordered[hoverIndex] : null;
+  const tooltip: ChartTooltipState | null =
+    hoveredPoint && hoverIndex !== null
+      ? {
+          x: `${(chart.x(hoverIndex) / WIDTH) * 100}%`,
+          y: `${(chart.y(Math.max(...series.map((item) => Number(hoveredPoint[item.key] ?? 0)))) / HEIGHT) * 100}%`,
+          title: bucketLabel(hoveredPoint.bucket),
+          rows: series.map((item) => ({
+            label: item.label,
+            value: formatCompact(Number(hoveredPoint[item.key] ?? 0)),
+            color: item.color,
+          })),
+        }
+      : null;
+
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center gap-4" aria-label="Chart legend">
@@ -68,8 +106,16 @@ export function UsageTrendChart({
           </span>
         ))}
       </div>
-      <div className="overflow-x-auto">
-        <svg viewBox={`0 0 ${WIDTH} ${HEIGHT}`} className="h-[260px] min-w-[640px] w-full" role="img" aria-label={ariaLabel}>
+      <div className="relative overflow-x-auto">
+        <svg
+          ref={svgRef}
+          viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
+          className="h-[260px] min-w-[640px] w-full cursor-crosshair"
+          role="img"
+          aria-label={ariaLabel}
+          onPointerMove={handleMove}
+          onPointerLeave={() => setHoverIndex(null)}
+        >
           <title>{ariaLabel}</title>
           {[0, 0.25, 0.5, 0.75, 1].map((ratio) => {
             const y = PLOT.top + chart.plotHeight * ratio;
@@ -89,6 +135,18 @@ export function UsageTrendChart({
               opacity="0.1"
             />
           )}
+          {hoverIndex !== null && (
+            <line
+              x1={chart.x(hoverIndex)}
+              x2={chart.x(hoverIndex)}
+              y1={PLOT.top}
+              y2={PLOT.top + chart.plotHeight}
+              stroke="var(--border2)"
+              strokeWidth="1"
+              strokeDasharray="3 3"
+              vectorEffect="non-scaling-stroke"
+            />
+          )}
           {series.map((item) => (
             <g key={item.key}>
               <polyline
@@ -100,12 +158,21 @@ export function UsageTrendChart({
                 strokeLinejoin="round"
                 vectorEffect="non-scaling-stroke"
               />
-
-              {chart.ordered.map((point, index) => (
-                <circle key={point.bucket} cx={chart.x(index)} cy={chart.y(Number(point[item.key] ?? 0))} r="3" fill={item.color}>
-                  <title>{`${bucketLabel(point.bucket)} · ${item.label}: ${formatCompact(Number(point[item.key] ?? 0))}`}</title>
-                </circle>
-              ))}
+              {chart.ordered.map((point, index) => {
+                const isHovered = hoverIndex === index;
+                return (
+                  <circle
+                    key={point.bucket}
+                    cx={chart.x(index)}
+                    cy={chart.y(Number(point[item.key] ?? 0))}
+                    r={isHovered ? 4.5 : 3}
+                    fill={item.color}
+                    stroke={isHovered ? "var(--bg1)" : "none"}
+                    strokeWidth={isHovered ? 1.5 : 0}
+                    className="transition-[r] duration-150"
+                  />
+                );
+              })}
             </g>
           ))}
           <text x={PLOT.left} y={HEIGHT - 10} fill="var(--text3)" fontSize="10">{bucketLabel(chart.ordered[0].bucket)}</text>
@@ -113,6 +180,7 @@ export function UsageTrendChart({
             {bucketLabel(chart.ordered[chart.ordered.length - 1].bucket)}
           </text>
         </svg>
+        <ChartTooltip state={tooltip} />
       </div>
       {showTable && (
         <details className="rounded-[10px] border border-[var(--border)] bg-[var(--bg2)]">

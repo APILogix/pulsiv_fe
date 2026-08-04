@@ -2,6 +2,7 @@ export * from "./format";
 export * from "./primitives";
 export * from "./controls";
 export * from "./actions";
+export * from "./ask-ai";
 export { VirtualList } from "./VirtualList";
 export { InfiniteTable } from "./InfiniteTable";
 export type { Column } from "./InfiniteTable";

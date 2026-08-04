@@ -137,7 +137,7 @@ function renderInline(text: string, keyPrefix: string): React.ReactNode[] {
       nodes.push(
         <code
           key={`${keyPrefix}-c${n}`}
-          className="rounded-[5px] bg-[var(--bg3)] px-1.5 py-0.5 font-[family-name:var(--mono)] text-[0.85em] text-[var(--brand)]"
+          className="rounded-[4px] bg-[var(--bg3)] px-1.5 py-0.5 font-[family-name:var(--mono)] text-[0.85em] text-[var(--ai)]"
         >
           {code}
         </code>,
@@ -173,22 +173,22 @@ function CodeBlock({ lang, content }: { lang: string; content: string }) {
     });
   };
   return (
-    <div className="group relative my-3 overflow-hidden rounded-[10px] border border-[var(--border)] bg-[var(--bg2)]">
+    <div className="group relative my-3 overflow-hidden rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg2)]">
       <div className="flex items-center justify-between border-b border-[var(--border)] px-3 py-1.5">
-        <span className="font-[family-name:var(--mono)] text-[11px] uppercase tracking-wide text-[var(--text3)]">
+        <span className="font-[family-name:var(--mono)] text-[10px] uppercase tracking-[0.09em] text-[var(--text3)]">
           {lang || "code"}
         </span>
         <button
           type="button"
           onClick={handleCopy}
-          className="inline-flex items-center gap-1 rounded-[6px] px-1.5 py-1 text-[11px] text-[var(--text3)] transition-colors hover:text-[var(--text)]"
+          className="inline-flex items-center gap-1 rounded-[var(--radius)] px-1.5 py-1 text-[11px] text-[var(--text3)] transition-colors hover:text-[var(--text)]"
         >
           {copied ? <Check className="size-3 text-[var(--green)]" /> : <Copy className="size-3" />}
           {copied ? "Copied" : "Copy"}
         </button>
       </div>
       <pre className="sidebar-scroll overflow-x-auto p-3">
-        <code className="font-[family-name:var(--mono)] text-[12.5px] leading-relaxed text-[var(--text)]">
+        <code className="font-[family-name:var(--mono)] text-[12px] leading-[1.7] text-[var(--text)]">
           {content}
         </code>
       </pre>
@@ -199,7 +199,7 @@ function CodeBlock({ lang, content }: { lang: string; content: string }) {
 export function Markdown({ content, className }: { content: string; className?: string }) {
   const blocks = parseBlocks(content ?? "");
   return (
-    <div className={cn("text-[13.5px] leading-relaxed text-[var(--text2)]", className)}>
+    <div className={cn("text-[13px] leading-[1.6] text-[var(--text2)]", className)}>
       {blocks.map((block, index) => {
         const key = `blk-${index}`;
         switch (block.kind) {
@@ -234,7 +234,7 @@ export function Markdown({ content, className }: { content: string; className?: 
               <ol key={key} className="my-2 ml-1 flex flex-col gap-1.5">
                 {block.items.map((item, j) => (
                   <li key={`${key}-${j}`} className="flex gap-2">
-                    <span className="font-[family-name:var(--mono)] text-[12px] font-semibold text-[var(--brand)]">
+                    <span className="font-[family-name:var(--mono)] text-[12px] font-medium tabular-nums text-[var(--text3)]">
                       {j + 1}.
                     </span>
                     <span>{renderInline(item, `${key}-${j}`)}</span>
@@ -246,7 +246,7 @@ export function Markdown({ content, className }: { content: string; className?: 
             return (
               <blockquote
                 key={key}
-                className="my-3 border-l-2 border-[var(--brand)] pl-3 text-[var(--text2)] italic"
+                className="my-3 border-l-2 border-[var(--border2)] pl-3 text-[var(--text2)] italic"
               >
                 {renderInline(block.text, key)}
               </blockquote>

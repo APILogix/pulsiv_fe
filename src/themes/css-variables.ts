@@ -1,4 +1,13 @@
 /**
+ * ⚠️ DEPRECATED / DEAD CODE — superseded by the Sentinel design system.
+ *
+ * This generator maps the retired ten-theme palette onto `--bg`, `--text`,
+ * `--brand`, … which would OVERWRITE the Sentinel tokens declared in
+ * src/app/index.css. Never run it and never import its output; the theme
+ * contract is sentinel-design.md §12 plus @/theme.
+ */
+
+/**
  * CSS variable generation per theme.
  *
  * Resolves the Tailwind color tokens declared in `constants.ts` into concrete

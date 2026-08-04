@@ -52,7 +52,10 @@ function TableRow({ className, ...props }: React.ComponentProps<"tr">) {
     <tr
       data-slot="table-row"
       className={cn(
-        "border-b border-[var(--border)] transition-colors hover:bg-[var(--bg2)]/50 data-[state=selected]:bg-[var(--brand-bg)]",
+        // Phase 8 — row hover and selection are colour-only (150ms). Rows must
+        // never translate: in a dense table any movement reads as jitter and
+        // makes the row you were aiming at harder to hit.
+        "border-b border-[var(--border)] transition-colors duration-150 ease-out hover:bg-[var(--bg2)]/50 data-[state=selected]:bg-[var(--brand-bg)] motion-reduce:transition-none",
         className
       )}
       {...props}

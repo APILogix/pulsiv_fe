@@ -3,6 +3,7 @@ import {
   percentile, errorRate, seededSeries,
 } from "@/pages/dashboards/lib";
 import { formatCompact, formatLatency } from "@/shared/observe";
+import { AiActionButton, AiInsightCard, AiWatchingDot } from "@/shared/ui/sentinel";
 
 /* ═══════════════════════════════════════════════════════════════
    MOCK DATA — sections that lack a live API use stable fixtures.
@@ -48,13 +49,13 @@ const TIME_LABELS = [
 ];
 
 const METHOD_CLR: Record<string, string> = {
-  GET: "var(--get)", POST: "var(--green)", PUT: "var(--amber)", DELETE: "var(--red)",
+  GET: "var(--blue)", POST: "var(--green)", PUT: "var(--amber)", DELETE: "var(--red)",
 };
 
 const SEV_MAP: Record<Severity, { bg: string; fg: string; label: string }> = {
-  critical: { bg: "rgba(239,68,68,0.15)", fg: "#ef4444", label: "CRITICAL" },
-  warning: { bg: "rgba(245,158,11,0.15)", fg: "#f59e0b", label: "WARNING" },
-  info: { bg: "rgba(59,130,246,0.15)", fg: "#3b82f6", label: "Info" },
+  critical: { bg: "var(--red-bg)", fg: "var(--red)", label: "critical" },
+  warning: { bg: "var(--amber-bg)", fg: "var(--amber)", label: "warning" },
+  info: { bg: "var(--blue-bg)", fg: "var(--blue)", label: "info" },
 };
 
 /* ═══════════════════════════════════════════════════════════════
@@ -97,77 +98,77 @@ function TrendWave({ color }: { color: string }) {
 
 function TopKpiRow({ total, rate, p95Val, degradedCount }: { total: number, rate: number, p95Val: number, degradedCount: number }) {
   return (
-    <div className="flex flex-row overflow-x-auto rounded-[12px] border border-[var(--border)] bg-[var(--bg1)] [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+    <div className="flex flex-row overflow-x-auto rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
       {/* KPI 1 */}
       <div className="flex-1 p-5 border-r border-[var(--border)] min-w-[200px]">
-        <div className="text-[11px] font-medium uppercase tracking-[0.1em] text-[var(--text3)] font-[family-name:var(--mono)]">
-          API CALLS (24H)
+        <div className="text-[10px] font-medium uppercase tracking-[0.09em] text-[var(--text3)] font-[family-name:var(--mono)]">
+          API calls (24h)
         </div>
         <div className="mt-3 flex items-center justify-between">
-          <span className="text-[28px] font-bold tabular-nums leading-none text-[var(--text)]">
+          <span className="font-[family-name:var(--mono)] text-[28px] font-medium tabular-nums leading-none tracking-[-0.02em] text-[var(--text)]">
             {formatCompact(total * 1240)}
           </span>
-          <TrendWave color="#34d399" />
+          <TrendWave color="var(--green)" />
         </div>
-        <div className="mt-2 text-[12px] font-medium" style={{ color: "#34d399" }}>
+        <div className="mt-2 font-[family-name:var(--mono)] text-[11px] font-medium tabular-nums" style={{ color: "var(--green)" }}>
           +12.4% vs prev
         </div>
       </div>
       {/* KPI 2 */}
       <div className="flex-1 p-5 border-r border-[var(--border)] min-w-[200px]">
-        <div className="text-[11px] font-medium uppercase tracking-[0.1em] text-[var(--text3)] font-[family-name:var(--mono)]">
-          ERROR RATE
+        <div className="text-[10px] font-medium uppercase tracking-[0.09em] text-[var(--text3)] font-[family-name:var(--mono)]">
+          Error rate
         </div>
         <div className="mt-3 flex items-center justify-between">
-          <span className="text-[28px] font-bold tabular-nums leading-none text-[var(--text)]">
+          <span className="font-[family-name:var(--mono)] text-[28px] font-medium tabular-nums leading-none tracking-[-0.02em] text-[var(--text)]">
             {rate.toFixed(2)}%
           </span>
-          <TrendWave color="#ef4444" />
+          <TrendWave color="var(--red)" />
         </div>
-        <div className="mt-2 text-[12px] font-medium" style={{ color: "#34d399" }}>
+        <div className="mt-2 font-[family-name:var(--mono)] text-[11px] font-medium tabular-nums" style={{ color: "var(--green)" }}>
           -0.08% vs prev
         </div>
       </div>
       {/* KPI 3 */}
       <div className="flex-1 p-5 border-r border-[var(--border)] min-w-[200px]">
-        <div className="text-[11px] font-medium uppercase tracking-[0.1em] text-[var(--text3)] font-[family-name:var(--mono)]">
-          P95 LATENCY
+        <div className="text-[10px] font-medium uppercase tracking-[0.09em] text-[var(--text3)] font-[family-name:var(--mono)]">
+          P95 latency
         </div>
         <div className="mt-3 flex items-center justify-between">
-          <span className="text-[28px] font-bold tabular-nums leading-none text-[var(--text)]">
+          <span className="font-[family-name:var(--mono)] text-[28px] font-medium tabular-nums leading-none tracking-[-0.02em] text-[var(--text)]">
             {formatLatency(p95Val)}
           </span>
-          <TrendWave color="#8b5cf6" />
+          <TrendWave color="var(--violet)" />
         </div>
-        <div className="mt-2 text-[12px] font-medium" style={{ color: "#34d399" }}>
+        <div className="mt-2 font-[family-name:var(--mono)] text-[11px] font-medium tabular-nums" style={{ color: "var(--green)" }}>
           -22ms vs prev
         </div>
       </div>
       {/* KPI 4 */}
       <div className="flex-1 p-5 border-r border-[var(--border)] min-w-[200px]">
-        <div className="text-[11px] font-medium uppercase tracking-[0.1em] text-[var(--text3)] font-[family-name:var(--mono)]">
-          AVAILABILITY
+        <div className="text-[10px] font-medium uppercase tracking-[0.09em] text-[var(--text3)] font-[family-name:var(--mono)]">
+          Availability
         </div>
         <div className="mt-3 flex items-center justify-between">
-          <span className="text-[28px] font-bold tabular-nums leading-none text-[var(--text)]">
+          <span className="font-[family-name:var(--mono)] text-[28px] font-medium tabular-nums leading-none tracking-[-0.02em] text-[var(--text)]">
             {degradedCount > 0 ? "77.20%" : "99.99%"}
           </span>
         </div>
-        <div className="mt-2 text-[12px] font-medium" style={{ color: "#34d399" }}>
+        <div className="mt-2 font-[family-name:var(--mono)] text-[11px] font-medium tabular-nums" style={{ color: "var(--green)" }}>
           +0.01%
         </div>
       </div>
       {/* KPI 5 */}
       <div className="flex-1 p-5 min-w-[200px]">
-        <div className="text-[11px] font-medium uppercase tracking-[0.1em] text-[var(--text3)] font-[family-name:var(--mono)]">
-          REVENUE AT RISK
+        <div className="text-[10px] font-medium uppercase tracking-[0.09em] text-[var(--text3)] font-[family-name:var(--mono)]">
+          Revenue at risk
         </div>
         <div className="mt-3 flex items-center justify-between">
-          <span className="text-[28px] font-bold tabular-nums leading-none text-[var(--text)]">
+          <span className="font-[family-name:var(--mono)] text-[28px] font-medium tabular-nums leading-none tracking-[-0.02em] text-[var(--text)]">
             $4,845
           </span>
         </div>
-        <div className="mt-2 text-[12px] font-medium" style={{ color: "#ef4444" }}>
+        <div className="mt-2 font-[family-name:var(--mono)] text-[11px] font-medium tabular-nums" style={{ color: "var(--red)" }}>
           17 failed payments
         </div>
       </div>
@@ -180,11 +181,11 @@ function ChartCard({ title, badge, children }: {
   title: string; badge?: string; children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-[12px] border border-[var(--border)] bg-[var(--bg1)]">
+    <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)]">
       <div className="flex items-center justify-between px-5 pt-4 pb-2">
         <h3 className="text-[14px] font-semibold text-[var(--text)]">{title}</h3>
         {badge && (
-          <span className="text-[10px] font-medium uppercase tracking-[0.12em] text-[var(--text3)] font-[family-name:var(--mono)]">
+          <span className="text-[10px] font-medium uppercase tracking-[0.09em] text-[var(--text3)] font-[family-name:var(--mono)]">
             {badge}
           </span>
         )}
@@ -213,12 +214,6 @@ function VolumeChart({ data, errData }: { data: number[]; errData: number[] }) {
 
   return (
     <svg width="100%" viewBox={`0 0 ${W} ${H}`} className="w-full">
-      <defs>
-        <linearGradient id="dash-vol-grad" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#34d399" stopOpacity={0.25} />
-          <stop offset="100%" stopColor="#34d399" stopOpacity={0.02} />
-        </linearGradient>
-      </defs>
       {/* Y-axis gridlines + labels */}
       {Y_VOL.map((k) => {
         const y = toY(k * 1000);
@@ -231,12 +226,13 @@ function VolumeChart({ data, errData }: { data: number[]; errData: number[] }) {
           </g>
         );
       })}
-      {/* Main volume area + line */}
-      <path d={smoothArea(pts, base)} fill="url(#dash-vol-grad)" />
-      <path d={smoothLine(pts)} fill="none" stroke="#34d399" strokeWidth={2} />
-      {/* Error volume (red trace at the bottom) */}
-      <path d={smoothArea(ePts, base)} fill="rgba(239,68,68,0.06)" />
-      <path d={smoothLine(ePts)} fill="none" stroke="#ef4444" strokeWidth={1.5} />
+      {/* Request volume is the product's own data → brand channel (§2.7),
+          with a flat low-alpha fill (§3). Green is reserved for verdicts. */}
+      <path d={smoothArea(pts, base)} fill="var(--brand)" fillOpacity={0.16} />
+      <path d={smoothLine(pts)} fill="none" stroke="var(--brand)" strokeWidth={2} />
+      {/* Error volume — the truth channel reporting facts. */}
+      <path d={smoothArea(ePts, base)} fill="var(--red-bg)" />
+      <path d={smoothLine(ePts)} fill="none" stroke="var(--red)" strokeWidth={1.5} />
       {/* X-axis time labels */}
       {TIME_LABELS.map((l, i) => (
         <text key={l} x={PL + (i / (TIME_LABELS.length - 1)) * cw} y={H - 5}
@@ -255,10 +251,12 @@ function LatencyChart({ p50, p95, p99 }: { p50: number[]; p95: number[]; p99: nu
   const toX = (i: number, len: number) => PL + (i / (len - 1)) * cw;
   const mkPts = (d: number[]): [number, number][] => d.map((v, i) => [toX(i, d.length), toY(v)]);
 
+  // Measured percentiles are product data, not verdicts and not model output:
+  // brand → blue → amber. Cyan stays reserved for the AI channel (§2.4, §11.3).
   const lines = [
-    { data: p50, color: "#34d399", label: "p50" },
-    { data: p95, color: "#818cf8", label: "p95" },
-    { data: p99, color: "#f59e0b", label: "p99" },
+    { data: p50, color: "var(--brand)", label: "p50" },
+    { data: p95, color: "var(--blue)", label: "p95" },
+    { data: p99, color: "var(--amber)", label: "p99" },
   ];
 
   return (
@@ -327,11 +325,11 @@ function StatusCodesChart() {
           return (
             <g key={b.t}>
               {/* 2xx — green (base) */}
-              <rect x={x} y={base - h2} width={barW} height={h2} fill="#34d399" rx={2} />
+              <rect x={x} y={base - h2} width={barW} height={h2} fill="var(--green)" rx={2} />
               {/* 4xx — amber (stacked) */}
-              <rect x={x} y={base - h2 - h4} width={barW} height={h4} fill="#f59e0b" />
+              <rect x={x} y={base - h2 - h4} width={barW} height={h4} fill="var(--amber)" />
               {/* 5xx — red (top) */}
-              <rect x={x} y={base - h2 - h4 - h5} width={barW} height={h5} fill="#ef4444" rx={2} />
+              <rect x={x} y={base - h2 - h4 - h5} width={barW} height={h5} fill="var(--red)" rx={2} />
               <text x={cx} y={H - 5} textAnchor="middle" fill="var(--text3)" fontSize={10} style={MONO}>
                 {b.t}
               </text>
@@ -341,9 +339,9 @@ function StatusCodesChart() {
       </svg>
       <div className="flex items-center gap-5 px-5 pt-1">
         {[
-          { c: "#34d399", l: "2xx" },
-          { c: "#f59e0b", l: "4xx" },
-          { c: "#ef4444", l: "5xx" },
+          { c: "var(--green)", l: "2xx" },
+          { c: "var(--amber)", l: "4xx" },
+          { c: "var(--red)", l: "5xx" },
         ].map((x) => (
           <span key={x.l} className="flex items-center gap-1.5 text-[11px] text-[var(--text2)]">
             <span className="inline-block h-2.5 w-2.5 rounded-[2px]" style={{ background: x.c }} />
@@ -361,22 +359,22 @@ function StatusCodesChart() {
 
 function ServiceHealthPanel() {
   return (
-    <div className="rounded-[12px] border border-[var(--border)] bg-[var(--bg1)] p-5">
+    <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] p-5">
       <h3 className="text-[14px] font-semibold text-[var(--text)] mb-4">Service health</h3>
       <div className="flex flex-col gap-3">
         {SERVICES.map((s) => (
           <div key={s.name} className="flex items-center gap-3">
             <span
               className="size-2 rounded-full shrink-0"
-              style={{ background: s.healthy ? "#34d399" : "#f59e0b" }}
+              style={{ background: s.healthy ? "var(--green)" : "var(--amber)" }}
             />
             <span className="flex-1 text-[13px] text-[var(--text)] font-[family-name:var(--mono)] truncate">
               {s.name}
             </span>
-            <span className="text-[12px] tabular-nums text-[var(--text2)] w-14 text-right">
+            <span className="w-14 text-right font-[family-name:var(--mono)] text-[12px] tabular-nums text-[var(--text2)]">
               {s.uptime === 100 ? "100%" : `${s.uptime.toFixed(2)}%`}
             </span>
-            <span className="text-[12px] tabular-nums text-[var(--text3)] w-12 text-right">
+            <span className="w-12 text-right font-[family-name:var(--mono)] text-[12px] tabular-nums text-[var(--text3)]">
               {s.latency}ms
             </span>
           </div>
@@ -388,7 +386,7 @@ function ServiceHealthPanel() {
 
 function RecentActivityPanel() {
   return (
-    <div className="rounded-[12px] border border-[var(--border)] bg-[var(--bg1)] p-5">
+    <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] p-5">
       <h3 className="text-[14px] font-semibold text-[var(--text)] mb-4">Recent activity</h3>
       <div className="flex flex-col gap-4">
         {ACTIVITY.map((a) => {
@@ -396,14 +394,14 @@ function RecentActivityPanel() {
           return (
             <div key={`${a.title}-${a.at}`} className="flex gap-3">
               <span
-                className="shrink-0 rounded-[4px] px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide leading-snug mt-0.5"
+                className="mt-0.5 shrink-0 rounded-full px-2 py-0.5 font-[family-name:var(--mono)] text-[10px] font-medium uppercase tracking-[0.08em] leading-snug"
                 style={{ background: s.bg, color: s.fg }}
               >
                 {s.label}
               </span>
               <div className="min-w-0 flex-1">
                 <div className="text-[13px] font-medium text-[var(--text)] leading-snug">{a.title}</div>
-                <div className="text-[11px] text-[var(--text3)] mt-0.5">
+                <div className="mt-0.5 font-[family-name:var(--mono)] text-[10px] tabular-nums text-[var(--text3)]">
                   {a.src} · {a.at}
                 </div>
               </div>
@@ -417,19 +415,19 @@ function RecentActivityPanel() {
 
 function TopEndpointsPanel() {
   return (
-    <div className="rounded-[12px] border border-[var(--border)] bg-[var(--bg1)]">
+    <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)]">
       <div className="flex items-center justify-between px-5 pt-4 pb-3">
         <h3 className="text-[14px] font-semibold text-[var(--text)]">Top endpoints</h3>
-        <span className="text-[10px] font-medium uppercase tracking-[0.12em] text-[var(--text3)] font-[family-name:var(--mono)]">
-          BY VOLUME
+        <span className="text-[10px] font-medium uppercase tracking-[0.09em] text-[var(--text3)] font-[family-name:var(--mono)]">
+          By volume
         </span>
       </div>
       {/* Column headers */}
-      <div className="grid grid-cols-[1fr_80px_70px_60px] gap-2 px-5 pb-2 text-[10px] font-medium uppercase tracking-[0.1em] text-[var(--text3)] font-[family-name:var(--mono)]">
-        <span>ENDPOINT</span>
-        <span className="text-right">REQUESTS</span>
+      <div className="grid grid-cols-[1fr_80px_70px_60px] gap-2 px-5 pb-2 text-[10px] font-medium uppercase tracking-[0.09em] text-[var(--text3)] font-[family-name:var(--mono)]">
+        <span>Endpoint</span>
+        <span className="text-right">Requests</span>
         <span className="text-right">P95</span>
-        <span className="text-right">ERR %</span>
+        <span className="text-right">Err %</span>
       </div>
       {/* Rows */}
       {ENDPOINTS.map((ep) => (
@@ -439,20 +437,20 @@ function TopEndpointsPanel() {
         >
           <div className="flex items-center gap-2 min-w-0">
             <span
-              className="text-[12px] font-bold font-[family-name:var(--mono)] shrink-0"
+              className="text-[10px] font-medium uppercase tracking-[0.08em] font-[family-name:var(--mono)] shrink-0"
               style={{ color: METHOD_CLR[ep.method] ?? "var(--text2)" }}
             >
               {ep.method}
             </span>
-            <span className="text-[13px] text-[var(--text)] font-[family-name:var(--mono)] truncate">
+            <span className="text-[12px] text-[var(--text)] font-[family-name:var(--mono)] truncate">
               {ep.path}
             </span>
           </div>
-          <span className="text-[13px] tabular-nums text-[var(--text)] text-right">{ep.req}</span>
-          <span className="text-[13px] tabular-nums text-[var(--text2)] text-right">{ep.p95}</span>
+          <span className="font-[family-name:var(--mono)] text-[12px] tabular-nums text-[var(--text)] text-right">{ep.req}</span>
+          <span className="font-[family-name:var(--mono)] text-[12px] tabular-nums text-[var(--text2)] text-right">{ep.p95}</span>
           <span
-            className="text-[13px] tabular-nums text-right font-medium"
-            style={{ color: ep.errHigh ? "#ef4444" : "var(--text2)" }}
+            className="font-[family-name:var(--mono)] text-[12px] tabular-nums text-right font-medium"
+            style={{ color: ep.errHigh ? "var(--red)" : "var(--text2)" }}
           >
             {ep.err}
           </span>
@@ -471,18 +469,18 @@ function DashboardSkeleton() {
     <div className="flex flex-col gap-6 p-4 lg:p-8 max-w-[1400px] mx-auto w-full">
       <div className="h-14" />
       {/* TopKpiRow Skeleton */}
-      <div className="flex flex-row gap-0 rounded-[12px] border border-[var(--border)] bg-[var(--bg1)] overflow-hidden">
+      <div className="flex flex-row gap-0 rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] overflow-hidden">
         {Array.from({ length: 5 }).map((_, i) => (
-          <div key={`ks-${i}`} className="h-[140px] flex-1 border-r border-[var(--border)] animate-pulse bg-[var(--bg2)] min-w-[200px]" />
+          <div key={`ks-${i}`} className="loading-skeleton h-[140px] flex-1 border-r border-[var(--border)] bg-[var(--bg2)] min-w-[200px]" />
         ))}
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className="h-[300px] animate-pulse rounded-[12px] border border-[var(--border)] bg-[var(--bg1)]" />
-        <div className="h-[300px] animate-pulse rounded-[12px] border border-[var(--border)] bg-[var(--bg1)]" />
+        <div className="loading-skeleton h-[300px] rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)]" />
+        <div className="loading-skeleton h-[300px] rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)]" />
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
-        <div className="lg:col-span-3 h-[340px] animate-pulse rounded-[12px] border border-[var(--border)] bg-[var(--bg1)]" />
-        <div className="lg:col-span-2 h-[340px] animate-pulse rounded-[12px] border border-[var(--border)] bg-[var(--bg1)]" />
+        <div className="loading-skeleton lg:col-span-3 h-[340px] rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)]" />
+        <div className="loading-skeleton lg:col-span-2 h-[340px] rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)]" />
       </div>
     </div>
   );
@@ -519,11 +517,14 @@ export default function DashboardPage() {
   return (
     <div className="flex flex-col gap-6 p-4 lg:p-8 max-w-[1400px] mx-auto w-full">
       {/* ── Header ── */}
-      <div>
-        <h1 className="text-[22px] font-semibold text-[var(--text)]">Dashboard</h1>
-        <p className="mt-1 text-[13px] text-[var(--text2)]">
-          API monitoring overview across all connected services.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="font-[family-name:var(--display)] text-[22px] font-semibold tracking-[-0.02em] text-[var(--text)]">Dashboard</h1>
+          <p className="mt-1 text-[13px] leading-[1.5] text-[var(--text2)]">
+            API monitoring overview across all connected services.
+          </p>
+        </div>
+        <AiWatchingDot />
       </div>
 
       {/* ── KPI Metrics ── */}
@@ -536,10 +537,10 @@ export default function DashboardPage() {
 
       {/* ── Request Volume + Latency Percentiles ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <ChartCard title="Request volume" badge="LAST 24H">
+        <ChartCard title="Request volume" badge="Last 24h">
           <VolumeChart data={volumeData} errData={errorVolData} />
         </ChartCard>
-        <ChartCard title="Latency percentiles" badge="MS · LAST 24H">
+        <ChartCard title="Latency percentiles" badge="ms · last 24h">
           <LatencyChart p50={p50Data} p95={p95Data} p99={p99Data} />
         </ChartCard>
       </div>
@@ -548,13 +549,22 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
         {/* Left column: charts & table */}
         <div className="lg:col-span-3 flex flex-col gap-4">
-          <ChartCard title="Status codes" badge="LAST 24H">
+          <ChartCard title="Status codes" badge="Last 24h">
             <StatusCodesChart />
           </ChartCard>
           <TopEndpointsPanel />
         </div>
-        {/* Right column: health & activity */}
+        {/* Right column: AI insights rail, health & activity (§5.2) */}
         <div className="lg:col-span-2 flex flex-col gap-4">
+          <AiInsightCard
+            title="Latency anomaly on alert-dispatcher"
+            confidence={94}
+            action={<AiActionButton>Apply fix</AiActionButton>}
+          >
+            P99 on alert-dispatcher has drifted {degradedCount > 0 ? "4.9×" : "1.2×"} above its
+            30-day baseline since 14:05. The pattern matches queue backpressure, not a code
+            regression.
+          </AiInsightCard>
           <ServiceHealthPanel />
           <RecentActivityPanel />
         </div>

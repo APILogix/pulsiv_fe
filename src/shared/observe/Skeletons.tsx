@@ -2,6 +2,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
+/**
+ * Content-shaped skeletons (sentinel-design.md §9 — skeleton blocks, never
+ * page spinners). Radii come from --radius / --radius-lg so both themes stay
+ * structurally identical.
+ */
+
 export function DetailSkeleton() {
   return (
     <div className="flex flex-col gap-5 animate-in fade-in duration-500">
@@ -18,7 +24,7 @@ export function DetailSkeleton() {
       {/* KPI Cards Mock */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {Array.from({ length: 4 }).map((_, i) => (
-          <Skeleton key={i} className="h-24 w-full rounded-[12px]" />
+          <Skeleton key={i} className="h-24 w-full rounded-[var(--radius-lg)]" />
         ))}
       </div>
 
@@ -30,8 +36,8 @@ export function DetailSkeleton() {
           <Skeleton className="h-6 w-20" />
         </div>
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-          <Skeleton className="h-[300px] w-full rounded-[12px]" />
-          <Skeleton className="h-[300px] w-full rounded-[12px]" />
+          <Skeleton className="h-[300px] w-full rounded-[var(--radius-lg)]" />
+          <Skeleton className="h-[300px] w-full rounded-[var(--radius-lg)]" />
         </div>
       </div>
     </div>
@@ -40,7 +46,7 @@ export function DetailSkeleton() {
 
 export function CardSkeleton() {
   return (
-    <div className="flex flex-col gap-3 rounded-[12px] border border-[var(--border)] bg-[var(--bg1)] p-4 shadow-sm animate-in fade-in duration-500">
+    <div className="flex flex-col gap-3 rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] p-4 animate-in fade-in duration-500">
       <div className="flex items-start justify-between gap-4">
         <div className="flex min-w-0 flex-1 flex-col gap-2">
           <Skeleton className="h-5 w-3/4" />

@@ -13,6 +13,8 @@ export type ProjectVisibility = "private" | "organization" | "public";
 
 export interface Project {
   id: string;
+  /** Immutable public routing identifier, format: prj_XXXXXXXX */
+  publicId: string;
   orgId: string;
   name: string;
   slug: string;

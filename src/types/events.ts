@@ -258,6 +258,42 @@ export interface ReplayEvent {
   metadata: EventMetadata;
 }
 
+// ---- Advanced diagnostics (runtime metrics / event loop / GC) ----
+export interface RuntimeMetricSample {
+  type: "runtime_metric";
+  eventId: string;
+  timestamp: number;
+  heapUsedMb: number;
+  heapTotalMb: number;
+  externalMb: number;
+  rssMb: number;
+  activeHandles: number;
+  metadata: EventMetadata;
+}
+
+export interface EventLoopSample {
+  type: "event_loop";
+  eventId: string;
+  timestamp: number;
+  lagMs: number;
+  p95LagMs: number;
+  utilizationPercent: number;
+  metadata: EventMetadata;
+}
+
+export type GcType = "scavenge" | "mark-sweep-compact" | "incremental-marking" | "weak-callback";
+
+export interface GcPauseEvent {
+  type: "gc_pause";
+  eventId: string;
+  timestamp: number;
+  gcType: GcType;
+  pauseDurationMs: number;
+  heapBeforeMb: number;
+  heapAfterMb: number;
+  metadata: EventMetadata;
+}
+
 // ---- filter shapes used by query hooks ----
 export interface ErrorFilters {
   service?: string;

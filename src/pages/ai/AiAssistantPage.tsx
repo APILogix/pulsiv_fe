@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useLocation } from "react-router";
 import {
   ArrowUp,
   BookMarked,
@@ -126,6 +127,7 @@ function MessageBubble({ message }: { message: ChatMessage }) {
 export default function AiAssistantPage() {
   const chat = useAssistantChat();
   const store = useAssistantStore();
+  const location = useLocation();
   const { conversations, activeId } = store;
   const active = useMemo(
     () => conversations.find((c) => c.id === activeId) ?? null,
@@ -186,6 +188,18 @@ export default function AiAssistantPage() {
       },
     );
   };
+
+  // "Ask AI" buttons on observe tables navigate here with a prefilled question
+  // in router state. Fire it once on arrival, then clear the state so a
+  // refresh or back-navigation doesn't resend it.
+  useEffect(() => {
+    const prefill = (location.state as { prefillQuestion?: string } | null)?.prefillQuestion;
+    if (prefill) {
+      send(prefill);
+      window.history.replaceState({}, "");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

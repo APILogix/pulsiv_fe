@@ -10,6 +10,8 @@ import {
 import { useProjectNavStore } from "@/stores/projectNavStore";
 import { cn } from "@/lib/utils";
 
+import { useOrgStore } from "@/modules/organizations/store/org.store";
+import { projectPath } from "@/modules/projects/navigation/project-routes";
 import { ProjectSwitcher } from "./ProjectSwitcher";
 
 /**
@@ -45,7 +47,8 @@ export function ProjectSidebar({
   const [railCollapsed, setRailCollapsed] = useState(collapsed);
   const toggleRail = () => setRailCollapsed((current) => !current);
 
-  const active = resolveActiveProjectNav(location.pathname, project.id);
+  const activeOrgSlug = useOrgStore((state) => state.activeOrgSlug) ?? "legacy";
+  const active = resolveActiveProjectNav(location.pathname, project.publicId, activeOrgSlug);
 
   // Landing inside a collapsed group (deep link, redirect, command palette)
   // must reveal the row that is now current — otherwise the active state is
@@ -117,15 +120,15 @@ export function ProjectSidebar({
                     return (
                       <Link
                         key={item.segment}
-                        to={`/projects/${project.id}/${item.segment}`}
+                        to={projectPath(activeOrgSlug, project.publicId, item.segment)}
                         data-nav-row
                         onClick={onNavigate}
                         aria-current={isActive ? "page" : undefined}
                         aria-label={`${group.label}: ${item.label}`}
                         title={`${group.label} · ${item.label}`}
                         className={cn(
-                          "relative flex h-9 items-center justify-center rounded-[7px] transition-colors",
-                          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]",
+                          "relative flex h-9 items-center justify-center rounded-[var(--radius)] transition-colors duration-150",
+                          "focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-[var(--brand-bg)]",
                           isActive
                             ? "bg-[var(--brand-bg)] text-[var(--brand)]"
                             : "text-[var(--text2)] hover:bg-[var(--bg2)] hover:text-[var(--text)]",
@@ -154,8 +157,8 @@ export function ProjectSidebar({
                   aria-expanded={!isCollapsed}
                   aria-controls={panelId}
                   className={cn(
-                    "group flex h-8 items-center gap-2 rounded-[6px] px-2 text-left transition-colors",
-                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]",
+                    "group flex h-8 items-center gap-2 rounded-[var(--radius)] px-2 text-left transition-colors",
+                    "focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-[var(--brand-bg)]",
                     "hover:bg-[var(--bg2)]",
                   )}
                 >
@@ -175,7 +178,7 @@ export function ProjectSidebar({
                   />
                   <span
                     className={cn(
-                      "font-[family-name:var(--mono)] text-[10.5px] font-semibold uppercase tracking-[0.1em]",
+                      "font-[family-name:var(--mono)] text-[10px] font-medium uppercase tracking-[0.09em]",
                       groupIsActive ? "text-[var(--text2)]" : "text-[var(--text3)]",
                     )}
                   >
@@ -206,14 +209,14 @@ export function ProjectSidebar({
                     return (
                       <li key={item.segment}>
                         <Link
-                          to={`/projects/${project.id}/${item.segment}`}
+                          to={projectPath(activeOrgSlug, project.publicId, item.segment)}
                           data-nav-row
                           onClick={onNavigate}
                           aria-current={isActive ? "page" : undefined}
                           title={item.description}
                           className={cn(
-                            "relative flex h-8 items-center gap-2 rounded-[6px] px-2 text-[13px] transition-colors",
-                            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]",
+                            "relative flex h-[34px] items-center gap-2 rounded-[var(--radius)] px-2 text-[13px] transition-colors duration-150",
+                            "focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-[var(--brand-bg)]",
                             isActive
                               ? "bg-[var(--brand-bg)] font-medium text-[var(--brand)]"
                               : "text-[var(--text2)] hover:bg-[var(--bg2)] hover:text-[var(--text)]",
@@ -253,9 +256,9 @@ export function ProjectSidebar({
             aria-label={railCollapsed ? "Expand project navigation" : "Collapse project navigation"}
             title={railCollapsed ? "Expand navigation" : "Collapse navigation"}
             className={cn(
-              "flex h-8 w-full items-center gap-2 rounded-[6px] px-2 text-[12px] text-[var(--text3)] transition-colors",
+              "flex h-8 w-full items-center gap-2 rounded-[var(--radius)] px-2 text-[12px] text-[var(--text3)] transition-colors",
               "hover:bg-[var(--bg2)] hover:text-[var(--text2)]",
-              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]",
+              "focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-[var(--brand-bg)]",
               collapsed && "justify-center px-0",
             )}
           >

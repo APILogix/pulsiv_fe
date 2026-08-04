@@ -1,4 +1,4 @@
-import { useErrorEvents, useRequestEvents } from "@/hooks/useDummyData";
+import { useObservabilityList } from "./hooks/useObservabilityApi";
 import {
   PageHeader, KpiCard, SectionCard, Table, Tr, Td, StatusBadge, MetricSparkline,
 } from "@/shared/observe";
@@ -13,9 +13,11 @@ const DEPENDENCIES = [
 ];
 
 export default function ServiceHealthPage() {
-  const requests = useRequestEvents();
-  const errors = useErrorEvents();
-  const reqList = requests.data ?? [];
+  const { data: requests } = useObservabilityList<any>("requests");
+  const { data: errors } = useObservabilityList<any>("errors");
+  
+  const reqList = requests?.items ?? [];
+  const errList = errors?.items ?? [];
 
   return (
     <div className="flex flex-col gap-5">
@@ -33,7 +35,7 @@ export default function ServiceHealthPage() {
           {SERVICES.map((svc, i) => {
             const score = 99.9 - i * 0.7;
             const tone = score > 99 ? "var(--green)" : score > 97 ? "var(--amber)" : "var(--red)";
-            const svcErrors = (errors.data ?? []).filter((e) => e.metadata.service === svc).length;
+            const svcErrors = errList.filter((e: any) => (e.service ?? e.metadata?.service) === svc).length;
             return (
               <div key={svc} className="rounded-[10px] border border-[var(--border)] bg-[var(--bg2)] p-4">
                 <div className="flex items-center justify-between">

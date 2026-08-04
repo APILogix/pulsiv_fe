@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useIncidents } from "@/hooks/useDummyData";
 import { PageHeader, SectionCard, FilterSelect, SeverityBadge } from "@/shared/observe";
+import { ConfidencePill } from "@/shared/ui/sentinel";
 
 export default function RootCausePage() {
   const { data } = useIncidents();
@@ -12,7 +13,7 @@ export default function RootCausePage() {
 
   return (
     <div className="flex flex-col gap-5">
-      <PageHeader title="Root Cause Analysis" description="Automated incident explanation with confidence scoring." />
+      <PageHeader title="Root cause analysis" description="Automated incident explanation with confidence scoring." />
 
       <div className="flex"><FilterSelect value={selected} onChange={setSelected} options={options} label="Incident" /></div>
 
@@ -25,8 +26,8 @@ export default function RootCausePage() {
                 <span className="font-semibold text-[var(--text)]">{incident.title}</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-[12px] text-[var(--text3)]">Confidence</span>
-                <span className="rounded-full bg-[var(--green-bg)] px-2.5 py-1 text-[13px] font-semibold text-[var(--green)]">91%</span>
+                {/* Confidence is model output → AI channel, never the truth channel (§2.4) */}
+                <ConfidencePill value={91} />
               </div>
             </div>
           </SectionCard>

@@ -1,33 +1,32 @@
 import { useParams, useNavigate } from "react-router";
 import { ArrowLeft } from "lucide-react";
-import { useErrorEvents } from "@/hooks/useDummyData";
-import { PageHeader, SectionCard, SeverityBadge, EventTypeBadge, Tabs, JsonViewer,
+import { useObservabilityDetail } from "./hooks/useObservabilityApi";
+import { PageHeader, SectionCard, EventTypeBadge, Tabs, JsonViewer,
   Button, CopyButton, formatAbsoluteTime, DetailSkeleton } from "@/shared/observe";
 
 export default function EventDetailPage() {
   const { eventId = "" } = useParams();
   const navigate = useNavigate();
-  const { data, isLoading } = useErrorEvents();
-  const event = (data ?? []).find((e) => e.eventId === eventId);
+  const { data: eventDetail, isLoading } = useObservabilityDetail<any>("spans", eventId);
 
   if (isLoading) return <DetailSkeleton />;
-  if (!event) return <div className="p-8 text-[var(--text2)]">Event <code>{eventId}</code> not found.</div>;
+  const event = eventDetail?.entity || eventDetail;
+  if (!event) return <div className="p-8 text-[var(--text2)]">Span <code>{eventId}</code> not found.</div>;
 
   return (
     <div className="flex flex-col gap-5">
       <Button variant="ghost" onClick={() => navigate(-1)}><ArrowLeft className="size-4" /> Back</Button>
       <PageHeader
-        title={event.name}
-        description={event.message}
-        breadcrumbs={[{ label: "Observe" }, { label: "Events" }, { label: event.eventId.slice(0, 16) }]}
-        actions={<CopyButton value={event.eventId} label="Copy ID" />}
+        title={event.name ?? "Span"}
+        description={event.message ?? event.description}
+        breadcrumbs={[{ label: "Observe" }, { label: "Spans" }, { label: (event.id ?? event.spanId ?? event.eventId ?? eventId).slice(0, 16) }]}
+        actions={<CopyButton value={event.id ?? event.spanId ?? event.eventId ?? eventId} label="Copy ID" />}
       />
 
       <div className="flex flex-wrap items-center gap-3 rounded-[12px] border border-[var(--border)] bg-[var(--bg1)] p-4">
-        <EventTypeBadge type={event.type} />
-        <SeverityBadge severity={event.severity} />
-        <span className="text-[13px] text-[var(--text2)]">{event.metadata.service} · {event.metadata.environment} · {event.metadata.release}</span>
-        <span className="ml-auto text-[13px] text-[var(--text3)]">{formatAbsoluteTime(event.timestamp)}</span>
+        <EventTypeBadge type="span" />
+        <span className="text-[13px] text-[var(--text2)]">{event.service ?? event.metadata?.service} · {event.environment ?? event.metadata?.environment}</span>
+        <span className="ml-auto text-[13px] text-[var(--text3)]">{formatAbsoluteTime(event.timestamp ?? event.startTime)}</span>
       </div>
 
       <Tabs
@@ -37,18 +36,17 @@ export default function EventDetailPage() {
             label: "Overview",
             content: (
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                <Meta label="Mechanism" value={event.mechanism} />
-                <Meta label="Server" value={event.metadata.serverName} />
-                <Meta label="SDK" value={`${event.metadata.sdkName} ${event.metadata.sdkVersion}`} />
+                <Meta label="Service" value={event.service ?? event.metadata?.service ?? "—"} />
                 <Meta label="Trace" value={event.traceId ?? "—"} />
-                <Meta label="User" value={event.user?.email ?? "anonymous"} />
-                <Meta label="Request" value={event.requestId ?? "—"} />
+                <Meta label="Duration" value={`${event.durationMs ?? event.duration ?? 0}ms`} />
+                <Meta label="Status" value={event.status ?? "—"} />
+                <Meta label="Kind" value={event.kind ?? "—"} />
               </div>
             ),
           },
-          { id: "context", label: "Context", content: <JsonViewer data={event.context} /> },
+          { id: "context", label: "Context", content: <JsonViewer data={event.context ?? event.attributes} /> },
           { id: "tags", label: "Tags", content: <JsonViewer data={event.tags} /> },
-          { id: "raw", label: "Raw JSON", content: <JsonViewer data={event} /> },
+          { id: "raw", label: "Raw JSON", content: <JsonViewer data={eventDetail} /> },
         ]}
       />
     </div>

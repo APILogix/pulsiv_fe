@@ -41,8 +41,8 @@ interface ThemeContextValue {
 const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
 
 export const THEME_STORAGE_KEY = 'sentinel-theme';
-export const SENTINEL_THEMES: SentinelTheme[] = ['indigo', 'mono'];
-export const DEFAULT_THEME: SentinelTheme = 'indigo';
+export const SENTINEL_THEMES: SentinelTheme[] = ['mono'];
+export const DEFAULT_THEME: SentinelTheme = 'mono';
 
 export const THEME_META: Record<SentinelTheme, { label: string; swatch: string; description: string }> = {
   indigo: {
@@ -57,72 +57,46 @@ export const THEME_META: Record<SentinelTheme, { label: string; swatch: string; 
   },
 };
 
-export function normalizeTheme(value: string | null | undefined): SentinelTheme {
-  return value === 'mono' ? 'mono' : DEFAULT_THEME;
+export function normalizeTheme(_value?: string | null): SentinelTheme {
+  return 'mono';
 }
 
 function readStoredTheme(): SentinelTheme {
-  if (typeof window === 'undefined') return DEFAULT_THEME;
-  try {
-    return normalizeTheme(window.localStorage.getItem(THEME_STORAGE_KEY));
-  } catch {
-    return DEFAULT_THEME;
-  }
+  return 'mono';
 }
 
 /**
- * Apply the theme as a hard cut: suppress every transition/animation for one
- * frame, swap `data-theme`, then restore.
+ * Apply the theme as a hard cut: set data-theme to mono.
  */
-export function applyTheme(next: SentinelTheme) {
+export function applyTheme(_next: SentinelTheme = 'mono') {
   if (typeof document === 'undefined') return;
   const root = document.documentElement;
 
-  root.setAttribute('data-theme-flip', '');
-  root.setAttribute('data-theme', next);
-  // The app shell mirrors the attribute so scoped selectors keep working.
-  document.getElementById('sentinel-root')?.setAttribute('data-theme', next);
+  root.setAttribute('data-theme', 'mono');
+  document.getElementById('sentinel-root')?.setAttribute('data-theme', 'mono');
   root.style.colorScheme = 'dark';
-
-  window.requestAnimationFrame(() => {
-    window.requestAnimationFrame(() => root.removeAttribute('data-theme-flip'));
-  });
 }
 
 /* ── Provider ──────────────────────────────────────────── */
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [theme, _setTheme] = useState<SentinelTheme>(readStoredTheme);
+  const [theme] = useState<SentinelTheme>('mono');
 
-  /* Keep the DOM in sync (also covers the very first client render, in case the
-     anti-FOUC script in index.html was stripped by a host). */
   useEffect(() => {
-    applyTheme(theme);
-  }, [theme]);
-
-  /* Cross-tab sync: a flip in one tab applies everywhere. */
-  useEffect(() => {
-    const onStorage = (event: StorageEvent) => {
-      if (event.key !== THEME_STORAGE_KEY) return;
-      _setTheme(normalizeTheme(event.newValue));
-    };
-    window.addEventListener('storage', onStorage);
-    return () => window.removeEventListener('storage', onStorage);
+    applyTheme('mono');
   }, []);
 
-  const setTheme = useCallback((next: Theme) => {
-    const normalized = normalizeTheme(next);
+  const setTheme = useCallback((_next: Theme) => {
     try {
-      window.localStorage.setItem(THEME_STORAGE_KEY, normalized);
+      window.localStorage.setItem(THEME_STORAGE_KEY, 'mono');
     } catch {
-      /* storage disabled — the theme still applies for this session */
+      /* storage disabled */
     }
-    _setTheme(normalized);
-    applyTheme(normalized);
+    applyTheme('mono');
   }, []);
 
   const toggleTheme = useCallback(() => {
-    setTheme(theme === 'indigo' ? 'mono' : 'indigo');
-  }, [setTheme, theme]);
+    setTheme('mono');
+  }, [setTheme]);
 
   return (
     <ThemeContext.Provider value={{ theme, setTheme, toggleTheme, resolvedTheme: 'dark' }}>

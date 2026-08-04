@@ -11,6 +11,7 @@ import {
 } from "@/shared/observe";
 import type { Column } from "@/shared/observe";
 import { Button as UiButton } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import {
   Dialog,
   DialogContent,
@@ -25,7 +26,6 @@ import {
 } from "@/modules/alerting/hooks/useAlerting";
 import { apiErrorMessage, DialogField, FormDialog } from "@/modules/projects/components/project-ui";
 import { ALERT_SEVERITIES, type AlertRule, type AlertSeverity } from "@/modules/alerting/api/types";
-import { cn } from "@/lib/utils";
 
 const dialogFieldInputClass =
   "h-9 w-full rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg2)] px-3 text-[13px] text-[var(--text)] outline-none transition-colors placeholder:text-[var(--text3)] hover:border-[var(--border2)] focus:border-[var(--brand)] focus:ring-3 focus:ring-[var(--brand-bg)]";
@@ -43,10 +43,11 @@ export default function AlertRulesPage() {
   const rules = data?.data ?? [];
 
   const toggle = (rule: AlertRule) => {
+    const nextState = !rule.enabled;
+    toast.success(`${rule.name} ${nextState ? "enabled" : "disabled"}`);
     toggleRule.mutate(
-      { id: rule.id, enabled: !rule.enabled },
+      { id: rule.id, enabled: nextState },
       {
-        onSuccess: () => toast.success(`${rule.name} ${rule.enabled ? "disabled" : "enabled"}`),
         onError: (err) => toast.error(apiErrorMessage(err, "Could not update rule.")),
       },
     );
@@ -108,19 +109,14 @@ export default function AlertRulesPage() {
       header: "Enabled",
       width: "90px",
       cell: (r) => (
-        <button
-          type="button"
-          onClick={(e) => { e.stopPropagation(); toggle(r); }}
-          role="switch"
-          aria-checked={r.enabled}
-          aria-label={`Toggle ${r.name}`}
-          className={cn(
-            "relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors",
-            r.enabled ? "bg-[var(--brand)]" : "bg-[var(--bg3)]"
-          )}
-        >
-          <span className={cn("inline-block size-4 transform rounded-full bg-white shadow-sm transition-transform", r.enabled ? "translate-x-[18px]" : "translate-x-0.5")} />
-        </button>
+        <div onClick={(e) => e.stopPropagation()}>
+          <Switch
+            size="sm"
+            checked={r.enabled}
+            onCheckedChange={() => toggle(r)}
+            aria-label={`Toggle ${r.name}`}
+          />
+        </div>
       ),
     },
     {

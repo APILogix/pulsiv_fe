@@ -34,10 +34,11 @@ export default function AlertRuleDetailPage() {
   if (!rule) return <div className="p-8 text-[var(--text2)]">Rule not found.</div>;
 
   const handleToggle = () => {
+    const nextState = !rule.enabled;
+    toast.success(nextState ? "Rule enabled" : "Rule disabled");
     toggleRule.mutate(
-      { id: rule.id, enabled: !rule.enabled },
+      { id: rule.id, enabled: nextState },
       {
-        onSuccess: () => toast.success(rule.enabled ? "Rule disabled" : "Rule enabled"),
         onError: (err) => toast.error(apiErrorMessage(err, "Could not update rule.")),
       },
     );

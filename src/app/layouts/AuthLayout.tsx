@@ -1,7 +1,5 @@
 import { Outlet } from "react-router";
 
-import { ThemeSwitcher } from "@/theme";
-
 export function AuthLayout() {
   return (
     <div
@@ -20,18 +18,7 @@ export function AuthLayout() {
       />
 
       {/* Main Content Card */}
-      <div className="relative z-10 w-full max-w-[460px] p-6 sm:p-10 my-auto">
-        <div className="mb-8 flex items-center justify-between gap-4">
-          <span
-            className="font-[family-name:var(--mono)] text-[27px] font-bold tracking-[0.16em] text-[var(--text)]"
-            aria-label="Pulsiv"
-          >
-            PULS<span className="text-[var(--brand)]">I</span>V
-          </span>
-          {/* Theme switcher is available before sign-in too (§1). */}
-          <ThemeSwitcher />
-        </div>
-
+      <div className="relative z-10 w-full max-w-[460px] p-4 sm:p-6 my-auto">
         <div className="w-full pulse-rise">
           <Outlet />
         </div>

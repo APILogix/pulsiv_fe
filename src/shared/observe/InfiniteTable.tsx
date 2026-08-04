@@ -1,6 +1,4 @@
-import { useRef, useEffect, useMemo } from "react";
-import { useInfiniteQuery } from "@tanstack/react-query";
-import { Loader2 } from "lucide-react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AnimatedEmptyState, type EmptyIllustration } from "@/shared/motion";
@@ -49,33 +47,29 @@ export function InfiniteTable<T>({
   emptyAction,
   loading = false,
 }: InfiniteTableProps<T>) {
-  const itemsRef = useRef(items);
+  const [page, setPage] = useState(1);
+
+  // Reset page pagination state when query key changes
+  const keyString = JSON.stringify(queryKey);
+  const prevKeyRef = useRef(keyString);
   useEffect(() => {
-    itemsRef.current = items;
-  }, [items]);
-  const itemsVersion = useMemo(
-    () => items.map((item) => `${getKey(item)}:${JSON.stringify(item)}`).join("|"),
-    [getKey, items],
-  );
+    if (prevKeyRef.current !== keyString) {
+      prevKeyRef.current = keyString;
+      setPage(1);
+    }
+  }, [keyString]);
 
-  const query = useInfiniteQuery({
-    // `items.length` is part of the key so the list refetches once the page's
-    // own data query resolves (items goes from 0 -> N), avoiding a stale empty cache.
-    queryKey: ["infinite-table", ...queryKey, items.length, itemsVersion],
-    queryFn: async ({ pageParam }) => {
-      await new Promise((r) => setTimeout(r, 280)); // simulate network page fetch
-      const all = itemsRef.current;
-      const start = pageParam * pageSize;
-      return { rows: all.slice(start, start + pageSize), page: pageParam, total: all.length };
-    },
-    initialPageParam: 0,
-    getNextPageParam: (last) => ((last.page + 1) * pageSize < last.total ? last.page + 1 : undefined),
-    staleTime: 30 * 1000,
-    gcTime: 5 * 60 * 1000,
-  });
+  const visibleItems = useMemo(() => {
+    return items.slice(0, page * pageSize);
+  }, [items, page, pageSize]);
 
-  const rows = query.data?.pages.flatMap((p) => p.rows) ?? [];
-  const total = query.data?.pages[0]?.total ?? items.length;
+  const hasMore = visibleItems.length < items.length;
+
+  const handleEndReached = () => {
+    if (hasMore) {
+      setPage((prev) => prev + 1);
+    }
+  };
 
   const gridTemplate = columns.map((c) => c.width ?? "1fr").join(" ");
 
@@ -91,7 +85,7 @@ export function InfiniteTable<T>({
         ))}
       </div>
 
-      {(query.isLoading || loading) && rows.length === 0 ? (
+      {loading && visibleItems.length === 0 ? (
         <div className="sidebar-scroll min-h-0 flex-1 overflow-y-auto">
           <div className="flex flex-col">
             {Array.from({ length: 10 }).map((_, i) => (
@@ -107,7 +101,7 @@ export function InfiniteTable<T>({
             ))}
           </div>
         </div>
-      ) : rows.length === 0 ? (
+      ) : visibleItems.length === 0 ? (
         <div className="sidebar-scroll min-h-0 flex-1 flex items-center justify-center">
           <AnimatedEmptyState
             illustration={emptyIllustration}
@@ -121,14 +115,10 @@ export function InfiniteTable<T>({
         <VirtualList
           className="min-h-0 flex-1"
           height="fill"
-          items={rows}
+          items={visibleItems}
           rowHeight={44}
           getKey={getKey}
-          onEndReached={() => {
-            if (query.hasNextPage && !query.isFetchingNextPage) {
-              query.fetchNextPage();
-            }
-          }}
+          onEndReached={handleEndReached}
           renderRow={(item) => (
             <div
               role={onRowClick ? "button" : undefined}
@@ -148,12 +138,10 @@ export function InfiniteTable<T>({
           )}
           footer={
             <div className="flex h-12 shrink-0 items-center justify-center border-t border-[var(--border)] font-[family-name:var(--mono)] text-[11px] tabular-nums text-[var(--text3)]">
-              {query.isFetchingNextPage ? (
-                <span className="flex items-center gap-2"><Loader2 className="size-3.5 animate-spin" /> Loading more…</span>
-              ) : query.hasNextPage ? (
+              {hasMore ? (
                 <span>Scroll for more</span>
               ) : (
-                <span>{total} total · end of results</span>
+                <span>{items.length} total · end of results</span>
               )}
             </div>
           }

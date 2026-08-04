@@ -153,6 +153,7 @@ export function useAlertRuleRevisions(ruleId: string | undefined) {
 
 export function useAlertRuleMutations() {
   const { requireOrgId } = useAlertingScope();
+  const queryClient = useQueryClient();
   const invalidate = useInvalidateAlerting();
 
   return {
@@ -172,7 +173,82 @@ export function useAlertRuleMutations() {
     toggleRule: useMutation({
       mutationFn: ({ id, enabled }: { id: string; enabled: boolean }) =>
         enabled ? rulesApi.enable(requireOrgId(), id) : rulesApi.disable(requireOrgId(), id),
-      onSuccess: invalidate,
+      onMutate: async ({ id, enabled }) => {
+        await queryClient.cancelQueries({ queryKey: alertingKeys.all });
+
+        const previousRulesQueries = queryClient.getQueriesData({ queryKey: ["alerting", "rules"] });
+        const previousSingleQueries = queryClient.getQueriesData({ queryKey: ["alerting", "rule"] });
+
+        queryClient.setQueriesData(
+          { queryKey: ["alerting", "rules"] },
+          (oldData: any) => {
+            if (!oldData) return oldData;
+            if (Array.isArray(oldData)) {
+              return oldData.map((rule: any) =>
+                rule.id === id ? { ...rule, enabled } : rule
+              );
+            }
+            if (oldData.data && Array.isArray(oldData.data)) {
+              return {
+                ...oldData,
+                data: oldData.data.map((rule: any) =>
+                  rule.id === id ? { ...rule, enabled } : rule
+                ),
+              };
+            }
+            return oldData;
+          }
+        );
+
+        queryClient.setQueriesData(
+          { queryKey: ["alerting", "rule"] },
+          (oldData: any) => {
+            if (!oldData) return oldData;
+            if (oldData.id === id) {
+              return { ...oldData, enabled };
+            }
+            return oldData;
+          }
+        );
+
+        return { previousRulesQueries, previousSingleQueries };
+      },
+      onError: (_err, _variables, context) => {
+        if (context?.previousRulesQueries) {
+          context.previousRulesQueries.forEach(([key, data]) => {
+            queryClient.setQueryData(key, data);
+          });
+        }
+        if (context?.previousSingleQueries) {
+          context.previousSingleQueries.forEach(([key, data]) => {
+            queryClient.setQueryData(key, data);
+          });
+        }
+      },
+      onSuccess: (updatedRule) => {
+        if (updatedRule && updatedRule.id) {
+          queryClient.setQueriesData(
+            { queryKey: ["alerting", "rules"] },
+            (oldData: any) => {
+              if (!oldData) return oldData;
+              if (Array.isArray(oldData)) {
+                return oldData.map((rule: any) =>
+                  rule.id === updatedRule.id ? updatedRule : rule
+                );
+              }
+              if (oldData.data && Array.isArray(oldData.data)) {
+                return {
+                  ...oldData,
+                  data: oldData.data.map((rule: any) =>
+                    rule.id === updatedRule.id ? updatedRule : rule
+                  ),
+                };
+              }
+              return oldData;
+            }
+          );
+        }
+      },
     }),
     testRule: useMutation({
       mutationFn: ({ id, payload }: { id: string; payload: Json }) =>

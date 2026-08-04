@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
-import { useRequestEvents } from "@/hooks/useDummyData";
+import { useObservabilityList } from "./hooks/useObservabilityApi";
 import {
   PageHeader, KpiCard, FillPage, FilterBar, FilterSelect, SearchInput,
   MethodBadge, StatusCodeBadge, LatencyBar, EnvironmentBadge, AskAiButton, Timestamp, InfiniteTable, formatCompact,
@@ -23,15 +23,25 @@ export default function RequestsPage() {
   const [method, setMethod] = useState("");
   const [statusClass, setStatusClass] = useState("");
   const [query, setQuery] = useState("");
-  const { data, isLoading } = useRequestEvents(method ? { method } : undefined);
+  
+  // Backend is source of truth. Pass filters to the API.
+  // The query-engine parses `search` for free-text or field:value
+  // We can pass `search: query` and other fields directly.
+  const { data, isLoading } = useObservabilityList<RequestEvent>("requests", {
+    method,
+    // Status class filter (2xx, etc.) would need to be handled by backend. If backend supports `status_code`, we might need to map it.
+    // For now, pass as search param or standard filter.
+    statusClass, 
+    search: query
+  });
 
-  let rows = data ?? [];
-  if (statusClass) rows = rows.filter((r) => Math.floor(r.statusCode / 100) === Number(statusClass[0]));
-  if (query) rows = rows.filter((r) => r.url.toLowerCase().includes(query.toLowerCase()));
+  const rows = data?.items ?? [];
+  const summary = data?.summary ?? {};
+  const stats = data?.statistics ?? {};
 
-  const total = rows.length;
-  const errs = rows.filter((r) => r.statusCode >= 500).length;
-  const avg = total ? Math.round(rows.reduce((s, r) => s + r.latency, 0) / total) : 0;
+  const total = Number(summary.total ?? rows.length);
+  const errs = Number(summary.errors ?? rows.filter((r) => r.statusCode >= 500).length);
+  const avg = Number(stats.avgLatency ?? (total ? Math.round(rows.reduce((s, r) => s + r.latency, 0) / total) : 0));
 
   const clearAll = () => { setMethod(""); setStatusClass(""); setQuery(""); };
 
@@ -39,10 +49,10 @@ export default function RequestsPage() {
     { key: "method", header: "Method", width: "70px", cell: (r) => <MethodBadge method={r.method} /> },
     { key: "url", header: "URL", width: "1fr", cell: (r) => <span className="truncate font-[family-name:var(--mono)] text-[12px] text-[var(--text2)]">{r.url}</span> },
     { key: "status", header: "Status", width: "70px", cell: (r) => <StatusCodeBadge code={r.statusCode} /> },
-    { key: "latency", header: "Latency", width: "150px", cell: (r) => <LatencyBar value={r.latency} /> },
+    { key: "latency", header: "Latency", width: "150px", cell: (r) => <LatencyBar value={r.durationMs ?? r.latency} /> },
     { key: "time", header: "Time", width: "120px", cell: (r) => <Timestamp value={r.timestamp} /> },
-    { key: "env", header: "Environment", width: "120px", cell: (r) => <EnvironmentBadge environment={r.metadata.environment} /> },
-    { key: "ai", header: "", width: "90px", cell: (r) => <AskAiButton question={`Investigate this request: ${r.method} ${r.url} returned ${r.statusCode} in ${r.latency}ms.`} /> },
+    { key: "env", header: "Environment", width: "120px", cell: (r) => <EnvironmentBadge environment={r.environment ?? r.metadata?.environment} /> },
+    { key: "ai", header: "", width: "90px", cell: (r) => <AskAiButton question={`Investigate this request: ${r.method} ${r.url} returned ${r.statusCode} in ${r.durationMs ?? r.latency}ms.`} /> },
   ];
 
   return (
@@ -68,8 +78,8 @@ export default function RequestsPage() {
         items={rows}
         queryKey={["requests", method, statusClass, query]}
         columns={columns}
-        getKey={(r) => r.eventId}
-        onRowClick={(r) => navigate(`/observability/requests/${r.requestId}`)}
+        getKey={(r) => r.id ?? r.eventId ?? r.requestId}
+        onRowClick={(r) => navigate(`/observability/requests/${r.id ?? r.requestId}`)}
       />
     </FillPage>
   );

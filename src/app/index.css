@@ -18,38 +18,38 @@
    inside the themed root resolves dark: utilities. */
 @custom-variant dark (&:is([data-theme] *));
 
-/* ============ INDIGO (default — AI Core) ============ */
+/* ============ MONO (default theme — purist developer theme) ============ */
 :root,
+[data-theme="mono"],
 [data-theme="indigo"] {
-  /* neutrals — blue-tinted (§2.1) */
-  --bg:#0a0c12; --bg1:#10131c; --bg2:#161a26; --bg3:#1e2331;
-  --border:#232939; --border2:#303850;
-  --text:#e9ecf4; --text2:#9aa3b8; --text3:#6a7388;
+  /* neutrals — pure cool zinc (§11.1) */
+  --bg:#09090b; --bg1:#111113; --bg2:#18181b; --bg3:#232326;
+  --border:#26262a; --border2:#3f3f46;
+  --text:#fafafa; --text2:#a1a1aa; --text3:#8a8a94;
 
-  /* brand — identity channel (§2.3) */
-  --brand:#7c6cf5; --brand-d:#6554ec; --brand-fg:#ffffff;
-  --brand-bg:rgba(124,108,245,0.12); --brand-glow:rgba(124,108,245,0.35);
+  /* brand — identity channel is white (§2.3) */
+  --brand:#fafafa; --brand-d:#e4e4e7; --brand-fg:#09090b;
+  --brand-bg:rgba(250,250,250,0.08); --brand-glow:rgba(250,250,250,0.35);
 
-  /* ai — model channel (§2.4) — never changes between themes */
+  /* ai — model channel (§2.4) */
   --ai:#22d3ee; --ai-d:#06b6d4; --ai-fg:#032a33;
   --ai-bg:rgba(34,211,238,0.10);
 
-  /* semantic — truth channel (§2.2) — never changes between themes */
+  /* semantic — truth channel (§2.2) */
   --green:#34d399; --green-d:#10b981; --green-bg:rgba(52,211,153,0.08);
   --red:#ef4444; --red-d:#dc2626; --red-bg:rgba(239,68,68,0.08);
   --amber:#f59e0b; --amber-bg:rgba(245,158,11,0.08);
   --blue:#60a5fa; --blue-bg:rgba(96,165,250,0.10);
   --violet:#a78bfa; --violet-bg:rgba(167,139,250,0.10);
 
-  /* legacy alias — GET method colour is the info/blue channel (§2.6).
-     Kept so older `var(--get)` call sites keep resolving. */
+  /* legacy alias — GET method colour is the info/blue channel (§2.6). */
   --get: var(--blue);
 
-  /* shadows (§6) — functional only */
-  --shadow-modal:0 24px 60px rgba(3,5,10,0.65);
-  --shadow-toast:0 8px 24px rgba(3,5,10,0.5);
-  --shadow-card:0 1px 2px rgba(3,5,10,0.4);
-  --overlay:rgba(4,6,12,0.6);
+  /* shadows (§6) */
+  --shadow-modal:0 24px 60px rgba(0,0,0,0.7);
+  --shadow-toast:0 8px 24px rgba(0,0,0,0.55);
+  --shadow-card:0 1px 2px rgba(0,0,0,0.45);
+  --overlay:rgba(0,0,0,0.66);
 
   /* type & radii (§4, §6) */
   --display:'Space Grotesk',sans-serif;
@@ -109,35 +109,6 @@
   --chart-4: var(--amber);
   --chart-5: var(--violet);
   --chart-6: var(--blue);
-}
-
-/* ============ MONO ("Null" — purist developer theme) ============ */
-[data-theme="mono"] {
-  /* neutrals — pure cool zinc, no blue cast (§11.1) */
-  --bg:#09090b; --bg1:#111113; --bg2:#18181b; --bg3:#232326;
-  --border:#26262a; --border2:#3f3f46;
-  --text:#fafafa; --text2:#a1a1aa; --text3:#8a8a94;
-
-  /* brand — identity channel becomes white (§2.3) */
-  --brand:#fafafa; --brand-d:#e4e4e7; --brand-fg:#09090b;
-  --brand-bg:rgba(250,250,250,0.08); --brand-glow:rgba(250,250,250,0.35);
-
-  /* ai — model channel: UNCHANGED, the single surviving accent */
-  --ai:#22d3ee; --ai-d:#06b6d4; --ai-fg:#032a33;
-  --ai-bg:rgba(34,211,238,0.10);
-
-  /* semantic — truth channel: UNCHANGED */
-  --green:#34d399; --green-d:#10b981; --green-bg:rgba(52,211,153,0.08);
-  --red:#ef4444; --red-d:#dc2626; --red-bg:rgba(239,68,68,0.08);
-  --amber:#f59e0b; --amber-bg:rgba(245,158,11,0.08);
-  --blue:#60a5fa; --blue-bg:rgba(96,165,250,0.10);
-  --violet:#a78bfa; --violet-bg:rgba(167,139,250,0.10);
-
-  /* shadows */
-  --shadow-modal:0 24px 60px rgba(0,0,0,0.7);
-  --shadow-toast:0 8px 24px rgba(0,0,0,0.55);
-  --shadow-card:0 1px 2px rgba(0,0,0,0.45);
-  --overlay:rgba(0,0,0,0.66);
 }
 
 /* ============ Contrast accessibility (replaces the light theme, §1) ====== */

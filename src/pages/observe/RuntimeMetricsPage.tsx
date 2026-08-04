@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useRuntimeMetricSamples } from "@/hooks/useDummyData";
+import { useObservabilityList } from "./hooks/useObservabilityApi";
 import { seededSeries } from "@/pages/dashboards/lib";
 import { MultiLineChart, CHART_COLORS } from "@/pages/dashboards/widgets";
 import {
@@ -11,25 +11,25 @@ import type { RuntimeMetricSample } from "@/lib/dummy-data";
 
 export default function RuntimeMetricsPage() {
   const [query, setQuery] = useState("");
-  const { data } = useRuntimeMetricSamples();
+  const { data, isLoading } = useObservabilityList<any>("metrics", { metricType: "runtime", search: query });
 
-  let rows = data ?? [];
-  if (query) rows = rows.filter((r) => r.metadata.service.toLowerCase().includes(query.toLowerCase()));
+  const rows = data?.items ?? [];
+  const summary = data?.summary ?? {};
 
-  const avgHeapUsed = rows.length ? Math.round(rows.reduce((s, r) => s + r.heapUsedMb, 0) / rows.length) : 0;
-  const avgHeapTotal = rows.length ? Math.round(rows.reduce((s, r) => s + r.heapTotalMb, 0) / rows.length) : 0;
-  const avgHandles = rows.length ? Math.round(rows.reduce((s, r) => s + r.activeHandles, 0) / rows.length) : 0;
+  const avgHeapUsed = Number(summary.avgHeapUsed ?? (rows.length ? Math.round(rows.reduce((s: number, r: any) => s + (r.heapUsedMb ?? 0), 0) / rows.length) : 0));
+  const avgHeapTotal = Number(summary.avgHeapTotal ?? (rows.length ? Math.round(rows.reduce((s: number, r: any) => s + (r.heapTotalMb ?? 0), 0) / rows.length) : 0));
+  const avgHandles = Number(summary.avgHandles ?? (rows.length ? Math.round(rows.reduce((s: number, r: any) => s + (r.activeHandles ?? 0), 0) / rows.length) : 0));
 
   const columns: Column<RuntimeMetricSample>[] = [
-    { key: "service", header: "Service", width: "160px", cell: (r) => <span className="truncate text-[12px] text-[var(--text)]">{r.metadata.service}</span> },
-    { key: "heapUsed", header: "Heap used", width: "100px", align: "right", cell: (r) => <span className="tabular-nums">{r.heapUsedMb} MB</span> },
-    { key: "heapTotal", header: "Heap total", width: "100px", align: "right", cell: (r) => <span className="tabular-nums">{r.heapTotalMb} MB</span> },
-    { key: "external", header: "External", width: "90px", align: "right", cell: (r) => <span className="tabular-nums">{r.externalMb} MB</span> },
-    { key: "rss", header: "RSS", width: "90px", align: "right", cell: (r) => <span className="tabular-nums">{r.rssMb} MB</span> },
-    { key: "handles", header: "Handles", width: "90px", align: "right", cell: (r) => <span className="tabular-nums">{r.activeHandles}</span> },
-    { key: "time", header: "Sampled", width: "110px", cell: (r) => <Timestamp value={r.timestamp} /> },
-    { key: "env", header: "Environment", width: "120px", cell: (r) => <EnvironmentBadge environment={r.metadata.environment} /> },
-    { key: "ai", header: "", width: "90px", cell: (r) => <AskAiButton question={`Is this memory usage normal for ${r.metadata.service}? Heap used ${r.heapUsedMb}MB of ${r.heapTotalMb}MB, RSS ${r.rssMb}MB, ${r.activeHandles} active handles.`} /> },
+    { key: "service", header: "Service", width: "160px", cell: (r: any) => <span className="truncate text-[12px] text-[var(--text)]">{r.service ?? r.metadata?.service}</span> },
+    { key: "heapUsed", header: "Heap used", width: "100px", align: "right", cell: (r: any) => <span className="tabular-nums">{r.heapUsedMb ?? 0} MB</span> },
+    { key: "heapTotal", header: "Heap total", width: "100px", align: "right", cell: (r: any) => <span className="tabular-nums">{r.heapTotalMb ?? 0} MB</span> },
+    { key: "external", header: "External", width: "90px", align: "right", cell: (r: any) => <span className="tabular-nums">{r.externalMb ?? 0} MB</span> },
+    { key: "rss", header: "RSS", width: "90px", align: "right", cell: (r: any) => <span className="tabular-nums">{r.rssMb ?? 0} MB</span> },
+    { key: "handles", header: "Handles", width: "90px", align: "right", cell: (r: any) => <span className="tabular-nums">{r.activeHandles ?? 0}</span> },
+    { key: "time", header: "Sampled", width: "110px", cell: (r: any) => <Timestamp value={r.timestamp} /> },
+    { key: "env", header: "Environment", width: "120px", cell: (r: any) => <EnvironmentBadge environment={r.environment ?? r.metadata?.environment} /> },
+    { key: "ai", header: "", width: "90px", cell: (r: any) => <AskAiButton question={`Is this memory usage normal for ${r.service ?? r.metadata?.service}? Heap used ${r.heapUsedMb}MB of ${r.heapTotalMb}MB, RSS ${r.rssMb}MB, ${r.activeHandles} active handles.`} /> },
   ];
 
   return (
@@ -58,10 +58,11 @@ export default function RuntimeMetricsPage() {
 
       <InfiniteTable
         className="h-[440px]"
+        loading={isLoading}
         items={rows}
         queryKey={["runtime-metrics-page", query]}
-        columns={columns}
-        getKey={(r) => r.eventId}
+        columns={columns as any}
+        getKey={(r: any) => r.id ?? r.eventId ?? Math.random().toString()}
       />
     </div>
   );

@@ -10,15 +10,22 @@ import type { LinkedIdentity } from '../types/auth.types';
 
 function storeSession(p: AuthSession) {
   tokenService.setAccessToken(p.access_token, p.expires_at);
-  // Prefer current_org_id from the response; fall back to nothing.
-  // The org store will be populated from the embedded organizations list
-  // or via a subsequent API call.
-  tokenService.setCurrentOrgId(p.current_org_id);
-  if (p.current_org_id !== undefined) {
-    useOrgStore.getState().setActiveOrgId(p.current_org_id ?? null);
-    const activeOrg = p.organizations?.find(o => o.id === p.current_org_id);
-    useOrgStore.getState().setActiveOrgSlug(activeOrg?.slug ?? null);
-  }
+
+  const existingActiveOrgId = useOrgStore.getState().activeOrgId;
+  const orgs = p.organizations ?? [];
+  const isValidExistingOrg = Boolean(existingActiveOrgId && orgs.some(o => o.id === existingActiveOrgId));
+
+  const targetOrgId = isValidExistingOrg
+    ? existingActiveOrgId
+    : (p.current_org_id ?? p.default_org_id ?? orgs[0]?.id ?? null);
+
+  tokenService.setCurrentOrgId(targetOrgId);
+  useOrgStore.getState().setActiveOrgId(targetOrgId);
+
+  const activeOrg = orgs.find(o => o.id === targetOrgId);
+  const targetSlug = activeOrg?.slug ?? (targetOrgId === p.default_org_id ? p.default_org_slug : null) ?? orgs[0]?.slug ?? null;
+  tokenService.setCurrentOrgSlug(targetSlug);
+  useOrgStore.getState().setActiveOrgSlug(targetSlug);
 }
 
 export const authApi = {

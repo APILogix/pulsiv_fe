@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Activity, AlertTriangle, Gauge, Globe, Timer, Users } from "lucide-react";
-import { useErrorEvents, useRequestEvents } from "@/hooks/useDummyData";
+import { useObservabilityList } from "./hooks/useObservabilityApi";
 import { useTimeRangeStore, TIME_RANGES } from "@/stores/timeRangeStore";
 import {
   PageHeader, KpiCard, SectionCard, SeverityBadge, StatusCodeBadge, MetricSparkline,
@@ -12,23 +12,30 @@ const TIME_OPTIONS = TIME_RANGES.map((r) => ({ value: r, label: r }));
 export default function ExecutiveDashboard() {
   const timeRange = useTimeRangeStore((s) => s.timeRange);
   const setTimeRange = useTimeRangeStore((s) => s.setTimeRange);
-  const errors = useErrorEvents();
-  const requests = useRequestEvents();
+  
+  const { data: errors } = useObservabilityList<any>("errors");
+  const { data: requests } = useObservabilityList<any>("requests");
 
-  const reqList = requests.data ?? [];
-  const errList = errors.data ?? [];
-  const total = reqList.length;
-  const errorReqs = reqList.filter((r) => r.statusCode >= 500).length;
+  const reqList = requests?.items ?? [];
+  const errList = errors?.items ?? [];
+  const reqSummary = requests?.summary ?? {};
+  const reqStats = requests?.statistics ?? {};
+
+  const total = Number(reqSummary.total ?? reqList.length);
+  const errorReqs = Number(reqSummary.errors ?? reqList.filter((r: any) => r.statusCode >= 500).length);
   const errorRate = total ? ((errorReqs / total) * 100).toFixed(2) : "0";
-  const avgLatency = total ? Math.round(reqList.reduce((s, r) => s + r.latency, 0) / total) : 0;
-  const p95 = percentile(reqList.map((r) => r.latency), 95);
-  const affectedUsers = new Set(errList.flatMap((e) => e.user ? [e.user.id] : [])).size;
+  const avgLatency = Number(reqStats.avgLatency ?? (total ? Math.round(reqList.reduce((s: number, r: any) => s + (r.latency ?? r.durationMs ?? 0), 0) / total) : 0));
+  const p95 = Number(reqStats.p95Latency ?? percentile(reqList.map((r: any) => r.latency ?? r.durationMs ?? 0), 95));
+  
+  // Try to use summary data if available, else fallback to arrays
+  const activeErrors = Number(errors?.summary?.total ?? errList.length);
+  const affectedUsers = Number(errors?.summary?.affectedUsers ?? new Set(errList.flatMap((e: any) => e.user ? [e.user.id ?? e.user.email] : [])).size);
 
   const services = ["api-gateway", "user-service", "payment-service", "notification-service", "analytics-service"];
   const [sparkData] = useState(() => Array.from({ length: 24 }, (_, i) => 40 + Math.round(Math.sin(i / 3) * 20 + Math.random() * 15)));
 
   const topErrors = errList.slice(0, 6);
-  const slowest = [...reqList].sort((a, b) => b.latency - a.latency).slice(0, 6);
+  const slowest = [...reqList].sort((a: any, b: any) => (b.latency ?? b.durationMs ?? 0) - (a.latency ?? a.durationMs ?? 0)).slice(0, 6);
 
   return (
     <div className="flex flex-col gap-6">
@@ -43,7 +50,7 @@ export default function ExecutiveDashboard() {
         <KpiCard label="Error rate" value={`${errorRate}%`} delta="-0.3%" trend="up" icon={AlertTriangle} />
         <KpiCard label="Avg latency" value={formatLatency(avgLatency)} delta="+8ms" trend="down" icon={Timer} />
         <KpiCard label="p95 latency" value={formatLatency(p95)} delta="-22ms" trend="up" icon={Gauge} />
-        <KpiCard label="Active errors" value={formatCompact(errList.length)} delta="+5" trend="down" icon={Activity} />
+        <KpiCard label="Active errors" value={formatCompact(activeErrors)} delta="+5" trend="down" icon={Activity} />
         <KpiCard label="Affected users" value={affectedUsers} delta="+2" trend="down" icon={Users} />
       </div>
 
@@ -69,11 +76,11 @@ export default function ExecutiveDashboard() {
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <SectionCard title="Top errors">
           <div className="flex flex-col divide-y divide-[var(--border)]">
-            {topErrors.map((e) => (
-              <div key={e.eventId} className="flex items-center gap-3 py-2.5 first:pt-0 last:pb-0">
+            {topErrors.map((e: any) => (
+              <div key={e.id ?? e.eventId ?? e.fingerprint} className="flex items-center gap-3 py-2.5 first:pt-0 last:pb-0">
                 <SeverityBadge severity={e.severity} />
                 <div className="min-w-0 flex-1">
-                  <div className="truncate text-[13px] font-medium text-[var(--text)]">{e.name}</div>
+                  <div className="truncate text-[13px] font-medium text-[var(--text)]">{e.name ?? e.type ?? "Error"}</div>
                   <div className="truncate text-[12px] text-[var(--text3)]">{e.message}</div>
                 </div>
                 <Timestamp value={e.timestamp} />
@@ -84,11 +91,11 @@ export default function ExecutiveDashboard() {
 
         <SectionCard title="Slowest endpoints">
           <div className="flex flex-col divide-y divide-[var(--border)]">
-            {slowest.map((r) => (
-              <div key={r.eventId} className="flex items-center gap-3 py-2.5 first:pt-0 last:pb-0">
+            {slowest.map((r: any) => (
+              <div key={r.id ?? r.requestId} className="flex items-center gap-3 py-2.5 first:pt-0 last:pb-0">
                 <StatusCodeBadge code={r.statusCode} />
-                <span className="min-w-0 flex-1 truncate font-[family-name:var(--mono)] text-[12px] text-[var(--text2)]">{r.route}</span>
-                <span className="tabular-nums text-[13px] font-semibold text-[var(--text)]">{formatLatency(r.latency)}</span>
+                <span className="min-w-0 flex-1 truncate font-[family-name:var(--mono)] text-[12px] text-[var(--text2)]">{r.route ?? r.endpoint ?? r.url}</span>
+                <span className="tabular-nums text-[13px] font-semibold text-[var(--text)]">{formatLatency(r.latency ?? r.durationMs)}</span>
               </div>
             ))}
           </div>

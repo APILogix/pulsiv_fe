@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useEventLoopSamples } from "@/hooks/useDummyData";
+import { useObservabilityList } from "./hooks/useObservabilityApi";
 import { seededSeries, percentile } from "@/pages/dashboards/lib";
 import { MultiLineChart, CHART_COLORS } from "@/pages/dashboards/widgets";
 import {
@@ -11,25 +11,25 @@ import type { EventLoopSample } from "@/lib/dummy-data";
 
 export default function EventLoopPage() {
   const [query, setQuery] = useState("");
-  const { data } = useEventLoopSamples();
+  const { data, isLoading } = useObservabilityList<any>("metrics", { metricType: "event-loop", search: query });
 
-  let rows = data ?? [];
-  if (query) rows = rows.filter((r) => r.metadata.service.toLowerCase().includes(query.toLowerCase()));
+  const rows = data?.items ?? [];
+  const summary = data?.summary ?? {};
 
-  const lagValues = rows.map((r) => r.lagMs);
-  const p50 = percentile(lagValues, 50);
-  const p95 = percentile(lagValues, 95);
-  const p99 = percentile(lagValues, 99);
-  const avgUtil = rows.length ? Math.round(rows.reduce((s, r) => s + r.utilizationPercent, 0) / rows.length) : 0;
+  const lagValues = rows.map((r: any) => r.lagMs ?? 0);
+  const p50 = Number(summary.p50Lag ?? percentile(lagValues, 50));
+  const p95 = Number(summary.p95Lag ?? percentile(lagValues, 95));
+  const p99 = Number(summary.p99Lag ?? percentile(lagValues, 99));
+  const avgUtil = Number(summary.avgUtil ?? (rows.length ? Math.round(rows.reduce((s: number, r: any) => s + (r.utilizationPercent ?? 0), 0) / rows.length) : 0));
 
   const columns: Column<EventLoopSample>[] = [
-    { key: "service", header: "Service", width: "160px", cell: (r) => <span className="truncate text-[12px] text-[var(--text)]">{r.metadata.service}</span> },
-    { key: "lag", header: "Lag", width: "90px", align: "right", cell: (r) => <span className="tabular-nums">{r.lagMs.toFixed(1)}ms</span> },
-    { key: "p95", header: "p95 lag", width: "90px", align: "right", cell: (r) => <span className="tabular-nums">{r.p95LagMs.toFixed(1)}ms</span> },
-    { key: "util", header: "Utilization", width: "110px", align: "right", cell: (r) => <span className="tabular-nums">{r.utilizationPercent}%</span> },
-    { key: "time", header: "Sampled", width: "110px", cell: (r) => <Timestamp value={r.timestamp} /> },
-    { key: "env", header: "Environment", width: "120px", cell: (r) => <EnvironmentBadge environment={r.metadata.environment} /> },
-    { key: "ai", header: "", width: "90px", cell: (r) => <AskAiButton question={`Why is event loop lag ${r.lagMs.toFixed(1)}ms on ${r.metadata.service}? Utilization is ${r.utilizationPercent}%.`} /> },
+    { key: "service", header: "Service", width: "160px", cell: (r: any) => <span className="truncate text-[12px] text-[var(--text)]">{r.service ?? r.metadata?.service}</span> },
+    { key: "lag", header: "Lag", width: "90px", align: "right", cell: (r: any) => <span className="tabular-nums">{(r.lagMs ?? 0).toFixed(1)}ms</span> },
+    { key: "p95", header: "p95 lag", width: "90px", align: "right", cell: (r: any) => <span className="tabular-nums">{(r.p95LagMs ?? r.p95 ?? 0).toFixed(1)}ms</span> },
+    { key: "util", header: "Utilization", width: "110px", align: "right", cell: (r: any) => <span className="tabular-nums">{r.utilizationPercent ?? 0}%</span> },
+    { key: "time", header: "Sampled", width: "110px", cell: (r: any) => <Timestamp value={r.timestamp} /> },
+    { key: "env", header: "Environment", width: "120px", cell: (r: any) => <EnvironmentBadge environment={r.environment ?? r.metadata?.environment} /> },
+    { key: "ai", header: "", width: "90px", cell: (r: any) => <AskAiButton question={`Why is event loop lag ${(r.lagMs ?? 0).toFixed(1)}ms on ${r.service ?? r.metadata?.service}? Utilization is ${r.utilizationPercent ?? 0}%.`} /> },
   ];
 
   return (
@@ -58,10 +58,11 @@ export default function EventLoopPage() {
 
       <InfiniteTable
         className="h-[440px]"
+        loading={isLoading}
         items={rows}
         queryKey={["event-loop-page", query]}
-        columns={columns}
-        getKey={(r) => r.eventId}
+        columns={columns as any}
+        getKey={(r: any) => r.id ?? r.eventId ?? Math.random().toString()}
       />
     </div>
   );

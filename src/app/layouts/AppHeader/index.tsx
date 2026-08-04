@@ -4,7 +4,6 @@ import { GlobalSearch } from './GlobalSearch';
 import { NotificationCenter } from './NotificationCenter';
 import { HelpMenu } from './HelpMenu';
 import { UserAvatarMenu } from './UserAvatarMenu';
-import { ThemeSwitcher } from '@/theme';
 import { useSidebarStore } from '@/stores/sidebarStore';
 
 interface AppHeaderProps {
@@ -49,8 +48,6 @@ export function AppHeader({ onMenuClick }: AppHeaderProps) {
 
       {/* Right Section */}
       <div className="flex items-center gap-1 md:gap-2 flex-1 justify-end">
-        {/* Theme switcher lives in the topbar (§1) */}
-        <ThemeSwitcher className="hidden sm:inline-flex" />
         <NotificationCenter />
         <HelpMenu />
         <UserAvatarMenu />

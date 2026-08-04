@@ -6,13 +6,10 @@ import { PrivacyTab } from './tabs/PrivacyTab';
 import { InstrumentationTab } from './tabs/InstrumentationTab';
 import { LimitsTab } from './tabs/LimitsTab';
 import { KillswitchesTab } from './tabs/KillswitchesTab';
-import { ConfigNav, type ConfigNavItem } from './components/ConfigNav';
 import { PublishDrawer } from './components/PublishDrawer';
 import { type RouteKey, type SdkConfigState } from './schema';
 import { normalizeSdkConfig, buildEditableConfig, validateDraft, diffDraft } from './mapping';
 import type { CompressionMode, QueueOverflowStrategy, RetryBackoff, TransportPriority } from './bounds';
-import { Button } from '@/shared/observe';
-import { AlertTriangle, RotateCcw, Rocket } from 'lucide-react';
 
 function deepEqual(a: unknown, b: unknown): boolean {
   if (a === b) return true;
@@ -23,31 +20,42 @@ function deepEqual(a: unknown, b: unknown): boolean {
   return keysA.every((key) => deepEqual((a as Record<string, unknown>)[key], (b as Record<string, unknown>)[key]));
 }
 
+export interface RemoteConfigPanelHandle {
+  isDirty: boolean;
+  hasErrors: boolean;
+  diffCount: number;
+  errorCount: number;
+  changedCounts: Record<string, number>;
+  errorCounts: Record<string, number>;
+  openPublishDrawer: () => void;
+  discardDraft: () => void;
+}
+
 interface RemoteConfigPanelProps {
-  /** The compiled backend document as returned by GET (read-only, never edited directly). */
   initialConfig: unknown;
-  /** Receives the exact `editableConfig` object + summary to PATCH — already allowlist-filtered. */
   onSave: (editableConfig: Record<string, unknown>, changeSummary: string) => void;
   isSaving?: boolean;
   environmentName: string;
   currentRevision: number;
+  activeSection: string;
+  onStateChange?: (state: RemoteConfigPanelHandle) => void;
+  publishDrawerOpen: boolean;
+  onClosePublishDrawer: () => void;
 }
 
-const NAV_SECTIONS: Array<{ id: string; label: string; icon: string; danger?: boolean; prefixes: string[] }> = [
-  { id: 'features', label: 'Features', icon: 'features', prefixes: ['features'] },
-  { id: 'transport', label: 'Transport', icon: 'transport', prefixes: ['transport', 'runtime'] },
-  { id: 'sampling', label: 'Sampling', icon: 'sampling', prefixes: ['sampling'] },
-  { id: 'privacy', label: 'Privacy', icon: 'privacy', prefixes: ['privacy'] },
-  { id: 'instrumentation', label: 'Instrumentation', icon: 'instrumentation', prefixes: ['instrumentation'] },
-  { id: 'limits', label: 'Limits', icon: 'limits', prefixes: ['limits'] },
-  { id: 'killswitches', label: 'Killswitches', icon: 'killswitches', danger: true, prefixes: ['killswitches'] },
-];
-
-export function RemoteConfigPanel({ initialConfig, onSave, isSaving, environmentName, currentRevision }: RemoteConfigPanelProps) {
+export function RemoteConfigPanel({
+  initialConfig,
+  onSave,
+  isSaving,
+  environmentName,
+  currentRevision,
+  activeSection,
+  onStateChange,
+  publishDrawerOpen,
+  onClosePublishDrawer,
+}: RemoteConfigPanelProps) {
   const baseConfig: SdkConfigState = useMemo(() => normalizeSdkConfig(initialConfig), [initialConfig]);
   const [draft, setDraft] = useState<SdkConfigState>(baseConfig);
-  const [activeSection, setActiveSection] = useState('features');
-  const [drawerOpen, setDrawerOpen] = useState(false);
 
   useEffect(() => {
     setDraft(baseConfig);
@@ -73,13 +81,22 @@ export function RemoteConfigPanel({ initialConfig, onSave, isSaving, environment
     return counts;
   }, [errors]);
 
-  const navItems: ConfigNavItem[] = NAV_SECTIONS.map((section) => ({
-    id: section.id,
-    label: section.label,
-    icon: section.icon,
-    danger: section.danger,
-    changedCount: (changedCountBySection[section.id] ?? 0) + (errorCountBySection[section.id] ?? 0),
-  }));
+  const handleDiscard = () => setDraft(baseConfig);
+
+  useEffect(() => {
+    if (onStateChange) {
+      onStateChange({
+        isDirty,
+        hasErrors,
+        diffCount: diff.length,
+        errorCount: errors.length,
+        changedCounts: changedCountBySection,
+        errorCounts: errorCountBySection,
+        openPublishDrawer: () => {},
+        discardDraft: handleDiscard,
+      });
+    }
+  }, [isDirty, hasErrors, diff.length, errors.length, changedCountBySection, errorCountBySection]);
 
   const updateFeature = (key: keyof SdkConfigState['features'], value: boolean) =>
     setDraft((prev) => ({ ...prev, features: { ...prev.features, [key]: value } }));
@@ -145,12 +162,10 @@ export function RemoteConfigPanel({ initialConfig, onSave, isSaving, environment
   const updateRuntime = (key: keyof SdkConfigState['runtime'], value: number | boolean) =>
     setDraft((prev) => ({ ...prev, runtime: { ...prev.runtime, [key]: value } }));
 
-  const handleDiscard = () => setDraft(baseConfig);
-
   const handleConfirmPublish = (changeSummary: string) => {
     if (hasErrors) return;
     onSave(buildEditableConfig(draft), changeSummary);
-    setDrawerOpen(false);
+    onClosePublishDrawer();
   };
 
   const sectionContent: Record<string, React.ReactNode> = {
@@ -184,60 +199,14 @@ export function RemoteConfigPanel({ initialConfig, onSave, isSaving, environment
   };
 
   return (
-    <div className="flex flex-col gap-5 lg:flex-row lg:items-start">
-      <ConfigNav items={navItems} active={activeSection} onSelect={setActiveSection} />
-
-      <div className="min-w-0 flex-1">
-        {sectionContent[activeSection]}
-
-        <div className="h-24" />
+    <div className="w-full">
+      <div className="max-w-[780px]">
+        {sectionContent[activeSection] || sectionContent.features}
       </div>
 
-      {(isDirty || hasErrors) && (
-        <div className="fixed inset-x-0 bottom-0 z-40 flex justify-center px-4 pb-4 lg:pl-[280px]">
-          <div className="flex w-full max-w-2xl items-center justify-between gap-4 rounded-[16px] border border-[var(--border)] bg-[var(--bg1)]/80 px-5 py-3 shadow-[0_12px_40px_rgba(0,0,0,0.2)] backdrop-blur-xl">
-            <div className="flex min-w-0 items-center gap-3">
-              {hasErrors ? (
-                <>
-                  <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-red-500/20 text-red-500">
-                    <AlertTriangle className="size-3.5" />
-                  </span>
-                  <span className="truncate text-[13px] font-medium text-red-500">
-                    {errors.length} field{errors.length === 1 ? '' : 's'} out of range
-                  </span>
-                </>
-              ) : (
-                <>
-                  <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-[var(--brand)]/20 text-[12px] font-bold text-[var(--brand)]">
-                    {diff.length}
-                  </span>
-                  <span className="truncate text-[13px] font-medium text-[var(--text)]">
-                    unsaved change{diff.length === 1 ? '' : 's'}
-                  </span>
-                </>
-              )}
-            </div>
-            <div className="flex shrink-0 items-center gap-2">
-              <Button variant="ghost" onClick={handleDiscard}>
-                <RotateCcw className="mr-1.5 size-3.5" />
-                Discard
-              </Button>
-              <Button
-                onClick={() => setDrawerOpen(true)}
-                disabled={hasErrors}
-                className="bg-emerald-600 text-white shadow-sm hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600"
-              >
-                <Rocket className="mr-1.5 size-3.5" />
-                Review & Publish
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-
       <PublishDrawer
-        open={drawerOpen}
-        onClose={() => setDrawerOpen(false)}
+        open={publishDrawerOpen}
+        onClose={onClosePublishDrawer}
         onConfirm={handleConfirmPublish}
         diff={diff}
         errors={errors}

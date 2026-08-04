@@ -14,6 +14,7 @@ export function AuthHeading({
   icon,
   tone = "brand",
   align = "left",
+  hideLogo = false,
 }: {
   eyebrow?: string;
   title: string;
@@ -21,20 +22,31 @@ export function AuthHeading({
   icon?: LucideIcon;
   tone?: SurfaceTone;
   align?: "left" | "center";
+  hideLogo?: boolean;
 }) {
   const centered = align === "center";
   return (
-    <div className={cn("mb-7 flex flex-col gap-3", centered && "items-center text-center")}>
+    <div className={cn("mb-5 flex flex-col gap-2", centered && "items-center text-center")}>
       {icon && <IconChip icon={icon} tone={tone} size="lg" />}
       {eyebrow && (
         <p className="font-mono text-[10px] font-medium uppercase tracking-[0.09em] text-[var(--text3)]">{eyebrow}</p>
       )}
-      <div className={cn("flex flex-col gap-2", centered && "items-center")}>
-        <h1 className="font-[family-name:var(--display)] text-[26px] font-semibold leading-tight tracking-[-0.03em] text-[var(--text)]">
-          {title}
-        </h1>
+      <div className={cn("flex flex-col gap-1.5", centered && "items-center")}>
+        <div className={cn("flex items-center justify-between gap-3", centered && "flex-col items-center")}>
+          <h1 className="font-[family-name:var(--display)] text-[26px] font-semibold leading-tight tracking-[-0.03em] text-[var(--text)]">
+            {title}
+          </h1>
+          {!hideLogo && (
+            <span
+              className="font-[family-name:var(--mono)] text-[22px] font-bold tracking-[0.16em] text-[var(--text)] shrink-0"
+              aria-label="Pulsiv"
+            >
+              PULS<span className="text-[var(--brand)]">I</span>V
+            </span>
+          )}
+        </div>
         {description && (
-          <p className={cn("text-[13px] leading-[1.6] text-[var(--text2)]", centered ? "max-w-[38ch]" : "max-w-[44ch]")}>
+          <p className={cn("text-[13px] leading-[1.5] text-[var(--text2)]", centered ? "max-w-[38ch]" : "max-w-[44ch]")}>
             {description}
           </p>
         )}
@@ -51,7 +63,7 @@ export function AuthCard({ children, className }: { children: React.ReactNode; c
       className={cn(
         // §6 — a hairline border carries the card; no gradient chrome, no
         // decorative brand glow (§3).
-        "relative overflow-hidden rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] p-5",
+        "relative overflow-hidden rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] p-4 sm:p-5",
         className
       )}
     >
@@ -64,7 +76,7 @@ export function AuthCard({ children, className }: { children: React.ReactNode; c
 
 export function AuthDivider({ children }: { children: React.ReactNode }) {
   return (
-    <div className="my-5 flex items-center">
+    <div className="my-4 flex items-center">
       <span className="h-px flex-1 bg-[var(--border)]" />
       <span className="px-3 font-mono text-[10px] font-medium uppercase tracking-[0.09em] text-[var(--text3)]">{children}</span>
       <span className="h-px flex-1 bg-[var(--border)]" />
@@ -197,7 +209,7 @@ export function AuthResult({
 // ── Footer link row ──────────────────────────────────────────
 
 export function AuthFooter({ children }: { children: React.ReactNode }) {
-  return <p className="mt-7 text-center text-[13px] text-[var(--text3)]">{children}</p>;
+  return <p className="mt-5 text-center text-[13px] text-[var(--text3)]">{children}</p>;
 }
 
 export function AuthLink({ to, children }: { to: string; children: React.ReactNode }) {

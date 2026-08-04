@@ -18,7 +18,6 @@ import {
 } from '@/components/ui/sheet';
 import { useAuth } from '@/modules/auth/hooks/useAuth';
 import { useLogout } from '@/modules/auth/hooks/useLogout';
-import { ThemeSwitcher } from '@/theme';
 
 import { AvatarButton } from './AvatarButton';
 import { avatarMenuGroups } from './config';
@@ -85,13 +84,6 @@ function AccountMenuContent({
       </div>
 
       <MenuDivider />
-      {/* Theme lives in user settings as well as the topbar (§1). */}
-      <div className="flex h-8 items-center justify-between px-3">
-        <span className="font-mono text-[10px] uppercase tracking-[0.09em] text-[var(--text3)]">
-          Theme
-        </span>
-        <ThemeSwitcher />
-      </div>
       <button
         type="button"
         title="Sign out"

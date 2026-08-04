@@ -24,7 +24,9 @@ export async function completeLogin(
   setAuth(user);
   queryClient.setQueryData(authQueryKeys.currentUser, user);
 
-  if (session.organizations?.length === 0) {
+  const hasOrgs = (session.organizations && session.organizations.length > 0) || Boolean(session.default_org_id) || Boolean(session.current_org_id);
+
+  if (!hasOrgs) {
     navigate('/onboarding/organization', { replace: true });
     return;
   }

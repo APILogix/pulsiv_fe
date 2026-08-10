@@ -121,7 +121,7 @@ export default function SsoLoginPage() {
         </form>
 
         <Notice tone="blue" icon={Info} className="mt-4">
-          You&apos;ll be redirected to your identity provider to authenticate, then returned to Pulsiv. Session policy is
+          You&apos;ll be redirected to your identity provider to authenticate, then returned to Sentinel. Session policy is
           set by your organization.
         </Notice>
       </AuthCard>

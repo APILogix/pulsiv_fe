@@ -606,3 +606,166 @@ export interface AlertMetric {
   labels: Json;
   createdAt: string;
 }
+
+// ── Redesigned Alerting Module Types ─────────────────────────────────────
+
+export type SubscriptionState = "subscribed" | "paused" | "muted" | "disabled" | "archived";
+export type IncidentState = "healthy" | "pending" | "triggered" | "acknowledged" | "escalated" | "muted" | "resolved" | "closed";
+export type PolicyCategory = string;
+
+export interface OrganizationAlertPolicy {
+  id: string;
+  organizationId: string;
+  slug: string;
+  name: string;
+  description: string;
+  version: number;
+  currentVersion?: number;
+  category: PolicyCategory;
+  metricSource: string;
+  expression: string;
+  defaultThreshold: Json;
+  recoveryThreshold: Json;
+  cooldownSeconds: number;
+  evaluationWindowSeconds: number;
+  severity: AlertSeverity;
+  enabled: boolean;
+  isSystem: boolean;
+  documentation?: string;
+  dependencies?: string[];
+  currentDefinition?: Json;
+  versions?: Json[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ProjectSubscription {
+  id: string;
+  organizationId?: string;
+  projectId: string;
+  policyId: string;
+  state: SubscriptionState;
+  policy?: OrganizationAlertPolicy;
+  override?: ProjectOverride | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ProjectOverride {
+  id: string;
+  organizationId?: string;
+  subscriptionId: string;
+  projectId?: string;
+  policyId?: string;
+  threshold?: Json | null;
+  cooldownSeconds?: number | null;
+  channels?: string[] | null;
+  severity?: AlertSeverity | null;
+  maintenanceWindows?: string[] | null;
+  evaluationWindowSeconds?: number | null;
+  environment?: string | null;
+  escalationPolicyId?: string | null;
+  muteSchedule?: Json | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface EffectivePolicy {
+  policyId: string;
+  projectId: string;
+  effectiveThreshold: number | string;
+  effectiveCooldown: string;
+  effectiveSeverity: AlertSeverity;
+  effectiveChannels: string[];
+  effectiveEscalationPolicyId: string | null;
+  isOverridden: boolean;
+  overrides: ProjectOverride | null;
+  basePolicy: OrganizationAlertPolicy;
+}
+
+export interface AlertIncident {
+  id: string;
+  organizationId: string;
+  projectId: string | null;
+  policyId: string | null;
+  fingerprint: string;
+  state: IncidentState;
+  severity: AlertSeverity;
+  title: string;
+  summary: string;
+  occurrenceCount: number;
+  firstTriggeredAt: string;
+  lastTriggeredAt: string;
+  acknowledgedAt?: string | null;
+  acknowledgedBy?: string | null;
+  resolvedAt?: string | null;
+  resolvedBy?: string | null;
+  mutedAt?: string | null;
+  mutedUntil?: string | null;
+  assignedToUser?: string | null;
+  tags: string[];
+  environment: string;
+  service: string;
+}
+
+export interface IncidentOccurrence {
+  id: string;
+  incidentId: string;
+  timestamp: string;
+  payload: Json;
+  signalSnapshotId?: string;
+}
+
+export interface IncidentStateHistory {
+  id: string;
+  incidentId: string;
+  fromState: IncidentState;
+  toState: IncidentState;
+  changedBy: string;
+  reason?: string;
+  timestamp: string;
+}
+
+export interface AlertingWorkspaceSnapshot {
+  workspace: {
+    id: string;
+    organizationId: string;
+    version: number;
+    initializedBy: string;
+    initializationVersion: string;
+    provisioningStatus: string;
+    completedAt: string | null;
+    createdAt: string;
+    updatedAt: string;
+  };
+  categories: Array<Record<string, unknown>>;
+  policies: OrganizationAlertPolicy[];
+  routingDefaults: Array<Record<string, unknown>>;
+  escalationPolicies: Array<Record<string, unknown>>;
+  settings: Record<string, unknown> | null;
+  maintenance: Record<string, unknown> | null;
+  notificationDefaults: Record<string, unknown> | null;
+  providerCatalog: Array<Record<string, unknown>>;
+  entitlements: Record<string, unknown> | null;
+  usage: Record<string, unknown> | null;
+  featureFlags: Array<Record<string, unknown>>;
+  dashboardWidgets: Array<Record<string, unknown>>;
+  savedViews: Array<Record<string, unknown>>;
+  audit: Array<Record<string, unknown>>;
+  search: Record<string, unknown> | null;
+}
+
+export interface MaintenanceWindow {
+  id: string;
+  organizationId: string;
+  projectId?: string | null;
+  name: string;
+  description?: string;
+  startTime: string;
+  endTime: string;
+  services: string[];
+  environments: string[];
+  createdBy: string;
+  createdAt: string;
+}
+

@@ -437,7 +437,7 @@ export default function DomainsPage() {
             <Panel title="Verification guide" description="What to expect while claiming a domain." icon={ShieldCheck} tone="ai">
               <SetupSteps steps={steps} />
             </Panel>
-            <Panel title="Record type" description="Pulsiv verifies ownership with a single DNS TXT record." icon={Server} tone="brand">
+            <Panel title="Record type" description="Sentinel verifies ownership with a single DNS TXT record." icon={Server} tone="brand">
               <dl className="flex flex-col gap-3">
                 <div className="flex items-center justify-between gap-3">
                   <dt className="text-[12.5px] text-[var(--text2)]">Record type</dt>

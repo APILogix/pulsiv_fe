@@ -50,23 +50,36 @@ export interface EventUser {
 }
 
 export interface ErrorEvent {
-  type: "error";
-  eventId: string;
+  type?: "error";
+  id?: string;
+  publicId?: string;
+  tracePublicId?: string;
+  eventId?: string;
   requestId?: string;
   message: string;
-  name: string;
-  stack: StackFrame[];
-  fingerprint: string;
-  timestamp: number;
+  name?: string;
+  errorName?: string;
+  stack?: StackFrame[];
+  fingerprint?: string;
+  timestamp?: number;
+  occurredAt?: string;
   severity: SeverityLevel;
-  context: Record<string, unknown>;
+  context?: Record<string, unknown>;
   breadcrumbs?: Breadcrumb[];
   traceId?: string;
   spanId?: string;
-  metadata: EventMetadata;
+  metadata?: EventMetadata;
   user?: EventUser;
-  tags: Record<string, string>;
-  mechanism: string;
+  tags?: Record<string, string>;
+  mechanism?: string;
+  handled?: boolean;
+  isHandled?: boolean;
+  statusCode?: number;
+  environment?: string;
+  route?: string;
+  project?: string;
+  projectName?: string;
+  projectSlug?: string;
 }
 
 export interface ErrorGroup {
@@ -86,28 +99,40 @@ export interface ErrorGroup {
 
 export interface RequestEvent {
   type: "request";
+  id?: string;
+  publicId?: string;
+  tracePublicId?: string;
   eventId: string;
   requestId: string;
+  endpoint?: string;
   url: string;
   method: string;
   statusCode: number;
+  durationMs?: number;
   latency: number;
+  occurredAt?: string | number;
   timestamp: number;
-  headers: Record<string, string>;
+  environment?: string;
+  project?: string;
+  projectName?: string;
+  projectSlug?: string;
+  headers?: Record<string, string>;
   query?: Record<string, string>;
   body?: Record<string, unknown>;
   bodySize?: number;
-  responseSize: number;
-  userId: string | null;
-  tenantId: string;
+  responseSize?: number;
+  userId?: string | null;
+  tenantId?: string;
   sessionId?: string;
-  clientIp: string;
-  userAgent: string;
-  referer: string;
-  route: string;
-  traceId: string;
-  spanId: string;
-  metadata: EventMetadata;
+  clientIp?: string;
+  userAgent?: string;
+  referer?: string;
+  route?: string;
+  traceId?: string;
+  hasTrace?: boolean;
+  hasError?: boolean;
+  spanId?: string;
+  metadata?: EventMetadata;
 }
 
 export interface SpanEvent {
@@ -154,18 +179,33 @@ export interface AggregatedSpanEvent {
 
 export interface TraceEvent {
   type: "trace";
+  id?: string;
+  publicId?: string;
+  tracePublicId?: string;
   eventId: string;
   traceId: string;
-  rootSpan: AggregatedSpanEvent;
-  spanCount: number;
-  totalDuration: number;
-  isPartial: boolean;
-  metadata: EventMetadata;
-  requestId: string;
-  sessionId: string;
-  userId: string;
-  tenantId: string;
-  __pulseInternal: boolean;
+  occurredAt?: string | number;
+  rootSpanName?: string;
+  rootSpan?: AggregatedSpanEvent;
+  rootSpanId?: string;
+  spanKind?: string;
+  rootSpanStatus?: string;
+  endpoint?: string;
+  httpMethod?: string;
+  statusCode?: number;
+  spanCount?: number;
+  durationMs?: number;
+  totalDurationMs?: number;
+  totalDuration?: number;
+  isPartial?: boolean;
+  environment?: string;
+  service?: string;
+  metadata?: EventMetadata;
+  requestId?: string;
+  sessionId?: string;
+  userId?: string;
+  tenantId?: string;
+  __pulseInternal?: boolean;
 }
 
 export interface MetricEvent {

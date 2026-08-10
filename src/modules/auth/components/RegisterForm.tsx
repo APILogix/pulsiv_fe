@@ -91,7 +91,7 @@ export function RegisterForm() {
           <label htmlFor="accept_terms_and_privacy" className="cursor-pointer text-[12px] leading-relaxed text-[var(--text2)]">
             I agree to the{' '}
             <a
-              href="https://pulsiv.com/terms"
+              href="https://sentinel.com/terms"
               target="_blank"
               rel="noreferrer noopener"
               className="font-medium text-[var(--brand)] hover:text-[var(--brand-d)]"
@@ -100,7 +100,7 @@ export function RegisterForm() {
             </a>{' '}
             and{' '}
             <a
-              href="https://pulsiv.com/privacy"
+              href="https://sentinel.com/privacy"
               target="_blank"
               rel="noreferrer noopener"
               className="font-medium text-[var(--brand)] hover:text-[var(--brand-d)]"

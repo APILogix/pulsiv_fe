@@ -171,7 +171,7 @@ export default function SsoPage() {
   ];
 
   const steps: SetupStepItem[] = [
-    { title: "Create a SAML app in your IdP", description: "Add Pulsiv as a new SAML 2.0 application.", done: isConfigured },
+    { title: "Create a SAML app in your IdP", description: "Add Sentinel as a new SAML 2.0 application.", done: isConfigured },
     { title: "Paste the service provider URLs", description: "Entity ID, ACS URL, and single logout URL from the panel on the left.", done: isConfigured },
     { title: "Store the IdP details here", description: "Entity ID, SSO URL, and the X.509 signing certificate.", done: !!provider?.ssoUrl },
     { title: "Set a verified routing domain", description: "Users signing in with that email domain are sent to this IdP.", done: !!provider?.domain },
@@ -284,7 +284,7 @@ export default function SsoPage() {
 
         <Panel
           title="Identity provider configuration"
-          description="Details Pulsiv uses to validate SAML assertions from your IdP."
+          description="Details Sentinel uses to validate SAML assertions from your IdP."
           icon={LogIn}
           tone="brand"
         >
@@ -378,7 +378,7 @@ export default function SsoPage() {
 
         <Panel
           title="Attribute mapping"
-          description="Assertion attributes Pulsiv reads. These mappings are fixed for SAML 2.0."
+          description="Assertion attributes Sentinel reads. These mappings are fixed for SAML 2.0."
           icon={Users}
           tone="violet"
           bodyClassName="p-0"

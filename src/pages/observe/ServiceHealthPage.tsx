@@ -1,6 +1,6 @@
-import { useObservabilityList } from "./hooks/useObservabilityApi";
 import {
   PageHeader, KpiCard, SectionCard, Table, Tr, Td, StatusBadge, MetricSparkline,
+  TimeRangePicker, useTimeRangeParams,
 } from "@/shared/observe";
 
 const SERVICES = ["api-gateway", "user-service", "payment-service", "notification-service", "analytics-service"];
@@ -13,15 +13,28 @@ const DEPENDENCIES = [
 ];
 
 export default function ServiceHealthPage() {
-  const { data: requests } = useObservabilityList<any>("requests");
-  const { data: errors } = useObservabilityList<any>("errors");
+  const { timeRangeState } = useTimeRangeParams();
+  const { data: requests } = useObservabilityList<any>("requests", {
+    range: timeRangeState.mode === "preset" ? timeRangeState.range : undefined,
+    from: timeRangeState.from,
+    to: timeRangeState.to,
+  });
+  const { data: errors } = useObservabilityList<any>("errors", {
+    range: timeRangeState.mode === "preset" ? timeRangeState.range : undefined,
+    from: timeRangeState.from,
+    to: timeRangeState.to,
+  });
   
   const reqList = requests?.items ?? [];
   const errList = errors?.items ?? [];
 
   return (
     <div className="flex flex-col gap-5">
-      <PageHeader title="Service Health" description="Project health plus platform readiness signals." />
+      <PageHeader
+        title="Service Health"
+        description="Project health plus platform readiness signals."
+        actions={<TimeRangePicker />}
+      />
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <KpiCard label="Healthy services" value="4 / 5" trend="up" delta="all SLOs met" />

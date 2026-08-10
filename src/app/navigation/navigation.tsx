@@ -19,6 +19,7 @@ import {
   Gauge,
   Globe,
   KeyRound,
+  Layers,
   LayoutDashboard,
   LayoutGrid,
   LineChart,
@@ -69,6 +70,7 @@ export interface ModuleNavItem {
 
 export interface MainNavItem extends ModuleNavItem {
   children?: ModuleNavItem[];
+  isDrawerTrigger?: boolean;
 }
 
 export const mainNavigation: MainNavItem[] = [
@@ -108,33 +110,20 @@ export const mainNavigation: MainNavItem[] = [
     status: "live",
     description: "Requests, events, errors, and service health across monitored projects.",
     children: [
-      { label: "Overview", path: "/observability", icon: LayoutDashboard, status: "live", exact: true, description: "High-level service overview backed by analytics dashboard endpoints." },
-      { label: "Requests", path: "/observability/requests", icon: Gauge, status: "live", description: "Traffic and request-overview surfaces." },
-      { label: "Events", path: "/observability/events", icon: Radar, status: "live", description: "Search and inspect ingested events." },
-      { label: "Errors", path: "/observability/errors", icon: AlertTriangle, status: "live", description: "Triage grouped errors and resolution state." },
-      { label: "Service health", path: "/observability/service-health", icon: ShieldAlert, status: "live", description: "Project health plus platform readiness signals." },
-      { label: "Latency", path: "/observability/latency", icon: LineChart, status: "partial", description: "Latency view based on current aggregate analytics support." },
-      { label: "Traces", path: "/observability/traces", icon: ListTree, status: "live", description: "Distributed traces across services and spans." },
-      { label: "Logs", path: "/observability/logs", icon: Logs, status: "live", description: "Searchable, tailing log stream across services." },
-      { label: "Metrics", path: "/observability/metrics", icon: Activity, status: "live", description: "Custom counters, gauges, and histograms." },
-      { label: "Profiling", path: "/observability/profiling", icon: Cpu, status: "live", description: "CPU and memory profiles captured from running processes." },
-      { label: "Crons", path: "/observability/crons", icon: AlarmClock, status: "live", description: "Scheduled job check-ins and missed-execution monitoring." },
-      { label: "Replay", path: "/observability/replay", icon: Video, status: "live", description: "Recorded browser sessions with DOM and network capture." },
-      { label: "Runtime metrics", path: "/observability/runtime-metrics", icon: MemoryStick, status: "live", description: "V8 / Node.js internals: heap usage and active handles." },
-      { label: "Event loop", path: "/observability/event-loop", icon: Timer, status: "live", description: "Event loop lag and utilization for Node.js services." },
-      { label: "GC monitoring", path: "/observability/gc-monitoring", icon: Recycle, status: "live", description: "Garbage collection pauses and long collection events." },
-    ],
-  },
-  {
-    label: "Services",
-    path: "/services",
-    icon: Cpu,
-    status: "live",
-    description: "Monitored microservices registry, dependency graph, and objective budgets.",
-    children: [
-      { label: "Service catalog", path: "/services", icon: FolderOpen, status: "live", exact: true, description: "Monitored microservices directory." },
-      { label: "Dependencies", path: "/services/dependencies", icon: GitFork, status: "live", description: "Active service communication topology graph." },
-      { label: "SLOs", path: "/services/slos", icon: Award, status: "live", description: "Service level objectives metrics and error budgets." },
+      { label: "Overview", path: "/observability", icon: LayoutDashboard, status: "live", exact: true, description: "High-level service overview backed by analytics dashboard endpoints.", group: "Overview" },
+      { label: "Requests", path: "/observability/requests", icon: Gauge, status: "live", description: "Traffic and request-overview surfaces.", group: "Events" },
+      { label: "Errors", path: "/observability/errors", icon: AlertTriangle, status: "live", description: "Triage grouped errors and resolution state.", group: "Events" },
+      { label: "Error Groups", path: "/observability/error-groups", icon: Layers, status: "live", description: "Fingerprint-grouped error issue triage and resolution.", group: "Events" },
+      { label: "Traces", path: "/observability/traces", icon: ListTree, status: "live", description: "Distributed traces across services and spans.", group: "Events" },
+      { label: "Logs", path: "/observability/logs", icon: Logs, status: "live", description: "Searchable, tailing log stream across services.", group: "Events" },
+      { label: "Replays", path: "/observability/replay", icon: Video, status: "live", description: "Recorded browser sessions with DOM and network capture.", group: "Events" },
+      { label: "Latency", path: "/observability/latency", icon: LineChart, status: "partial", description: "Latency view based on current aggregate analytics support.", group: "Performance" },
+      { label: "Metrics", path: "/observability/metrics", icon: Activity, status: "live", description: "Custom counters, gauges, and histograms.", group: "Performance" },
+      { label: "Runtime Metrics", path: "/observability/runtime-metrics", icon: MemoryStick, status: "live", description: "V8 / Node.js internals: heap usage and active handles.", group: "Performance" },
+      { label: "Profiling", path: "/observability/profiling", icon: Cpu, status: "live", description: "CPU and memory profiles captured from running processes.", group: "Performance" },
+      { label: "Event Loop", path: "/observability/event-loop", icon: Timer, status: "live", description: "Event loop lag and utilization for Node.js services.", group: "Performance" },
+      { label: "GC Monitoring", path: "/observability/gc-monitoring", icon: Recycle, status: "live", description: "Garbage collection pauses and long collection events.", group: "Performance" },
+      { label: "Cron Check-ins", path: "/observability/crons", icon: AlarmClock, status: "live", description: "Scheduled job check-ins and missed-execution monitoring.", group: "Jobs" },
     ],
   },
   {
@@ -181,35 +170,19 @@ export const mainNavigation: MainNavItem[] = [
     ],
   },
   {
-    label: "Connections",
-    path: "/ingestion",
-    icon: Plug,
-    status: "live",
-    description: "Telemetry pipelines, endpoints, health, and ingestion operations.",
-    children: [
-      { label: "Overview", path: "/ingestion", icon: LayoutDashboard, status: "live", exact: true, description: "Platform ingestion summary and implementation notes." },
-      { label: "API endpoints", path: "/ingestion/endpoints", icon: Cable, status: "live", description: "Public ingestion endpoint references." },
-      { label: "Health", path: "/ingestion/health", icon: Shield, status: "live", description: "Ingestion health, readiness, and queue state views." },
-      { label: "Keys & tokens", path: "/ingestion/keys", icon: KeyRound, status: "partial", description: "Key management routed through current org and project APIs." },
-      { label: "Replay & pipeline", path: "/ingestion/replay", icon: ListChecks, status: "coming-soon", description: "Replay, dead-letter recovery, and pipeline controls." },
-      { label: "Rate limits", path: "/ingestion/rate-limits", icon: Gauge, status: "partial", description: "Operational rate-limit visibility for ingest traffic." },
-    ],
-  },
-  {
     label: "AI",
     path: "/ai",
     icon: Sparkles,
     status: "live",
-    description: "Enterprise AI: assistant, investigations, reports, usage, knowledge, and governance.",
-    children: [
-      { label: "AI Overview", path: "/ai", icon: Sparkles, status: "live", exact: true, description: "AI health, recommendations, credits, and recent activity." },
-      { label: "AI Assistant", path: "/ai/assistant", icon: MessagesSquare, status: "live", description: "Grounded monitoring chat with citations and follow-ups." },
-      { label: "AI Investigations", path: "/ai/investigations", icon: FlaskConical, status: "live", description: "Investigate errors, traces, logs, spans, stack traces, and deployments." },
-      { label: "AI Reports", path: "/ai/reports", icon: FileBarChart, status: "live", description: "Weekly, incident, and executive reports with history and export." },
-      { label: "AI Usage", path: "/ai/usage", icon: Gauge, status: "live", description: "AI credit consumption, limits, and cost visibility." },
-      { label: "AI Knowledge", path: "/ai/knowledge", icon: BookOpen, status: "live", description: "Runbooks and documentation the AI can cite." },
-      { label: "AI Settings", path: "/ai/settings", icon: SlidersHorizontal, status: "live", description: "Organization AI configuration, budgets, and limits." },
-    ],
+    description: "Enterprise observability AI: intelligent chat and contextual investigation drawer.",
+    isDrawerTrigger: true,
+  },
+  {
+    label: "AI Reports",
+    path: "/ai/reports",
+    icon: FileBarChart,
+    status: "live",
+    description: "Reliability reports, weekly health analysis, and executive summaries.",
   },
   {
     label: "Organization",
@@ -252,7 +225,7 @@ export const mainNavigation: MainNavItem[] = [
       { label: 'API Keys', path: '/projects', icon: KeyRound, status: "live", description: "Select a project to manage its supported ingestion API keys.", group: "Developer" },
       { label: 'Connectors', path: '/connectors/integrations', icon: Cable, status: "live", description: "Slack, Teams, Webhooks, etc.", group: "Developer" },
       { label: 'Delivery Logs', path: '/connectors/audit', icon: Activity, status: "live", description: "Audit trail for all connectors.", group: "Developer" },
-      { label: 'API Reference', path: 'https://docs.pulsiv.com', icon: FolderOpen, status: "live", description: "External API documentation.", external: true, group: "Developer" },
+      { label: 'API Reference', path: 'https://docs.sentinel.com', icon: FolderOpen, status: "live", description: "External API documentation.", external: true, group: "Developer" },
     ],
   },
 ];

@@ -25,9 +25,9 @@ function AuthShell({ children }: { children: React.ReactNode }) {
         <div className="flex items-center justify-center sm:justify-start">
           <span
             className="font-[family-name:var(--mono)] text-[27px] font-bold tracking-[0.16em] text-[var(--text)]"
-            aria-label="Pulsiv"
+            aria-label="Sentinel"
           >
-            PULS<span className="text-[var(--brand)]">I</span>V
+            SENT<span className="text-[var(--brand)]">I</span>NEL
           </span>
         </div>
         <div className="pulse-rise mx-auto my-auto w-full max-w-[420px]">{children}</div>
@@ -48,7 +48,7 @@ export default function AuthCallbackPage() {
 
   useEffect(() => {
     if (window.opener && window.opener !== window) {
-      window.opener.postMessage({ type: 'pulsiv:identity-link', linked: true }, window.location.origin);
+      window.opener.postMessage({ type: 'sentinel:identity-link', linked: true }, window.location.origin);
       window.close();
       return;
     }

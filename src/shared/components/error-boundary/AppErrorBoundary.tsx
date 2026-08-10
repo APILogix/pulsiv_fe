@@ -6,7 +6,7 @@ import NotFoundPage from '@/shared/components/NotFoundPage';
 function AppErrorFallback({ error, resetErrorBoundary }: FallbackProps) {
   return (
     <div className="min-h-screen w-full bg-[var(--bg)] flex flex-col items-start justify-start p-8 relative overflow-hidden font-[family-name:var(--sans)] text-[var(--text)] selection:bg-[var(--red-bg)] selection:text-[var(--red)]">
-      {/* Top red bar — the truth channel reporting a fact (§2.2) */}
+      {/* Top red bar */}
       <div className="absolute top-0 left-0 w-full h-1 bg-[var(--red)]" />
       
       <div className="w-full max-w-5xl flex flex-col items-start gap-6 border-l border-[var(--border)] pl-8 py-8 mt-12 relative">
@@ -21,7 +21,7 @@ function AppErrorFallback({ error, resetErrorBoundary }: FallbackProps) {
         </div>
         
         <p className="max-w-2xl text-[13px] leading-[1.6] text-[var(--text2)]">
-          The application hit a critical runtime error. Telemetry captured the stack trace for engineering review. Execution halted to prevent data corruption.
+          The application hit a runtime error. Telemetry captured the stack trace for engineering review.
         </p>
 
         {/* Error Details Pane */}
@@ -47,15 +47,27 @@ function AppErrorFallback({ error, resetErrorBoundary }: FallbackProps) {
         </div>
 
         {/* Actions */}
-        <div className="flex items-center gap-3 mt-8 w-full border-t border-[var(--border)] pt-8">
-          <button type="button" 
+        <div className="flex flex-wrap items-center gap-3 mt-8 w-full border-t border-[var(--border)] pt-8">
+          <button
+            type="button" 
             onClick={resetErrorBoundary} 
-            className="flex items-center gap-2 rounded-[var(--radius)] border border-[rgba(239,68,68,0.35)] bg-[var(--red-bg)] px-4 h-9 text-[13px] font-medium text-[var(--red)] transition-colors hover:bg-[rgba(239,68,68,0.16)] cursor-pointer"
+            className="flex items-center gap-2 rounded-[var(--radius)] bg-[var(--brand)] px-4 h-9 text-[13px] font-medium text-[var(--bg)] shadow-xs transition-opacity hover:opacity-90 cursor-pointer"
           >
             <RefreshCcw className="h-4 w-4" />
-            Reload application
+            Try again (Reload component)
           </button>
-          <button type="button" 
+
+          <button
+            type="button" 
+            onClick={() => window.location.reload()} 
+            className="flex items-center gap-2 rounded-[var(--radius)] border border-[var(--border2)] bg-[var(--bg1)] px-4 h-9 text-[13px] font-medium text-[var(--text2)] transition-colors hover:border-[var(--text3)] hover:text-[var(--text)] cursor-pointer"
+          >
+            <RefreshCcw className="h-4 w-4 text-[var(--text3)]" />
+            Reload full page
+          </button>
+
+          <button
+            type="button" 
             onClick={() => window.location.href = '/'}
             className="flex items-center gap-2 rounded-[var(--radius)] border border-[var(--border2)] bg-transparent px-4 h-9 text-[13px] font-medium text-[var(--text2)] transition-colors hover:border-[var(--text3)] hover:text-[var(--text)] cursor-pointer"
           >
@@ -70,12 +82,7 @@ function AppErrorFallback({ error, resetErrorBoundary }: FallbackProps) {
 
 export function AppErrorBoundary({ children }: { children: React.ReactNode }) {
   return (
-    <ErrorBoundary 
-      FallbackComponent={AppErrorFallback}
-      onReset={() => {
-        window.location.reload();
-      }}
-    >
+    <ErrorBoundary FallbackComponent={AppErrorFallback}>
       {children}
     </ErrorBoundary>
   );
@@ -105,7 +112,8 @@ export function RouteErrorBoundary() {
   return (
     <AppErrorFallback 
       error={{ name, message, stack }} 
-      resetErrorBoundary={() => window.location.href = '/'} 
+      resetErrorBoundary={() => window.location.reload()} 
     />
   );
 }
+

@@ -8,6 +8,7 @@ import { AppDualSidebar } from './AppDualSidebar';
 import { PostLoginSetup } from '@/modules/auth/components/PostLoginSetup';
 import { LoginMetricsTransition } from '@/modules/auth/components/LoginMetricsTransition';
 import { RouteBoundary, ScrollToTop, useScrollRestoration } from '@/shared/motion';
+import { AiDrawer } from '@/modules/ai/components/AiDrawer';
 
 const handleMenuClick = () => {
   window.dispatchEvent(new CustomEvent('toggle-mobile-sidebar'));
@@ -58,6 +59,7 @@ export function AppLayout() {
       <PulseCommandPalette />
       <LoginMetricsTransition />
       <PostLoginSetup />
+      <AiDrawer />
     </div>
   );
 }

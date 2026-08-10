@@ -1,1 +1,0 @@
-import{Y as a,an as d}from"./index-D_HzOsW2.js";import{c}from"./util-vendor-BnHtDIfE.js";const m=c()(a((s,t)=>({records:[],add:r=>s(o=>({records:[r,...o.records.filter(e=>e.jobId!==r.jobId)]})),remove:r=>s(o=>({records:o.records.filter(e=>e.jobId!==r)})),forOrg:r=>t().records.filter(o=>o.orgId===r)}),{name:"ai-report-history",storage:d(()=>localStorage)}));export{m as u};

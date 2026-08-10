@@ -32,7 +32,7 @@ const useEnvironmentScopeStore = create<EnvironmentScopeState>()(
           return { byProject: next };
         }),
     }),
-    { name: "pulsiv.environment-scope", version: 1 },
+    { name: "sentinel.environment-scope", version: 1 },
   ),
 );
 

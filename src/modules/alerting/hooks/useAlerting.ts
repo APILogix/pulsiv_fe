@@ -8,9 +8,15 @@
  */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useOrgStore } from "@/modules/organizations/store/org.store";
+import { toIncidentView } from "../components/incident-view";
 import {
   deadLettersApi,
   eventsApi,
+  incidentsApi,
+  orgPoliciesApi,
+  projectSubscriptionsApi,
+  effectivePolicyApi,
+  workspaceApi,
   metricsApi,
   policiesApi,
   routingApi,
@@ -40,6 +46,7 @@ import type {
   UpdateRuleBindingBody,
   UpdateRuleBody,
   UpsertEscalationStepBody,
+  OrganizationAlertPolicy,
 } from "../api/types";
 
 /** Live surfaces refresh on this cadence (rules.md: never poll under 5s). */
@@ -78,12 +85,105 @@ export const alertingKeys = {
   templates: (orgId: string | null, query?: unknown) => ["alerting", "templates", orgId, query] as const,
   routingRules: (orgId: string | null) => ["alerting", "routing-rules", orgId] as const,
   metrics: (orgId: string | null, query?: unknown) => ["alerting", "metrics", orgId, query] as const,
+  workspace: (orgId: string | null) => ["alerting", "workspace", orgId] as const,
+  orgPolicies: (orgId: string | null) => ["alerting", "org-policies", orgId] as const,
+  orgPolicy: (orgId: string | null, id: string) => ["alerting", "org-policy", orgId, id] as const,
+  incidents: (orgId: string | null, query?: unknown) => ["alerting", "incidents", orgId, query] as const,
 };
 
 /** Broad invalidation used after any mutation that can move alerting state. */
 function useInvalidateAlerting() {
   const queryClient = useQueryClient();
   return () => queryClient.invalidateQueries({ queryKey: alertingKeys.all, exact: false });
+}
+
+// ── Workspace and V2 policies ───────────────────────────────
+
+export function useAlertingWorkspace() {
+  const { activeOrgId } = useAlertingScope();
+  return useQuery({
+    queryKey: alertingKeys.workspace(activeOrgId),
+    queryFn: () => workspaceApi.get(activeOrgId!),
+    enabled: !!activeOrgId,
+  });
+}
+
+export function useOrganizationAlertPolicies() {
+  const { activeOrgId } = useAlertingScope();
+  return useQuery({
+    queryKey: alertingKeys.orgPolicies(activeOrgId),
+    queryFn: () => orgPoliciesApi.list(activeOrgId!),
+    enabled: !!activeOrgId,
+  });
+}
+
+export function useOrganizationAlertPolicy(policyId: string | undefined) {
+  const { activeOrgId } = useAlertingScope();
+  return useQuery({
+    queryKey: alertingKeys.orgPolicy(activeOrgId, policyId ?? ""),
+    queryFn: () => orgPoliciesApi.getById(activeOrgId!, policyId!),
+    enabled: !!activeOrgId && !!policyId,
+  });
+}
+
+export function useOrganizationAlertPolicyMutations() {
+  const { requireOrgId } = useAlertingScope();
+  const invalidate = useInvalidateAlerting();
+  return {
+    create: useMutation({
+      mutationFn: (body: Partial<OrganizationAlertPolicy>) => orgPoliciesApi.create(requireOrgId(), body),
+      onSuccess: invalidate,
+    }),
+    createVersion: useMutation({
+      mutationFn: ({ policyId, definition }: { policyId: string; definition: Json }) =>
+        orgPoliciesApi.createVersion(requireOrgId(), policyId, definition),
+      onSuccess: invalidate,
+    }),
+  };
+}
+
+export function useAlertIncidents(query: { state?: import("../api/types").IncidentState; severity?: string; search?: string; limit?: number; offset?: number } = {}) {
+  const { activeOrgId } = useAlertingScope();
+  return useQuery({
+    queryKey: alertingKeys.incidents(activeOrgId, query),
+    queryFn: async () => {
+      const result = await incidentsApi.list(activeOrgId!, query);
+      return { ...result, data: result.data.map(toIncidentView) };
+    },
+    enabled: !!activeOrgId,
+    refetchInterval: LIVE_REFETCH_MS,
+  });
+}
+
+export function useProjectPolicySubscriptions(projectId: string | undefined) {
+  const { activeOrgId } = useAlertingScope();
+  return useQuery({
+    queryKey: ["alerting", "project-subscriptions", activeOrgId, projectId],
+    queryFn: () => projectSubscriptionsApi.list(activeOrgId!, projectId!),
+    enabled: !!activeOrgId && !!projectId,
+  });
+}
+
+export function useProjectPolicyMutations(projectId: string) {
+  const { activeOrgId, requireOrgId } = useAlertingScope();
+  const queryClient = useQueryClient();
+  const key = ["alerting", "project-subscriptions", activeOrgId, projectId];
+  const invalidate = () => queryClient.invalidateQueries({ queryKey: key });
+  return {
+    subscribe: useMutation({ mutationFn: (policyId: string) => projectSubscriptionsApi.subscribe(requireOrgId(), projectId, policyId), onSuccess: invalidate }),
+    updateState: useMutation({ mutationFn: ({ subscriptionId, state }: { subscriptionId: string; state: import("../api/types").SubscriptionState }) => projectSubscriptionsApi.updateState(requireOrgId(), projectId, subscriptionId, state), onSuccess: invalidate }),
+    updateOverride: useMutation({ mutationFn: ({ subscriptionId, override }: { subscriptionId: string; override: Record<string, unknown> }) => projectSubscriptionsApi.updateOverride(requireOrgId(), projectId, subscriptionId, override), onSuccess: invalidate }),
+    remove: useMutation({ mutationFn: (subscriptionId: string) => projectSubscriptionsApi.delete(requireOrgId(), projectId, subscriptionId), onSuccess: invalidate }),
+  };
+}
+
+export function useProjectEffectivePolicies(projectId: string | undefined) {
+  const { activeOrgId } = useAlertingScope();
+  return useQuery({
+    queryKey: ["alerting", "effective-policies", activeOrgId, projectId],
+    queryFn: () => effectivePolicyApi.listAll(activeOrgId!, projectId!),
+    enabled: !!activeOrgId && !!projectId,
+  });
 }
 
 // ── Rules ────────────────────────────────────────────────────

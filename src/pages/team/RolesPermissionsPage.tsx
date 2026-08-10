@@ -187,7 +187,7 @@ export default function RolesPermissionsPage() {
 
       {isSystemRole && (
         <Notice tone="blue" icon={Lock} title="System role">
-          {`${selectedRole.name} is managed by Pulsiv and always holds every permission. Create a custom role to grant a narrower scope.`}
+          {`${selectedRole.name} is managed by Sentinel and always holds every permission. Create a custom role to grant a narrower scope.`}
         </Notice>
       )}
 

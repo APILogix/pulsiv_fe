@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, Sparkles } from 'lucide-react';
 import clsx from 'clsx';
 
 import {
@@ -19,6 +19,7 @@ import { useSidebarStore } from '@/stores/sidebarStore';
 import { prefetchRoute } from '@/app/router/route-prefetch';
 
 import { PrimaryRail } from './PrimaryRail';
+import { QuotaCardWidget } from './QuotaCardWidget';
 
 /**
  * Children shown in the global flyout for a rail item.
@@ -77,7 +78,7 @@ export function AppDualSidebar() {
       null;
 
   const [selectedRailItemLabel, setSelectedRailItemLabel] = useState<string | null>(
-    () => sessionStorage.getItem('pulsiv_selected_rail'),
+    () => sessionStorage.getItem('sentinel_selected_rail'),
   );
   const [previousPathname, setPreviousPathname] = useState(location.pathname);
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
@@ -85,7 +86,7 @@ export function AppDualSidebar() {
   if (previousPathname !== location.pathname) {
     setPreviousPathname(location.pathname);
     setSelectedRailItemLabel(null);
-    sessionStorage.removeItem('pulsiv_selected_rail');
+    sessionStorage.removeItem('sentinel_selected_rail');
   }
 
   const selectedRailItem = selectedRailItemLabel
@@ -145,7 +146,7 @@ export function AppDualSidebar() {
 
   const handleRailClick = (item: MainNavItem) => {
     setSelectedRailItemLabel(item.label);
-    sessionStorage.setItem('pulsiv_selected_rail', item.label);
+    sessionStorage.setItem('sentinel_selected_rail', item.label);
     const dynamicChildren = getDynamicChildren(item, location.pathname);
 
     if (dynamicChildren.length === 0) {
@@ -203,16 +204,26 @@ export function AppDualSidebar() {
         {...(!isFlyoutOpen ? { inert: true as any } : {})}
       >
         <div className="h-[var(--header-height)] flex items-center justify-between px-4 border-b border-[var(--border)] shrink-0">
-          <div className="min-w-0">
-            {flyoutContext && (
-              <span className="block font-mono text-[10px] font-medium uppercase tracking-[0.09em] text-[var(--text3)]">
-                {flyoutContext}
-              </span>
+          <div className="flex items-center gap-2 min-w-0">
+            {activeRailItem?.label === 'AI' && (
+              <Sparkles className="size-4 text-[var(--brand)] shrink-0" />
             )}
-            <span className="block truncate text-[14px] font-semibold text-[var(--text)] tracking-normal">
-              {flyoutTitle}
-            </span>
+            <div className="min-w-0">
+              {flyoutContext && (
+                <span className="block font-mono text-[10px] font-medium uppercase tracking-[0.09em] text-[var(--text3)]">
+                  {flyoutContext}
+                </span>
+              )}
+              <span className="block truncate text-[14px] font-semibold text-[var(--text)] tracking-normal">
+                {flyoutTitle}
+              </span>
+            </div>
           </div>
+          {activeRailItem?.label === 'AI' && (
+            <kbd className="hidden sm:inline-flex items-center rounded border border-[var(--border)] bg-[var(--bg2)] px-1.5 py-0.5 font-mono text-[10px] text-[var(--text3)]">
+              ⌘K
+            </kbd>
+          )}
         </div>
 
         <div className="grow flex flex-col min-h-0">
@@ -340,42 +351,7 @@ export function AppDualSidebar() {
         </div>
 
         {/* Fixed Ingest Quota / AI Credit flip widget at the bottom */}
-        {navItemsToRender.length > 0 && (
-          <div className="shrink-0 p-3 mt-auto border-t border-[var(--border)]">
-            <div className="group h-[92px] [perspective:1000px]">
-              <div className="relative h-full w-full transition-transform duration-500 [transform-style:preserve-3d] group-hover:[transform:rotateY(180deg)]">
-                {/* Front: Ingest quota */}
-                <div className="absolute inset-0 rounded-[var(--radius)] border border-[var(--border)] bg-transparent p-3 flex flex-col gap-2.5 overflow-hidden [backface-visibility:hidden]">
-                  <div className="flex justify-between items-center font-mono">
-                    <span className="text-[10px] tracking-[0.09em] text-[var(--text3)] uppercase">Ingest quota</span>
-                    <span className="text-[12px] font-medium tabular-nums text-[var(--text)]">68%</span>
-                  </div>
-                  <div className="h-1.5 w-full bg-[var(--bg3)] rounded-full overflow-hidden">
-                    <div className="h-full bg-[var(--brand)] rounded-full" style={{ width: '68%' }} />
-                  </div>
-                  <div className="text-[11px] font-mono tabular-nums text-[var(--text3)] flex justify-between items-center gap-1 min-w-0">
-                    <span className="truncate">6.8 / 10 GB</span>
-                    <span className="shrink-0 whitespace-nowrap">&middot; resets in 9d</span>
-                  </div>
-                </div>
-
-                {/* Back: AI credit usage */}
-                <div className="absolute inset-0 rounded-[var(--radius)] border border-[var(--border)] bg-transparent p-3 flex flex-col gap-2.5 overflow-hidden [backface-visibility:hidden] [transform:rotateY(180deg)]">
-                  <div className="flex justify-between items-center font-mono">
-                    <span className="text-[10px] tracking-[0.09em] text-[var(--text3)] uppercase">AI credit</span>
-                  </div>
-                  <div className="h-1.5 w-full bg-[var(--bg3)] rounded-full overflow-hidden">
-                    <div className="h-full bg-[var(--brand)] rounded-full" style={{ width: '42%' }} />
-                  </div>
-                  <div className="text-[11px] font-mono tabular-nums text-[var(--text3)] flex justify-between items-center gap-1 min-w-0">
-                    <span className="truncate">210 / 500 credits</span>
-                    <span className="shrink-0 whitespace-nowrap">&middot; resets in 9d</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+        {navItemsToRender.length > 0 && <QuotaCardWidget />}
       </div>
     </>
   );

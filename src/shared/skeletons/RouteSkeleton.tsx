@@ -85,7 +85,9 @@ const RULES: readonly Rule[] = [
   [/^\/dashboards\/[^/]+$/, DashboardSkeleton],
 
   /* ── observability ───────────────────────────────────────────────────── */
-  [new RegExp(`^/observability/traces/${ID}`), TraceWaterfallSkeleton],
+  [new RegExp(`^/observability/traces/${ID}/spans/${ID}$`), TraceWaterfallSkeleton],
+  [new RegExp(`^/observability/traces/${ID}$`), TraceWaterfallSkeleton],
+  [new RegExp(`^/observability/spans/${ID}$`), DetailSkeleton],
   [/^\/observability\/traces$/, ExplorerTableSkeleton],
   [new RegExp(`^/observability/logs/${ID}$`), DetailSkeleton],
   [/^\/observability\/logs$/, LogsSkeleton],
@@ -93,9 +95,10 @@ const RULES: readonly Rule[] = [
   [/^\/observability\/errors$/, ErrorGroupsSkeleton],
   [new RegExp(`^/observability/requests/${ID}$`), DetailSkeleton],
   [/^\/observability\/requests$/, ExplorerTableSkeleton],
-  [new RegExp(`^/observability/events/${ID}$`), DetailSkeleton],
-  [/^\/observability\/events$/, ExplorerTableSkeleton],
   [/^\/observability\/service-health$/, ServiceHealthSkeleton],
+  [new RegExp(`^/observability/metrics/${ID}$`), DetailSkeleton],
+  [new RegExp(`^/observability/profiling/${ID}$`), DetailSkeleton],
+  [new RegExp(`^/observability/crons/${ID}$`), DetailSkeleton],
   [/^\/observability\/(latency|metrics|profiling|runtime-metrics|event-loop|gc-monitoring)$/, MetricsSkeleton],
   [/^\/observability\/(crons|replay)$/, ListSkeleton],
   [/^\/observability$/, DashboardSkeleton],

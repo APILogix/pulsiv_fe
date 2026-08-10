@@ -218,7 +218,7 @@ export function PersonalDetailsPanel() {
                 Display name
               </label>
               <Input id="display-name" value={form.display_name} onChange={(event) => patch({ display_name: event.target.value })} />
-              <p className="text-[12px] text-muted-foreground">This is how your name appears across Pulsiv.</p>
+              <p className="text-[12px] text-muted-foreground">This is how your name appears across Sentinel.</p>
             </div>
 
             <div className="space-y-2">

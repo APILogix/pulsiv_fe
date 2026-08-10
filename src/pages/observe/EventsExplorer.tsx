@@ -3,24 +3,48 @@ import { useNavigate } from "react-router";
 import { useObservabilityList } from "./hooks/useObservabilityApi";
 import {
   PageHeader, FilterBar, SearchInput, ListShell, EventTypeBadge,
-  EnvironmentBadge, AskAiButton, Timestamp, VirtualList,
+  EnvironmentBadge, AskAiButton, Timestamp, VirtualList, TimeRangePicker, useTimeRangeParams,
 } from "@/shared/observe";
 import { cn } from "@/lib/utils";
+
+interface SpanExplorerRow {
+  id?: string;
+  spanId?: string;
+  eventId?: string;
+  name?: string;
+  durationMs?: number;
+  duration?: number;
+  environment?: string;
+  metadata?: { environment?: string };
+  timestamp?: string | number;
+  startTime?: string | number;
+  traceId?: string;
+}
 
 export default function EventsExplorer() {
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
+  const { timeRangeState } = useTimeRangeParams();
 
-  const { data, isLoading } = useObservabilityList<any>("spans", { search: query });
+  const { data, isLoading } = useObservabilityList<SpanExplorerRow>("spans", {
+    search: query,
+    range: timeRangeState.mode === "preset" ? timeRangeState.range : undefined,
+    from: timeRangeState.from,
+    to: timeRangeState.to,
+  });
   const items = data?.items ?? [];
   const summary = data?.summary ?? {};
-  const total = summary.total ?? items.length;
+  const total = typeof summary.total === "number" || typeof summary.total === "string" ? summary.total : items.length;
 
   return (
     <ListShell
       header={
         <>
-          <PageHeader title="Spans Explorer" description="Search and inspect distributed tracing spans." />
+          <PageHeader
+            title="Spans Explorer"
+            description="Search and inspect distributed tracing spans."
+            actions={<TimeRangePicker />}
+          />
           <FilterBar>
             <SearchInput placeholder="Search spans…" onSearch={setQuery} defaultValue={query} />
           </FilterBar>
@@ -37,15 +61,15 @@ export default function EventsExplorer() {
         {isLoading && items.length === 0 ? (
           <div className="p-4 text-center text-sm text-[var(--text3)]">Loading...</div>
         ) : (
-          <VirtualList items={items} rowHeight={48} height="fill" className="flex-1" getKey={(s) => s.id ?? s.spanId ?? s.eventId ?? Math.random().toString()}
+          <VirtualList items={items} rowHeight={48} height="fill" className="flex-1" getKey={(s) => s.id ?? s.spanId ?? s.eventId}
             renderRow={(s) => (
-              <Row onClick={() => navigate(`/observability/events/${s.id ?? s.spanId ?? s.eventId}`)}>
+              <Row onClick={() => navigate(`/observability/spans/${s.id ?? s.spanId ?? s.eventId}`)}>
                 <EventTypeBadge type="span" />
                 <span className="min-w-0 flex-1 truncate font-[family-name:var(--mono)] text-[12px] text-[var(--text2)]">{s.name ?? "Span"}</span>
                 <span className="text-[12px] tabular-nums text-[var(--text3)]">{s.durationMs ?? s.duration ?? 0}ms</span>
                 <EnvironmentBadge environment={s.environment ?? s.metadata?.environment} />
                 <Timestamp value={s.timestamp ?? s.startTime} />
-                <AskAiButton question={`Investigate span "${s.name}" (${s.durationMs ?? s.duration}ms) on trace ${s.traceId}.`} />
+                <AskAiButton question={`Investigate span "${s.name ?? "Span"}" (${s.durationMs ?? s.duration ?? 0}ms) on trace ${s.traceId ?? "unknown"}.`} />
               </Row>
             )} />
         )}

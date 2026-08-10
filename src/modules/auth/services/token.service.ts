@@ -11,6 +11,8 @@ const ACCESS_TOKEN_KEY = 'pulse_access_token';
 const EXPIRES_AT_KEY = 'pulse_access_token_expires_at';
 const CURRENT_ORG_ID_KEY = 'pulse_current_org_id';
 const CURRENT_ORG_SLUG_KEY = 'pulse_current_org_slug';
+const CURRENT_PROJECT_ID_KEY = 'pulse_current_project_id';
+const CURRENT_PROJECT_SLUG_KEY = 'pulse_current_project_slug';
 
 class TokenService {
   getAccessToken(): string | null {
@@ -56,6 +58,30 @@ class TokenService {
     }
   }
 
+  getCurrentProjectId(): string | null {
+    return localStorage.getItem(CURRENT_PROJECT_ID_KEY);
+  }
+
+  setCurrentProjectId(projectId: string | null | undefined): void {
+    if (projectId) {
+      localStorage.setItem(CURRENT_PROJECT_ID_KEY, projectId);
+    } else {
+      localStorage.removeItem(CURRENT_PROJECT_ID_KEY);
+    }
+  }
+
+  getCurrentProjectSlug(): string | null {
+    return localStorage.getItem(CURRENT_PROJECT_SLUG_KEY);
+  }
+
+  setCurrentProjectSlug(slug: string | null | undefined): void {
+    if (slug) {
+      localStorage.setItem(CURRENT_PROJECT_SLUG_KEY, slug);
+    } else {
+      localStorage.removeItem(CURRENT_PROJECT_SLUG_KEY);
+    }
+  }
+
   /**
    * @deprecated use setAccessToken — kept for call sites that still pass a
    * second argument that should now be ignored (refresh is cookie-managed).
@@ -69,6 +95,8 @@ class TokenService {
     localStorage.removeItem(EXPIRES_AT_KEY);
     localStorage.removeItem(CURRENT_ORG_ID_KEY);
     localStorage.removeItem(CURRENT_ORG_SLUG_KEY);
+    localStorage.removeItem(CURRENT_PROJECT_ID_KEY);
+    localStorage.removeItem(CURRENT_PROJECT_SLUG_KEY);
   }
 }
 

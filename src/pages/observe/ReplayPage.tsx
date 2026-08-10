@@ -4,13 +4,20 @@ import { useObservabilityList } from "./hooks/useObservabilityApi";
 import {
   PageHeader, KpiCard, FillPage, FilterBar, SearchInput,
   EnvironmentBadge, AskAiButton, Timestamp, InfiniteTable,
+  TimeRangePicker, useTimeRangeParams,
 } from "@/shared/observe";
 import type { Column } from "@/shared/observe";
 import type { ReplayEvent } from "@/types/events";
 
 export default function ReplayPage() {
   const [query, setQuery] = useState("");
-  const { data, isLoading } = useObservabilityList<any>("replays", { search: query });
+  const { timeRangeState } = useTimeRangeParams();
+  const { data, isLoading } = useObservabilityList<any>("replays", {
+    search: query,
+    range: timeRangeState.mode === "preset" ? timeRangeState.range : undefined,
+    from: timeRangeState.from,
+    to: timeRangeState.to,
+  });
 
   const rows = data?.items ?? [];
   const summary = data?.summary ?? {};
@@ -31,7 +38,11 @@ export default function ReplayPage() {
 
   return (
     <FillPage>
-      <PageHeader title="Session Replay" description="Recorded browser sessions with DOM, network, and console capture." />
+      <PageHeader
+        title="Session Replay"
+        description="Recorded browser sessions with DOM, network, and console capture."
+        actions={<TimeRangePicker />}
+      />
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <KpiCard label="Recorded sessions" value={sessions} />
@@ -48,7 +59,7 @@ export default function ReplayPage() {
         className="flex-1"
         loading={isLoading}
         items={rows}
-        queryKey={["replay-page", query]}
+        queryKey={["replay-page", query, timeRangeState]}
         columns={columns}
         getKey={(r) => r.id ?? r.eventId ?? Math.random().toString()}
       />

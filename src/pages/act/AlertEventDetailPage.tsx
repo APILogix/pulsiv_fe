@@ -1,156 +1,33 @@
-/**
- * Alert event detail — `GET /events/:id` plus the lifecycle actions
- * `POST /events/:id/{acknowledge,resolve,silence}` and
- * `GET /events/:id/deliveries`.
- */
 import { useState } from "react";
-import { useParams, useNavigate } from "react-router";
+import { useNavigate, useParams } from "react-router";
+import { ArrowLeft, CheckSquare, Eye, VolumeX } from "lucide-react";
 import { toast } from "sonner";
-import { ArrowLeft, Check, CheckCheck, BellOff } from "lucide-react";
-import {
-  PageHeader, SectionCard, Timestamp, DetailSkeleton, JsonViewer, SeverityBadge,
-} from "@/shared/observe";
-import { Button as UiButton } from "@/components/ui/button";
-import {
-  useAlertEvent,
-  useAlertEventDeliveries,
-  useAlertEventMutations,
-} from "@/modules/alerting/hooks/useAlerting";
+import { useAlertEvent, useAlertEventMutations } from "@/modules/alerting/hooks/useAlerting";
+import { IncidentStateBadge } from "@/modules/alerting/components/IncidentStateBadge";
+import { DetailSkeleton } from "@/shared/observe";
 import { apiErrorMessage } from "@/modules/projects/components/project-ui";
-import {
-  DeliveryStatusPill,
-  EventStatusPill,
-  MetaCell,
-  CodeChip,
-} from "@/modules/alerting/components/alerting-ui";
 
 export default function AlertEventDetailPage() {
-  const { incidentId: eventId = "" } = useParams();
+  const { incidentId = "" } = useParams();
   const navigate = useNavigate();
-  const { data: event, isLoading } = useAlertEvent(eventId);
-  const { data: deliveries } = useAlertEventDeliveries(eventId);
+  const { data: event, isLoading } = useAlertEvent(incidentId);
   const { acknowledge, resolve, silenceFromEvent } = useAlertEventMutations();
   const [comment, setComment] = useState("");
 
   if (isLoading) return <DetailSkeleton />;
-  if (!event) return <div className="p-8 text-[var(--text2)]">Event not found.</div>;
+  if (!event) return <div className="p-8 text-sm text-muted-foreground">Runtime event not found.</div>;
 
-  const canAcknowledge = event.status === "firing" || event.status === "pending";
-  const canResolve = event.status !== "resolved";
-  const canSilence = event.status !== "silenced" && event.status !== "resolved";
+  const onAcknowledge = () => acknowledge.mutate({ id: event.id, body: { comment } }, { onSuccess: () => toast.success("Event acknowledged"), onError: (error) => toast.error(apiErrorMessage(error, "Could not acknowledge event.")) });
+  const onSilence = () => silenceFromEvent.mutate({ id: event.id, body: { durationMinutes: 60, comment } }, { onSuccess: () => toast.success("Event silenced"), onError: (error) => toast.error(apiErrorMessage(error, "Could not silence event.")) });
+  const onResolve = () => resolve.mutate({ id: event.id, body: { reason: comment || "Resolved from command center" } }, { onSuccess: () => toast.success("Event resolved"), onError: (error) => toast.error(apiErrorMessage(error, "Could not resolve event.")) });
 
-  const handleAcknowledge = () => {
-    acknowledge.mutate(
-      { id: eventId, body: comment ? { comment } : {} },
-      {
-        onSuccess: () => toast.success("Event acknowledged"),
-        onError: (err) => toast.error(apiErrorMessage(err, "Could not acknowledge event.")),
-      },
-    );
-  };
-
-  const handleResolve = () => {
-    resolve.mutate(
-      { id: eventId, body: comment ? { comment } : {} },
-      {
-        onSuccess: () => toast.success("Event resolved"),
-        onError: (err) => toast.error(apiErrorMessage(err, "Could not resolve event.")),
-      },
-    );
-  };
-
-  const handleSilence = () => {
-    silenceFromEvent.mutate(
-      { id: eventId, body: { durationMinutes: 60, comment: comment || undefined } },
-      {
-        onSuccess: () => toast.success("Silence created for 60 minutes"),
-        onError: (err) => toast.error(apiErrorMessage(err, "Could not create silence.")),
-      },
-    );
-  };
-
-  return (
-    <div className="flex flex-col gap-5">
-      <UiButton variant="ghost" onClick={() => navigate(-1)}><ArrowLeft className="size-4" /> Back to events</UiButton>
-
-      <PageHeader
-        title={event.source}
-        description={`Fingerprint ${event.fingerprint}`}
-        breadcrumbs={[{ label: "Act", to: "/alerts" }, { label: "Events", to: "/alerts" }, { label: event.source }]}
-        actions={
-          <div className="flex gap-2">
-            {canAcknowledge && (
-              <UiButton variant="outline" onClick={handleAcknowledge} disabled={acknowledge.isPending}>
-                <Check className="size-4" /> Acknowledge
-              </UiButton>
-            )}
-            {canSilence && (
-              <UiButton variant="outline" onClick={handleSilence} disabled={silenceFromEvent.isPending}>
-                <BellOff className="size-4" /> Silence 60m
-              </UiButton>
-            )}
-            {canResolve && (
-              <UiButton onClick={handleResolve} disabled={resolve.isPending}>
-                <CheckCheck className="size-4" /> Resolve
-              </UiButton>
-            )}
-          </div>
-        }
-      />
-
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <MetaCell label="Severity"><SeverityBadge severity={event.severity} /></MetaCell>
-        <MetaCell label="Status"><EventStatusPill status={event.status} /></MetaCell>
-        <MetaCell label="Duplicates">{event.duplicateCount}</MetaCell>
-        <MetaCell label="Started"><Timestamp value={event.startedAt} /></MetaCell>
-        <MetaCell label="Rule id">{event.ruleId ? <CodeChip>{event.ruleId}</CodeChip> : "—"}</MetaCell>
-        <MetaCell label="Project id">{event.projectId ? <CodeChip>{event.projectId}</CodeChip> : "Org-level"}</MetaCell>
-        {event.acknowledgedAt && <MetaCell label="Acknowledged"><Timestamp value={event.acknowledgedAt} /></MetaCell>}
-        {event.resolvedAt && <MetaCell label="Resolved"><Timestamp value={event.resolvedAt} /></MetaCell>}
-        {event.resolutionReason && <MetaCell label="Resolution reason">{event.resolutionReason}</MetaCell>}
-      </div>
-
-      <div className="flex flex-col gap-1.5">
-        <label className="font-[family-name:var(--mono)] text-[10px] font-medium uppercase tracking-[0.09em] text-[var(--text3)]">
-          Comment (used for acknowledge / resolve / silence)
-        </label>
-        <textarea
-          value={comment}
-          onChange={(e) => setComment(e.target.value)}
-          className="min-h-[72px] w-full rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg2)] p-3 text-[13px] leading-[1.5] text-[var(--text)] outline-none transition-colors placeholder:text-[var(--text3)] focus:border-[var(--brand)] focus:ring-3 focus:ring-[var(--brand-bg)]"
-          placeholder="Optional context for the next responder…"
-        />
-      </div>
-
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <SectionCard title="Payload">
-          <JsonViewer data={event.payload} maxHeight={280} />
-        </SectionCard>
-        <SectionCard title="Labels & annotations">
-          <JsonViewer data={{ labels: event.labels, annotations: event.annotations }} maxHeight={280} />
-        </SectionCard>
-      </div>
-
-      <SectionCard title="Delivery attempts">
-        {!deliveries || deliveries.length === 0 ? (
-          <p className="text-[13px] text-[var(--text2)]">No delivery attempts recorded yet.</p>
-        ) : (
-          <div className="flex flex-col gap-2">
-            {deliveries.map((d) => (
-              <div key={d.id} className="flex items-center justify-between rounded-[8px] border border-[var(--border)] bg-[var(--bg2)] p-3">
-                <div className="flex items-center gap-3">
-                  <DeliveryStatusPill status={d.status} />
-                  <span className="text-[12px] text-[var(--text2)]">{d.connectorId ? <CodeChip>{d.connectorId}</CodeChip> : "route"}</span>
-                </div>
-                <div className="flex items-center gap-3 text-[12px] text-[var(--text3)]">
-                  {d.latencyMs != null && <span>{d.latencyMs}ms</span>}
-                  <Timestamp value={d.createdAt} />
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </SectionCard>
+  return <div className="mx-auto w-full max-w-[1200px] space-y-5 p-6">
+    <button onClick={() => navigate("/alerts")} className="flex items-center gap-1.5 text-xs text-muted-foreground"><ArrowLeft className="h-4 w-4" />Back to incidents</button>
+    <div className="rounded-xl border border-border/60 bg-card/60 p-6"><div className="flex flex-col justify-between gap-4 sm:flex-row"><div><div className="flex items-center gap-2"><IncidentStateBadge state={(event.status === "firing" ? "triggered" : event.status) as never} size="lg" /><span className="rounded-full border border-rose-500/20 bg-rose-500/10 px-2.5 py-0.5 text-xs capitalize text-rose-400">{event.severity}</span></div><h1 className="mt-3 text-xl font-bold">{event.source}</h1><p className="mt-1 text-xs text-muted-foreground">Fingerprint: {event.fingerprint}</p></div><div className="text-right font-mono text-xs text-muted-foreground"><span className="block text-[10px] uppercase">Occurrences</span><span className="text-lg font-bold text-primary">{event.duplicateCount}</span></div></div>
+      <div className="mt-5 grid grid-cols-2 gap-3 rounded-lg border border-border/40 bg-muted/20 p-3 text-xs md:grid-cols-4"><div><span className="text-muted-foreground">Status</span><p>{event.status}</p></div><div><span className="text-muted-foreground">Started</span><p>{new Date(event.startedAt).toLocaleString()}</p></div><div><span className="text-muted-foreground">Project</span><p>{event.projectId ?? "Organization"}</p></div><div><span className="text-muted-foreground">Rule</span><p>{event.ruleId ?? "Unbound"}</p></div></div>
     </div>
-  );
+    <div className="flex flex-wrap gap-2"><button onClick={onAcknowledge} disabled={acknowledge.isPending} className="flex items-center gap-1.5 rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-1.5 text-xs text-blue-400"><Eye className="h-3.5 w-3.5" />Acknowledge</button><button onClick={onSilence} disabled={silenceFromEvent.isPending} className="flex items-center gap-1.5 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs text-amber-400"><VolumeX className="h-3.5 w-3.5" />Silence</button><button onClick={onResolve} disabled={resolve.isPending} className="flex items-center gap-1.5 rounded-lg bg-emerald-500 px-4 py-1.5 text-xs font-bold text-emerald-950"><CheckSquare className="h-3.5 w-3.5" />Resolve</button></div>
+    <textarea value={comment} onChange={(eventInput) => setComment(eventInput.target.value)} rows={3} placeholder="Optional lifecycle comment" className="w-full rounded-xl border border-border bg-background p-3 text-xs" />
+    <pre className="max-h-[420px] overflow-auto rounded-xl border border-border/60 bg-card/60 p-4 text-xs">{JSON.stringify(event.payload, null, 2)}</pre>
+  </div>;
 }

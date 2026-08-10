@@ -2,10 +2,11 @@ import { Link } from 'react-router';
 import { motion } from 'framer-motion';
 import clsx from 'clsx';
 
-import { PulsivLogo } from '@/shared/components/PulsivLogo';
+import { SentinelLogo } from '@/shared/components/PulsivLogo';
 import { mainNavigation, type MainNavItem } from '@/app/navigation/navigation';
 import { prefetchRoute } from '@/app/router/route-prefetch';
 import { SPRING, DURATION, EASE } from '@/shared/motion';
+import { useAiDrawerStore } from '@/modules/ai/store/ai-drawer.store';
 
 /**
  * PrimaryRail — Phase 6 (sidebar motion) + Phase 13 (route prefetch).
@@ -47,7 +48,7 @@ export function PrimaryRail({ activeRailItem, handleRailClick }: PrimaryRailProp
         onPointerEnter={() => prefetchRoute('/dashboard')}
         className="flex items-center justify-center mb-6 cursor-pointer text-foreground"
       >
-        <PulsivLogo size={32} animate={true} />
+        <SentinelLogo size={32} animate={true} />
       </Link>
 
       <div className="flex flex-col gap-2 w-full items-center grow">
@@ -73,6 +74,21 @@ export function PrimaryRail({ activeRailItem, handleRailClick }: PrimaryRailProp
               <Icon className="w-[18px] h-[18px] stroke-[1.5]" />
             </motion.span>
           );
+
+          if (item.isDrawerTrigger) {
+            return (
+              <button
+                key={item.label}
+                type="button"
+                aria-label={`Open ${item.label}`}
+                className={className}
+                data-title={item.label}
+                onClick={() => useAiDrawerStore.getState().openChat()}
+              >
+                {icon}
+              </button>
+            );
+          }
 
           if (!item.children || item.children.length === 0) {
             return (

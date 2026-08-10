@@ -31,8 +31,8 @@ const LOADERS: Record<string, Loader> = {
 
   "/observability": () => import("@/pages/observe/ExecutiveDashboard"),
   "/observability/requests": () => import("@/pages/observe/RequestsPage"),
-  "/observability/events": () => import("@/pages/observe/EventsExplorer"),
   "/observability/errors": () => import("@/pages/observe/ErrorGroupsPage"),
+  "/observability/error-groups": () => import("@/modules/error-groups/pages/ErrorGroupsListPage"),
   "/observability/service-health": () => import("@/pages/observe/ServiceHealthPage"),
   "/observability/traces": () => import("@/pages/observe/TracesPage"),
   "/observability/logs": () => import("@/pages/observe/LogsPage"),

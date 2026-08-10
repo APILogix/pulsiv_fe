@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { PulsivLogo } from '@/shared/components/PulsivLogo';
+import { SentinelLogo } from '@/shared/components/PulsivLogo';
 import { markOrganizationSetup } from '@/modules/auth/services/post-login-setup-flag';
 import { ORGANIZATION_WORKFLOW, WorkflowOverlay, useWorkflow } from '@/shared/motion';
 
@@ -195,7 +195,7 @@ export default function CreateOrganizationPage() {
         <div className="border-b border-border px-5 py-5 sm:px-8 sm:py-6">
           <div className="flex items-start gap-4">
             <div className="flex size-11 shrink-0 items-center justify-center rounded-xl border border-[var(--green)]/20 bg-[var(--green)]/10">
-              <PulsivLogo size={27} />
+              <SentinelLogo size={27} />
             </div>
             <div className="min-w-0">
               <h1 className="text-xl font-semibold tracking-tight text-[var(--text)] sm:text-2xl">Create your organization</h1>

@@ -26,21 +26,23 @@ const SEVERITY_STYLES: Record<string, string> = {
   P4: "bg-[var(--bg3)] text-[var(--text2)]",
 };
 
-export function SeverityBadge({ severity }: { severity: string }) {
+export function SeverityBadge({ severity }: { severity?: string | null }) {
+  const safeSev = severity ?? "info";
   return (
-    <span className={cn("inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.08em] font-[family-name:var(--mono)]", SEVERITY_STYLES[severity] ?? SEVERITY_STYLES.debug)}>
-      {severity}
+    <span className={cn("inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.08em] font-[family-name:var(--mono)]", SEVERITY_STYLES[safeSev] ?? SEVERITY_STYLES.debug)}>
+      {safeSev}
     </span>
   );
 }
 
-export function StatusCodeBadge({ code }: { code: number }) {
+export function StatusCodeBadge({ code }: { code?: number | null }) {
+  const safeCode = code ?? 0;
   const tone =
-    code >= 500 ? "bg-[var(--red-bg)] text-[var(--red)]"
-    : code >= 400 ? "bg-[var(--amber-bg)] text-[var(--amber)]"
-    : code >= 300 ? "bg-[var(--blue-bg)] text-[var(--blue)]"
+    safeCode >= 500 ? "bg-[var(--red-bg)] text-[var(--red)]"
+    : safeCode >= 400 ? "bg-[var(--amber-bg)] text-[var(--amber)]"
+    : safeCode >= 300 ? "bg-[var(--blue-bg)] text-[var(--blue)]"
     : "bg-[var(--green-bg)] text-[var(--green)]";
-  return <span className={cn("inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium tabular-nums font-[family-name:var(--mono)]", tone)}>{code}</span>;
+  return <span className={cn("inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium tabular-nums font-[family-name:var(--mono)]", tone)}>{safeCode}</span>;
 }
 
 /* §2.6 — method badges are a tinted background plus saturated text. */
@@ -51,10 +53,11 @@ const METHOD_TONE: Record<string, string> = {
   PATCH: "bg-[var(--amber-bg)] text-[var(--amber)]",
   DELETE: "bg-[var(--red-bg)] text-[var(--red)]",
 };
-export function MethodBadge({ method }: { method: string }) {
+export function MethodBadge({ method }: { method?: string | null }) {
+  const safeMethod = method ?? "GET";
   return (
-    <span className={cn("inline-flex items-center rounded-full px-2 py-0.5 font-[family-name:var(--mono)] text-[10px] font-medium uppercase tracking-[0.08em]", METHOD_TONE[method] ?? "bg-[var(--bg3)] text-[var(--text2)]")}>
-      {method}
+    <span className={cn("inline-flex items-center rounded-full px-2 py-0.5 font-[family-name:var(--mono)] text-[10px] font-medium uppercase tracking-[0.08em]", METHOD_TONE[safeMethod] ?? "bg-[var(--bg3)] text-[var(--text2)]")}>
+      {safeMethod}
     </span>
   );
 }
@@ -63,6 +66,7 @@ const STATUS_TONE: Record<string, string> = {
   active: "bg-[var(--green-bg)] text-[var(--green)]",
   healthy: "bg-[var(--green-bg)] text-[var(--green)]",
   ok: "bg-[var(--green-bg)] text-[var(--green)]",
+  success: "bg-[var(--green-bg)] text-[var(--green)]",
   connected: "bg-[var(--green-bg)] text-[var(--green)]",
   compliant: "bg-[var(--green-bg)] text-[var(--green)]",
   paid: "bg-[var(--green-bg)] text-[var(--green)]",
@@ -91,11 +95,12 @@ const STATUS_TONE: Record<string, string> = {
   expired: "bg-[var(--bg3)] text-[var(--text2)]",
   "not-started": "bg-[var(--bg3)] text-[var(--text2)]",
 };
-export function StatusBadge({ status }: { status: string }) {
+export function StatusBadge({ status }: { status?: string | null }) {
+  const safeStatus = status ?? "unknown";
   return (
-    <span className={cn("inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 font-[family-name:var(--mono)] text-[10px] font-medium uppercase tracking-[0.08em]", STATUS_TONE[status] ?? "bg-[var(--bg3)] text-[var(--text2)]")}>
+    <span className={cn("inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 font-[family-name:var(--mono)] text-[10px] font-medium uppercase tracking-[0.08em]", STATUS_TONE[safeStatus] ?? "bg-[var(--bg3)] text-[var(--text2)]")}>
       <span className="size-1.5 rounded-full bg-current" />
-      {status.replace(/[-_]/g, " ")}
+      {safeStatus.replace(/[-_]/g, " ")}
     </span>
   );
 }
@@ -111,13 +116,14 @@ const EVENT_ICONS: Record<string, { icon: LucideIcon; tone: string }> = {
   cron_checkin: { icon: Clock, tone: "text-[var(--green)]" },
   replay: { icon: FileText, tone: "text-[var(--blue)]" },
 };
-export function EventTypeBadge({ type }: { type: string }) {
-  const entry = EVENT_ICONS[type] ?? EVENT_ICONS.log;
+export function EventTypeBadge({ type }: { type?: string | null }) {
+  const safeType = type ?? "log";
+  const entry = EVENT_ICONS[safeType] ?? EVENT_ICONS.log;
   const Icon = entry.icon;
   return (
     <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--bg2)] px-2 py-0.5 font-[family-name:var(--mono)] text-[10px] font-medium uppercase tracking-[0.08em] text-[var(--text2)]">
       <Icon className={cn("size-3", entry.tone)} />
-      {type.replace("_", " ")}
+      {safeType.replace("_", " ")}
     </span>
   );
 }
@@ -136,18 +142,24 @@ const ENVIRONMENT_TONE: Record<string, string> = {
   preview: "bg-[var(--violet-bg)] text-[var(--violet)]",
   pre_deployment: "bg-[var(--blue-bg)] text-[var(--blue)]",
 };
-export function EnvironmentBadge({ environment }: { environment: string }) {
+export function EnvironmentBadge({ environment }: { environment?: string | null }) {
+  const safeEnv = environment ?? "unknown";
   return (
-    <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.08em] font-[family-name:var(--mono)]", ENVIRONMENT_TONE[environment] ?? "bg-[var(--bg3)] text-[var(--text2)]")}>
-      {environment.replace(/_/g, " ")}
+    <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.08em] font-[family-name:var(--mono)]", ENVIRONMENT_TONE[safeEnv] ?? "bg-[var(--bg3)] text-[var(--text2)]")}>
+      {safeEnv.replace(/_/g, " ")}
     </span>
   );
 }
 
-export function Timestamp({ value }: { value: number | string | Date }) {
+export function Timestamp({ value }: { value?: number | string | Date | null }) {
+  const formattedAbs = formatAbsoluteTime(value);
+  const formattedRel = formatRelativeTime(value);
+  if (formattedAbs === "—" || formattedRel === "—") {
+    return <span className="font-[family-name:var(--mono)] text-[12px] text-[var(--text3)]">—</span>;
+  }
   return (
-    <time title={formatAbsoluteTime(value)} className="font-[family-name:var(--mono)] text-[12px] text-[var(--text3)] tabular-nums">
-      {formatRelativeTime(value)}
+    <time title={formattedAbs} className="font-[family-name:var(--mono)] text-[12px] text-[var(--text3)] tabular-nums">
+      {formattedRel}
     </time>
   );
 }

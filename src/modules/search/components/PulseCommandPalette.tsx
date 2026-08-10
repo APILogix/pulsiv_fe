@@ -115,17 +115,6 @@ export function PulseCommandPalette() {
           {/* Default state when no query is typed */}
           {!isLoading && !query && (
             <div className="py-1">
-              <CommandGroup heading="Recent searches">
-                <CommandItem onSelect={() => setQuery('status:500 AND service:payment-api')} className="group gap-3 py-2">
-                  <span className="font-mono text-[12px] text-[var(--text3)] transition-colors group-data-[selected=true]:text-[var(--brand)]">{'>'}</span>
-                  <span className="font-mono text-[12px]">status:500 AND service:payment-api</span>
-                </CommandItem>
-                <CommandItem onSelect={() => setQuery('tr_8f2a9b1c')} className="group gap-3 py-2">
-                  <span className="font-mono text-[12px] text-[var(--text3)] transition-colors group-data-[selected=true]:text-[var(--brand)]">{'>'}</span>
-                  <span className="font-mono text-[12px]">tr_8f2a9b1c</span>
-                </CommandItem>
-              </CommandGroup>
-
               <CommandGroup heading="Quick actions">
                 <CommandItem onSelect={() => { setOpen(false); navigate('/dashboard'); }} className="group gap-3 py-2">
                   <LayoutDashboard className="size-[15px] text-[var(--text3)] transition-colors group-data-[selected=true]:text-[var(--brand)]" />

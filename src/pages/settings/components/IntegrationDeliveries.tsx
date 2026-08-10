@@ -92,7 +92,7 @@ export function IntegrationDeliveries({ integrationId }: IntegrationDeliveriesPr
         <EmptyPanel
           icon={Send}
           title="No deliveries yet"
-          description="Every notification Pulsiv sends to this connector is recorded here with its response and latency."
+          description="Every notification Sentinel sends to this connector is recorded here with its response and latency."
         />
       ) : (
         <>

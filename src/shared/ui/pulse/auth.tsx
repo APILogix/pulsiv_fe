@@ -39,9 +39,9 @@ export function AuthHeading({
           {!hideLogo && (
             <span
               className="font-[family-name:var(--mono)] text-[22px] font-bold tracking-[0.16em] text-[var(--text)] shrink-0"
-              aria-label="Pulsiv"
+              aria-label="Sentinel"
             >
-              PULS<span className="text-[var(--brand)]">I</span>V
+              SENT<span className="text-[var(--brand)]">I</span>NEL
             </span>
           )}
         </div>

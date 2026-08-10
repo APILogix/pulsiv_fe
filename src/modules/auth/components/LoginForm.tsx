@@ -88,7 +88,7 @@ export function LoginForm({ login, isPending }: LoginFormProps) {
           </AuthField>
 
           <p className="border-t border-[var(--border)] pt-4 text-[12px] leading-5 text-[var(--text3)]">
-            By continuing, you agree to Pulsiv&apos;s Terms and Conditions and Privacy Policy.
+            By continuing, you agree to Sentinel&apos;s Terms and Conditions and Privacy Policy.
           </p>
 
           <AuthButton type="button" onClick={continueToPassword} disabled={isPending}>

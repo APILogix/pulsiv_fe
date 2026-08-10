@@ -41,6 +41,6 @@ export const useProjectNavStore = create<ProjectNavState>()(
     }),
     // Bumped to 2: v1 persisted railCollapsed/mobileOpen for the removed
     // project sidebar. Old payloads are dropped rather than migrated.
-    { name: "pulsiv.project-nav", version: 2 },
+    { name: "sentinel.project-nav", version: 2 },
   ),
 );

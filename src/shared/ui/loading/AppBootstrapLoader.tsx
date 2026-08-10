@@ -132,7 +132,7 @@ export function AppBootstrapLoader({ message = "Loading application" }: { messag
           className="flex flex-col items-center gap-2.5"
         >
           <span className="font-[family-name:var(--display)] text-[22px] font-semibold tracking-tight text-[var(--text)]">
-            Pulsiv
+            Sentinel
           </span>
 
           {/* stage copy — fixed height so the layout never shifts between stages */}

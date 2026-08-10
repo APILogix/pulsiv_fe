@@ -6,7 +6,7 @@ import { orgQueryKeys } from '../hooks/useOrganizations';
 import { Button } from '@/components/ui/button';
 import { useFormStatus } from 'react-dom';
 import { Loader2 } from 'lucide-react';
-import { PulsivLogo } from '@/shared/components/PulsivLogo';
+import { SentinelLogo } from '@/shared/components/PulsivLogo';
 import type { InvitationValidation } from '../types/org.types';
 import { useAuthStore } from '@/modules/auth/store/auth.store';
 
@@ -87,7 +87,7 @@ export default function AcceptInviteLandingPage() {
     <div className="flex min-h-screen flex-col items-center justify-center bg-[var(--bg)] p-4">
       <div className="w-full max-w-[440px] space-y-8 rounded-[10px] border border-border bg-[var(--bg1)] p-8 shadow-2xl text-center">
         <div className="flex flex-col items-center space-y-4">
-          <PulsivLogo size={40} />
+          <SentinelLogo size={40} />
         </div>
         
         {error ? (

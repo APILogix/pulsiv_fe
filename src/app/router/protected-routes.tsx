@@ -55,10 +55,12 @@ const ServiceSlosPage = lazy(() => import("@/pages/services/ServiceSlosPage"));
 const ExecutiveDashboard = lazy(() => import("@/pages/observe/ExecutiveDashboard"));
 const RequestsPage = lazy(() => import("@/pages/observe/RequestsPage"));
 const RequestDetailPage = lazy(() => import("@/pages/observe/RequestDetailPage"));
-const EventsExplorer = lazy(() => import("@/pages/observe/EventsExplorer"));
-const EventDetailPage = lazy(() => import("@/pages/observe/EventDetailPage"));
+const SpanDetailPage = lazy(() => import("@/pages/observe/SpanDetailPage"));
+
 const ErrorGroupsPage = lazy(() => import("@/pages/observe/ErrorGroupsPage"));
 const ErrorDetailPage = lazy(() => import("@/pages/observe/ErrorDetailPage"));
+const ErrorGroupsListPage = lazy(() => import("@/modules/error-groups/pages/ErrorGroupsListPage"));
+const ErrorGroupDetailPage = lazy(() => import("@/modules/error-groups/pages/ErrorGroupDetailPage"));
 const ServiceHealthPage = lazy(() => import("@/pages/observe/ServiceHealthPage"));
 const LatencyPage = lazy(() => import("@/pages/observe/LatencyPage"));
 const TracesPage = lazy(() => import("@/pages/observe/TracesPage"));
@@ -66,8 +68,11 @@ const TraceDetailPage = lazy(() => import("@/pages/observe/TraceDetailPage"));
 const LogsPage = lazy(() => import("@/pages/observe/LogsPage"));
 const LogDetailPage = lazy(() => import("@/pages/observe/LogDetailPage"));
 const MetricsPage = lazy(() => import("@/pages/observe/MetricsPage"));
+const MetricDetailPage = lazy(() => import("@/pages/observe/MetricDetailPage"));
 const ProfilingPage = lazy(() => import("@/pages/observe/ProfilingPage"));
+const ProfileDetailPage = lazy(() => import("@/pages/observe/ProfileDetailPage"));
 const CronsPage = lazy(() => import("@/pages/observe/CronsPage"));
+const CronDetailPage = lazy(() => import("@/pages/observe/CronDetailPage"));
 const ReplayPage = lazy(() => import("@/pages/observe/ReplayPage"));
 const RuntimeMetricsPage = lazy(() => import("@/pages/observe/RuntimeMetricsPage"));
 const EventLoopPage = lazy(() => import("@/pages/observe/EventLoopPage"));
@@ -105,6 +110,7 @@ const DeadLetterQueuePage = lazy(() => import("@/pages/workspaces/DeadLetterQueu
 const AlertEventsPage = lazy(() => import("@/pages/act/AlertEventsPage"));
 const AlertEventDetailPage = lazy(() => import("@/pages/act/AlertEventDetailPage"));
 const AlertRulesPage = lazy(() => import("@/pages/act/AlertRulesPage"));
+const OrgPolicyDetailPage = lazy(() => import("@/pages/act/OrgPolicyDetailPage"));
 const AlertRuleDetailPage = lazy(() => import("@/pages/act/AlertRuleDetailPage"));
 const EscalationsPage = lazy(() => import("@/pages/act/EscalationsPage"));
 const EscalationDetailPage = lazy(() => import("@/pages/act/EscalationDetailPage"));
@@ -236,21 +242,24 @@ export const protectedRoutes: RouteObject[] = [
               { index: true, element: <ExecutiveDashboard /> },
               { path: "requests", element: <RequestsPage /> },
               { path: "requests/:requestId", element: <RequestDetailPage /> },
-              { path: "events", element: <EventsExplorer /> },
-              { path: "events/:eventId", element: <EventDetailPage /> },
+
               { path: "errors", element: <ErrorGroupsPage /> },
               { path: "errors/:fingerprint", element: <ErrorDetailPage /> },
               { path: "errors/:fingerprint/occurrences/:eventId", element: <ErrorDetailPage /> },
-              { path: "service-health", element: <ServiceHealthPage /> },
+              { path: "error-groups", element: <ErrorGroupsListPage /> },
+              { path: "error-groups/:groupId", element: <ErrorGroupDetailPage /> },
               { path: "latency", element: <LatencyPage /> },
               { path: "traces", element: <TracesPage /> },
               { path: "traces/:traceId", element: <TraceDetailPage /> },
-              { path: "traces/:traceId/spans/:spanId", element: <TraceDetailPage /> },
+              { path: "traces/:traceId/spans/:spanId", element: <SpanDetailPage /> },
               { path: "logs", element: <LogsPage /> },
               { path: "logs/:eventId", element: <LogDetailPage /> },
               { path: "metrics", element: <MetricsPage /> },
+              { path: "metrics/:metricId", element: <MetricDetailPage /> },
               { path: "profiling", element: <ProfilingPage /> },
+              { path: "profiling/:profileId", element: <ProfileDetailPage /> },
               { path: "crons", element: <CronsPage /> },
+              { path: "crons/:checkinId", element: <CronDetailPage /> },
               { path: "replay", element: <ReplayPage /> },
               { path: "runtime-metrics", element: <RuntimeMetricsPage /> },
               { path: "event-loop", element: <EventLoopPage /> },
@@ -340,6 +349,7 @@ export const protectedRoutes: RouteObject[] = [
               { index: true, element: <AlertEventsPage /> },
               { path: ":incidentId", element: <AlertEventDetailPage /> },
               { path: "rules", element: <AlertRulesPage /> },
+              { path: "policies/:policyId", element: <OrgPolicyDetailPage /> },
               { path: "rules/:ruleId", element: <AlertRuleDetailPage /> },
               { path: "escalations", element: <EscalationsPage /> },
               { path: "escalations/:policyId", element: <EscalationDetailPage /> },

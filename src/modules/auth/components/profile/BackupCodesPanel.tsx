@@ -42,7 +42,7 @@ export function BackupCodesPanel() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'pulsiv-backup-codes.txt';
+    a.download = 'sentinel-backup-codes.txt';
     a.click();
     URL.revokeObjectURL(url);
   }

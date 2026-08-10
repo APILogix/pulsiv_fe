@@ -164,7 +164,7 @@ export default function WebhookDetailPage() {
         </div>
       </Panel>
 
-      <Panel title="Delivery settings" description="Control whether Pulsiv sends events to this endpoint." icon={Activity}>
+      <Panel title="Delivery settings" description="Control whether Sentinel sends events to this endpoint." icon={Activity}>
         <SettingRow
           label="Endpoint enabled"
           description="Disable to pause deliveries. The endpoint keeps its secret and event subscriptions."
@@ -187,7 +187,7 @@ export default function WebhookDetailPage() {
       <Panel
         danger
         title="Delete this endpoint"
-        description="Pulsiv stops delivering events immediately. Delivery history is kept for auditing."
+        description="Sentinel stops delivering events immediately. Delivery history is kept for auditing."
         icon={Trash2}
         footer={
           <Button variant="danger" onClick={() => demoAction("Delete webhook endpoint")}>

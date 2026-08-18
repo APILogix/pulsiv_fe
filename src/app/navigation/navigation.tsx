@@ -143,7 +143,8 @@ export const mainNavigation: MainNavItem[] = [
     status: "live",
     description: "Alert events, rules, escalation policies, templates, silences, and routing.",
     children: [
-      { label: "Events", path: "/alerts", icon: AlertTriangle, status: "live", exact: true, description: "Incident center for triggered alerts and investigations.", group: "Alerting" },
+      { label: "Overview", path: "/alerts/overview", icon: LayoutDashboard, status: "live", description: "Centralized alerting health, volume, and operational status.", group: "Alerting" },
+      { label: "Incidents", path: "/alerts", icon: AlertTriangle, status: "live", exact: true, description: "Incident command center for live events and triage.", group: "Alerting" },
       { label: "Alert rules", path: "/alerts/rules", icon: BellRing, status: "live", description: "Rule authoring for thresholds, anomalies, and conditions.", group: "Alerting" },
       { label: "Escalations", path: "/alerts/escalations", icon: Workflow, status: "live", description: "Ordered escalation policies and steps.", group: "Alerting" },
       { label: "Templates", path: "/alerts/templates", icon: FileStack, status: "live", description: "Message templates for notifications.", group: "Alerting" },

@@ -27,6 +27,7 @@ export function useErrorGroupsList(filters: ErrorGroupFilterState) {
       setGroups(data);
       setError(null);
     } catch (err) {
+      setGroups([]);
       setError(err as Error);
     } finally {
       setIsLoading(false);

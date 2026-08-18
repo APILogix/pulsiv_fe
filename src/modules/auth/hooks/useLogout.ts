@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router';
 import { authApi } from '../api/auth.api';
 import { tokenService } from '../services/token.service';
 import { useAuthStore } from '../store/auth.store';
+import { useBootstrapStore } from '@/modules/bootstrap';
 
 export function useLogout() {
   const clear = useAuthStore((s) => s.clearAuth);
@@ -14,6 +15,7 @@ export function useLogout() {
     onSettled: () => {
       tokenService.clearTokens();
       clear();
+      useBootstrapStore.getState().clearBootstrap();
       queryClient.removeQueries({ queryKey: ['auth'] });
       navigate('/auth/login', { replace: true });
     },

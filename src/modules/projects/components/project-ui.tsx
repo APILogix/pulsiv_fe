@@ -24,6 +24,10 @@ import {
 } from "@/shared/motion";
 import { cn } from "@/lib/utils";
 
+import { ApiKeyRevealModal, type RevealedSecret } from "./ApiKeyRevealModal";
+
+export { ApiKeyRevealModal, type RevealedSecret };
+
 // ── Form dialog ──────────────────────────────────────────────
 // Uncontrolled inputs + native form submit, so callers read values from
 // FormData and never re-render per keystroke (rules.md §8.2).
@@ -64,7 +68,7 @@ export function FormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={width}>
+      <DialogContent className={cn("w-full max-w-[calc(100vw-2rem)] overflow-hidden", width)}>
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           {description && <DialogDescription>{description}</DialogDescription>}
@@ -74,9 +78,9 @@ export function FormDialog({
             event.preventDefault();
             onSubmit(new FormData(event.currentTarget));
           }}
-          className="flex flex-col gap-4"
+          className="flex min-w-0 w-full max-w-full flex-col gap-4"
         >
-          <div className="flex max-h-[60vh] flex-col gap-4 overflow-y-auto pr-0.5 sidebar-scroll">{children}</div>
+          <div className="flex max-h-[60vh] min-w-0 w-full max-w-full flex-col gap-4 overflow-y-auto overflow-x-hidden pr-0.5 sidebar-scroll">{children}</div>
           {narrating && workflowSteps && workflowState && (
             <WorkflowInline steps={workflowSteps} state={workflowState} />
           )}

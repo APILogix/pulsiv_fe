@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { RefreshCw } from 'lucide-react';
 import { apiClient } from '@/infrastructure/api-client/axios';
 import { useOrgStore } from '@/modules/organizations/store/org.store';
+import { useBootstrapUsage, useBootstrapStore } from '@/modules/bootstrap';
 import clsx from 'clsx';
 
 export interface QuotaSummaryData {
@@ -14,8 +15,11 @@ export interface QuotaSummaryData {
 
 export function QuotaCardWidget() {
   const activeOrgId = useOrgStore((s) => s.activeOrgId);
-  const [data, setData] = useState<QuotaSummaryData | null>(null);
+  const bootstrapUsage = useBootstrapUsage();
+  const updateUsage = useBootstrapStore((s) => s.updateUsage);
+
   const [isLoading, setIsLoading] = useState(false);
+  const [overrideData, setOverrideData] = useState<QuotaSummaryData | null>(null);
 
   const fetchQuotaSummary = useCallback(async () => {
     if (!activeOrgId) return;
@@ -25,34 +29,57 @@ export function QuotaCardWidget() {
         headers: { 'x-org-id': activeOrgId },
       });
       if (res.data?.success && res.data?.data) {
-        setData(res.data.data);
+        const d: QuotaSummaryData = res.data.data;
+        setOverrideData(d);
+
+        // Sync fresh quota summary directly into Zustand bootstrap usage state
+        const totalEv = d.totalEvents || 1000000;
+        const leftEv = d.eventsLeft ?? 320000;
+        const usedEv = Math.max(0, totalEv - leftEv);
+
+        const totalAi = d.aiCreditsTotal || 500;
+        const leftAi = d.aiCreditsLeft ?? 290;
+        const usedAi = Math.max(0, totalAi - leftAi);
+
+        updateUsage({
+          monthlyEvents: {
+            limit: totalEv,
+            used: usedEv,
+            remaining: leftEv,
+            percentage: totalEv > 0 ? Math.min(100, Math.round((usedEv / totalEv) * 100)) : 0,
+          },
+          aiCredits: {
+            limit: totalAi,
+            used: usedAi,
+            remaining: leftAi,
+            percentage: totalAi > 0 ? Math.min(100, Math.round((usedAi / totalAi) * 100)) : 0,
+          },
+        });
       }
     } catch {
       // Retain existing state on transient errors
     } finally {
       setIsLoading(false);
     }
-  }, [activeOrgId]);
+  }, [activeOrgId, updateUsage]);
 
-  useEffect(() => {
-    fetchQuotaSummary();
-  }, [fetchQuotaSummary]);
+  // Priority: Override -> Bootstrap Zustand Store -> Safe Fallbacks
+  const totalEvents = overrideData?.totalEvents ?? bootstrapUsage?.monthlyEvents.limit ?? 1000000;
+  const eventsLeft = overrideData?.eventsLeft ?? bootstrapUsage?.monthlyEvents.remaining ?? 320000;
+  const eventsUsed = overrideData
+    ? Math.max(0, totalEvents - eventsLeft)
+    : (bootstrapUsage?.monthlyEvents.used ?? Math.max(0, totalEvents - eventsLeft));
+  const ingestPercent = bootstrapUsage?.monthlyEvents.percentage ?? (totalEvents > 0 ? Math.min(100, Math.round((eventsUsed / totalEvents) * 100)) : 0);
 
-  // Compute Ingest Quota values
-  const totalEvents = data?.totalEvents ?? 1000000;
-  const eventsLeft = data?.eventsLeft ?? 320000;
-  const eventsUsed = Math.max(0, totalEvents - eventsLeft);
-  const ingestPercent = totalEvents > 0 ? Math.min(100, Math.round((eventsUsed / totalEvents) * 100)) : 0;
+  const aiCreditsTotal = overrideData?.aiCreditsTotal ?? bootstrapUsage?.aiCredits.limit ?? 500;
+  const aiCreditsLeft = overrideData?.aiCreditsLeft ?? bootstrapUsage?.aiCredits.remaining ?? 290;
+  const aiCreditsUsed = overrideData
+    ? Math.max(0, aiCreditsTotal - aiCreditsLeft)
+    : (bootstrapUsage?.aiCredits.used ?? Math.max(0, aiCreditsTotal - aiCreditsLeft));
+  const aiPercent = bootstrapUsage?.aiCredits.percentage ?? (aiCreditsTotal > 0 ? Math.min(100, Math.round((aiCreditsUsed / aiCreditsTotal) * 100)) : 0);
 
-  // Compute AI Credit values
-  const aiCreditsTotal = data?.aiCreditsTotal ?? 500;
-  const aiCreditsLeft = data?.aiCreditsLeft ?? 290;
-  const aiCreditsUsed = Math.max(0, aiCreditsTotal - aiCreditsLeft);
-  const aiPercent = aiCreditsTotal > 0 ? Math.min(100, Math.round((aiCreditsUsed / aiCreditsTotal) * 100)) : 0;
-
-  // Compute days until reset
-  const resetDays = data?.billingCycleEndDate
-    ? Math.max(0, Math.ceil((new Date(data.billingCycleEndDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+  const resetDays = overrideData?.billingCycleEndDate
+    ? Math.max(0, Math.ceil((new Date(overrideData.billingCycleEndDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
     : 9;
 
   return (

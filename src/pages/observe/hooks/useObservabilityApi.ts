@@ -71,6 +71,33 @@ export interface ExplorerListResponse<T = unknown> {
   availableFilters: LegacyResponseMap;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+export function normalizeExplorerListResponse<T = unknown>(payload: unknown): ExplorerListResponse<T> {
+  const envelope = isRecord(payload) && isRecord(payload.data) && Array.isArray(payload.data.items)
+    ? payload.data
+    : payload;
+  const source = isRecord(envelope) ? envelope : {};
+  const items = Array.isArray(source.items)
+    ? source.items
+    : Array.isArray(source.data)
+      ? source.data
+      : Array.isArray(payload)
+        ? payload
+        : [];
+
+  return {
+    success: source.success === false ? false : true,
+    items: items as T[],
+    pagination: isRecord(source.pagination) ? source.pagination as ExplorerPagination : {},
+    summary: isRecord(source.summary) ? source.summary : {},
+    statistics: isRecord(source.statistics) ? source.statistics : {},
+    availableFilters: isRecord(source.availableFilters) ? source.availableFilters : {},
+  };
+}
+
 export function useObservabilityList<T = unknown>(resource: string, params: Record<string, unknown> = {}) {
   const activeOrgId = useOrgStore(state => state.activeOrgId);
   const [data, setData] = useState<ExplorerListResponse<T> | null>(null);
@@ -94,7 +121,7 @@ export function useObservabilityList<T = unknown>(resource: string, params: Reco
     apiClient.get(`/organizations/${activeOrgId}/observability/${resource}`, { params: cleanParams })
       .then(res => {
         if (isMounted) {
-          setData(res.data);
+          setData(normalizeExplorerListResponse<T>(res.data));
           setError(null);
         }
       })

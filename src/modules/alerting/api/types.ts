@@ -28,6 +28,40 @@ export interface PaginationQuery {
   sortOrder?: "asc" | "desc";
 }
 
+export interface ProjectAlertingStatus {
+  organizationId: string;
+  projectId: string;
+  connectorAccess: {
+    allowed: boolean;
+    reason: string;
+  };
+  connectorStatus: {
+    configured: boolean;
+    connected: boolean;
+    primary: {
+      id: string;
+      name: string;
+      type: string;
+      status: string;
+    } | null;
+    totalActive: number;
+  };
+  defaultDestination: {
+    type: string;
+    target: string;
+    source: string;
+  };
+  fallbackDestination: {
+    type: string;
+    target: string;
+  };
+  projectOwner: {
+    userId: string;
+    email: string;
+  } | null;
+}
+
+
 // ── Enums (mirror backend `common.ts` + submodule types) ─────
 
 export const ALERT_SEVERITIES = ["info", "warning", "error", "critical"] as const;
@@ -644,9 +678,19 @@ export interface ProjectSubscription {
   organizationId?: string;
   projectId: string;
   policyId: string;
+  ruleId?: string;
+  catalogPolicyId?: string | null;
+  presetKey?: string | null;
   state: SubscriptionState;
+  mode?: string;
   policy?: OrganizationAlertPolicy;
   override?: ProjectOverride | null;
+  threshold?: Json | null;
+  cooldownSeconds?: number | null;
+  evaluationWindowSeconds?: number | null;
+  severity?: AlertSeverity | null;
+  channels?: string[] | null;
+  escalationPolicyId?: string | null;
   createdAt: string;
   updatedAt: string;
 }

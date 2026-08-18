@@ -23,7 +23,7 @@ import { cn } from "@/lib/utils"
  * nothing on the main thread.
  */
 const buttonVariants = cva(
-  "group/button inline-flex shrink-0 items-center justify-center gap-1.5 rounded-[var(--radius)] border border-transparent bg-clip-padding text-[13px] font-medium whitespace-nowrap transition-[color,background-color,border-color,box-shadow,transform] duration-150 ease-out active:scale-[0.99] motion-reduce:transition-none motion-reduce:active:scale-100 outline-none select-none focus-visible:ring-3 focus-visible:ring-[var(--brand-bg)] focus-visible:border-[var(--brand)] disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-[var(--red)] [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 cursor-pointer",
+  "group/button inline-flex shrink-0 items-center justify-center gap-1.5 rounded-[var(--radius)] border border-transparent bg-clip-padding text-[13px] font-medium whitespace-nowrap transition-[color,background-color,border-color,box-shadow] duration-150 ease-out outline-none select-none focus-visible:ring-3 focus-visible:ring-[var(--brand-bg)] focus-visible:border-[var(--brand)] disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-[var(--red)] [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 cursor-pointer",
   {
     variants: {
       variant: {

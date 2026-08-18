@@ -43,7 +43,7 @@ export default function AccountUnlockRequestPage() {
         >
           <AuthCard>
             <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-[var(--text3)]">Sent to</p>
-            <p className="mt-1.5 truncate font-[family-name:var(--mono)] text-[13px] text-[var(--text)]">
+            <p className="mt-1.5 truncate font-mono text-[13px] text-[var(--text)]">
               {getValues('email')}
             </p>
           </AuthCard>
@@ -81,7 +81,7 @@ export default function AccountUnlockRequestPage() {
               autoFocus
               {...register('email')}
               disabled={isPending}
-              className={cn(fieldInputClass, 'h-11 font-[family-name:var(--mono)] text-[13px]')}
+              className={cn(fieldInputClass, 'h-10 font-mono text-[13px]')}
             />
           </AuthField>
 

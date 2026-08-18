@@ -39,7 +39,7 @@ export function TableToolbar({
           <div className="flex items-center gap-3">
             <span className="inline-flex items-center gap-1.5 font-[family-name:var(--mono)] text-[12px] font-semibold text-[var(--brand)]">
               <CheckSquare className="size-4" />
-              {selectedCount} Selected
+              {selectedCount} {resourceName} selected
             </span>
 
             {onClearSelection && (

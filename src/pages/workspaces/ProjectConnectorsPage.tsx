@@ -4,6 +4,8 @@ import {
   useConnectorSubscriptionMutations,
   useConnectorSubscriptions,
 } from "@/modules/projects/hooks/useProjectAlerting";
+import { useNotificationEntitlement } from "@/modules/alerting/hooks/useAlerting";
+import { EntitlementRestrictedBanner } from "@/modules/alerting/components/EntitlementRestrictedBanner";
 import { useProjectMembers } from "@/modules/projects/hooks/useMembers";
 import { useConnectors } from "@/modules/organizations/hooks/useConnectors";
 import {
@@ -193,6 +195,7 @@ export default function ProjectConnectorsPage() {
     (connector) => !subscribedIds.has(connector.id),
   );
 
+  const { isRestricted } = useNotificationEntitlement();
   const enabledCount = subscriptions.filter((subscription) => subscription.enabled).length;
 
   return (
@@ -201,11 +204,14 @@ export default function ProjectConnectorsPage() {
         title="Connector subscriptions"
         description="Bind organization connectors (Slack, Teams, webhooks) to this project's alert stream, with per-category and per-member targeting."
         actions={
-          <UiButton size="lg" onClick={() => setCreating(true)} disabled={availableConnectors.length === 0}>
+          <UiButton size="lg" onClick={() => setCreating(true)} disabled={isRestricted || availableConnectors.length === 0}>
             <Plus className="mr-1.5 size-4" /> Subscribe connector
           </UiButton>
         }
       />
+
+      <EntitlementRestrictedBanner projectId={projectId} />
+
 
       <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
         <StatCard label="Subscriptions" value={data?.total ?? subscriptions.length} icon={Cable} tone="brand" />

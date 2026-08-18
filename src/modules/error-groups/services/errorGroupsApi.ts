@@ -8,10 +8,40 @@ import type {
   ErrorGroupDetail,
 } from "../types/error-group";
 
+function isRecord(value: unknown): value is Record<string, any> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function pickArrayPayload(payload: unknown): unknown[] {
+  if (Array.isArray(payload)) return payload;
+  if (!isRecord(payload)) return [];
+
+  const candidates = [
+    payload.items,
+    payload.groups,
+    payload.results,
+    payload.rows,
+    isRecord(payload.data) ? payload.data.items : undefined,
+    isRecord(payload.data) ? payload.data.groups : undefined,
+    isRecord(payload.data) ? payload.data.results : undefined,
+    isRecord(payload.data) ? payload.data.rows : undefined,
+    payload.data,
+  ];
+
+  for (const candidate of candidates) {
+    if (Array.isArray(candidate)) return candidate;
+  }
+
+  return [];
+}
+
 function normalizeErrorGroup(raw: any): ErrorGroup {
-  if (!raw || typeof raw !== "object" || typeof raw.id !== "string") {
+  if (!isRecord(raw)) {
     throw new Error("Invalid error-group response");
   }
+  const id = String(raw.id ?? raw.groupId ?? raw.group_id ?? raw.publicId ?? raw.public_id ?? raw.fingerprint ?? "");
+  if (!id) throw new Error("Invalid error-group response");
+
   const publicId = raw.publicId ?? raw.public_id ?? undefined;
   const occ = raw.occurrences && typeof raw.occurrences === "object" ? raw.occurrences : {};
   const firstSeen = occ.firstSeenAt ?? raw.firstSeen ?? raw.firstSeenAt ?? raw.first_seen_at;
@@ -40,10 +70,10 @@ function normalizeErrorGroup(raw: any): ErrorGroup {
 
   return {
     ...raw,
-    id: raw.id,
+    id,
     publicId,
     tracePublicId,
-    fingerprint: raw.fingerprint ?? raw.publicId ?? raw.id,
+    fingerprint: raw.fingerprint ?? raw.publicId ?? raw.public_id ?? id,
     status: String(raw.status ?? "OPEN").toLowerCase() as ErrorGroupStatus,
     occurrences: {
       count: occurrenceCount,
@@ -135,8 +165,7 @@ function normalizeHistoryItem(raw: any): ErrorGroupHistoryItem {
 }
 
 function listPayload(response: any): any[] {
-  const items = response.data?.items ?? response.data?.data?.items ?? response.data?.data ?? response.data;
-  if (!Array.isArray(items)) throw new Error("Invalid error-group list response");
+  const items = pickArrayPayload(response?.data ?? response);
   return items;
 }
 

@@ -57,7 +57,7 @@ export function RegisterForm() {
           autoComplete="email"
           {...register('email')}
           disabled={isPending}
-          className={cn(fieldInputClass, 'h-10 font-[family-name:var(--mono)] text-[13px]')}
+          className={cn(fieldInputClass, 'h-10 font-mono text-[13px]')}
         />
       </AuthField>
 

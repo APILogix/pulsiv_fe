@@ -2,9 +2,9 @@ import { useState } from "react";
 import { useNavigate } from "react-router";
 import { useOrgStore } from "@/modules/organizations/store/org.store";
 import { projectPath } from "@/modules/projects/navigation/project-routes";
-import { AlertTriangle, Building2, Check, Globe, Loader2, Lock, Package, Palette, Tag } from "lucide-react";
+import { AlertTriangle, Check, Loader2, Package, Tag } from "lucide-react";
 import { useProjectMutations } from "@/modules/projects/hooks/useProjects";
-import type { CreateProjectBody, ProjectVisibility } from "@/modules/projects/api/types";
+import type { CreateProjectBody } from "@/modules/projects/api/types";
 import {
   Notice,
   PageHero,
@@ -22,44 +22,8 @@ import { cn } from "@/lib/utils";
 
 // ── module-level constants (rules.md §1.2) ───────────────────
 
-const VISIBILITY_CHOICES: Array<{
-  value: ProjectVisibility;
-  label: string;
-  description: string;
-  icon: typeof Lock;
-}> = [
-  {
-    value: "private",
-    label: "Private",
-    description: "Only explicitly added project members can see this project.",
-    icon: Lock,
-  },
-  {
-    value: "organization",
-    label: "Organization",
-    description: "Every member of the organization can read this project.",
-    icon: Building2,
-  },
-  {
-    value: "public",
-    label: "Public",
-    description: "Readable by anyone with the link, subject to org policy.",
-    icon: Globe,
-  },
-];
-
-const COLOR_CHOICES = [
-  { value: "#6366f1", label: "Indigo" },
-  { value: "#0ea5e9", label: "Sky" },
-  { value: "#10b981", label: "Emerald" },
-  { value: "#f59e0b", label: "Amber" },
-  { value: "#ef4444", label: "Red" },
-  { value: "#a855f7", label: "Violet" },
-];
-
 const SETUP_STEPS: SetupStepItem[] = [
   { title: "Name the project", description: "The slug is derived from the name and used in ingestion URLs." },
-  { title: "Pick visibility", description: "Controls who in the organization can read the project." },
   { title: "Create an environment", description: "Development, staging, production — added after creation." },
   { title: "Issue an ingestion key", description: "API keys are environment-scoped and shown only once." },
 ];
@@ -72,8 +36,6 @@ export default function CreateProjectWizardPage() {
   const navigate = useNavigate();
   const activeOrgSlug = useOrgStore((s) => s.activeOrgSlug);
   const { createProject } = useProjectMutations();
-  const [visibility, setVisibility] = useState<ProjectVisibility>("private");
-  const [color, setColor] = useState<string>(COLOR_CHOICES[0].value);
   const [error, setError] = useState<string | null>(null);
 
   /**
@@ -101,9 +63,7 @@ export default function CreateProjectWizardPage() {
 
     const payload: CreateProjectBody = {
       name,
-      visibility,
       timezone,
-      color,
       ...(description ? { description } : {}),
       ...(tags.length > 0 ? { tags } : {}),
     };
@@ -203,68 +163,6 @@ export default function CreateProjectWizardPage() {
                   className={fieldInputClass}
                 />
               </DialogField>
-            </div>
-          </Panel>
-
-          <Panel title="Visibility" description="Who inside the organization can read this project." icon={Lock}>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-              {VISIBILITY_CHOICES.map((choice) => {
-                const selected = visibility === choice.value;
-                return (
-                  <button
-                    key={choice.value}
-                    type="button"
-                    aria-pressed={selected}
-                    onClick={() => setVisibility(choice.value)}
-                    className={cn(
-                      "flex flex-col gap-2 rounded-[12px] border p-3.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]",
-                      selected
-                        ? "border-[var(--brand)] bg-[var(--brand-bg)]"
-                        : "border-[var(--border)] bg-[var(--bg2)] hover:border-[var(--border2)]",
-                    )}
-                  >
-                    <span className="flex items-center gap-2">
-                      <choice.icon
-                        className={cn("size-4", selected ? "text-[var(--brand)]" : "text-[var(--text3)]")}
-                        aria-hidden="true"
-                      />
-                      <span
-                        className={cn(
-                          "text-[13px] font-semibold",
-                          selected ? "text-[var(--brand)]" : "text-[var(--text)]",
-                        )}
-                      >
-                        {choice.label}
-                      </span>
-                    </span>
-                    <span className="text-[12px] leading-snug text-[var(--text2)]">{choice.description}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </Panel>
-
-          <Panel title="Accent colour" description="Used for project chips and charts." icon={Palette}>
-            <div className="flex flex-wrap gap-2.5">
-              {COLOR_CHOICES.map((choice) => {
-                const selected = color === choice.value;
-                return (
-                  <button
-                    key={choice.value}
-                    type="button"
-                    aria-label={choice.label}
-                    aria-pressed={selected}
-                    onClick={() => setColor(choice.value)}
-                    className={cn(
-                      "inline-flex size-8 items-center justify-center rounded-full ring-2 ring-offset-2 ring-offset-[var(--bg1)] transition-transform hover:scale-105 focus-visible:outline-none",
-                      selected ? "ring-[var(--text)]" : "ring-transparent",
-                    )}
-                    style={{ background: choice.value }}
-                  >
-                    {selected && <Check className="size-4 text-white" aria-hidden="true" />}
-                  </button>
-                );
-              })}
             </div>
           </Panel>
 

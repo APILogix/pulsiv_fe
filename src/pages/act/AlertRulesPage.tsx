@@ -6,20 +6,13 @@ import {
   Shield,
   Layers,
   Sliders,
-  Sparkles,
   Activity,
   Flame,
   Zap,
   Cpu,
   Lock,
   Database,
-  Globe,
-  AlarmClock,
   Check,
-  CheckCircle2,
-  AlertTriangle,
-  Code,
-  Clock,
   KeyRound,
   ShieldCheck,
   Pause,
@@ -49,6 +42,7 @@ import { cn } from "@/lib/utils";
 
 type TabFilter = "catalog" | "custom" | "effective";
 type SortOption = "created_at" | "updated_at" | "name";
+type ViewMode = "table" | "cards";
 
 const TAB_OPTIONS: SegmentOption<TabFilter>[] = [
   { value: "catalog", label: "Catalog" },
@@ -62,6 +56,13 @@ const SORT_OPTIONS: SegmentOption<SortOption>[] = [
   { value: "name", label: "Name" },
 ];
 
+const VIEW_OPTIONS: SegmentOption<ViewMode>[] = [
+  { value: "table", label: "Table" },
+  { value: "cards", label: "Cards" },
+];
+
+const PAGE_SIZE = 15;
+
 const CATEGORY_ITEMS: Array<{ id: string; label: string; icon: React.ReactNode }> = [
   { id: "all", label: "All", icon: <Check className="size-3 shrink-0" /> },
   { id: "errors", label: "Errors", icon: <Flame className="size-3 text-rose-400 shrink-0" /> },
@@ -73,13 +74,53 @@ const CATEGORY_ITEMS: Array<{ id: string; label: string; icon: React.ReactNode }
   { id: "custom", label: "Custom", icon: <Shield className="size-3 text-[var(--brand)] shrink-0" /> },
 ];
 
+function formatPolicyThreshold(value: unknown): string {
+  if (value == null) return "Not set";
+  if (typeof value === "number" || typeof value === "string" || typeof value === "boolean") {
+    return String(value);
+  }
+  if (typeof value === "object" && !Array.isArray(value)) {
+    const record = value as Record<string, unknown>;
+    const rawValue = record.value ?? record.threshold ?? record.default ?? record.amount;
+    const unit = typeof record.unit === "string" && record.unit.length > 0 ? ` ${record.unit}` : "";
+    if (rawValue != null) return `${String(rawValue)}${unit}`;
+  }
+  return "Configured";
+}
+
+function formatSeconds(seconds?: number | null): string {
+  if (seconds == null) return "Not set";
+  if (seconds < 60) return `${seconds}s`;
+  if (seconds % 3600 === 0) return `${seconds / 3600}h`;
+  if (seconds % 60 === 0) return `${seconds / 60}m`;
+  return `${seconds}s`;
+}
+
+function severityTone(severity?: AlertSeverity | string | null): string {
+  switch ((severity ?? "info").toLowerCase()) {
+    case "critical":
+    case "fatal":
+      return "border-rose-500/30 bg-rose-500/10 text-rose-300";
+    case "error":
+      return "border-red-500/30 bg-red-500/10 text-red-300";
+    case "warning":
+      return "border-amber-500/30 bg-amber-500/10 text-amber-300";
+    default:
+      return "border-sky-500/30 bg-sky-500/10 text-sky-300";
+  }
+}
+
 export default function AlertRulesPage() {
   const navigate = useNavigate();
-  const { data: policies = [], isLoading } = useOrganizationAlertPolicies();
+  const [page, setPage] = useState(0);
+  const { data: policiesPage, isLoading } = useOrganizationAlertPolicies({ limit: PAGE_SIZE, offset: page * PAGE_SIZE });
+  const policies = policiesPage?.data ?? [];
+  const totalPolicies = policiesPage?.total ?? policies.length;
   const { create } = useOrganizationAlertPolicyMutations();
 
   const [activeTab, setActiveTab] = useState<TabFilter>("catalog");
   const [sortBy, setSortBy] = useState<SortOption>("created_at");
+  const [viewMode, setViewMode] = useState<ViewMode>("table");
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("all");
   const [open, setOpen] = useState(false);
@@ -116,16 +157,12 @@ export default function AlertRulesPage() {
     });
   }, [activeTab, category, policies, search, sortBy]);
 
-  const customPolicies = useMemo(() => {
-    return policies.filter((p) => !p.isSystem || p.category === "custom");
-  }, [policies]);
-
   const activeCount = useMemo(() => policies.filter((p) => p.enabled !== false).length, [policies]);
   const systemCount = useMemo(() => policies.filter((p) => p.isSystem).length, [policies]);
   const criticalCount = useMemo(() => policies.filter((p) => p.severity === "critical").length, [policies]);
 
   const facts: HeroFact[] = [
-    { label: "POLICIES", value: policies.length, icon: Layers },
+    { label: "POLICIES", value: totalPolicies, icon: Layers },
     { label: "ACTIVE", value: activeCount, tone: "green", icon: ShieldCheck },
     { label: "SYSTEM", value: systemCount, tone: "neutral", icon: Pause },
     { label: "CRITICAL", value: formatCompact(criticalCount), tone: criticalCount > 0 ? "red" : "neutral", icon: KeyRound },
@@ -189,7 +226,7 @@ export default function AlertRulesPage() {
       <Toolbar
         trailing={
           <span className="font-[family-name:var(--mono)] text-[11px] tabular-nums text-[var(--text3)]">
-            {filteredPolicies.length} shown
+            {filteredPolicies.length} shown of {totalPolicies}
           </span>
         }
       >
@@ -220,6 +257,13 @@ export default function AlertRulesPage() {
           options={SORT_OPTIONS}
           ariaLabel="Sort Policies"
         />
+
+        <SegmentedControl
+          value={viewMode}
+          onChange={setViewMode}
+          options={VIEW_OPTIONS}
+          ariaLabel="Alert rule view"
+        />
       </Toolbar>
 
       {/* ── Category Filter Strip ─────────────────────────────────── */}
@@ -244,6 +288,32 @@ export default function AlertRulesPage() {
               <span>{cat.label}</span>
             </button>
           ))}
+        </div>
+      )}
+
+      {activeTab !== "effective" && totalPolicies > PAGE_SIZE && (
+        <div className="flex items-center justify-between rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] px-3 py-2">
+          <span className="font-[family-name:var(--mono)] text-[11px] text-[var(--text3)]">
+            Page {page + 1} of {Math.max(1, Math.ceil(totalPolicies / PAGE_SIZE))}
+          </span>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setPage((current) => Math.max(0, current - 1))}
+              disabled={page === 0}
+              className="rounded-md border border-[var(--border)] bg-[var(--bg2)] px-3 py-1.5 text-[11px] font-medium text-[var(--text)] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Previous
+            </button>
+            <button
+              type="button"
+              onClick={() => setPage((current) => current + 1)}
+              disabled={(page + 1) * PAGE_SIZE >= totalPolicies}
+              className="rounded-md border border-[var(--border)] bg-[var(--bg2)] px-3 py-1.5 text-[11px] font-medium text-[var(--text)] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Next
+            </button>
+          </div>
         </div>
       )}
 
@@ -273,7 +343,7 @@ export default function AlertRulesPage() {
           <div className="font-semibold text-[var(--text)]">No alert policies found</div>
           <div>No policies match your search or selected category filter.</div>
         </div>
-      ) : (
+      ) : viewMode === "cards" ? (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
           {filteredPolicies.map((policy) => (
             <PolicyCatalogCard
@@ -283,6 +353,102 @@ export default function AlertRulesPage() {
               onEdit={(item) => navigate(`/alerts/policies/${item.id}`)}
             />
           ))}
+        </div>
+      ) : (
+        <div className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)]">
+          <div className="hidden overflow-x-auto md:block">
+            <table className="w-full min-w-[980px] text-left text-[12px]">
+              <thead className="border-b border-[var(--border)] bg-[var(--bg2)] font-[family-name:var(--mono)] text-[10.5px] uppercase tracking-wider text-[var(--text3)]">
+                <tr>
+                  <th className="px-4 py-3 font-semibold">Rule</th>
+                  <th className="px-4 py-3 font-semibold">Category</th>
+                  <th className="px-4 py-3 font-semibold">Severity</th>
+                  <th className="px-4 py-3 font-semibold">Metric source</th>
+                  <th className="px-4 py-3 font-semibold">Threshold</th>
+                  <th className="px-4 py-3 font-semibold">Window</th>
+                  <th className="px-4 py-3 font-semibold">Cooldown</th>
+                  <th className="px-4 py-3 text-right font-semibold">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[var(--border)]">
+                {filteredPolicies.map((policy) => (
+                  <tr key={policy.id} className="transition-colors hover:bg-[var(--bg2)]">
+                    <td className="max-w-[320px] px-4 py-3 align-top">
+                      <button
+                        type="button"
+                        onClick={() => navigate(`/alerts/policies/${policy.id}`)}
+                        className="block text-left text-[13px] font-semibold text-[var(--text)] hover:text-[var(--brand)]"
+                      >
+                        {policy.name}
+                      </button>
+                      <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                        <code className="rounded border border-[var(--border)] bg-[var(--bg2)] px-1.5 py-0.5 font-[family-name:var(--mono)] text-[10.5px] text-[var(--text3)]">
+                          {policy.slug}
+                        </code>
+                        {policy.isSystem && (
+                          <span className="inline-flex items-center gap-1 rounded-full border border-[var(--border)] px-1.5 py-0.5 text-[10px] text-[var(--text3)]">
+                            <Package className="size-3" />
+                            System
+                          </span>
+                        )}
+                      </div>
+                      {policy.description && (
+                        <p className="mt-1 line-clamp-2 text-[11.5px] leading-relaxed text-[var(--text3)]">
+                          {policy.description}
+                        </p>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 align-top">
+                      <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--bg2)] px-2 py-1 text-[11px] capitalize text-[var(--text2)]">
+                        {CATEGORY_ITEMS.find((item) => item.id === policy.category)?.icon ?? <Shield className="size-3" />}
+                        {policy.category || "general"}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 align-top">
+                      <span className={cn("inline-flex rounded-full border px-2 py-1 font-[family-name:var(--mono)] text-[10.5px] font-semibold uppercase", severityTone(policy.severity))}>
+                        {policy.severity}
+                      </span>
+                    </td>
+                    <td className="max-w-[190px] px-4 py-3 align-top">
+                      <code className="font-[family-name:var(--mono)] text-[11px] text-[var(--text2)]">
+                        {policy.metricSource || "not configured"}
+                      </code>
+                    </td>
+                    <td className="px-4 py-3 align-top font-[family-name:var(--mono)] text-[12px] font-semibold text-[var(--text)]">
+                      {formatPolicyThreshold(policy.defaultThreshold)}
+                    </td>
+                    <td className="px-4 py-3 align-top font-[family-name:var(--mono)] text-[12px] text-[var(--text2)]">
+                      {formatSeconds(policy.evaluationWindowSeconds)}
+                    </td>
+                    <td className="px-4 py-3 align-top font-[family-name:var(--mono)] text-[12px] text-[var(--text2)]">
+                      {formatSeconds(policy.cooldownSeconds)}
+                    </td>
+                    <td className="px-4 py-3 text-right align-top">
+                      <button
+                        type="button"
+                        onClick={() => navigate(`/alerts/policies/${policy.id}`)}
+                        className="inline-flex items-center gap-1.5 rounded-md border border-[var(--border)] bg-[var(--bg2)] px-2.5 py-1.5 text-[11px] font-medium text-[var(--text)] transition-colors hover:border-[var(--brand)] hover:text-[var(--brand)]"
+                      >
+                        <Sliders className="size-3.5" />
+                        Manage
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="grid gap-3 border-t border-[var(--border)] p-3 md:hidden">
+            {filteredPolicies.map((policy) => (
+              <PolicyCatalogCard
+                key={policy.id}
+                policy={policy}
+                onViewDetails={(item) => navigate(`/alerts/policies/${item.id}`)}
+                onEdit={(item) => navigate(`/alerts/policies/${item.id}`)}
+              />
+            ))}
+          </div>
         </div>
       )}
 

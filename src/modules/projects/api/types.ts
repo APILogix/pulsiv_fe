@@ -9,7 +9,6 @@
 // ── Core project ─────────────────────────────────────────────
 
 export type ProjectStatus = "active" | "paused" | "archived";
-export type ProjectVisibility = "private" | "organization" | "public";
 
 export interface Project {
   id: string;
@@ -20,11 +19,9 @@ export interface Project {
   slug: string;
   description: string | null;
   status: ProjectStatus;
-  visibility: ProjectVisibility;
   timezone: string;
   tags: string[];
   icon: string | null;
-  color: string | null;
   metadata: Record<string, unknown>;
   archivedAt: string | null;
   deletedAt: string | null;
@@ -63,12 +60,10 @@ export interface ListProjectsQuery {
 export interface CreateProjectBody {
   name: string;
   description?: string | null;
-  visibility?: ProjectVisibility;
   status?: ProjectStatus;
   timezone?: string;
   tags?: string[];
   icon?: string | null;
-  color?: string | null;
   metadata?: Record<string, unknown>;
 }
 
@@ -76,11 +71,9 @@ export interface UpdateProjectBody {
   name?: string;
   description?: string | null;
   status?: ProjectStatus;
-  visibility?: ProjectVisibility;
   timezone?: string;
   tags?: string[];
   icon?: string | null;
-  color?: string | null;
   metadata?: Record<string, unknown>;
   version?: number;
 }

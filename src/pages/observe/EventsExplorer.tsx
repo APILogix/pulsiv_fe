@@ -1,93 +1,155 @@
 import { useState } from "react";
-import { useNavigate } from "react-router";
+import { useNavigate, Link } from "react-router";
+import { GitBranch } from "lucide-react";
 import { useObservabilityList } from "./hooks/useObservabilityApi";
 import {
-  PageHeader, FilterBar, SearchInput, ListShell, EventTypeBadge,
-  EnvironmentBadge, AskAiButton, Timestamp, VirtualList, TimeRangePicker, useTimeRangeParams,
+  PageHeader, FillPage, TableToolbar, SearchInput,
+  EnvironmentBadge, Timestamp, InfiniteTable, TimeRangePicker, useTimeRangeParams,
 } from "@/shared/observe";
-import { cn } from "@/lib/utils";
+import type { Column } from "@/shared/observe";
 
 interface SpanExplorerRow {
   id?: string;
+  publicId?: string;
   spanId?: string;
+  parentSpanId?: string;
   eventId?: string;
   name?: string;
+  spanKind?: string;
+  spanType?: string;
   durationMs?: number;
   duration?: number;
   environment?: string;
   metadata?: { environment?: string };
+  occurredAt?: string | number;
   timestamp?: string | number;
   startTime?: string | number;
   traceId?: string;
+  service?: string;
 }
 
 export default function EventsExplorer() {
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
+  const [cursor, setCursor] = useState<string | undefined>(undefined);
+  const [cursorHistory, setCursorHistory] = useState<string[]>([]);
   const { timeRangeState } = useTimeRangeParams();
 
+  const handleNextPage = (nextCursor: string) => {
+    setCursorHistory((prev) => [...prev, cursor ?? ""]);
+    setCursor(nextCursor);
+  };
+
+  const handlePreviousPage = () => {
+    if (cursorHistory.length === 0) return;
+    const prevCursor = cursorHistory[cursorHistory.length - 1];
+    setCursorHistory((prev) => prev.slice(0, -1));
+    setCursor(prevCursor || undefined);
+  };
+
   const { data, isLoading } = useObservabilityList<SpanExplorerRow>("spans", {
-    search: query,
+    search: query || undefined,
     range: timeRangeState.mode === "preset" ? timeRangeState.range : undefined,
     from: timeRangeState.from,
     to: timeRangeState.to,
+    cursor,
   });
   const items = data?.items ?? [];
-  const summary = data?.summary ?? {};
-  const total = typeof summary.total === "number" || typeof summary.total === "string" ? summary.total : items.length;
 
-  return (
-    <ListShell
-      header={
-        <>
-          <PageHeader
-            title="Spans Explorer"
-            description="Search and inspect distributed tracing spans."
-            actions={<TimeRangePicker />}
-          />
-          <FilterBar>
-            <SearchInput placeholder="Search spans…" onSearch={setQuery} defaultValue={query} />
-          </FilterBar>
-          <div className="flex items-center gap-1 border-b border-[var(--border)]">
-            <button type="button" className="relative px-3 py-2 text-sm font-medium text-[var(--text)] transition-colors">
-              Spans <span className="ml-1 text-[12px] text-[var(--text3)]">{total}</span>
-              <span className="absolute inset-x-0 -bottom-px h-0.5 bg-[var(--brand)]" />
-            </button>
-          </div>
-        </>
-      }
-    >
-      <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-[12px] border border-[var(--border)] bg-[var(--bg1)]">
-        {isLoading && items.length === 0 ? (
-          <div className="p-4 text-center text-sm text-[var(--text3)]">Loading...</div>
+  const columns: Column<SpanExplorerRow>[] = [
+    {
+      key: "time",
+      header: "TIME",
+      width: "120px",
+      cell: (s) => <Timestamp value={s.occurredAt ?? s.timestamp ?? s.startTime} />,
+    },
+    {
+      key: "name",
+      header: "OPERATION / SPAN",
+      width: "1fr",
+      cell: (s) => (
+        <span className="truncate font-[family-name:var(--mono)] text-[12px] text-[var(--text)]" title={s.name}>
+          {s.name ?? "Span"}
+        </span>
+      ),
+    },
+    {
+      key: "duration",
+      header: "DURATION",
+      width: "110px",
+      align: "right",
+      cell: (s) => (
+        <span className="font-[family-name:var(--mono)] text-[12px] tabular-nums text-[var(--text2)]">
+          {s.durationMs ?? s.duration ?? 0}ms
+        </span>
+      ),
+    },
+    {
+      key: "service",
+      header: "SERVICE",
+      width: "130px",
+      cell: (s) => (
+        <span className="truncate font-[family-name:var(--mono)] text-[11px] text-[var(--text3)]">
+          {s.service ?? "—"}
+        </span>
+      ),
+    },
+    {
+      key: "trace",
+      header: "TRACE",
+      width: "110px",
+      cell: (s) =>
+        s.traceId ? (
+          <Link
+            to={`/observability/traces/${s.traceId}`}
+            onClick={(e) => e.stopPropagation()}
+            className="inline-flex items-center gap-1 rounded-full bg-[var(--violet-bg)] px-2 py-0.5 font-[family-name:var(--mono)] text-[10px] font-medium text-[var(--violet)] hover:underline"
+          >
+            <GitBranch className="size-3 shrink-0" />
+            <span>{s.traceId.slice(0, 7)}</span>
+          </Link>
         ) : (
-          <VirtualList items={items} rowHeight={48} height="fill" className="flex-1" getKey={(s) => s.id ?? s.spanId ?? s.eventId}
-            renderRow={(s) => (
-              <Row onClick={() => navigate(`/observability/spans/${s.id ?? s.spanId ?? s.eventId}`)}>
-                <EventTypeBadge type="span" />
-                <span className="min-w-0 flex-1 truncate font-[family-name:var(--mono)] text-[12px] text-[var(--text2)]">{s.name ?? "Span"}</span>
-                <span className="text-[12px] tabular-nums text-[var(--text3)]">{s.durationMs ?? s.duration ?? 0}ms</span>
-                <EnvironmentBadge environment={s.environment ?? s.metadata?.environment} />
-                <Timestamp value={s.timestamp ?? s.startTime} />
-                <AskAiButton question={`Investigate span "${s.name ?? "Span"}" (${s.durationMs ?? s.duration ?? 0}ms) on trace ${s.traceId ?? "unknown"}.`} />
-              </Row>
-            )} />
-        )}
-      </div>
-    </ListShell>
-  );
-}
+          <span className="font-[family-name:var(--mono)] text-[11px] text-[var(--text3)]">—</span>
+        ),
+    },
+    {
+      key: "env",
+      header: "ENV",
+      width: "110px",
+      cell: (s) => <EnvironmentBadge environment={s.environment ?? s.metadata?.environment ?? "production"} />,
+    },
+  ];
 
-function Row({ children, onClick }: { children: React.ReactNode; onClick?: () => void }) {
   return (
-    <div
-      role={onClick ? "button" : undefined}
-      tabIndex={onClick ? 0 : undefined}
-      onClick={onClick}
-      onKeyDown={onClick ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } } : undefined}
-      className={cn("flex h-12 items-center gap-3 border-b border-[var(--border)] px-4", onClick && "cursor-pointer hover:bg-[var(--bg2)]")}
-    >
-      {children}
-    </div>
+    <FillPage>
+      <PageHeader
+        title="Spans Explorer"
+        description="Search and inspect distributed tracing spans."
+        actions={<TimeRangePicker />}
+      />
+
+      <TableToolbar resourceName="spans">
+        <SearchInput placeholder="Search spans, operations…" onSearch={setQuery} defaultValue={query} />
+      </TableToolbar>
+
+      <InfiniteTable
+        className="flex-1"
+        loading={isLoading}
+        items={items}
+        queryKey={["spans-explorer", query, timeRangeState, cursor]}
+        columns={columns}
+        getKey={(s) => s.publicId ?? s.id ?? s.spanId ?? s.eventId ?? String(Math.random())}
+        onRowClick={(s) => navigate(`/observability/spans/${encodeURIComponent(s.publicId ?? s.id ?? s.spanId ?? s.eventId ?? '')}`)}
+        pagination={{
+          nextCursor: data?.pagination?.nextCursor,
+          previousCursor: data?.pagination?.previousCursor,
+          hasNext: data?.pagination?.hasNext,
+          hasPrevious: cursorHistory.length > 0 || !!data?.pagination?.hasPrevious,
+          limit: data?.pagination?.limit,
+        }}
+        onNextPage={handleNextPage}
+        onPreviousPage={cursorHistory.length > 0 ? handlePreviousPage : undefined}
+      />
+    </FillPage>
   );
 }

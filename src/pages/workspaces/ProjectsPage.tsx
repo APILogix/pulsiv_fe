@@ -92,7 +92,7 @@ function ProjectCard({ project, activeOrgSlug }: { project: ProjectListItem; act
         </div>
       )}
 
-      <dl className="grid grid-cols-3 gap-px overflow-hidden rounded-[var(--radius)] border border-[var(--border)] bg-[var(--border)]">
+      <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-[var(--radius)] border border-[var(--border)] bg-[var(--border)]">
         <div className="flex flex-col gap-0.5 bg-[var(--bg1)] px-3 py-2">
           <dt className="font-[family-name:var(--mono)] text-[10px] font-medium uppercase tracking-[0.09em] text-[var(--text3)]">Keys</dt>
           <dd className="font-[family-name:var(--mono)] text-[13px] font-medium tabular-nums text-[var(--text)]">{project.apiKeysCount}</dd>
@@ -102,10 +102,6 @@ function ProjectCard({ project, activeOrgSlug }: { project: ProjectListItem; act
           <dd className="font-[family-name:var(--mono)] text-[13px] font-medium tabular-nums text-[var(--green)]">
             {project.activeApiKeysCount}
           </dd>
-        </div>
-        <div className="flex flex-col gap-0.5 bg-[var(--bg1)] px-3 py-2">
-          <dt className="font-[family-name:var(--mono)] text-[10px] font-medium uppercase tracking-[0.09em] text-[var(--text3)]">Visibility</dt>
-          <dd className="truncate text-[13px] font-medium capitalize text-[var(--text)]">{project.visibility}</dd>
         </div>
       </dl>
 

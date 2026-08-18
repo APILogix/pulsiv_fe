@@ -1,7 +1,7 @@
 import { useParams } from "react-router";
-import ResourceDetailPage from "./detail/ResourceDetailPage";
+import { TraceDetailView } from "./trace-detail/TraceDetailView";
 
 export default function TraceDetailPage() {
   const { traceId = "" } = useParams();
-  return <ResourceDetailPage resource="traces" id={traceId} />;
+  return <TraceDetailView traceId={traceId} />;
 }

@@ -41,8 +41,9 @@ export function StatusCodeBadge({ code }: { code?: number | null }) {
     safeCode >= 500 ? "bg-[var(--red-bg)] text-[var(--red)]"
     : safeCode >= 400 ? "bg-[var(--amber-bg)] text-[var(--amber)]"
     : safeCode >= 300 ? "bg-[var(--blue-bg)] text-[var(--blue)]"
-    : "bg-[var(--green-bg)] text-[var(--green)]";
-  return <span className={cn("inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium tabular-nums font-[family-name:var(--mono)]", tone)}>{safeCode}</span>;
+    : safeCode >= 200 ? "bg-[var(--green-bg)] text-[var(--green)]"
+    : "bg-[var(--bg3)] text-[var(--text3)]";
+  return <span className={cn("inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium tabular-nums font-[family-name:var(--mono)]", tone)}>{safeCode > 0 ? safeCode : "—"}</span>;
 }
 
 /* §2.6 — method badges are a tinted background plus saturated text. */
@@ -132,20 +133,29 @@ export function EventTypeBadge({ type }: { type?: string | null }) {
    requests, errors, metrics, profiling, crons, replay, …). Tone follows the
    same red=prod / amber=staging / blue=dev convention as the environments
    management page (see modules/projects/environment.constants.ts). */
-const ENVIRONMENT_TONE: Record<string, string> = {
-  production: "bg-[var(--red-bg)] text-[var(--red)]",
-  pre_production: "bg-[var(--amber-bg)] text-[var(--amber)]",
-  staging: "bg-[var(--amber-bg)] text-[var(--amber)]",
-  pre_staging: "bg-[var(--amber-bg)] text-[var(--amber)]",
-  development: "bg-[var(--blue-bg)] text-[var(--blue)]",
-  testing: "bg-[var(--violet-bg)] text-[var(--violet)]",
-  preview: "bg-[var(--violet-bg)] text-[var(--violet)]",
-  pre_deployment: "bg-[var(--blue-bg)] text-[var(--blue)]",
+const DEFAULT_ENVIRONMENT_TONE = { text: "var(--text2)", bg: "var(--bg3)", border: "var(--border2)" };
+
+const ENVIRONMENT_TONE: Record<string, { text: string; bg: string; border: string }> = {
+  production: { text: "#fb7185", bg: "rgba(251,113,133,0.10)", border: "rgba(251,113,133,0.32)" },
+  pre_production: { text: "#f97316", bg: "rgba(249,115,22,0.10)", border: "rgba(249,115,22,0.30)" },
+  staging: { text: "#f59e0b", bg: "rgba(245,158,11,0.10)", border: "rgba(245,158,11,0.30)" },
+  pre_staging: { text: "#eab308", bg: "rgba(234,179,8,0.10)", border: "rgba(234,179,8,0.30)" },
+  development: { text: "#60a5fa", bg: "rgba(96,165,250,0.11)", border: "rgba(96,165,250,0.32)" },
+  testing: { text: "#a78bfa", bg: "rgba(167,139,250,0.11)", border: "rgba(167,139,250,0.32)" },
+  preview: { text: "#22d3ee", bg: "rgba(34,211,238,0.10)", border: "rgba(34,211,238,0.30)" },
+  pre_deployment: { text: "#2dd4bf", bg: "rgba(45,212,191,0.10)", border: "rgba(45,212,191,0.30)" },
+  custom: { text: "#c084fc", bg: "rgba(192,132,252,0.10)", border: "rgba(192,132,252,0.30)" },
+  unknown: DEFAULT_ENVIRONMENT_TONE,
 };
 export function EnvironmentBadge({ environment }: { environment?: string | null }) {
-  const safeEnv = environment ?? "unknown";
+  const safeEnv = (environment ?? "unknown").toLowerCase().replace(/-/g, "_");
+  const tone = ENVIRONMENT_TONE[safeEnv] ?? DEFAULT_ENVIRONMENT_TONE;
   return (
-    <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.08em] font-[family-name:var(--mono)]", ENVIRONMENT_TONE[safeEnv] ?? "bg-[var(--bg3)] text-[var(--text2)]")}>
+    <span
+      className="inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 font-[family-name:var(--mono)] text-[10px] font-medium uppercase tracking-[0.08em]"
+      style={{ backgroundColor: tone.bg, borderColor: tone.border, color: tone.text }}
+    >
+      <span className="size-1.5 rounded-full bg-current" />
       {safeEnv.replace(/_/g, " ")}
     </span>
   );

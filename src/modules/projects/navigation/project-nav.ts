@@ -11,6 +11,7 @@
 
 import {
   Activity,
+  AlertOctagon,
   BellRing,
   Cable,
   Gauge,
@@ -113,6 +114,12 @@ export const PROJECT_NAV: ProjectNavGroup[] = [
     label: "Alerting",
     icon: BellRing,
     items: [
+      {
+        segment: "alerts",
+        label: "Incidents",
+        icon: AlertOctagon,
+        description: "Triggered alert incidents and breach evaluations for this project",
+      },
       {
         segment: "alert-rules",
         label: "Alert rules",

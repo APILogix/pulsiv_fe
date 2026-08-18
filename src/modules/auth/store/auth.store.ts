@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import type { UserProfile } from '../types/auth.types';
+import { useBootstrapStore } from '../../bootstrap/store/bootstrap.store';
 
 interface AuthState {
   user: UserProfile | null;
@@ -37,14 +38,21 @@ export const useAuthStore = create<AuthState>()(
       setMfaVerified: (mfaVerified) => set({ mfaVerified }),
       setStepUpFresh: (stepUpFresh) => set({ stepUpFresh }),
       setHasHydrated: (hasHydrated) => set({ hasHydrated }),
-      clearAuth: () => set({
-        user: null,
-        isAuthenticated: false,
-        isAdmin: false,
-        mfaVerified: false,
-        stepUpFresh: false,
-        stepUpPromise: null,
-      }),
+      clearAuth: () => {
+        try {
+          useBootstrapStore.getState().clearBootstrap();
+        } catch {
+          // Ignore if store uninitialized
+        }
+        set({
+          user: null,
+          isAuthenticated: false,
+          isAdmin: false,
+          mfaVerified: false,
+          stepUpFresh: false,
+          stepUpPromise: null,
+        });
+      },
       triggerStepUp: () => new Promise<void>((resolve, reject) => {
         set({ stepUpPromise: { resolve, reject } });
       }),

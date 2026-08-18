@@ -20,6 +20,8 @@ import { prefetchRoute } from '@/app/router/route-prefetch';
 
 import { PrimaryRail } from './PrimaryRail';
 import { QuotaCardWidget } from './QuotaCardWidget';
+import { orgPath } from '@/app/router/org-routes';
+
 
 /**
  * Children shown in the global flyout for a rail item.
@@ -46,7 +48,7 @@ export function AppDualSidebar() {
     location.pathname.startsWith('/settings/');
 
   const activeOrgSlug = useOrgStore((s) => s.activeOrgSlug);
-  const matchPath = (p: string) => (p === '/projects' && activeOrgSlug) ? `/${activeOrgSlug}/projects` : p;
+  const matchPath = (p: string) => (activeOrgSlug ? orgPath(activeOrgSlug, p) : p);
 
   // Project pages live inside this flyout as an "Active project" section —
   // there is no third sidebar.

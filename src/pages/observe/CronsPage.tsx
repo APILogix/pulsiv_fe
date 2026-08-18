@@ -27,25 +27,40 @@ function CronsPageContent() {
   const navigate = useNavigate();
   const [status, setStatus] = useState("");
   const [query, setQuery] = useState("");
+  const [cursor, setCursor] = useState<string | undefined>(undefined);
+  const [cursorHistory, setCursorHistory] = useState<string[]>([]);
   const [isAiModalOpen, setIsAiModalOpen] = useState(false);
 
   const { timeRangeState } = useTimeRangeParams();
   const { selectedKeys, toggleSelect, selectAll, clearSelection, selectedCount } = useSelection();
 
+  const handleNextPage = (nextCursor: string) => {
+    setCursorHistory((prev) => [...prev, cursor ?? ""]);
+    setCursor(nextCursor);
+  };
+
+  const handlePreviousPage = () => {
+    if (cursorHistory.length === 0) return;
+    const prevCursor = cursorHistory[cursorHistory.length - 1];
+    setCursorHistory((prev) => prev.slice(0, -1));
+    setCursor(prevCursor || undefined);
+  };
+
   const { data, isLoading } = useObservabilityList<any>("crons", {
-    status,
-    search: query,
+    status: status || undefined,
+    search: query || undefined,
     range: timeRangeState.mode === "preset" ? timeRangeState.range : undefined,
     from: timeRangeState.from,
     to: timeRangeState.to,
+    cursor,
   });
 
   const rows = data?.items ?? [];
   const summary = data?.summary ?? {};
 
   const ok = Number(summary.ok ?? rows.filter((c: any) => c.status === "ok").length);
-  const failing = Number(summary.error ?? rows.filter((c: any) => c.status === "error").length);
-  const monitors = Number(summary.monitors ?? new Set(rows.map((c: any) => c.monitorSlug)).size);
+  const failing = Number(summary.failed ?? summary.error ?? rows.filter((c: any) => c.status === "error" || c.status === "failed").length);
+  const monitors = Number(summary.uniqueMonitors ?? summary.monitors ?? new Set(rows.map((c: any) => c.monitorSlug)).size);
   const total = Number(summary.total ?? rows.length);
 
   const columns: Column<CronCheckInEvent>[] = [
@@ -85,14 +100,23 @@ function CronsPageContent() {
         className="flex-1"
         loading={isLoading}
         items={rows}
-        queryKey={["crons-page", status, query, timeRangeState]}
+        queryKey={["crons-page", status, query, timeRangeState, cursor]}
         columns={columns}
-        getKey={(c) => (c as any).id ?? c.eventId}
-        onRowClick={(c) => navigate(`/observability/crons/${encodeURIComponent((c as any).id ?? c.eventId)}`)}
+        getKey={(c) => (c as any).publicId ?? (c as any).id ?? c.eventId}
+        onRowClick={(c) => navigate(`/observability/crons/${encodeURIComponent((c as any).publicId ?? (c as any).id ?? c.eventId)}`)}
         selectable
         selectedKeys={selectedKeys}
         onSelectToggle={toggleSelect}
         onSelectAllToggle={selectAll}
+        pagination={{
+          nextCursor: data?.pagination?.nextCursor,
+          previousCursor: data?.pagination?.previousCursor,
+          hasNext: data?.pagination?.hasNext,
+          hasPrevious: cursorHistory.length > 0 || !!data?.pagination?.hasPrevious,
+          limit: data?.pagination?.limit,
+        }}
+        onNextPage={handleNextPage}
+        onPreviousPage={cursorHistory.length > 0 ? handlePreviousPage : undefined}
       />
 
       <AskAiModal

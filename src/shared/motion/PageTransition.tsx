@@ -28,17 +28,16 @@ export function PageTransition({
   return (
     <motion.div
       key={transitionKey}
-      initial={{ opacity: 0, y: 6 }}
+      initial={{ opacity: 0, y: 4 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: DURATION.base, ease: EASE.standard }}
-      // framer-motion sets and clears `will-change` itself, so we don't pin a
-      // compositor layer for the lifetime of the page.
+      transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }}
       className={cn("min-h-0 w-full", className)}
     >
       {children}
     </motion.div>
   );
 }
+
 
 /**
  * ProgressiveReveal — Phase 10 ("content appears progressively").

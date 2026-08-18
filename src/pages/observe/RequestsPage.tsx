@@ -44,30 +44,6 @@ const DURATION_OPTS = [
   { value: "gte:2000", label: "> 2s" },
 ];
 
-const getInitialFromDate = () => {
-  const d = new Date(Date.now() - 24 * 60 * 60 * 1000);
-  return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
-};
-const getInitialToDate = () => {
-  const d = new Date();
-  return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
-};
-
-const formatIsoBounds = (fromDate: string, toDate: string) => {
-  if (!fromDate) return { from: undefined, to: undefined };
-  const fromMs = new Date(fromDate).getTime();
-  if (isNaN(fromMs)) return { from: undefined, to: undefined };
-
-  let toMs = toDate ? new Date(toDate).getTime() : NaN;
-  if (isNaN(toMs) || toMs <= fromMs) {
-    toMs = fromMs + 24 * 60 * 60 * 1000;
-  }
-  return {
-    from: new Date(fromMs).toISOString(),
-    to: new Date(toMs).toISOString(),
-  };
-};
-
 function RequestsPageContent() {
   const navigate = useNavigate();
   const activeProjectSlug = useOrgStore((s) => s.activeProjectSlug);
@@ -119,29 +95,29 @@ function RequestsPageContent() {
   const stats = data?.statistics ?? {};
 
   const total = Number(summary.total ?? rows.length);
-  const errs = Number(summary.errors ?? rows.filter((r) => r.statusCode >= 500 || r.hasError).length);
-  const avg = Number(stats.avgLatency ?? (total ? Math.round(rows.reduce((s, r) => s + (r.durationMs ?? r.latency ?? 0), 0) / total) : 0));
+  const errs = Number(summary.errors ?? rows.filter((r) => (Number(r.statusCode ?? (r as any).status_code ?? 0) >= 500) || r.hasError).length);
+  const avg = Number(stats.avgLatency ?? (total ? Math.round(rows.reduce((s, r) => s + Number(r.durationMs ?? (r as any).duration_ms ?? r.latency ?? 0), 0) / total) : 0));
 
   const baseColumns: Column<RequestEvent>[] = [
     {
       key: "time",
       header: "Time",
       width: "120px",
-      cell: (r) => <Timestamp value={r.occurredAt ?? r.timestamp} />,
+      cell: (r) => <Timestamp value={r.occurredAt ?? (r as any).occurred_at ?? r.timestamp} />,
     },
     {
       key: "method",
       header: "Method",
       width: "75px",
-      cell: (r) => <MethodBadge method={r.method} />,
+      cell: (r) => <MethodBadge method={r.method ?? (r as any).httpMethod ?? (r as any).http_method ?? "GET"} />,
     },
     {
       key: "endpoint",
       header: "Endpoint",
       width: "1fr",
       cell: (r) => (
-        <span className="truncate font-[family-name:var(--mono)] text-[12px] font-medium text-[var(--text)]" title={r.endpoint ?? r.url}>
-          {r.endpoint ?? r.url ?? r.route ?? "/"}
+        <span className="truncate font-mono text-[12px] font-medium text-[var(--text)]" title={r.endpoint ?? r.url ?? r.route ?? r.name ?? "/"}>
+          {r.endpoint ?? r.url ?? r.route ?? r.name ?? "/"}
         </span>
       ),
     },
@@ -149,33 +125,43 @@ function RequestsPageContent() {
       key: "status",
       header: "Status",
       width: "85px",
-      cell: (r) => <StatusCodeBadge code={r.statusCode} />,
+      cell: (r) => <StatusCodeBadge code={Number(r.statusCode ?? (r as any).status_code ?? (r as any).status ?? 0)} />,
     },
     {
       key: "duration",
       header: "Duration",
       width: "130px",
-      cell: (r) => <LatencyBar value={r.durationMs ?? r.latency ?? 0} />,
+      cell: (r) => <LatencyBar value={Number(r.durationMs ?? (r as any).duration_ms ?? r.latency ?? 0)} />,
+    },
+    {
+      key: "service",
+      header: "Service",
+      width: "120px",
+      cell: (r) => (
+        <span className="truncate font-mono text-[11px] text-[var(--text2)]" title={r.service ?? r.projectName ?? (r as any).project_name ?? "—"}>
+          {r.service ?? r.projectName ?? (r as any).project_name ?? "—"}
+        </span>
+      ),
     },
     {
       key: "trace",
       header: "Trace",
       width: "115px",
       cell: (r) => {
-        const targetTraceId = r.tracePublicId ?? r.traceId ?? r.id;
-        const displayLabel = r.tracePublicId ?? (r.traceId ? r.traceId.slice(0, 6) : "Trace");
+        const targetTraceId = r.tracePublicId ?? (r as any).trace_public_id ?? r.traceId ?? (r as any).trace_id;
+        const displayLabel = r.tracePublicId ?? (r as any).trace_public_id ?? (r.traceId ? r.traceId.slice(0, 7) : "Trace");
         return targetTraceId ? (
           <Link
-            to={`/observability/traces/${targetTraceId}`}
+            to={`/observability/traces/${encodeURIComponent(targetTraceId)}`}
             onClick={(e) => e.stopPropagation()}
-            className="inline-flex items-center gap-1 rounded-full bg-[var(--violet-bg)] px-2 py-0.5 font-[family-name:var(--mono)] text-[10px] font-medium text-[var(--violet)] hover:underline"
+            className="inline-flex items-center gap-1 rounded-full bg-[var(--violet-bg)] px-2 py-0.5 font-mono text-[10px] font-medium text-[var(--violet)] hover:underline"
             title={r.tracePublicId ? `Trace Public ID: ${r.tracePublicId}` : (r.traceId ? `Trace: ${r.traceId}` : "View Trace")}
           >
             <GitBranch className="size-3 shrink-0" />
             <span>{displayLabel}</span>
           </Link>
         ) : (
-          <span className="font-[family-name:var(--mono)] text-[11px] text-[var(--text3)]">—</span>
+          <span className="font-mono text-[11px] text-[var(--text3)]">—</span>
         );
       },
     },
@@ -227,8 +213,8 @@ function RequestsPageContent() {
         items={rows}
         queryKey={["requests", activeProjectSlug, environment, method, statusClass, duration, timeRangeState, query, cursor]}
         columns={columns}
-        getKey={(r) => r.id ?? r.eventId ?? r.requestId}
-        onRowClick={(r) => navigate(`/observability/requests/${encodeURIComponent(r.publicId ?? r.id ?? r.requestId)}`)}
+        getKey={(r) => r.publicId ?? r.id ?? r.eventId ?? r.requestId ?? String(Math.random())}
+        onRowClick={(r) => navigate(`/observability/requests/${encodeURIComponent(r.publicId ?? r.id ?? r.requestId ?? '')}`)}
         selectable
         selectedKeys={selectedKeys}
         onSelectToggle={toggleSelect}

@@ -61,7 +61,7 @@ function ErrorGroupsListPageContent() {
     [filters, activeProjectSlug, timeRangeState],
   );
 
-  const { groups: filteredGroups, refetch, isLoading } = useErrorGroupsList(apiFilters);
+  const { groups: filteredGroups, refetch, isLoading, error } = useErrorGroupsList(apiFilters);
   const { updateStatus, mergeGroups } = useErrorGroupMutations();
   const allGroups = filteredGroups;
 
@@ -292,6 +292,12 @@ function ErrorGroupsListPageContent() {
           onClear={handleClearFilters}
         />
       </TableToolbar>
+
+      {error && (
+        <div className="rounded-[var(--radius)] border border-[var(--red)]/30 bg-[var(--red-bg)] px-4 py-3 text-[12px] text-[var(--red)]">
+          {error.message || "Error groups could not be loaded."}
+        </div>
+      )}
 
       <InfiniteTable
         className="flex-1"

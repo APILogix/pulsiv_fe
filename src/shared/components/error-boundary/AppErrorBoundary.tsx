@@ -1,9 +1,17 @@
 import { ErrorBoundary, FallbackProps } from 'react-error-boundary';
-import { useRouteError, isRouteErrorResponse } from 'react-router';
+import { Navigate, useRouteError, isRouteErrorResponse } from 'react-router';
 import { AlertTriangle, Terminal, RefreshCcw, Home } from 'lucide-react';
 import NotFoundPage from '@/shared/components/NotFoundPage';
 
+function isMissingProjectShellError(error: unknown): boolean {
+  return error instanceof Error && error.message === 'useCurrentProject must be used within ProjectShellPage';
+}
+
 function AppErrorFallback({ error, resetErrorBoundary }: FallbackProps) {
+  if (isMissingProjectShellError(error)) {
+    return <Navigate to="/projects" replace />;
+  }
+
   return (
     <div className="min-h-screen w-full bg-[var(--bg)] flex flex-col items-start justify-start p-8 relative overflow-hidden font-[family-name:var(--sans)] text-[var(--text)] selection:bg-[var(--red-bg)] selection:text-[var(--red)]">
       {/* Top red bar */}
@@ -94,6 +102,10 @@ export function RouteErrorBoundary() {
   // 404 → show animated 404 page, not the scary error diagnostic
   if (isRouteErrorResponse(error) && error.status === 404) {
     return <NotFoundPage />;
+  }
+
+  if (isMissingProjectShellError(error)) {
+    return <Navigate to="/projects" replace />;
   }
 
   let name = 'UNKNOWN_ERROR';

@@ -19,7 +19,7 @@ const envSchema = z.object({
   VITE_APP_ENV: z
     .enum(['development', 'staging', 'production'])
     .default('development'),
-  VITE_API_TIMEOUT: z.coerce.number().int().positive().default(15000),
+  VITE_API_TIMEOUT: z.coerce.number().int().positive().default(120000),
 });
 
 const parsed = envSchema.safeParse(import.meta.env);

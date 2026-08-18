@@ -13,9 +13,13 @@ import { useOrganizations } from '@/modules/organizations/hooks/useOrganizations
 import { orgApi } from '@/modules/organizations/api/org.api';
 import { useState } from 'react';
 
+import { useQueryClient } from '@tanstack/react-query';
+import { orgRoutes } from '@/app/router/org-routes';
+
 export function OrgSwitcher() {
   const { organizations, activeOrgId, setActiveOrgId, setActiveOrgSlug, isLoading } = useOrganizations();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [switchingOrgId, setSwitchingOrgId] = useState<string | null>(null);
 
   const activeOrg = organizations.find((org) => org.id === activeOrgId);
@@ -29,11 +33,17 @@ export function OrgSwitcher() {
       if (targetOrg) {
         setActiveOrgSlug(targetOrg.slug);
       }
+      // Invalidate all organization and project scoped queries so no stale data leaks
+      await queryClient.invalidateQueries();
       setSwitchingOrgId(null);
+      if (targetOrg?.slug) {
+        navigate(orgRoutes.dashboard(targetOrg.slug), { replace: true });
+      }
     } catch {
       setSwitchingOrgId(null);
     }
   };
+
 
   return (
     <DropdownMenu>

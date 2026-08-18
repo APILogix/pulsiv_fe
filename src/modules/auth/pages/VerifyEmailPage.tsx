@@ -14,13 +14,11 @@ import {
   Notice,
 } from '@/shared/ui/pulse';
 
-// One-off: a primary action that navigates instead of submitting. Mirrors
-// AuthButton's primary tone, which is button-only in the kit.
 function PrimaryLink({ to, children }: { to: string; children: React.ReactNode }) {
   return (
     <Link
       to={to}
-      className="inline-flex h-11 w-full items-center justify-center rounded-[9px] bg-[var(--brand)] text-[13.5px] font-semibold text-[var(--brand-fg)] transition-colors hover:bg-[var(--brand-d)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg1)]"
+      className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-[var(--radius)] bg-[var(--brand)] text-[13px] font-semibold text-[var(--brand-fg)] transition-colors duration-150 hover:bg-[var(--brand-d)] focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-[var(--brand-bg)]"
     >
       {children}
     </Link>
@@ -92,7 +90,7 @@ export default function VerifyEmailPage() {
         {email && (
           <div className="mb-4 rounded-[10px] border border-[var(--border)] bg-[var(--bg2)] px-3.5 py-3">
             <p className="text-[10.5px] font-semibold uppercase tracking-[0.14em] text-[var(--text3)]">Sent to</p>
-            <p className="mt-0.5 truncate font-[family-name:var(--mono)] text-[12.5px] text-[var(--text)]">{email}</p>
+            <p className="mt-0.5 truncate font-mono text-[13px] text-[var(--text)]">{email}</p>
           </div>
         )}
 

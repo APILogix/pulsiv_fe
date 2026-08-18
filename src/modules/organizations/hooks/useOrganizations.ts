@@ -1,8 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
 import { orgApi } from '../api/org.api';
 import { useOrgStore } from '../store/org.store';
-import { useEffect } from 'react';
+import { useEffect, useCallback } from 'react';
 import { tokenService } from '@/modules/auth/services/token.service';
+import { useBootstrapOrganizations, bootstrapService } from '@/modules/bootstrap';
 
 export const orgQueryKeys = {
   all: ['organizations'] as const,
@@ -27,45 +28,50 @@ export const orgQueryKeys = {
 
 export function useOrganizations() {
   const { activeOrgId, setActiveOrgId, activeOrgSlug, setActiveOrgSlug } = useOrgStore();
+  const bootstrapOrgs = useBootstrapOrganizations();
 
   const query = useQuery({
     queryKey: orgQueryKeys.lists(),
-    queryFn: () => orgApi.listOrganizations({ limit: 100 }), // Assume reasonable limit for switcher
+    queryFn: () => orgApi.listOrganizations({ limit: 100 }),
+    staleTime: 5 * 60 * 1000,
   });
 
-  // Auto-select first org if none is active, or ensure activeOrgSlug is synced with activeOrgId
-  useEffect(() => {
-    if (!query.data?.data?.length) return;
+  // Prefer bootstrap store organizations, falling back to query data
+  const rawOrgs = query.data?.data ?? [];
+  const organizations = bootstrapOrgs.length > 0 ? bootstrapOrgs : rawOrgs;
 
-    const orgs = query.data.data;
+  // Auto-select active org if none is active or sync activeOrgSlug
+  useEffect(() => {
+    if (!organizations.length) return;
+
     if (activeOrgId) {
-      const currentOrg = orgs.find((org) => org.id === activeOrgId);
-      if (currentOrg) {
-        if (currentOrg.slug !== activeOrgSlug) {
-          setActiveOrgSlug(currentOrg.slug);
-        }
-        return;
+      const currentOrg = organizations.find((org: any) => org.id === activeOrgId);
+      if (currentOrg && currentOrg.slug !== activeOrgSlug) {
+        setActiveOrgSlug(currentOrg.slug);
       }
+      return;
     }
 
     const currentOrgId = tokenService.getCurrentOrgId();
-    const currentOrg = orgs.find((org) => org.id === currentOrgId);
-    const nextOrg = currentOrg ?? orgs[0];
-    void orgApi.switchOrganization(nextOrg.id)
-      .catch(() => undefined)
-      .finally(() => {
-        setActiveOrgId(nextOrg.id);
-        setActiveOrgSlug(nextOrg.slug);
-      });
-  }, [query.data, activeOrgId, activeOrgSlug, setActiveOrgId, setActiveOrgSlug]);
+    const currentOrg = organizations.find((org: any) => org.id === currentOrgId);
+    const nextOrg = currentOrg ?? organizations[0];
+    if (nextOrg) {
+      setActiveOrgId(nextOrg.id);
+      setActiveOrgSlug(nextOrg.slug);
+    }
+  }, [organizations, activeOrgId, activeOrgSlug, setActiveOrgId, setActiveOrgSlug]);
+
+  const switchOrganization = useCallback(async (orgId: string) => {
+    return bootstrapService.switchOrganization(orgId);
+  }, []);
 
   return {
     ...query,
-    organizations: query.data?.data ?? [],
+    organizations,
     activeOrgId,
     activeOrgSlug,
     setActiveOrgId,
     setActiveOrgSlug,
+    switchOrganization,
   };
 }
-

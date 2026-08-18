@@ -330,6 +330,7 @@ export interface Promotion {
 // Request Bodies
 export interface CreateOrganizationBody {
   name: string;
+  slug?: string;
   description?: string;
   industry?: string;
   companySize?: string;

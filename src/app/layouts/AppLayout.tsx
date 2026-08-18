@@ -49,9 +49,10 @@ export function AppLayout() {
               that rely on `h-full` (ModuleLayout, ProjectShellPage) still
               resolve their height through the transition element.
             */}
-            <RouteBoundary scope="module" padded className="flex min-h-0 w-full flex-1 flex-col">
+            <RouteBoundary scope="module" padded={false} className="flex min-h-0 w-full flex-1 flex-col">
               <Outlet />
             </RouteBoundary>
+
           </AppErrorBoundary>
         </div>
         <ScrollToTop targetRef={scrollRef} />

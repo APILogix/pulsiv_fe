@@ -412,9 +412,9 @@ export const workspaceApi = {
 };
 
 export const orgPoliciesApi = {
-  list: async (orgId: string): Promise<OrganizationAlertPolicy[]> => {
-    const { data } = await apiClient.get(`/organizations/${orgId}/alert-policies`);
-    return camelizeDeep(data.data ?? []);
+  list: async (orgId: string, query: { limit?: number; offset?: number } = {}): Promise<Paged<OrganizationAlertPolicy>> => {
+    const { data } = await apiClient.get(`/organizations/${orgId}/alert-policies`, { params: query });
+    return paged<OrganizationAlertPolicy>(camelizeDeep(data), query.limit ?? 15);
   },
 
   getById: async (orgId: string, policyId: string): Promise<OrganizationAlertPolicy> => {
@@ -481,49 +481,84 @@ export const effectivePolicyApi = {
 
 // ── Stateful Incidents Command Center API ─────────────────────────
 
+export const projectAlertsApi = {
+  list: async (
+    orgId: string,
+    projectId: string,
+    query: { status?: string; severity?: string; limit?: number; offset?: number } = {},
+  ): Promise<Paged<AlertEvent>> => {
+    const { data } = await apiClient.get(`/organizations/${orgId}/projects/${projectId}/alerts`, {
+      params: query,
+    });
+    return paged<AlertEvent>(data);
+  },
+
+  get: async (orgId: string, projectId: string, alertEventId: string): Promise<AlertEvent> => {
+    const { data } = await apiClient.get(
+      `/organizations/${orgId}/projects/${projectId}/alerts/${alertEventId}`,
+    );
+    return camelizeDeep(data.data);
+  },
+
+  getStatus: async (orgId: string, projectId: string): Promise<import("./types").ProjectAlertingStatus> => {
+    const { data } = await apiClient.get(
+      `/organizations/${orgId}/projects/${projectId}/alerting/status`,
+    );
+    return camelizeDeep(data.data);
+  },
+};
+
+
 export const incidentsApi = {
-  list: async (orgId: string, params?: { state?: IncidentState; severity?: string; search?: string; limit?: number; offset?: number }): Promise<Paged<AlertEvent>> => {
+  list: async (
+    orgId: string,
+    params?: EventListQuery,
+  ): Promise<Paged<AlertEvent>> => {
     const { data } = await apiClient.get(`${alertingBase(orgId)}/events`, { params });
     return paged<AlertEvent>(data);
   },
 
-  getById: async (incidentId: string): Promise<AlertIncident> => {
-    const { data } = await apiClient.get(`/incidents/${incidentId}`);
+  getById: async (orgId: string, eventId: string): Promise<AlertEvent> => {
+    const { data } = await apiClient.get(`${alertingBase(orgId)}/events/${eventId}`);
     return camelizeDeep(data.data);
   },
 
-  getOccurrences: async (incidentId: string): Promise<IncidentOccurrence[]> => {
-    const { data } = await apiClient.get(`/incidents/${incidentId}/occurrences`);
+  stats: async (orgId: string): Promise<EventStats> => {
+    const { data } = await apiClient.get(`${alertingBase(orgId)}/events/stats`);
+    return camelizeDeep(data.data);
+  },
+
+  acknowledge: async (
+    orgId: string,
+    eventId: string,
+    body: AcknowledgeEventBody = {},
+  ): Promise<AlertEvent> => {
+    const { data } = await apiClient.post(`${alertingBase(orgId)}/events/${eventId}/acknowledge`, body);
+    return camelizeDeep(data.data);
+  },
+
+  resolve: async (
+    orgId: string,
+    eventId: string,
+    body: ResolveEventBody = {},
+  ): Promise<AlertEvent> => {
+    const { data } = await apiClient.post(`${alertingBase(orgId)}/events/${eventId}/resolve`, body);
+    return camelizeDeep(data.data);
+  },
+
+  silence: async (
+    orgId: string,
+    eventId: string,
+    body: SilenceFromEventBody = {},
+  ): Promise<AlertSilence> => {
+    const { data } = await apiClient.post(`${alertingBase(orgId)}/events/${eventId}/silence`, body);
+    return camelizeDeep(data.data);
+  },
+
+  deliveries: async (orgId: string, eventId: string): Promise<AlertDeliveryAttempt[]> => {
+    const { data } = await apiClient.get(`${alertingBase(orgId)}/events/${eventId}/deliveries`);
     return camelizeDeep(data.data ?? []);
-  },
-
-  getHistory: async (incidentId: string): Promise<IncidentStateHistory[]> => {
-    const { data } = await apiClient.get(`/incidents/${incidentId}/history`);
-    return camelizeDeep(data.data ?? []);
-  },
-
-  acknowledge: async (incidentId: string, note?: string): Promise<AlertIncident> => {
-    const { data } = await apiClient.post(`/incidents/${incidentId}/acknowledge`, { note });
-    return camelizeDeep(data.data);
-  },
-
-  resolve: async (incidentId: string, note?: string): Promise<AlertIncident> => {
-    const { data } = await apiClient.post(`/incidents/${incidentId}/resolve`, { note });
-    return camelizeDeep(data.data);
-  },
-
-  mute: async (incidentId: string, durationMinutes: number, reason?: string): Promise<AlertIncident> => {
-    const { data } = await apiClient.post(`/incidents/${incidentId}/mute`, { durationMinutes, reason });
-    return camelizeDeep(data.data);
-  },
-
-  assign: async (incidentId: string, userId: string): Promise<AlertIncident> => {
-    const { data } = await apiClient.post(`/incidents/${incidentId}/assign`, { userId });
-    return camelizeDeep(data.data);
-  },
-
-  addComment: async (incidentId: string, comment: string): Promise<void> => {
-    await apiClient.post(`/incidents/${incidentId}/comment`, { comment });
   },
 };
+
 

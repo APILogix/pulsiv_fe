@@ -220,10 +220,10 @@ export function SecretField({
   const display = revealed ? value : "•".repeat(Math.min(28, Math.max(12, value.length)));
 
   return (
-    <div className={cn("flex min-w-0 flex-col gap-1.5", className)}>
+    <div className={cn("flex min-w-0 max-w-full w-full flex-col gap-1.5", className)}>
       {label && <span className="font-mono text-[10px] font-medium uppercase tracking-[0.09em] text-[var(--text3)]">{label}</span>}
-      <div className="flex min-w-0 items-center gap-2 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg2)] pl-3 pr-1.5 py-1.5">
-        <code className="min-w-0 flex-1 truncate font-[family-name:var(--mono)] text-[12px] text-[var(--text)]" title={revealed ? value : undefined}>
+      <div className="flex min-w-0 max-w-full w-full items-center gap-2 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg2)] pl-3 pr-1.5 py-1.5">
+        <code className="min-w-0 flex-1 truncate font-[family-name:var(--mono)] text-[12px] text-[var(--text)] select-all" title={revealed ? value : undefined}>
           {display}
         </code>
         {masked && (
@@ -231,7 +231,7 @@ export function SecretField({
             type="button"
             onClick={() => setRevealed((current) => !current)}
             aria-label={revealed ? "Hide value" : "Reveal value"}
-            className="rounded-[var(--radius)] p-1.5 text-[var(--text3)] transition-colors hover:bg-[var(--bg3)] hover:text-[var(--text)]"
+            className="shrink-0 rounded-[var(--radius)] p-1.5 text-[var(--text3)] transition-colors hover:bg-[var(--bg3)] hover:text-[var(--text)]"
           >
             {revealed ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
           </button>
@@ -239,7 +239,7 @@ export function SecretField({
         <button
           type="button"
           onClick={handleCopy}
-          className="rounded-[var(--radius)] px-2 py-1 text-[11px] font-medium text-[var(--text2)] transition-colors hover:bg-[var(--bg3)] hover:text-[var(--text)]"
+          className="shrink-0 rounded-[var(--radius)] px-2 py-1 text-[11px] font-medium text-[var(--text2)] transition-colors hover:bg-[var(--bg3)] hover:text-[var(--text)]"
         >
           {copied ? "Copied" : "Copy"}
         </button>

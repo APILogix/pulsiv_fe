@@ -30,19 +30,6 @@ import {
   WorkflowsSkeleton,
 } from "./pages";
 
-/**
- * Route → skeleton resolver (Phase 3).
- *
- * Clicking a sidebar item must paint the *shape* of the destination on the next
- * frame, before its JS chunk has even downloaded. That means the fallback has to
- * be chosen from the URL alone — no route module, no data. This table is that
- * mapping.
- *
- * Rules are evaluated top-down, first match wins, so put detail routes
- * (`/x/:id`) above their index route where the patterns would otherwise
- * overlap. `$` anchors keep index routes from swallowing their children.
- */
-
 type Rule = readonly [RegExp, ComponentType];
 
 /** Detail-page id segment: uuid, prefixed public id, hash, or numeric. */
@@ -51,8 +38,8 @@ const ID = "[^/]+";
 const RULES: readonly Rule[] = [
   /* ── project shell: /:orgSlug/p/:publicId/<tab> ───────────────────────── */
   [/^\/[^/]+\/p\/[^/]+\/overview$/, ProjectOverviewSkeleton],
-  [/^\/[^/]+\/p\/[^/]+\/analytics$/, DashboardSkeleton],
-  [/^\/[^/]+\/p\/[^/]+\/usage$/, DashboardSkeleton],
+  [/^\/[^/]+\/p\/[^/]+\/analytics$/, MetricsSkeleton],
+  [/^\/[^/]+\/p\/[^/]+\/usage$/, MetricsSkeleton],
   [/^\/[^/]+\/p\/[^/]+\/activity$/, AuditSkeleton],
   [/^\/[^/]+\/p\/[^/]+\/environments$/, KeysSkeleton],
   [/^\/[^/]+\/p\/[^/]+\/api-keys$/, KeysSkeleton],
@@ -69,8 +56,10 @@ const RULES: readonly Rule[] = [
   [/^\/[^/]+\/p\/[^/]+\/settings(\/.*)?$/, SettingsSkeleton],
   [/^\/[^/]+\/p\/[^/]+$/, ProjectOverviewSkeleton],
 
-  /* ── workspaces ──────────────────────────────────────────────────────── */
+  /* ── workspaces & project creation ───────────────────────────────────── */
+  [/^\/projects\/new$/, WizardSkeleton],
   [/^\/[^/]+\/projects\/new$/, WizardSkeleton],
+  [/^\/projects$/, ProjectsSkeleton],
   [/^\/[^/]+\/projects$/, ProjectsSkeleton],
 
   /* ── root dashboard ──────────────────────────────────────────────────── */
@@ -81,6 +70,14 @@ const RULES: readonly Rule[] = [
   [/^\/dashboards\/reports\/new$/, WizardSkeleton],
   [/^\/dashboards\/reports$/, ListSkeleton],
   [/^\/dashboards\/geo$/, GeoSkeleton],
+  [/^\/dashboards\/executive$/, DashboardSkeleton],
+  [/^\/dashboards\/performance$/, MetricsSkeleton],
+  [/^\/dashboards\/errors$/, ErrorGroupsSkeleton],
+  [/^\/dashboards\/(realtime|traffic|infrastructure)$/, MetricsSkeleton],
+  [/^\/dashboards\/tracing-map$/, GeoSkeleton],
+  [/^\/dashboards\/security$/, AuditSkeleton],
+  [/^\/dashboards\/releases$/, ServiceHealthSkeleton],
+  [/^\/dashboards\/business$/, DashboardSkeleton],
   [/^\/dashboards\/(overview)?$/, DashboardGallerySkeleton],
   [/^\/dashboards\/[^/]+$/, DashboardSkeleton],
 
@@ -114,7 +111,7 @@ const RULES: readonly Rule[] = [
   [new RegExp(`^/alerts/escalations/${ID}$`), DetailSkeleton],
   [/^\/alerts\/(escalations|routing)$/, RulesSkeleton],
   [/^\/alerts\/templates$/, IntegrationsSkeleton],
-  [/^\/alerts\/metrics$/, DashboardSkeleton],
+  [/^\/alerts\/metrics$/, MetricsSkeleton],
   [/^\/alerts\/(silences|dead-letters)$/, ListSkeleton],
   [/^\/alerts$/, AlertsSkeleton],
   [new RegExp(`^/alerts/${ID}$`), DetailSkeleton],
@@ -125,20 +122,20 @@ const RULES: readonly Rule[] = [
   [/^\/automation\/(runs|approvals)$/, ListSkeleton],
   [/^\/automation\/templates$/, IntegrationsSkeleton],
   [/^\/automation\/(events|audit)$/, AuditSkeleton],
-  [/^\/automation$/, DashboardSkeleton],
+  [/^\/automation$/, WorkflowsSkeleton],
 
   /* ── ingestion ───────────────────────────────────────────────────────── */
   [/^\/ingestion\/health$/, ServiceHealthSkeleton],
   [/^\/ingestion\/keys$/, KeysSkeleton],
   [/^\/ingestion\/rate-limits$/, RulesSkeleton],
   [/^\/ingestion\/(endpoints|replay)$/, ListSkeleton],
-  [/^\/ingestion$/, DashboardSkeleton],
+  [/^\/ingestion$/, ServiceHealthSkeleton],
 
   /* ── AI ──────────────────────────────────────────────────────────────── */
   [/^\/ai\/assistant$/, AiConversationSkeleton],
   [/^\/ai\/(investigations|knowledge)$/, AiOverviewSkeleton],
   [/^\/ai\/reports$/, ListSkeleton],
-  [/^\/ai\/usage$/, DashboardSkeleton],
+  [/^\/ai\/usage$/, MetricsSkeleton],
   [/^\/ai\/settings$/, SettingsSkeleton],
   [/^\/ai$/, AiOverviewSkeleton],
 
@@ -152,7 +149,7 @@ const RULES: readonly Rule[] = [
   /* ── billing ─────────────────────────────────────────────────────────── */
   [new RegExp(`^/billing/invoices/${ID}$`), DetailSkeleton],
   [/^\/billing\/invoices$/, ListSkeleton],
-  [/^\/billing\/usage$/, DashboardSkeleton],
+  [/^\/billing\/usage$/, MetricsSkeleton],
   [/^\/billing\/payment-methods$/, SettingsSkeleton],
   [/^\/billing$/, BillingSkeleton],
   [/^\/super-admin\/billing$/, BillingSkeleton],
@@ -171,7 +168,7 @@ const RULES: readonly Rule[] = [
   [/^\/settings(\/.*)?$/, SettingsSkeleton],
   [/^\/auth\/sessions$/, MembersSkeleton],
   [/^\/auth\/(security|step-up)$/, SettingsSkeleton],
-  [/^\/onboarding\/.*$/, WizardSkeleton],
+  [/^\/onboarding(\/.*)?$/, WizardSkeleton],
 ];
 
 /** Strip the trailing slash so `/alerts/` and `/alerts` resolve identically. */

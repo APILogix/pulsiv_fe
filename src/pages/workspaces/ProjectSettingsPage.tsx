@@ -117,7 +117,6 @@ export default function ProjectSettingsPage() {
         payload: {
           name: String(form.get("name") ?? "").trim(),
           description: optionalText(form.get("description")) ?? null,
-          visibility: String(form.get("visibility") ?? project.visibility) as typeof project.visibility,
           timezone: String(form.get("timezone") ?? project.timezone).trim(),
           tags: parseList(form.get("tags")),
           version: project.version,
@@ -259,7 +258,7 @@ export default function ProjectSettingsPage() {
         <form onSubmit={handleProfileSubmit}>
           <Panel
             title="Identity"
-            description="Name, description, visibility, and tags."
+            description="Name, description, timezone, and tags."
             icon={Sliders}
             footer={
               <UiButton type="submit" size="lg" disabled={updateProject.isPending}>
@@ -292,29 +291,15 @@ export default function ProjectSettingsPage() {
                   className={fieldTextareaClass}
                 />
               </DialogField>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <DialogField label="Visibility" name="visibility">
-                  <select
-                    id="visibility"
-                    name="visibility"
-                    defaultValue={project.visibility}
-                    className={fieldInputClass}
-                  >
-                    <option value="private">Private</option>
-                    <option value="organization">Organization</option>
-                    <option value="public">Public</option>
-                  </select>
-                </DialogField>
-                <DialogField label="Timezone" name="timezone">
-                  <input
-                    id="timezone"
-                    name="timezone"
-                    defaultValue={project.timezone}
-                    maxLength={100}
-                    className={fieldInputClass}
-                  />
-                </DialogField>
-              </div>
+              <DialogField label="Timezone" name="timezone">
+                <input
+                  id="timezone"
+                  name="timezone"
+                  defaultValue={project.timezone}
+                  maxLength={100}
+                  className={fieldInputClass}
+                />
+              </DialogField>
               <DialogField label="Tags" name="tags" hint="Comma separated, up to 20.">
                 <input id="tags" name="tags" defaultValue={project.tags.join(", ")} className={fieldInputClass} />
               </DialogField>

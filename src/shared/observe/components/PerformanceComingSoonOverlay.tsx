@@ -1,6 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import { Sparkles, Clock, ShieldCheck, Zap } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Sparkles, Clock, Zap } from "lucide-react";
 
 interface PerformanceComingSoonOverlayProps {
   title: string;

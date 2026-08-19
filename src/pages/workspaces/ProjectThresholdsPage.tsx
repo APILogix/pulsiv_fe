@@ -196,14 +196,14 @@ export default function ProjectThresholdsPage() {
 
   // Derived counts for stat cards & filters
   const subscribedCount = useMemo(() => {
-    return policies.filter((p) => {
+    return ((policies ?? []) as any[]).filter((p: any) => {
       const sub = findSubscriptionForPolicy(p, subscriptions);
       return Boolean(sub);
     }).length;
   }, [policies, subscriptions]);
 
   const overriddenCount = useMemo(() => {
-    return policies.filter((p) => {
+    return ((policies ?? []) as any[]).filter((p: any) => {
       const sub = findSubscriptionForPolicy(p, subscriptions);
       return Boolean(extractOverride(sub));
     }).length;
@@ -216,7 +216,7 @@ export default function ProjectThresholdsPage() {
   // Categories extracted from policies
   const categories = useMemo(() => {
     const set = new Set<string>();
-    for (const p of policies) {
+    for (const p of ((policies ?? []) as any[])) {
       if (p.category) set.add(p.category);
     }
     return Array.from(set).sort();
@@ -224,7 +224,7 @@ export default function ProjectThresholdsPage() {
 
   // Filtered policies list
   const filteredPolicies = useMemo(() => {
-    return policies.filter((policy) => {
+    return ((policies ?? []) as any[]).filter((policy: any) => {
       const matchesSearch =
         searchQuery.trim() === "" ||
         policy.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -564,7 +564,7 @@ export default function ProjectThresholdsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/30">
-                {filteredPolicies.map((policy) => {
+                {((filteredPolicies ?? []) as any[]).map((policy: any) => {
                   const subscription = findSubscriptionForPolicy(policy, subscriptions);
                   const isSubscribed = Boolean(subscription);
                   const override = extractOverride(subscription);

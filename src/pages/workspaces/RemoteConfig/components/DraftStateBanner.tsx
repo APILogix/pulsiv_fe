@@ -1,5 +1,4 @@
-import React from "react";
-import { AlertTriangle, Rocket, RotateCcw, CheckCircle2, ShieldAlert } from "lucide-react";
+import { AlertTriangle, Rocket, RotateCcw } from "lucide-react";
 import { Button } from "@/shared/observe";
 import { cn } from "@/lib/utils";
 
@@ -24,33 +23,33 @@ export function DraftStateBanner({
 
   return (
     <div className="fixed inset-x-0 bottom-6 z-50 flex justify-center px-4 pointer-events-none">
-      <div className="pointer-events-auto flex w-full max-w-2xl items-center justify-between gap-4 rounded-[16px] border border-[var(--border)] bg-[var(--bg1)]/90 px-5 py-3.5 shadow-2xl backdrop-blur-xl ring-1 ring-black/10 dark:ring-white/10 animate-in fade-in slide-in-from-bottom-5 duration-200">
+      <div className="pointer-events-auto flex w-full max-w-2xl items-center justify-between gap-4 rounded-[var(--radius-md)] border border-[var(--border-strong)] bg-[var(--surface-1)] px-5 py-3 shadow-[var(--shadow-modal)] ring-1 ring-white/5 animate-in fade-in slide-in-from-bottom-2 duration-150">
         <div className="flex min-w-0 items-center gap-3">
           {hasErrors ? (
             <div className="flex items-center gap-2.5">
-              <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-red-500/20 text-red-400 border border-red-500/30">
-                <AlertTriangle className="size-4" />
+              <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-[var(--error-muted)] text-[var(--error)] border border-[var(--error-border)]">
+                <AlertTriangle className="size-3.5" />
               </span>
               <div>
-                <div className="text-[13px] font-bold text-red-400">
+                <div className="text-[13px] font-medium text-[var(--error)]">
                   {errorCount} Validation Error{errorCount === 1 ? "" : "s"} Detected
                 </div>
-                <div className="text-[11px] text-[var(--text3)]">
+                <div className="text-[11px] text-[var(--text-tertiary)]">
                   Fix input range bounds before submitting revision.
                 </div>
               </div>
             </div>
           ) : (
             <div className="flex items-center gap-2.5">
-              <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-[var(--brand)]/20 text-[13px] font-bold text-[var(--brand)] border border-[var(--brand)]/30">
+              <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-[var(--brand-muted)] text-[12px] font-mono font-medium text-[var(--brand)] border border-[var(--brand-border)]">
                 {diffCount}
               </span>
               <div>
-                <div className="text-[13px] font-bold text-[var(--text)]">
+                <div className="text-[13px] font-medium text-[var(--text-primary)]">
                   {diffCount} Unsaved Change{diffCount === 1 ? "" : "s"} in Local Draft
                 </div>
-                <div className="text-[11px] text-[var(--text3)]">
-                  Changes live in local buffer. Click Review & Publish to stage.
+                <div className="text-[11px] text-[var(--text-tertiary)]">
+                  Changes stored in local buffer. Click Review & Publish to stage.
                 </div>
               </div>
             </div>
@@ -62,7 +61,7 @@ export function DraftStateBanner({
             type="button"
             variant="ghost"
             onClick={onDiscard}
-            className="h-9 px-3 text-xs gap-1.5 text-[var(--text2)] hover:text-[var(--text)] hover:bg-[var(--bg2)]"
+            className="h-8 px-2.5 text-[12px] gap-1.5 text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-2)]"
           >
             <RotateCcw className="size-3.5" />
             Discard
@@ -73,10 +72,10 @@ export function DraftStateBanner({
             onClick={onReviewPublish}
             disabled={hasErrors}
             className={cn(
-              "h-9 px-4 text-xs font-semibold gap-1.5 shadow-lg transition-all duration-200",
+              "h-8 px-3.5 text-[12px] font-medium gap-1.5",
               hasErrors
-                ? "bg-red-500/20 text-red-400 border border-red-500/30 cursor-not-allowed"
-                : "bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-600/30"
+                ? "bg-[var(--error-muted)] text-[var(--error)] border border-[var(--error-border)] cursor-not-allowed"
+                : "bg-[var(--brand)] hover:bg-[var(--brand-hover)] text-white"
             )}
           >
             <Rocket className="size-3.5" />
@@ -87,3 +86,4 @@ export function DraftStateBanner({
     </div>
   );
 }
+

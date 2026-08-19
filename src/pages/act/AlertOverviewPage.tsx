@@ -6,13 +6,9 @@ import {
   CheckCircle2,
   ChevronRight,
   Clock,
-  Layers,
-  Radio,
-  Send,
-  Shield,
   Split,
   Workflow,
-  Zap,
+  ArrowUpRight,
 } from "lucide-react";
 import { AlertOverviewWidget } from "@/modules/alerting/components/AlertOverviewWidget";
 import { EntitlementRestrictedBanner } from "@/modules/alerting/components/EntitlementRestrictedBanner";
@@ -36,40 +32,39 @@ export default function AlertOverviewPage() {
     [eventsData],
   );
 
-  const activeIncidents = incidents.filter(
-    (i) => i.state === "triggered" || i.state === "acknowledged" || i.state === "escalated",
-  );
-
   return (
-    <div className="mx-auto w-full max-w-[1400px] space-y-6 p-4 sm:p-6">
-      {/* Page Header */}
-      <div className="flex flex-col justify-between gap-4 border-b border-border/60 pb-4 sm:flex-row sm:items-center">
+    <div className="flex flex-col gap-6 w-full max-w-[1400px] mx-auto px-4 sm:px-6 py-6 font-sans">
+      {/* ── Header ── */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-[var(--border-subtle)] pb-5">
         <div>
-          <div className="flex items-center gap-2">
-            <Radio className="size-6 text-[var(--brand)]" aria-hidden="true" />
-            <h1 className="text-2xl font-bold tracking-tight text-[var(--text)]">
-              Alerting Overview
-            </h1>
+          <div className="flex items-center gap-2 text-[11px] font-[family-name:var(--mono)] uppercase tracking-[0.08em] text-[var(--text-tertiary)]">
+            <span className="inline-block size-1.5 rounded-full bg-[var(--brand)]" />
+            <span>Alerts & Incident Response</span>
+            <span>/</span>
+            <span className="text-[var(--text-secondary)]">Overview</span>
           </div>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Centralized telemetry alerting health, active incidents, delivery status, and rule catalog.
+          <h1 className="mt-1 text-[22px] font-semibold tracking-[-0.02em] text-[var(--text-primary)] font-[family-name:var(--display)]">
+            Alerting Command Center
+          </h1>
+          <p className="text-[13px] text-[var(--text-secondary)]">
+            Centralized telemetry alerting health, active incidents, delivery status, and policy catalog.
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5">
           <Link
             to="/alerts/rules"
-            className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium text-[var(--text)] transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)]"
+            className="flex items-center gap-1.5 rounded-[var(--radius-sm)] border border-[var(--border-default)] bg-[var(--surface-1)] px-3 py-1.5 text-[12px] font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-2)] transition-colors"
           >
             <BellRing className="size-3.5" />
-            Rules Catalog
+            <span>Rules Catalog</span>
           </Link>
           <Link
             to="/alerts"
-            className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--brand)] px-3 py-1.5 text-xs font-medium text-[var(--brand-fg)] shadow-sm transition-colors hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)]"
+            className="flex items-center gap-1.5 rounded-[var(--radius-sm)] border border-[var(--brand-border)] bg-[var(--brand-muted)] px-3 py-1.5 text-[12px] font-medium text-[var(--text-primary)] hover:bg-[var(--brand)] hover:text-white transition-all"
           >
-            <AlertOctagon className="size-3.5" />
-            Incident Center
+            <AlertOctagon className="size-3.5 text-[var(--brand)]" />
+            <span>Incident Triage</span>
           </Link>
         </div>
       </div>
@@ -81,69 +76,73 @@ export default function AlertOverviewPage() {
       <AlertOverviewWidget />
 
       {/* Two Column Command Layout */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        {/* Left 2 Cols: Active & Recent Incidents */}
-        <div className="space-y-3 lg:col-span-2">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-[var(--text)] flex items-center gap-2">
-              <AlertOctagon className="size-4 text-rose-500" />
-              Active & Recent Incidents
-            </h2>
-            <Link to="/alerts" className="text-xs text-[var(--brand)] hover:underline flex items-center gap-0.5">
-              View all ({eventsData?.total ?? incidents.length}) <ChevronRight className="size-3" />
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+        {/* Left 8 Cols: Active & Recent Incidents */}
+        <div className="lg:col-span-8 rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--surface-1)] overflow-hidden flex flex-col">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border-subtle)]">
+            <div>
+              <h2 className="text-[14px] font-semibold text-[var(--text-primary)]">
+                Active & Recent Incidents
+              </h2>
+              <p className="text-[11px] text-[var(--text-tertiary)] font-[family-name:var(--mono)]">
+                Real-time trigger log from evaluated thresholds
+              </p>
+            </div>
+            <Link to="/alerts" className="text-[11px] text-[var(--brand)] hover:underline flex items-center gap-1 font-medium">
+              View all ({eventsData?.total ?? incidents.length}) <ArrowUpRight className="size-3" />
             </Link>
           </div>
 
           {eventsLoading ? (
-            <div className="rounded-xl border border-border/60 bg-card/60 p-8 text-center text-xs text-muted-foreground">
+            <div className="p-8 text-center text-[12px] font-[family-name:var(--mono)] text-[var(--text-tertiary)]">
               Loading incident feed…
             </div>
           ) : incidents.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-border/80 bg-card/40 p-8 text-center">
-              <CheckCircle2 className="mx-auto size-8 text-emerald-400 opacity-80" />
-              <p className="mt-2 text-sm font-medium text-[var(--text)]">Everything is healthy</p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                No active or recent alert breaches recorded across monitored projects.
+            <div className="p-8 text-center">
+              <CheckCircle2 className="mx-auto size-7 text-[var(--success)] opacity-80" />
+              <p className="mt-2 text-[13px] font-medium text-[var(--text-primary)]">Everything is operational</p>
+              <p className="mt-0.5 text-[12px] text-[var(--text-tertiary)]">
+                No active alert breaches recorded across connected services.
               </p>
             </div>
           ) : (
-            <div className="overflow-hidden rounded-xl border border-border/60 bg-card/60">
-              <table className="w-full text-left text-xs">
-                <thead className="border-b border-border/60 bg-muted/30 text-[10px] uppercase text-muted-foreground font-mono">
+            <div className="overflow-x-auto flex-1">
+              <table className="w-full text-left text-[12px]">
+                <thead className="border-b border-[var(--border-subtle)] bg-[var(--surface-2)]/40 text-[10px] uppercase font-[family-name:var(--mono)] tracking-wider text-[var(--text-tertiary)]">
                   <tr>
-                    <th className="p-3">State</th>
-                    <th className="p-3">Incident / Title</th>
-                    <th className="p-3">Service</th>
-                    <th className="p-3">Severity</th>
-                    <th className="p-3">Triggered</th>
+                    <th className="px-4 py-2.5 font-medium">State</th>
+                    <th className="px-3 py-2.5 font-medium">Incident / Title</th>
+                    <th className="px-3 py-2.5 font-medium">Service</th>
+                    <th className="px-3 py-2.5 font-medium">Severity</th>
+                    <th className="px-4 py-2.5 text-right font-medium">Triggered</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-border/40">
-                  {incidents.slice(0, 6).map((incident) => (
+                <tbody className="divide-y divide-[var(--border-subtle)] font-[family-name:var(--mono)]">
+                  {(incidents as any[]).slice(0, 6).map((incident: any) => (
                     <tr
                       key={incident.id}
                       onClick={() => navigate(`/alerts/${incident.id}`)}
-                      className="cursor-pointer hover:bg-muted/20 transition-colors"
+                      className="cursor-pointer hover:bg-[var(--surface-2)] transition-colors"
                     >
-                      <td className="p-3">
+                      <td className="px-4 py-3 align-middle">
                         <IncidentStateBadge state={incident.state} size="sm" />
                       </td>
-                      <td className="p-3">
-                        <div className="font-semibold text-[var(--text)] truncate max-w-[280px]">
+                      <td className="px-3 py-3 align-middle">
+                        <div className="font-medium text-[var(--text-primary)] truncate max-w-[240px]">
                           {incident.title}
                         </div>
-                        <div className="font-mono text-[10px] text-muted-foreground truncate max-w-[280px]">
+                        <div className="text-[10px] text-[var(--text-tertiary)] truncate max-w-[240px]">
                           {incident.fingerprint}
                         </div>
                       </td>
-                      <td className="p-3">
-                        <span className="font-mono text-[11px] text-[var(--text)]">{incident.service}</span>
-                        <span className="block text-[10px] uppercase text-muted-foreground">{incident.environment}</span>
+                      <td className="px-3 py-3 align-middle">
+                        <span className="text-[11px] text-[var(--text-primary)]">{incident.service}</span>
+                        <span className="block text-[9.5px] uppercase text-[var(--text-tertiary)]">{incident.environment}</span>
                       </td>
-                      <td className="p-3">
-                        <SeverityBadge severity={incident.severity} size="sm" />
+                      <td className="px-3 py-3 align-middle">
+                        <SeverityBadge severity={incident.severity} />
                       </td>
-                      <td className="p-3 text-muted-foreground font-mono text-[11px]">
+                      <td className="px-4 py-3 align-middle text-right text-[var(--text-tertiary)] text-[11px] tabular-nums">
                         {new Date(incident.lastTriggeredAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                       </td>
                     </tr>
@@ -154,90 +153,90 @@ export default function AlertOverviewPage() {
           )}
         </div>
 
-        {/* Right 1 Col: Quick Links & Core Rules */}
-        <div className="space-y-4">
+        {/* Right 4 Cols: Quick Links & Core Rules */}
+        <div className="lg:col-span-4 flex flex-col gap-5">
           {/* Quick Hub Navigation */}
-          <div className="rounded-xl border border-border/60 bg-card/60 p-4 space-y-3">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          <div className="rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--surface-1)] p-4 flex flex-col">
+            <h3 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--text-tertiary)] font-[family-name:var(--mono)] pb-3 border-b border-[var(--border-subtle)]">
               Alerting Control Plane
             </h3>
-            <div className="grid grid-cols-1 gap-2 text-xs">
+            <div className="mt-3 grid grid-cols-1 gap-2 text-[12px]">
               <Link
                 to="/alerts/rules"
-                className="flex items-center justify-between rounded-lg border border-border/40 bg-muted/20 p-2.5 transition-colors hover:bg-muted/40"
+                className="flex items-center justify-between rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--surface-2)]/50 p-2.5 transition-colors hover:bg-[var(--surface-2)]"
               >
                 <div className="flex items-center gap-2">
                   <BellRing className="size-4 text-[var(--brand)]" />
-                  <span className="font-medium">Rule Catalog</span>
+                  <span className="font-medium text-[var(--text-primary)]">Rule Catalog</span>
                 </div>
-                <span className="font-mono text-muted-foreground">{rulesData?.total ?? 0}</span>
+                <span className="font-[family-name:var(--mono)] text-[var(--text-tertiary)]">{rulesData?.total ?? 0}</span>
               </Link>
 
               <Link
                 to="/alerts/escalations"
-                className="flex items-center justify-between rounded-lg border border-border/40 bg-muted/20 p-2.5 transition-colors hover:bg-muted/40"
+                className="flex items-center justify-between rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--surface-2)]/50 p-2.5 transition-colors hover:bg-[var(--surface-2)]"
               >
                 <div className="flex items-center gap-2">
-                  <Workflow className="size-4 text-purple-400" />
-                  <span className="font-medium">Escalation Policies</span>
+                  <Workflow className="size-4 text-[var(--brand)]" />
+                  <span className="font-medium text-[var(--text-primary)]">Escalation Policies</span>
                 </div>
-                <ChevronRight className="size-3.5 text-muted-foreground" />
+                <ChevronRight className="size-3.5 text-[var(--text-tertiary)]" />
               </Link>
 
               <Link
                 to="/alerts/routing"
-                className="flex items-center justify-between rounded-lg border border-border/40 bg-muted/20 p-2.5 transition-colors hover:bg-muted/40"
+                className="flex items-center justify-between rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--surface-2)]/50 p-2.5 transition-colors hover:bg-[var(--surface-2)]"
               >
                 <div className="flex items-center gap-2">
-                  <Split className="size-4 text-blue-400" />
-                  <span className="font-medium">Routing Rules</span>
+                  <Split className="size-4 text-[var(--info)]" />
+                  <span className="font-medium text-[var(--text-primary)]">Routing Rules</span>
                 </div>
-                <ChevronRight className="size-3.5 text-muted-foreground" />
+                <ChevronRight className="size-3.5 text-[var(--text-tertiary)]" />
               </Link>
 
               <Link
                 to="/alerts/silences"
-                className="flex items-center justify-between rounded-lg border border-border/40 bg-muted/20 p-2.5 transition-colors hover:bg-muted/40"
+                className="flex items-center justify-between rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--surface-2)]/50 p-2.5 transition-colors hover:bg-[var(--surface-2)]"
               >
                 <div className="flex items-center gap-2">
-                  <Clock className="size-4 text-amber-400" />
-                  <span className="font-medium">Maintenance & Silences</span>
+                  <Clock className="size-4 text-[var(--warning)]" />
+                  <span className="font-medium text-[var(--text-primary)]">Maintenance Silences</span>
                 </div>
-                <ChevronRight className="size-3.5 text-muted-foreground" />
+                <ChevronRight className="size-3.5 text-[var(--text-tertiary)]" />
               </Link>
             </div>
           </div>
 
           {/* Org Default Rules Snapshot */}
-          <div className="rounded-xl border border-border/60 bg-card/60 p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Organization Defaults
+          <div className="rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--surface-1)] p-4 flex flex-col">
+            <div className="flex items-center justify-between pb-3 border-b border-[var(--border-subtle)]">
+              <h3 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--text-tertiary)] font-[family-name:var(--mono)]">
+                Active Thresholds
               </h3>
               <Link to="/alerts/rules" className="text-[11px] text-[var(--brand)] hover:underline">
-                View all
+                Manage →
               </Link>
             </div>
 
             {rulesLoading ? (
-              <p className="text-xs text-muted-foreground">Loading rules…</p>
+              <p className="mt-3 text-[11px] font-[family-name:var(--mono)] text-[var(--text-tertiary)]">Loading policies…</p>
             ) : (rulesData?.data ?? []).length === 0 ? (
-              <p className="text-xs text-muted-foreground">No rules configured in catalog.</p>
+              <p className="mt-3 text-[11px] font-[family-name:var(--mono)] text-[var(--text-tertiary)]">No rules configured in catalog.</p>
             ) : (
-              <div className="space-y-2 text-xs">
-                {(rulesData?.data ?? []).slice(0, 4).map((rule) => (
+              <div className="mt-3 space-y-2 text-[12px]">
+                {((rulesData?.data ?? []) as any[]).slice(0, 4).map((rule: any) => (
                   <div
                     key={rule.id}
                     onClick={() => navigate(`/alerts/rules/${rule.id}`)}
-                    className="flex items-center justify-between rounded-lg border border-border/30 bg-muted/10 p-2 cursor-pointer hover:bg-muted/30 transition-colors"
+                    className="flex items-center justify-between rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--surface-2)]/30 p-2.5 cursor-pointer hover:bg-[var(--surface-2)] transition-colors"
                   >
                     <div className="min-w-0 flex-1 pr-2">
-                      <div className="font-medium text-[var(--text)] truncate">{rule.name}</div>
-                      <div className="text-[10px] text-muted-foreground font-mono truncate">
-                        Interval: {rule.evaluationIntervalSeconds}s • Cooldown: {rule.cooldownSeconds}s
+                      <div className="font-medium text-[var(--text-primary)] truncate">{rule.name}</div>
+                      <div className="text-[10px] text-[var(--text-tertiary)] font-[family-name:var(--mono)] truncate">
+                        Eval: {rule.evaluationIntervalSeconds}s · Cool: {rule.cooldownSeconds}s
                       </div>
                     </div>
-                    <SeverityBadge severity={rule.severity} size="sm" />
+                    <SeverityBadge severity={rule.severity} />
                   </div>
                 ))}
               </div>

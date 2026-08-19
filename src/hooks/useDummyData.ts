@@ -22,7 +22,7 @@ export const useErrorEvents = (filters?: ErrorFilters) =>
     queryFn: async () => {
       await delay(300);
       let data = dummy.dummyErrorEvents;
-      if (filters?.service) data = data.filter((e) => e.metadata.service === filters.service);
+      if (filters?.service) data = data.filter((e) => e.metadata?.service === filters.service);
       if (filters?.severity) data = data.filter((e) => e.severity === filters.severity);
       if (filters?.fingerprint) data = data.filter((e) => e.fingerprint === filters.fingerprint);
       return data;

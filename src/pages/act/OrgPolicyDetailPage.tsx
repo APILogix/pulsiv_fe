@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router";
-import { ArrowLeft, Save, Shield, Code, Clock, Activity, AlertTriangle, CheckCircle2, History } from "lucide-react";
+import { ArrowLeft, Save, Shield, Code, Clock, AlertTriangle, History } from "lucide-react";
 import { toast } from "sonner";
 import { useOrganizationAlertPolicy, useOrganizationAlertPolicyMutations } from "@/modules/alerting/hooks/useAlerting";
 import { apiErrorMessage } from "@/modules/projects/components/project-ui";

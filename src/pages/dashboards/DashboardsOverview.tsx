@@ -46,9 +46,9 @@ export default function DashboardsOverview() {
   const authFails = reqList.filter((r) => r.statusCode === 401 || r.statusCode === 403).length;
   const rateLimited = reqList.filter((r) => r.statusCode === 429).length;
   const securityScore = Math.max(0, Math.min(100, 92 - authFails * 2 - rateLimited));
-  const countries = uniqueBy(reqList, (r) => countryForIp(r.clientIp).code);
-  const avgSpans = traceList.length ? Math.round(traceList.reduce((s, t) => s + t.spanCount, 0) / traceList.length) : 0;
-  const avgTrace = traceList.length ? Math.round(traceList.reduce((s, t) => s + t.totalDuration, 0) / traceList.length) : 0;
+  const countries = uniqueBy(reqList, (r) => countryForIp(r.clientIp ?? "").code);
+  const avgSpans = traceList.length ? Math.round(traceList.reduce((s, t) => s + (t.spanCount ?? 0), 0) / traceList.length) : 0;
+  const avgTrace = traceList.length ? Math.round(traceList.reduce((s, t) => s + (t.totalDuration ?? 0), 0) / traceList.length) : 0;
 
   const cards: DashCard[] = [
     {

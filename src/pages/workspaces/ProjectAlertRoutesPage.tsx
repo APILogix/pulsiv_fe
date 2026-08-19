@@ -2,7 +2,6 @@ import { useNavigate } from "react-router";
 import { Link } from "react-router";
 import { projectPath } from "@/modules/projects/navigation/project-routes";
 import {
-  Activity,
   CheckCircle2,
   GitBranch,
   Pencil,
@@ -11,7 +10,6 @@ import {
   Trash2,
   Mail,
   Plug,
-  ShieldAlert,
   Sparkles,
   ArrowRight,
   Radio,
@@ -24,7 +22,6 @@ import { Table, Td, Timestamp, Tr } from "@/shared/observe";
 import { Button as UiButton } from "@/components/ui/button";
 import { apiErrorMessage } from "@/modules/projects/components/project-ui";
 import { orgRoutes } from "@/app/router/org-routes";
-import { cn } from "@/lib/utils";
 
 // ── module-level constants ───────────────────────────────────
 
@@ -235,27 +232,27 @@ export default function ProjectAlertRoutesPage() {
                   <Toggle
                     checked={isActiveOf(route)}
                     label={`Toggle ${route.name}`}
-                    onChange={(checked) => toggleRoute({ routeId: route.id, isActive: checked })}
+                    onChange={(checked) => toggleRoute.mutate({ routeId: route.id, isActive: checked })}
                   />
                 </Td>
                 <Td>
-                  <Timestamp iso={route.createdAt} />
+                  <Timestamp value={route.createdAt} />
                 </Td>
-                <Td align="right">
+                <Td className="text-right">
                   <div className="flex items-center justify-end gap-1">
                     <button
                       type="button"
                       aria-label={`Edit ${route.name}`}
                       onClick={() => navigate(projectPath(orgSlug, publicId, `routes/${route.id}`))}
-                      className="rounded-[6px] p-1 text-[var(--text2)] transition-colors hover:bg-[var(--bg2)] hover:text-[var(--text)]"
+                      className="rounded-[6px] p-1 text-[var(--text-secondary)] transition-colors hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)] cursor-pointer"
                     >
                       <Pencil size={14} />
                     </button>
                     <button
                       type="button"
                       aria-label={`Delete ${route.name}`}
-                      onClick={() => deleteRoute(route.id)}
-                      className="rounded-[6px] p-1 text-[var(--text2)] transition-colors hover:bg-[var(--bg2)] hover:text-rose-400"
+                      onClick={() => deleteRoute.mutate(route.id)}
+                      className="rounded-[6px] p-1 text-[var(--text-secondary)] transition-colors hover:bg-[var(--surface-2)] hover:text-[var(--error)] cursor-pointer"
                     >
                       <Trash2 size={14} />
                     </button>

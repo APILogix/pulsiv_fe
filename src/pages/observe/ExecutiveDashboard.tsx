@@ -1,13 +1,10 @@
 import { useState } from "react";
 import { Activity, AlertTriangle, Gauge, Globe, Timer, Users } from "lucide-react";
 import { useObservabilityList } from "./hooks/useObservabilityApi";
-import { useTimeRangeStore, TIME_RANGES } from "@/stores/timeRangeStore";
 import {
   PageHeader, KpiCard, SectionCard, SeverityBadge, StatusCodeBadge, MetricSparkline,
-  Timestamp, FilterSelect, formatCompact, formatLatency, TimeRangePicker, useTimeRangeParams,
+  Timestamp, formatCompact, formatLatency, TimeRangePicker, useTimeRangeParams,
 } from "@/shared/observe";
-
-const TIME_OPTIONS = TIME_RANGES.map((r) => ({ value: r, label: r }));
 
 export default function ExecutiveDashboard() {
   const { timeRangeState } = useTimeRangeParams();

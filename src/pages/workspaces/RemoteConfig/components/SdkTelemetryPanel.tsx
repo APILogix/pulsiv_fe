@@ -1,5 +1,4 @@
-import React from "react";
-import { Share2, Cpu, CheckCircle2, AlertCircle, Wifi, Activity, Layers, RefreshCw } from "lucide-react";
+import { CheckCircle2, Wifi, Activity, RefreshCw } from "lucide-react";
 import { SectionCard, StatusBadge } from "@/shared/observe";
 
 interface SdkTelemetryPanelProps {
@@ -16,70 +15,70 @@ export function SdkTelemetryPanel({ environmentName }: SdkTelemetryPanelProps) {
   ];
 
   return (
-    <SectionCard
-      title="SDK Telemetry & Sync Network"
-      description={`Real-time connectivity, active versions, and configuration refresh health across all SDK instances bound to ${environmentName}.`}
-    >
-      <div className="flex flex-col gap-5 py-2">
+    <SectionCard title="SDK Telemetry & Sync Network">
+      <p className="text-[12px] text-[var(--text-secondary)] mb-4">
+        Real-time connectivity, active versions, and configuration refresh health across all SDK instances bound to {environmentName}.
+      </p>
+      <div className="flex flex-col gap-4">
         {/* Top Metric Strip */}
         <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-4">
-          <div className="rounded-xl border border-[var(--border)] bg-[var(--bg2)]/60 p-4">
-            <div className="flex items-center justify-between text-xs text-[var(--text3)]">
+          <div className="rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-2)] p-3.5">
+            <div className="flex items-center justify-between text-[11px] font-mono uppercase tracking-wider text-[var(--text-tertiary)]">
               <span>Connected SDKs</span>
-              <Wifi className="size-4 text-emerald-400" />
+              <Wifi className="size-3.5 text-[var(--success)]" />
             </div>
-            <div className="mt-2 text-xl font-extrabold text-[var(--text)]">1,420</div>
-            <div className="mt-1 text-[11px] text-emerald-400 font-semibold">99.8% Online</div>
+            <div className="mt-1.5 font-mono text-[20px] font-medium tabular-nums text-[var(--text-primary)]">1,420</div>
+            <div className="mt-0.5 font-mono text-[10px] text-[var(--success)]">99.8% Online</div>
           </div>
 
-          <div className="rounded-xl border border-[var(--border)] bg-[var(--bg2)]/60 p-4">
-            <div className="flex items-center justify-between text-xs text-[var(--text3)]">
+          <div className="rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-2)] p-3.5">
+            <div className="flex items-center justify-between text-[11px] font-mono uppercase tracking-wider text-[var(--text-tertiary)]">
               <span>Sync Success Rate</span>
-              <CheckCircle2 className="size-4 text-sky-400" />
+              <CheckCircle2 className="size-3.5 text-[var(--info)]" />
             </div>
-            <div className="mt-2 text-xl font-extrabold text-[var(--text)]">99.99%</div>
-            <div className="mt-1 text-[11px] text-[var(--text3)]">0 Config Fetch Failures</div>
+            <div className="mt-1.5 font-mono text-[20px] font-medium tabular-nums text-[var(--text-primary)]">99.99%</div>
+            <div className="mt-0.5 font-mono text-[10px] text-[var(--text-tertiary)]">0 Config Fetch Failures</div>
           </div>
 
-          <div className="rounded-xl border border-[var(--border)] bg-[var(--bg2)]/60 p-4">
-            <div className="flex items-center justify-between text-xs text-[var(--text3)]">
+          <div className="rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-2)] p-3.5">
+            <div className="flex items-center justify-between text-[11px] font-mono uppercase tracking-wider text-[var(--text-tertiary)]">
               <span>Config TTL Refresh</span>
-              <RefreshCw className="size-4 text-indigo-400" />
+              <RefreshCw className="size-3.5 text-[var(--brand)]" />
             </div>
-            <div className="mt-2 text-xl font-extrabold text-[var(--text)]">300s</div>
-            <div className="mt-1 text-[11px] text-indigo-400 font-semibold">Stale-While-Revalidate</div>
+            <div className="mt-1.5 font-mono text-[20px] font-medium tabular-nums text-[var(--text-primary)]">300s</div>
+            <div className="mt-0.5 font-mono text-[10px] text-[var(--brand)]">Stale-While-Revalidate</div>
           </div>
 
-          <div className="rounded-xl border border-[var(--border)] bg-[var(--bg2)]/60 p-4">
-            <div className="flex items-center justify-between text-xs text-[var(--text3)]">
+          <div className="rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-2)] p-3.5">
+            <div className="flex items-center justify-between text-[11px] font-mono uppercase tracking-wider text-[var(--text-tertiary)]">
               <span>Pending Rollouts</span>
-              <Activity className="size-4 text-amber-400" />
+              <Activity className="size-3.5 text-[var(--warning)]" />
             </div>
-            <div className="mt-2 text-xl font-extrabold text-[var(--text)]">0</div>
-            <div className="mt-1 text-[11px] text-emerald-400 font-semibold">Fully Synchronized</div>
+            <div className="mt-1.5 font-mono text-[20px] font-medium tabular-nums text-[var(--text-primary)]">0</div>
+            <div className="mt-0.5 font-mono text-[10px] text-[var(--success)]">Fully Synchronized</div>
           </div>
         </div>
 
         {/* Platform Details Table */}
-        <div className="overflow-x-auto rounded-xl border border-[var(--border)] bg-[var(--bg2)]/40">
-          <table className="w-full text-left text-xs text-[var(--text2)]">
-            <thead className="border-b border-[var(--border)] bg-[var(--bg2)] text-[10px] uppercase font-bold text-[var(--text3)]">
+        <div className="overflow-x-auto rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-1)]">
+          <table className="w-full text-left text-[12px] text-[var(--text-secondary)]">
+            <thead className="border-b border-[var(--border-subtle)] bg-[var(--surface-2)] text-[10px] uppercase font-mono tracking-wider text-[var(--text-tertiary)]">
               <tr>
-                <th className="p-3">SDK Platform</th>
-                <th className="p-3">Active SDK Instances</th>
-                <th className="p-3">Adopted Version</th>
-                <th className="p-3">Config Refresh Health</th>
-                <th className="p-3 text-right">Status</th>
+                <th className="px-3.5 py-2.5">SDK Platform</th>
+                <th className="px-3.5 py-2.5">Active SDK Instances</th>
+                <th className="px-3.5 py-2.5">Adopted Version</th>
+                <th className="px-3.5 py-2.5">Config Refresh Health</th>
+                <th className="px-3.5 py-2.5 text-right">Status</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[var(--border)]/60">
+            <tbody className="divide-y divide-[var(--border-subtle)]">
               {platforms.map((plat, idx) => (
-                <tr key={idx} className="hover:bg-[var(--bg1)] transition-colors">
-                  <td className="p-3 font-semibold text-[var(--text)]">{plat.name}</td>
-                  <td className="p-3 font-mono font-bold text-[var(--brand)]">{plat.connected} instances</td>
-                  <td className="p-3 font-mono text-[11px] text-[var(--text2)]">{plat.version}</td>
-                  <td className="p-3 font-semibold text-emerald-400">{plat.health}</td>
-                  <td className="p-3 text-right">
+                <tr key={idx} className="hover:bg-[var(--surface-2)] transition-colors">
+                  <td className="px-3.5 py-2.5 font-medium text-[var(--text-primary)]">{plat.name}</td>
+                  <td className="px-3.5 py-2.5 font-mono font-medium text-[var(--brand)]">{plat.connected} instances</td>
+                  <td className="px-3.5 py-2.5 font-mono text-[11px] text-[var(--text-secondary)]">{plat.version}</td>
+                  <td className="px-3.5 py-2.5 font-mono text-[var(--success)]">{plat.health}</td>
+                  <td className="px-3.5 py-2.5 text-right">
                     <StatusBadge status={plat.status} />
                   </td>
                 </tr>
@@ -91,3 +90,4 @@ export function SdkTelemetryPanel({ environmentName }: SdkTelemetryPanelProps) {
     </SectionCard>
   );
 }
+

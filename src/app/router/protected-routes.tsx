@@ -6,7 +6,6 @@ import NotFoundPage from "@/shared/components/NotFoundPage";
 import { AuthenticatedAppLayout } from "../layouts/AuthenticatedAppLayout";
 import { useOrganizations } from "@/modules/organizations/hooks/useOrganizations";
 import { useOrgStore } from "@/modules/organizations/store/org.store";
-import { orgRoutes } from "./org-routes";
 
 const DashboardPage = lazy(() => import("@/modules/dashboard/index").then((m) => ({ default: m.DashboardPage ?? (() => null) })));
 const SecurityCenterPage = lazy(() => import("@/modules/auth/pages/SecurityCenterPage").then((m) => ({ default: m.default })));
@@ -61,7 +60,6 @@ const ErrorGroupsPage = lazy(() => import("@/pages/observe/ErrorGroupsPage"));
 const ErrorDetailPage = lazy(() => import("@/pages/observe/ErrorDetailPage"));
 const ErrorGroupsListPage = lazy(() => import("@/modules/error-groups/pages/ErrorGroupsListPage"));
 const ErrorGroupDetailPage = lazy(() => import("@/modules/error-groups/pages/ErrorGroupDetailPage"));
-const ServiceHealthPage = lazy(() => import("@/pages/observe/ServiceHealthPage"));
 const LatencyPage = lazy(() => import("@/pages/observe/LatencyPage"));
 const TracesPage = lazy(() => import("@/pages/observe/TracesPage"));
 const TraceDetailPage = lazy(() => import("@/pages/observe/TraceDetailPage"));
@@ -191,7 +189,7 @@ const RolesPermissionsPage = lazy(() => import("@/pages/team/RolesPermissionsPag
  */
 function OrgRouteGuard() {
   const { orgSlug } = useParams<{ orgSlug: string }>();
-  const { organizations, activeOrgId, activeOrgSlug, setActiveOrg, isLoading } = useOrganizations();
+  const { organizations, activeOrgId, activeOrgSlug, setActiveOrgId, setActiveOrgSlug, isLoading } = useOrganizations();
 
   useEffect(() => {
     if (!orgSlug || isLoading || !organizations.length) return;
@@ -199,10 +197,11 @@ function OrgRouteGuard() {
     const matchingOrg = organizations.find((o) => o.slug?.toLowerCase() === orgSlug.toLowerCase());
     if (matchingOrg) {
       if (activeOrgId !== matchingOrg.id || activeOrgSlug !== matchingOrg.slug) {
-        setActiveOrg({ id: matchingOrg.id, slug: matchingOrg.slug });
+        setActiveOrgId(matchingOrg.id);
+        setActiveOrgSlug(matchingOrg.slug);
       }
     }
-  }, [orgSlug, organizations, activeOrgId, activeOrgSlug, setActiveOrg, isLoading]);
+  }, [orgSlug, organizations, activeOrgId, activeOrgSlug, setActiveOrgId, setActiveOrgSlug, isLoading]);
 
   if (isLoading && !organizations.length) {
     return null;

@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "react-router";
-import { ArrowLeft, Brain, Sparkles, Copy, MoreHorizontal, GitBranch } from "lucide-react";
+import { ArrowLeft, Sparkles, Copy, MoreHorizontal, GitBranch } from "lucide-react";
 import { useAiDrawerStore } from "@/modules/ai/store/ai-drawer.store";
 import {
   Button,
@@ -22,7 +22,7 @@ import { displayValue } from "./helpers";
 
 export function StickyRequestHeader({
   header,
-  onAnalyze,
+  onAnalyze: _onAnalyze,
   onCopyJson,
 }: {
   header: RequestDetailHeader;

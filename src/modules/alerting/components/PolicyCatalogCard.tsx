@@ -1,10 +1,7 @@
-import React from "react";
 import type { OrganizationAlertPolicy, AlertSeverity } from "../api/types";
 import {
-  Shield,
   Activity,
   Cpu,
-  Server,
   Lock,
   ArrowRight,
   Layers,

@@ -1,5 +1,4 @@
-import React from "react";
-import { GitCommit, ArrowRight, ShieldCheck, AlertTriangle, Layers, Info } from "lucide-react";
+import { GitCommit, ArrowRight, ShieldCheck } from "lucide-react";
 import { SectionCard } from "@/shared/observe";
 
 export function DependencyGraphModal() {
@@ -35,30 +34,31 @@ export function DependencyGraphModal() {
   ];
 
   return (
-    <SectionCard
-      title="Configuration Dependency & Constraint Matrix"
-      description="Visual verification of strict inter-feature relationships and system bounds."
-    >
-      <div className="flex flex-col gap-3 py-2">
+    <SectionCard title="Configuration Dependency & Constraint Matrix">
+      <p className="text-[12px] text-[var(--text-secondary)] mb-4">
+        Visual verification of strict inter-feature relationships and system bounds.
+      </p>
+      <div className="flex flex-col gap-3">
         {dependencies.map((dep, idx) => (
-          <div key={idx} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-[var(--border)] bg-[var(--bg2)]/60 p-4">
+          <div key={idx} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-2)] p-4">
             <div className="flex items-center gap-3 min-w-0">
-              <div className="flex size-8 items-center justify-center rounded-lg bg-[var(--brand)]/15 text-[var(--brand)] font-bold shrink-0">
-                <GitCommit className="size-4" />
+              <div className="flex size-7 items-center justify-center rounded-md bg-[var(--brand-muted)] text-[var(--brand)] font-medium shrink-0">
+                <GitCommit className="size-3.5" />
               </div>
               <div className="min-w-0">
-                <div className="flex items-center gap-2 text-xs font-bold text-[var(--text)]">
+                <div className="flex items-center gap-2 text-[13px] font-medium text-[var(--text-primary)]">
                   <span>{dep.feature}</span>
-                  <ArrowRight className="size-3 text-[var(--text3)]" />
-                  <span className="text-[var(--brand)]">{dep.requires}</span>
+                  <ArrowRight className="size-3 text-[var(--text-tertiary)]" />
+                  <span className="text-[var(--brand)] font-mono text-[12px]">{dep.requires}</span>
                 </div>
-                <div className="text-[11px] text-[var(--text3)] mt-0.5">{dep.reason}</div>
+                <div className="text-[12px] text-[var(--text-tertiary)] mt-0.5">{dep.reason}</div>
               </div>
             </div>
 
             <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-center">
-              <span className="flex items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-400 border border-emerald-500/30">
-                <ShieldCheck className="size-3" /> {dep.status}
+              <span className="flex items-center gap-1 rounded-full bg-[var(--success-muted)] px-2 py-0.5 text-[10px] font-mono font-medium uppercase tracking-[0.08em] text-[var(--success)] border border-[var(--success-border)]">
+                <ShieldCheck className="size-3" />
+                {dep.status}
               </span>
             </div>
           </div>

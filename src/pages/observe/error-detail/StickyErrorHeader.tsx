@@ -1,5 +1,5 @@
 import { Link as RouterLink, useNavigate } from "react-router";
-import { ArrowLeft, Brain, Sparkles, Copy, MoreHorizontal, GitBranch, AlertTriangle, ExternalLink } from "lucide-react";
+import { ArrowLeft, Sparkles, Copy, MoreHorizontal, GitBranch, AlertTriangle, ExternalLink } from "lucide-react";
 import { useAiDrawerStore } from "@/modules/ai/store/ai-drawer.store";
 
 import {
@@ -21,7 +21,7 @@ import { displayValue } from "./helpers";
 
 export function StickyErrorHeader({
   detail,
-  onAnalyze,
+  onAnalyze: _onAnalyze,
   onCopyJson,
 }: {
   detail: ErrorDetailResponse;

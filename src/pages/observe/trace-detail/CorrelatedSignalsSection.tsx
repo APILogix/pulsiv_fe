@@ -1,13 +1,9 @@
-import React from "react";
 import { Link } from "react-router";
 import {
   ExternalLink,
   Globe,
   AlertTriangle,
   FileText,
-  User,
-  Shield,
-  Layers,
 } from "lucide-react";
 import { CopyButton } from "@/shared/observe";
 import { SectionShell, KeyValueGrid } from "./ui";
@@ -23,7 +19,6 @@ export function CorrelatedSignalsSection({ detail }: { detail: TraceDetailData }
 
   const relatedErrors = detail.relatedErrors ?? [];
   const relatedLogs = detail.logs ?? [];
-  const relatedRequests = detail.relatedRequests ?? [];
 
   return (
     <SectionShell

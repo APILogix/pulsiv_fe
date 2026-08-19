@@ -3,13 +3,7 @@ import { Link } from "react-router";
 import {
   Activity,
   AlertOctagon,
-  AlertTriangle,
-  BellRing,
-  CheckCircle2,
-  Clock,
-  Inbox,
   Mail,
-  ShieldCheck,
   Zap,
 } from "lucide-react";
 import {
@@ -27,15 +21,15 @@ interface AlertOverviewWidgetProps {
 }
 
 export function AlertOverviewWidget({ className }: AlertOverviewWidgetProps) {
-  const { data: stats, isLoading: statsLoading } = useAlertEventStats();
-  const { data: eventsData, isLoading: eventsLoading } = useAlertEvents({ limit: 100 });
-  const { data: rulesData, isLoading: rulesLoading } = useAlertRules();
+  const { data: stats } = useAlertEventStats();
+  const { data: eventsData } = useAlertEvents({ limit: 100 });
+  const { data: rulesData } = useAlertRules();
   const { data: deadLettersData } = useDeadLetters({ limit: 5 });
-  const { connectorAccess, isRestricted } = useNotificationEntitlement();
+  const { isRestricted } = useNotificationEntitlement();
 
   const activeEvents = useMemo(() => {
-    return (eventsData?.data ?? []).filter(
-      (e) => e.status === "firing" || e.status === "pending" || e.status === "processing",
+    return ((eventsData?.data ?? []) as any[]).filter(
+      (e: any) => e.status === "firing" || e.status === "pending" || e.status === "processing",
     );
   }, [eventsData]);
 
@@ -50,7 +44,7 @@ export function AlertOverviewWidget({ className }: AlertOverviewWidgetProps) {
   }, [activeEvents]);
 
   const totalRules = rulesData?.total ?? (rulesData?.data?.length ?? 0);
-  const enabledRules = (rulesData?.data ?? []).filter((r) => r.enabled).length;
+  const enabledRules = ((rulesData?.data ?? []) as any[]).filter((r: any) => r.enabled).length;
 
   const isHealthy = activeEvents.length === 0;
   const deadLettersCount = deadLettersData?.total ?? (deadLettersData?.data?.length ?? 0);

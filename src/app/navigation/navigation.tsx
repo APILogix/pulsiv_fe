@@ -23,12 +23,10 @@ import {
   LayoutDashboard,
   LayoutGrid,
   LineChart,
-  ListChecks,
   ListTree,
   Logs,
   MemoryStick,
   Package,
-  Plug,
   Radar,
   Receipt,
   Recycle,
@@ -44,13 +42,7 @@ import {
   Workflow,
   Terminal,
   Cpu,
-  GitFork,
-  Award,
-  MessagesSquare,
-  FlaskConical,
   FileBarChart,
-  BookOpen,
-  SlidersHorizontal,
 } from "lucide-react";
 
 export type NavStatus = "live" | "partial" | "coming-soon";

@@ -1,23 +1,31 @@
+import { useEffect, useState } from "react";
 import { RouterProvider } from "react-router";
 import { AppProviders } from "./providers/AppProviders";
 import { router } from "./router/routes";
 import { GlobalStepUpModal } from "@/modules/auth/components/GlobalStepUpModal";
 import { useAuthStore } from "@/modules/auth/store/auth.store";
-import { AppBootstrapGate } from "@/shared/ui/loading";
 
 function App() {
-  const hasHydrated = useAuthStore((state) => state.hasHydrated);
+  const [, setHydrated] = useState(() => {
+    return typeof window !== "undefined" ? useAuthStore.persist?.hasHydrated?.() ?? true : true;
+  });
+
+  useEffect(() => {
+    if (useAuthStore.persist?.hasHydrated?.()) {
+      setHydrated(true);
+      useAuthStore.getState().setHasHydrated(true);
+    }
+    const unsub = useAuthStore.persist?.onFinishHydration?.(() => {
+      setHydrated(true);
+      useAuthStore.getState().setHasHydrated(true);
+    });
+    return () => unsub?.();
+  }, []);
 
   return (
     <AppProviders>
-      {hasHydrated ? (
-        <>
-          <RouterProvider router={router} />
-          <GlobalStepUpModal />
-        </>
-      ) : (
-        <AppBootstrapGate visible={true} />
-      )}
+      <RouterProvider router={router} />
+      <GlobalStepUpModal />
     </AppProviders>
   );
 }

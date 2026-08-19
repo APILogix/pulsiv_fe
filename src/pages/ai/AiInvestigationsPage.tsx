@@ -59,9 +59,9 @@ export default function AiInvestigationsPage() {
   return (
     <div className="flex flex-col gap-6 p-6">
       <PageHero
+        eyebrow="Grounded Analysis"
         title="AI Root Cause Analysis"
         description="Provide a canonical resource reference. The backend automatically retrieves and correlates surrounding telemetry to determine the root cause."
-        badge={{ label: "Grounded Analysis", variant: "ai" }}
         actions={
           <Button
             variant="secondary"
@@ -177,9 +177,8 @@ export default function AiInvestigationsPage() {
             </div>
             <Button
               variant="secondary"
-              size="sm"
               onClick={handleOpenInDrawer}
-              className="gap-1.5 text-[12px]"
+              className="gap-1.5 text-[12px] h-8"
             >
               <PanelRight className="size-3.5" />
               Continue in Drawer

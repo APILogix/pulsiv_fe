@@ -18,7 +18,6 @@ import {
 import { Button as UiButton } from "@/components/ui/button";
 import { DialogField, apiErrorMessage, parseList } from "@/modules/projects/components/project-ui";
 import { PROJECT_WORKFLOW, WorkflowOverlay, useWorkflow } from "@/shared/motion";
-import { cn } from "@/lib/utils";
 
 // ── module-level constants (rules.md §1.2) ───────────────────
 

@@ -6,15 +6,9 @@ import {
   ArrowLeft,
   CheckCircle2,
   CheckSquare,
-  Clock,
   Code,
   Eye,
-  Layers,
-  Mail,
   Send,
-  ShieldAlert,
-  Sparkles,
-  User,
   VolumeX,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -58,7 +52,6 @@ export default function AlertEventDetailPage() {
     );
   }
 
-  const isFiring = event.status === "firing" || event.status === "pending";
   const isAcked = event.status === "acknowledged";
   const isResolved = event.status === "resolved";
 
@@ -123,7 +116,7 @@ export default function AlertEventDetailPage() {
                 state={event.status === "firing" ? "triggered" : event.status}
                 size="md"
               />
-              <SeverityBadge severity={event.severity} size="sm" />
+              <SeverityBadge severity={event.severity} />
               {event.projectId && (
                 <span className="rounded-full border border-border/60 bg-muted/40 px-2 py-0.5 font-mono text-[10px] text-muted-foreground">
                   Project: {event.projectId}
@@ -320,16 +313,16 @@ export default function AlertEventDetailPage() {
                       </span>
                     </td>
                     <td className="p-2.5 font-mono text-[11px]">
-                      {delivery.channelType ?? "managed_email"}
+                      {delivery.connectorId ?? "managed_email"}
                     </td>
                     <td className="p-2.5 font-mono text-[11px] text-muted-foreground">
-                      {delivery.destination ?? "Project Owner"}
+                      {delivery.routeId ?? "Project Owner"}
                     </td>
                     <td className="p-2.5 font-mono text-[11px]">
-                      {delivery.attemptNumber} of {delivery.maxAttempts}
+                      {delivery.retryCount + 1}
                     </td>
                     <td className="p-2.5 font-mono text-[11px] text-muted-foreground">
-                      {new Date(delivery.attemptedAt).toLocaleTimeString()}
+                      {delivery.createdAt ? new Date(delivery.createdAt).toLocaleTimeString() : "—"}
                     </td>
                   </tr>
                 ))}

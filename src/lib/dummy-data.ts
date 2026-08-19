@@ -115,17 +115,18 @@ export const dummyErrorEvents: ErrorEvent[] = Array.from({ length: 150 }, (_, i)
 
 // Grouped by fingerprint for the Error Groups page
 export const dummyErrorGroups = dummyErrorEvents.reduce((acc, evt) => {
-  const fp = evt.fingerprint;
+  const fp = evt.fingerprint ?? evt.eventId ?? "unknown";
+  const ts = evt.timestamp ?? 0;
   if (!acc[fp]) {
     acc[fp] = {
       fingerprint: fp,
-      name: evt.name,
-      message: evt.message,
-      severity: evt.severity,
-      mechanism: evt.mechanism,
+      name: evt.name ?? "Error",
+      message: evt.message ?? "",
+      severity: evt.severity ?? "error",
+      mechanism: evt.mechanism ?? "",
       count: 0,
-      firstSeen: evt.timestamp,
-      lastSeen: evt.timestamp,
+      firstSeen: ts,
+      lastSeen: ts,
       affectedUsers: new Set<string>(),
       services: new Set<string>(),
       releases: new Set<string>(),
@@ -133,11 +134,11 @@ export const dummyErrorGroups = dummyErrorEvents.reduce((acc, evt) => {
     };
   }
   acc[fp].count++;
-  acc[fp].lastSeen = Math.max(acc[fp].lastSeen, evt.timestamp);
-  acc[fp].firstSeen = Math.min(acc[fp].firstSeen, evt.timestamp);
+  acc[fp].lastSeen = Math.max(acc[fp].lastSeen, ts);
+  acc[fp].firstSeen = Math.min(acc[fp].firstSeen, ts);
   if (evt.user?.id) acc[fp].affectedUsers.add(evt.user.id);
-  acc[fp].services.add(evt.metadata.service);
-  acc[fp].releases.add(evt.metadata.release);
+  if (evt.metadata?.service) acc[fp].services.add(evt.metadata.service);
+  if (evt.metadata?.release) acc[fp].releases.add(evt.metadata.release);
   acc[fp].occurrences.push(evt);
   return acc;
 }, {} as Record<string, ErrorGroup>);

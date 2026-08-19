@@ -61,10 +61,6 @@ export function normalizeTheme(_value?: string | null): SentinelTheme {
   return 'mono';
 }
 
-function readStoredTheme(): SentinelTheme {
-  return 'mono';
-}
-
 /**
  * Apply the theme as a hard cut: set data-theme to mono.
  */
@@ -72,6 +68,7 @@ export function applyTheme(_next: SentinelTheme = 'mono') {
   if (typeof document === 'undefined') return;
   const root = document.documentElement;
 
+  root.classList.add('dark');
   root.setAttribute('data-theme', 'mono');
   document.getElementById('sentinel-root')?.setAttribute('data-theme', 'mono');
   root.style.colorScheme = 'dark';

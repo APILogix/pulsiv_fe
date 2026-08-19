@@ -131,9 +131,9 @@ export default function AlertTemplatesPage() {
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <KpiCard label="Templates" value={templates.length} />
-        <KpiCard label="Defaults" value={templates.filter((t) => t.isDefault).length} />
-        <KpiCard label="With severity" value={templates.filter((t) => t.defaultForSeverity).length} />
-        <KpiCard label="Connector-scoped" value={templates.filter((t) => t.connectorType).length} />
+        <KpiCard label="Defaults" value={((templates ?? []) as any[]).filter((t: any) => t.isDefault).length} />
+        <KpiCard label="With severity" value={((templates ?? []) as any[]).filter((t: any) => t.defaultForSeverity).length} />
+        <KpiCard label="Connector-scoped" value={((templates ?? []) as any[]).filter((t: any) => t.connectorType).length} />
       </div>
 
       <InfiniteTable

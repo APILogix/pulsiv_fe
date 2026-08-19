@@ -1,5 +1,4 @@
-import React from "react";
-import { FileText, History, User, Globe, Shield, Clock } from "lucide-react";
+import { User, Clock } from "lucide-react";
 import { SectionCard, StatusBadge } from "@/shared/observe";
 
 interface AuditEntry {
@@ -17,7 +16,7 @@ const MOCK_AUDIT_LOGS: AuditEntry[] = [
   {
     id: "aud-109",
     timestamp: "2026-08-04 20:15:22",
-    actor: "vikas@sentinel.io (Platform Admin)",
+    actor: "vikas@monitra.dev (Platform Admin)",
     action: "PUBLISH_REVISION",
     environment: "Production (prod)",
     revision: 14,
@@ -37,7 +36,7 @@ const MOCK_AUDIT_LOGS: AuditEntry[] = [
   {
     id: "aud-107",
     timestamp: "2026-08-04 14:10:05",
-    actor: "alex.dev@sentinel.io (DevOps Lead)",
+    actor: "alex.dev@monitra.dev (DevOps Lead)",
     action: "ROLLBACK_REVISION",
     environment: "Staging (staging)",
     revision: 12,
@@ -47,7 +46,7 @@ const MOCK_AUDIT_LOGS: AuditEntry[] = [
   {
     id: "aud-106",
     timestamp: "2026-08-03 22:00:19",
-    actor: "vikas@sentinel.io (Platform Admin)",
+    actor: "vikas@monitra.dev (Platform Admin)",
     action: "PUBLISH_REVISION",
     environment: "Development (dev)",
     revision: 11,
@@ -58,16 +57,16 @@ const MOCK_AUDIT_LOGS: AuditEntry[] = [
 
 export function AuditLogPanel() {
   return (
-    <SectionCard
-      title="Enterprise Audit Trail & Configuration Log"
-      description="Immutable log of all published revisions, rollbacks, automated governance actions, and operator details."
-    >
-      <div className="flex flex-col gap-3 py-2">
-        <div className="overflow-x-auto rounded-xl border border-[var(--border)] bg-[var(--bg2)]/40">
-          <table className="w-full text-left text-xs text-[var(--text2)]">
-            <thead className="border-b border-[var(--border)] bg-[var(--bg2)] text-[10px] uppercase font-bold text-[var(--text3)]">
+    <SectionCard title="Enterprise Audit Trail & Configuration Log">
+      <p className="text-[12px] text-[var(--text-secondary)] mb-4">
+        Immutable log of all published revisions, rollbacks, automated governance actions, and operator details.
+      </p>
+      <div className="flex flex-col gap-3">
+        <div className="overflow-x-auto rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-1)]">
+          <table className="w-full text-left text-[12px] text-[var(--text-secondary)]">
+            <thead className="border-b border-[var(--border-subtle)] bg-[var(--surface-2)] text-[10px] uppercase font-mono tracking-wider text-[var(--text-tertiary)]">
               <tr>
-                <th className="p-3">Timestamp</th>
+                <th className="px-3.5 py-2.5">Timestamp</th>
                 <th className="p-3">Operator / Actor</th>
                 <th className="p-3">Action</th>
                 <th className="p-3">Environment</th>

@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "react-router";
-import { ArrowLeft, Brain, Copy, ExternalLink, GitBranch, Sparkles } from "lucide-react";
+import { ArrowLeft, Copy, ExternalLink, GitBranch, Sparkles } from "lucide-react";
 import {
   Button,
   CopyButton,

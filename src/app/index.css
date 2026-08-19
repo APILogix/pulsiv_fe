@@ -1,125 +1,185 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;450;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
 @import "tailwindcss";
 @import "tw-animate-css";
 
 /* ══════════════════════════════════════════════════════════════
-   SENTINEL DESIGN SYSTEM — sentinel-design.md is the source of truth.
-   Two dark developer themes of one identity: Indigo (default) + Mono.
-   There is NO light theme. `prefers-contrast: more` replaces it (§1).
-
-   Three-channel law (§0):
-     brand  = the product   (indigo → white in Mono)
-     green  = the truth     (system health, never chrome)
-     cyan   = the AI        (model output only, identical in both themes)
+   MONITRA DESIGN SYSTEM — newdesign.md is the single source of truth.
+   Quiet control room for modern APIs.
+   Mono-first, dark, technical, restrained semantic color.
    ══════════════════════════════════════════════════════════════ */
 
-/* Both themes are dark, so the `dark:` variant is always on. Any element
-   inside the themed root resolves dark: utilities. */
 @custom-variant dark (&:is([data-theme] *));
 
-/* ============ MONO (default theme — purist developer theme) ============ */
 :root,
 [data-theme="mono"],
+[data-theme="dark"],
 [data-theme="indigo"] {
-  /* neutrals — pure cool zinc (§11.1) */
-  --bg:#09090b; --bg1:#111113; --bg2:#18181b; --bg3:#232326;
-  --border:#26262a; --border2:#3f3f46;
-  --text:#fafafa; --text2:#a1a1aa; --text3:#8a8a94;
+  /* 3.1 Canvas */
+  --color-canvas: #08090A;
+  --color-canvas-elevated: #0B0C0E;
 
-  /* brand — identity channel is white (§2.3) */
-  --brand:#fafafa; --brand-d:#e4e4e7; --brand-fg:#09090b;
-  --brand-bg:rgba(250,250,250,0.08); --brand-glow:rgba(250,250,250,0.35);
+  /* 3.2 Surface Hierarchy */
+  --surface-0: #08090A;
+  --surface-1: #0F1012;
+  --surface-2: #141518;
+  --surface-3: #191A1D;
+  --surface-4: #1E2024;
 
-  /* ai — model channel (§2.4) */
-  --ai:#22d3ee; --ai-d:#06b6d4; --ai-fg:#032a33;
-  --ai-bg:rgba(34,211,238,0.10);
+  /* Neutrals aliases for compatibility */
+  --bg: #08090A;
+  --bg1: #0F1012;
+  --bg2: #141518;
+  --bg3: #191A1D;
+  --bg4: #1E2024;
 
-  /* semantic — truth channel (§2.2) */
-  --green:#34d399; --green-d:#10b981; --green-bg:rgba(52,211,153,0.08);
-  --red:#ef4444; --red-d:#dc2626; --red-bg:rgba(239,68,68,0.08);
-  --amber:#f59e0b; --amber-bg:rgba(245,158,11,0.08);
-  --blue:#60a5fa; --blue-bg:rgba(96,165,250,0.10);
-  --violet:#a78bfa; --violet-bg:rgba(167,139,250,0.10);
+  /* 4. Typography Colors */
+  --text-primary: #F4F5F7;
+  --text-secondary: #B4B8C0;
+  --text-tertiary: #858A94;
+  --text-disabled: #555A63;
 
-  /* legacy alias — GET method colour is the info/blue channel (§2.6). */
+  --text: #F4F5F7;
+  --text2: #B4B8C0;
+  --text3: #858A94;
+
+  /* 5. Borders */
+  --border-subtle: rgba(255, 255, 255, 0.05);
+  --border-default: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.12);
+  --border-focus: rgba(255, 255, 255, 0.20);
+
+  --border: rgba(255, 255, 255, 0.06);
+  --border2: rgba(255, 255, 255, 0.08);
+
+  /* 6. Semantic Colors */
+  --success: #3CCB7F;
+  --success-muted: rgba(60, 203, 127, 0.12);
+  --success-border: rgba(60, 203, 127, 0.25);
+  --green: #3CCB7F;
+  --green-d: #34B36F;
+  --green-bg: rgba(60, 203, 127, 0.12);
+
+  --warning: #E8B84A;
+  --warning-muted: rgba(232, 184, 74, 0.12);
+  --warning-border: rgba(232, 184, 74, 0.25);
+  --amber: #E8B84A;
+  --amber-bg: rgba(232, 184, 74, 0.12);
+
+  --error: #F05D5E;
+  --error-muted: rgba(240, 93, 94, 0.12);
+  --error-border: rgba(240, 93, 94, 0.25);
+  --red: #F05D5E;
+  --red-d: #D94849;
+  --red-bg: rgba(240, 93, 94, 0.12);
+
+  --info: #5EA7F5;
+  --info-muted: rgba(94, 167, 245, 0.12);
+  --info-border: rgba(94, 167, 245, 0.25);
+  --blue: #5EA7F5;
+  --blue-bg: rgba(94, 167, 245, 0.12);
+
+  --violet: #8B7CF6;
+  --violet-bg: rgba(139, 124, 246, 0.12);
+
+  /* AI channel */
+  --ai: #5EA7F5;
+  --ai-d: #4592E8;
+  --ai-fg: #08090A;
+  --ai-bg: rgba(94, 167, 245, 0.10);
+
+  /* 7. Brand Accent */
+  --brand: #8B7CF6;
+  --brand-hover: #9B8DFF;
+  --brand-d: #7A6BE0;
+  --brand-fg: #FFFFFF;
+  --brand-muted: rgba(139, 124, 246, 0.12);
+  --brand-bg: rgba(139, 124, 246, 0.12);
+  --brand-border: rgba(139, 124, 246, 0.25);
+  --brand-glow: rgba(139, 124, 246, 0.20);
+
   --get: var(--blue);
 
-  /* shadows (§6) */
-  --shadow-modal:0 24px 60px rgba(0,0,0,0.7);
-  --shadow-toast:0 8px 24px rgba(0,0,0,0.55);
-  --shadow-card:0 1px 2px rgba(0,0,0,0.45);
-  --overlay:rgba(0,0,0,0.66);
+  /* 14. Shadows (restrained) */
+  --shadow-modal: 0 16px 40px rgba(0, 0, 0, 0.5);
+  --shadow-toast: 0 8px 24px rgba(0, 0, 0, 0.4);
+  --shadow-card: none;
+  --overlay: rgba(0, 0, 0, 0.65);
 
-  /* type & radii (§4, §6) */
-  --display:'Space Grotesk',sans-serif;
-  --sans:'Inter',sans-serif;
-  --mono:'JetBrains Mono',monospace;
-  --radius:6px; --radius-lg:10px;
+  /* 9. Typography & 13. Radius */
+  --display: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --sans: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --mono: 'JetBrains Mono', 'SFMono-Regular', 'Roboto Mono', Consolas, monospace;
 
-  /* bridge: shadcn */
-  --background: var(--bg);
-  --foreground: var(--text);
-  --card: var(--bg1);
-  --card-foreground: var(--text);
-  --popover: var(--bg1);
-  --popover-foreground: var(--text);
-  --secondary: var(--bg2);
-  --secondary-foreground: var(--text);
-  --muted: var(--bg2);
-  --muted-foreground: var(--text2);
-  --accent: var(--bg3);
-  --accent-foreground: var(--text);
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 12px;
+  --radius: 6px;
+
+  /* shadcn UI compatibility bridge */
+  --background: var(--surface-0);
+  --foreground: var(--text-primary);
+  --card: var(--surface-1);
+  --card-foreground: var(--text-primary);
+  --popover: var(--surface-1);
+  --popover-foreground: var(--text-primary);
+  --secondary: var(--surface-2);
+  --secondary-foreground: var(--text-primary);
+  --muted: var(--surface-2);
+  --muted-foreground: var(--text-secondary);
+  --accent: var(--surface-3);
+  --accent-foreground: var(--text-primary);
   --primary: var(--brand);
   --primary-foreground: var(--brand-fg);
-  --destructive: var(--red);
+  --destructive: var(--error);
   --destructive-foreground: #ffffff;
-  --input: var(--border2);
+  --input: var(--border-default);
   --ring: var(--brand);
 
-  /* bridge: sidebar */
-  --sidebar: var(--bg1);
-  --sidebar-foreground: var(--text);
+  /* Sidebar bridge */
+  --sidebar: var(--color-canvas-elevated);
+  --sidebar-foreground: var(--text-secondary);
   --sidebar-primary: var(--brand);
-  --sidebar-primary-foreground: var(--brand-fg);
-  --sidebar-accent: var(--bg2);
-  --sidebar-accent-foreground: var(--text);
-  --sidebar-border: var(--border);
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: var(--surface-2);
+  --sidebar-accent-foreground: var(--text-primary);
+  --sidebar-border: var(--border-subtle);
   --sidebar-ring: var(--brand);
 
-  /* shell metrics (§5.2) */
-  --rail-width: 64px;
-  --flyout-width: 272px;
-  --sidebar-width: 272px;
-  --sidebar-rail: 64px;
+  /* Shell metrics */
+  --rail-width: 60px;
+  --flyout-width: 240px;
+  --sidebar-width: 240px;
+  --sidebar-rail: 60px;
   --header-height: 52px;
   --focus-rail: min(100% - 48px, 720px);
   --data-rail: 1400px;
   --row-height: 44px;
-  --nav-item-height: 34px;
+  --nav-item-height: 32px;
 
-  /* project shell — the in-project sidebar is the only project nav */
-  --project-nav-width: 272px;
+  --project-nav-width: 240px;
   --project-nav-rail: 60px;
 
-  /* chart series order (§2.7) */
+  /* Chart series order per newdesign.md */
   --chart-1: var(--brand);
-  --chart-2: var(--ai);
-  --chart-3: var(--green);
-  --chart-4: var(--amber);
-  --chart-5: var(--violet);
-  --chart-6: var(--blue);
+  --chart-2: var(--info);
+  --chart-3: var(--success);
+  --chart-4: var(--warning);
+  --chart-5: var(--error);
+  --chart-6: var(--text-secondary);
 }
 
-/* ============ Contrast accessibility (replaces the light theme, §1) ====== */
 @media (prefers-contrast: more) {
-  :root, [data-theme="indigo"] { --text2:#e9ecf4; --text3:#9aa3b8; }
-  [data-theme="mono"]          { --text2:#fafafa; --text3:#a1a1aa; }
+  :root {
+    --text-secondary: #E0E2E8;
+    --text-tertiary: #A5ABB6;
+    --border-subtle: rgba(255, 255, 255, 0.12);
+    --border-default: rgba(255, 255, 255, 0.18);
+  }
 }
 
-/* ============ Theme flip = hard cut (§9) ============
-   The provider sets data-theme-flip for one frame while swapping tokens so a
-   mid-swap colour fade can never read as a glitch. */
 [data-theme-flip] *,
 [data-theme-flip] *::before,
 [data-theme-flip] *::after {
@@ -132,19 +192,21 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    background-color: var(--color-canvas);
+    color: var(--text-primary);
+    font-family: var(--sans);
     font-feature-settings: "cv11", "ss01";
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
   }
   html {
-    @apply font-sans;
+    font-family: var(--sans);
     color-scheme: dark;
+    background-color: var(--color-canvas);
   }
   button {
     cursor: pointer;
   }
-  /* Numbers are always tabular (§4). */
   code, kbd, samp, pre, [class*="font-mono"] {
     font-variant-numeric: tabular-nums;
   }
@@ -156,38 +218,49 @@
   --font-sans: var(--sans);
   --font-mono: var(--mono);
 
-  /* three-channel tokens exposed as Tailwind colours */
+  --color-canvas: var(--color-canvas);
+  --color-canvas-elevated: var(--color-canvas-elevated);
+  --color-surface-0: var(--surface-0);
+  --color-surface-1: var(--surface-1);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-surface-4: var(--surface-4);
+
   --color-brand: var(--brand);
+  --color-brand-hover: var(--brand-hover);
   --color-brand-d: var(--brand-d);
   --color-brand-fg: var(--brand-fg);
   --color-brand-bg: var(--brand-bg);
+  --color-brand-muted: var(--brand-muted);
+  --color-brand-border: var(--brand-border);
+
   --color-ai: var(--ai);
   --color-ai-d: var(--ai-d);
   --color-ai-fg: var(--ai-fg);
   --color-ai-bg: var(--ai-bg);
-  --color-ok: var(--green);
+
+  --color-ok: var(--success);
   --color-ok-d: var(--green-d);
-  --color-ok-bg: var(--green-bg);
-  --color-danger: var(--red);
+  --color-ok-bg: var(--success-muted);
+  --color-danger: var(--error);
   --color-danger-d: var(--red-d);
-  --color-danger-bg: var(--red-bg);
-  --color-warn: var(--amber);
-  --color-warn-bg: var(--amber-bg);
-  --color-info: var(--blue);
-  --color-info-bg: var(--blue-bg);
+  --color-danger-bg: var(--error-muted);
+  --color-warn: var(--warning);
+  --color-warn-bg: var(--warning-muted);
+  --color-info: var(--info);
+  --color-info-bg: var(--info-muted);
   --color-series: var(--violet);
   --color-series-bg: var(--violet-bg);
 
-  /* neutral ramp */
-  --color-surface: var(--bg);
-  --color-surface-1: var(--bg1);
-  --color-surface-2: var(--bg2);
-  --color-surface-3: var(--bg3);
-  --color-hairline: var(--border);
-  --color-hairline-strong: var(--border2);
-  --color-text-1: var(--text);
-  --color-text-2: var(--text2);
-  --color-text-3: var(--text3);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-tertiary: var(--text-tertiary);
+  --color-text-disabled: var(--text-disabled);
+
+  --color-border-subtle: var(--border-subtle);
+  --color-border-default: var(--border-default);
+  --color-border-strong: var(--border-strong);
+  --color-border-focus: var(--border-focus);
 
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
@@ -197,12 +270,7 @@
   --color-sidebar-primary: var(--sidebar-primary);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar: var(--sidebar);
-  --color-chart-6: var(--chart-6);
-  --color-chart-5: var(--chart-5);
-  --color-chart-4: var(--chart-4);
-  --color-chart-3: var(--chart-3);
-  --color-chart-2: var(--chart-2);
-  --color-chart-1: var(--chart-1);
+
   --color-ring: var(--ring);
   --color-input: var(--input);
   --color-border: var(--border);
@@ -222,59 +290,24 @@
   --color-card: var(--card);
   --color-foreground: var(--foreground);
   --color-background: var(--background);
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
-  --radius-lg: var(--radius-lg);
-  --radius-xl: calc(var(--radius-lg) * 1.4);
-  --radius-2xl: calc(var(--radius-lg) * 1.8);
-  --radius-3xl: calc(var(--radius-lg) * 2.2);
-  --radius-4xl: calc(var(--radius-lg) * 2.6);
+
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 12px;
 }
 
-/* ══════════════════════════════════════════════════════════════
-   §3 — Ambient field. The only chrome gradients in the system.
-   ══════════════════════════════════════════════════════════════ */
+/* Ambient canvas background (extremely quiet) */
 .sentinel-ambient {
   position: fixed;
   inset: 0;
   pointer-events: none;
   z-index: -10;
-  background:
-    radial-gradient(1200px 600px at 80% -10%, var(--brand-bg) 0%, transparent 60%),
-    radial-gradient(900px 500px at -10% 110%, var(--ai-bg) 0%, transparent 55%);
+  background-color: var(--color-canvas);
 }
 
-/* AI insight panel glow — top-right inner radial, never a gradient border. */
-.ai-glow::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  border-radius: inherit;
-  background: radial-gradient(circle at 100% 0%, var(--ai-bg) 0%, transparent 45%);
-}
-
-/* Landing / auth hero glow. */
-.hero-glow::before {
-  content: "";
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 480px;
-  height: 240px;
-  translate: -50% -50%;
-  pointer-events: none;
-  background: radial-gradient(ellipse, var(--brand-bg) 0%, transparent 70%);
-}
-
-/* Logo mark — the ONLY linear gradient in the system (§3). */
-.logo-gradient {
-  background: linear-gradient(135deg, var(--brand) 0%, var(--ai) 100%);
-}
-
-/* ══════════════════════════════════════════════════════════════
-   §5.1 — Dual-width strategy. Never mix the two rails.
-   ══════════════════════════════════════════════════════════════ */
+/* Dual-width strategy */
 .focus-rail {
   width: var(--focus-rail);
   max-width: 720px;
@@ -288,60 +321,33 @@
   .data-rail-scroll { overflow-x: auto; }
 }
 
-/* §4 — mono eyebrow / label. */
 .eyebrow {
   font-family: var(--mono);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 500;
-  letter-spacing: 0.09em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--text3);
+  color: var(--text-tertiary);
 }
 .tabular {
   font-variant-numeric: tabular-nums;
 }
 
-/* Motions & Animations (§9) */
-@keyframes pulse-dot {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.5; transform: scale(0.85); }
-}
-.pulse-dot {
-  animation: pulse-dot 2s ease-in-out infinite;
-}
-
-@keyframes ai-pulse {
-  0% { transform: scale(1); opacity: 0.8; }
-  100% { transform: scale(2); opacity: 0; }
-}
-.ai-pulse {
-  animation: ai-pulse 2.4s ease-out infinite;
-}
-
-@keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
-}
-.shimmer {
-  background: linear-gradient(90deg, transparent, var(--ai-bg), transparent);
-  background-size: 200% 100%;
-  animation: shimmer 1.4s linear infinite;
-}
-
+/* Micro-animations (100–200ms only) */
 @keyframes toastin {
-  0% { transform: translateY(8px); opacity: 0; }
+  0% { transform: translateY(6px); opacity: 0; }
   100% { transform: translateY(0); opacity: 1; }
 }
 .toastin {
-  animation: toastin 250ms ease-out forwards;
+  animation: toastin 180ms ease-out forwards;
 }
 
 @keyframes modalin {
-  0% { transform: translateY(10px) scale(0.99); opacity: 0; }
+  0% { transform: translateY(6px) scale(0.99); opacity: 0; }
   100% { transform: translateY(0) scale(1); opacity: 1; }
 }
 .modalin {
-  animation: modalin 200ms ease-out forwards;
+  animation: modalin 180ms ease-out forwards;
 }
 
 @keyframes fadein {
@@ -349,29 +355,10 @@
   100% { opacity: 1; }
 }
 .fadein {
-  animation: fadein 150ms ease-out forwards;
+  animation: fadein 120ms ease-out forwards;
 }
 
-/* Chart lines draw once on load (§9). */
-@keyframes chart-draw {
-  from { stroke-dashoffset: 1; }
-  to { stroke-dashoffset: 0; }
-}
-/* Pair with pathLength="1" on the <path> element. */
-.chart-draw {
-  stroke-dasharray: 1;
-  stroke-dashoffset: 1;
-  animation: chart-draw 600ms ease-out forwards;
-}
-
-/* Prefers reduced motion — kill infinite animations, keep fades. */
-@media (prefers-reduced-motion: reduce) {
-  .pulse-dot, .ai-pulse, .shimmer {
-    animation: none !important;
-  }
-}
-
-/* Hide scrollbars globally */
+/* Hide scrollbars cleanly */
 .sidebar-scroll {
   scrollbar-width: none;
   -ms-overflow-style: none;
@@ -387,23 +374,23 @@
   -ms-overflow-style: none;
 }
 
-/* Tooltip for rail icons — appears only when the flyout is collapsed (§6).
-   Slides 4px as it fades so it reads as attached to the icon, not stamped. */
+/* Rail item tooltips */
 .rail-item::after {
   content: attr(data-title);
   position: absolute;
   left: 56px;
-  background: var(--bg1);
-  border: 1px solid var(--border);
-  padding: 6px 10px;
-  border-radius: var(--radius-sm);
-  font-size: 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--border-default);
+  padding: 4px 8px;
+  border-radius: var(--radius-xs);
+  font-size: 11px;
   font-weight: 500;
+  color: var(--text-primary);
   white-space: nowrap;
   opacity: 0;
   transform: translateX(-4px);
   pointer-events: none;
-  transition: opacity 150ms ease-out, transform 150ms cubic-bezier(0.22, 1, 0.36, 1);
+  transition: opacity 120ms ease-out, transform 120ms ease-out;
   z-index: 110;
   box-shadow: var(--shadow-toast);
 }
@@ -413,29 +400,14 @@
   transform: translateX(0);
 }
 
-/* Flyout accordion.
-   The original clamp was `max-height: 400px`, which silently truncated long
-   module lists — the Observability group alone has 21 children (~800px), so
-   roughly half its rows were unreachable.
-
-   Raising the clamp would only move the cliff, so the height is derived from the
-   content instead: the row wraps a single grid item and animates
-   `grid-template-rows` from `0fr` to `1fr`. No group can outgrow it.
-
-   `grid-template-rows` interpolation needs Chrome 107+ / Firefox 66+ /
-   Safari 16+. Where it isn't supported the panel still opens and closes
-   correctly — only the transition is lost — because `1fr` applies immediately.
-   That degrades to "instant", never to "clipped". */
 .nav-group-children {
   display: grid;
   grid-template-rows: 0fr;
   opacity: 0;
   transition:
-    grid-template-rows 240ms cubic-bezier(0.22, 1, 0.36, 1),
-    opacity 160ms ease-out;
+    grid-template-rows 200ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 140ms ease-out;
 }
-/* The single grid child does the clipping. `min-height: 0` is required or the
-   row refuses to collapse below its content height. */
 .nav-group-children > .nav-group-rows {
   min-height: 0;
   overflow: hidden;
@@ -445,9 +417,6 @@
   opacity: 1;
 }
 
-/* Sidebar nav row — active indicator scales in from the rail edge (§6).
-   Horizontal position is left to the call site (a Tailwind `left-*` utility)
-   because unlayered CSS would otherwise beat the utility. */
 .nav-row-indicator {
   position: absolute;
   top: 50%;
@@ -457,228 +426,45 @@
   border-radius: 2px;
   background: var(--brand);
   transform-origin: center;
-  animation: nav-indicator-in 200ms cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-@keyframes nav-indicator-in {
-  from { opacity: 0; scale: 1 0.3; }
-  to   { opacity: 1; scale: 1 1; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .rail-item::after { transition: opacity 100ms linear; transform: none; }
+  .rail-item::after { transition: none; transform: none; }
   .rail-item:hover::after,
   .rail-item:focus-visible::after { transform: none; }
   .nav-group-children { transition: none; }
-  .nav-row-indicator { animation: none; }
 }
 
-/* Dim main content when flyout is unpinned and open */
 body.flyout-overlay-active #main-content {
   opacity: 0.4;
   pointer-events: none;
 }
 
-/* ══════════════════════════════════════════════════════════════
-   Pulse surface kit — decorative layers for the observability UI.
-   All values derive from theme tokens so both themes stay in sync.
-   ══════════════════════════════════════════════════════════════ */
-
-/* Faint blueprint grid — used behind page heroes and auth panels. */
-.pulse-grid::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background-image:
-    linear-gradient(to right, color-mix(in srgb, var(--border) 55%, transparent) 1px, transparent 1px),
-    linear-gradient(to bottom, color-mix(in srgb, var(--border) 55%, transparent) 1px, transparent 1px);
-  background-size: 32px 32px;
-  mask-image: radial-gradient(120% 100% at 0% 0%, #000 0%, transparent 72%);
-  -webkit-mask-image: radial-gradient(120% 100% at 0% 0%, #000 0%, transparent 72%);
-}
-
-/* Brand → AI aurora wash. Sits above the grid, below content. */
-.pulse-aurora::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background:
-    radial-gradient(60% 120% at 8% 0%, var(--brand-bg) 0%, transparent 60%),
-    radial-gradient(50% 120% at 100% 10%, var(--ai-bg) 0%, transparent 62%);
-}
-
-/* Hairline top highlight — gives cards a lit edge. */
-.pulse-edge {
-  box-shadow: inset 0 1px 0 0 color-mix(in srgb, var(--text) 6%, transparent);
-}
-
-/* Hoverable card lift. Transform-only so it stays on the compositor. */
-.pulse-lift {
-  transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
-}
-.pulse-lift:hover {
-  transform: translateY(-2px);
-  border-color: var(--border2);
-  box-shadow: 0 10px 30px -12px color-mix(in srgb, var(--brand) 28%, transparent);
-}
-
-/* Scanning sweep for "live"/streaming affordances. */
-@keyframes pulse-sweep {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(300%); }
-}
-.pulse-sweep::after {
-  content: "";
-  position: absolute;
-  inset-block: 0;
-  width: 33%;
-  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--ai) 55%, transparent), transparent);
-  animation: pulse-sweep 2.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-}
-
-/* Radial ping used by live status dots. */
-@keyframes pulse-ping {
-  0% { transform: scale(1); opacity: 0.55; }
-  100% { transform: scale(2.6); opacity: 0; }
-}
-.pulse-ping {
-  animation: pulse-ping 1.8s ease-out infinite;
-}
-
-/* Staggered entrance for grids of cards. */
-@keyframes pulse-rise {
-  0% { opacity: 0; transform: translateY(6px); }
-  100% { opacity: 1; transform: translateY(0); }
-}
-.pulse-rise {
-  animation: pulse-rise 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .pulse-sweep::after,
-  .pulse-ping,
-  .pulse-rise,
-  .pulse-lift {
-    animation: none !important;
-    transition: none !important;
-  }
-  .pulse-lift:hover { transform: none; }
-}
-
-/* Standardized loading system: bootstrap, route region, metric telemetry, auth handoff. */
-.app-bootstrap-loader::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background-image:
-    linear-gradient(to right, color-mix(in srgb, var(--border) 42%, transparent) 1px, transparent 1px),
-    linear-gradient(to bottom, color-mix(in srgb, var(--border) 42%, transparent) 1px, transparent 1px),
-    radial-gradient(60% 70% at 50% 35%, var(--brand-bg), transparent 72%);
-  background-size: 40px 40px, 40px 40px, 100% 100%;
-  mask-image: linear-gradient(to bottom, #000, transparent 88%);
-}
-
-@keyframes app-loader-scan {
-  from { transform: translateX(-100%); }
-  to { transform: translateX(400%); }
-}
-.app-loader-scan {
-  background: linear-gradient(90deg, transparent, var(--brand), transparent);
-  animation: app-loader-scan 1.4s linear infinite;
-}
-
+/* Skeletons */
 @keyframes loading-skeleton-shift {
-  0%, 100% { background-color: var(--bg2); opacity: 0.85; }
-  50% { background-color: var(--bg3); opacity: 1; }
+  0%, 100% { background-color: var(--surface-2); opacity: 0.7; }
+  50% { background-color: var(--surface-3); opacity: 1; }
 }
 .loading-skeleton { animation: loading-skeleton-shift 1.2s ease-in-out infinite; }
 
-/* ── Phase 3 — page-shaped skeletons ──────────────────────────────────────
-   `.skeleton-block` carries the entrance rise AND the shimmer in a single
-   `animation` shorthand, so one `animation-delay: <d>, <d>` staggers both at
-   once (see shared/skeletons/primitives.tsx). Only opacity/transform and
-   background-color animate, so a 200-block skeleton still costs no layout. */
-@keyframes skeleton-rise {
-  from { opacity: 0; transform: translateY(2px); }
-  to   { opacity: 1; transform: none; }
-}
-.skeleton-rise {
-  animation: skeleton-rise 160ms cubic-bezier(0.16, 1, 0.3, 1) both;
-}
 .skeleton-block {
-  background-color: var(--bg2);
-  animation:
-    skeleton-rise 160ms cubic-bezier(0.16, 1, 0.3, 1) both,
-    loading-skeleton-shift 1.2s ease-in-out infinite;
+  background-color: var(--surface-2);
+  animation: loading-skeleton-shift 1.2s ease-in-out infinite;
+  border-radius: var(--radius-xs);
 }
-
-
-.metric-loader-grid { stroke: var(--border); stroke-width: 1; }
-.metric-loader-trace {
-  fill: none;
-  stroke: var(--brand);
-  stroke-width: 2;
-  stroke-linecap: round;
-  stroke-dasharray: 18 10;
-  animation: metric-trace-flow 1.1s linear infinite;
-}
-.metric-loader-node { fill: var(--bg1); stroke: var(--ai); stroke-width: 2; animation: metric-node-pulse 1.4s ease-in-out infinite; }
-.metric-loader-bar { fill: var(--violet); opacity: 0.18; transform-box: fill-box; transform-origin: center bottom; animation: metric-bar-breathe 1.2s ease-in-out infinite; }
-@keyframes metric-trace-flow { to { stroke-dashoffset: -28; } }
-@keyframes metric-node-pulse { 50% { r: 6px; opacity: 0.55; } }
-@keyframes metric-bar-breathe { 50% { transform: scaleY(0.45); opacity: 0.42; } }
-
-.auth-transition-progress {
-  width: 100%;
-  transform-origin: left center;
-  animation: auth-transition-fill 1.25s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-@keyframes auth-transition-fill { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 
 @media (prefers-reduced-motion: reduce) {
-  .app-loader-scan,
   .loading-skeleton,
-  .skeleton-block,
-  .skeleton-rise,
-  .metric-loader-trace,
-  .metric-loader-node,
-  .metric-loader-bar,
-  .auth-transition-progress {
+  .skeleton-block {
     animation: none !important;
   }
-  /* `skeleton-rise` uses fill-mode `both`; without the animation the element
-     must not stay at its from-state. */
-  .skeleton-block,
-  .skeleton-rise {
-    opacity: 1 !important;
-    transform: none !important;
-  }
 }
 
-/* ══════════════════════════════════════════════════════════════
-   Phase 9 — scroll experience.
-   Smooth scrolling and anchor offsets, opted out for reduced motion.
-   No JS scroll listeners are involved; the app's scroll containers keep
-   their own passive rAF-throttled handlers (shared/motion/scroll.tsx).
-   ══════════════════════════════════════════════════════════════ */
-@media (prefers-reduced-motion: no-preference) {
-  html {
-    scroll-behavior: smooth;
-  }
-}
-
-/* Applied to every long scroll region in the shell. `overscroll-behavior`
-   stops a nested table from scroll-chaining the whole page, which is the most
-   common source of "the page jumped" reports. */
 .scroll-region {
   overscroll-behavior: contain;
   scroll-padding-top: 1rem;
   -webkit-overflow-scrolling: touch;
 }
-
-/* Reserve the scrollbar gutter so toggling overflow can't shift layout (CLS). */
 .scroll-stable {
   scrollbar-gutter: stable;
 }

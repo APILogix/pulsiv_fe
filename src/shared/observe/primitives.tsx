@@ -186,16 +186,16 @@ export function CopyButton({ value, label, className }: { value: string; label?:
     <button
       type="button"
       onClick={handleCopy}
-      className={cn("inline-flex shrink-0 whitespace-nowrap cursor-pointer items-center gap-1.5 rounded-[var(--radius)] border border-[var(--border2)] bg-transparent px-2 py-1 text-[12px] text-[var(--text2)] transition-colors hover:text-[var(--text)] hover:border-[var(--text3)]", className)}
+      className={cn("inline-flex shrink-0 whitespace-nowrap cursor-pointer items-center gap-1.5 rounded-[var(--radius-xs)] border border-[var(--border-default)] bg-transparent px-2 py-1 text-[12px] text-[var(--text-secondary)] transition-colors hover:text-[var(--text-primary)] hover:border-[var(--border-strong)] hover:bg-[var(--surface-2)]", className)}
     >
-      {copied ? <Check className="size-3.5 text-[var(--green)]" /> : <Copy className="size-3.5" />}
+      {copied ? <Check className="size-3 text-[var(--success)]" /> : <Copy className="size-3" />}
       {label ?? (copied ? "Copied" : "Copy")}
     </button>
   );
 }
 
 export function MonospaceText({ value, className }: { value: string; className?: string }) {
-  return <span className={cn("font-[family-name:var(--mono)] text-[12px] text-[var(--text2)] truncate", className)} title={value}>{value}</span>;
+  return <span className={cn("font-mono text-[12px] text-[var(--text-secondary)] truncate", className)} title={value}>{value}</span>;
 }
 
 // ── layout primitives ──
@@ -206,29 +206,29 @@ export function PageHeader({ title, description, breadcrumbs, actions }: {
   actions?: React.ReactNode;
 }) {
   return (
-    <div className="flex items-start justify-between gap-4">
+    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
       <div>
         {breadcrumbs && breadcrumbs.length > 0 && (
-          <div className="mb-1.5 flex items-center gap-1 text-[12px] text-[var(--text3)]">
+          <div className="mb-1.5 flex items-center gap-1 text-[11px] font-medium text-[var(--text-tertiary)]">
             {breadcrumbs.map((b, i) => {
               const isLast = i === breadcrumbs.length - 1;
               return (
                 <span key={b.label} className="flex items-center gap-1">
-                  {i > 0 && <ChevronRight className="size-3" />}
+                  {i > 0 && <ChevronRight className="size-3 text-[var(--text-disabled)]" />}
                   {b.to ? (
-                    <Link to={b.to} className="cursor-pointer transition-colors hover:text-[var(--text2)] focus-visible:outline-none focus-visible:underline">
+                    <Link to={b.to} className="cursor-pointer transition-colors hover:text-[var(--text-secondary)] focus-visible:outline-none focus-visible:underline">
                       {b.label}
                     </Link>
                   ) : (
-                    <span className={isLast ? "text-[var(--text2)]" : ""}>{b.label}</span>
+                    <span className={isLast ? "text-[var(--text-secondary)]" : ""}>{b.label}</span>
                   )}
                 </span>
               );
             })}
           </div>
         )}
-        <h1 className="font-[family-name:var(--display)] text-[22px] font-semibold tracking-[-0.02em] text-[var(--text)]">{title}</h1>
-        {description && <p className="mt-1 text-[13px] leading-[1.5] text-[var(--text2)]">{description}</p>}
+        <h1 className="font-sans text-[20px] sm:text-[22px] font-medium tracking-tight text-[var(--text-primary)]">{title}</h1>
+        {description && <p className="mt-1 text-[13px] leading-relaxed text-[var(--text-secondary)]">{description}</p>}
       </div>
       {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
     </div>
@@ -242,14 +242,14 @@ export function SectionCard({ title, action, children, className }: {
   className?: string;
 }) {
   return (
-    <div className={cn("rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)]", className)}>
+    <div className={cn("rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--surface-1)]", className)}>
       {title && (
-        <div className="flex items-center justify-between border-b border-[var(--border)] px-5 py-3">
-          <h3 className="text-[14px] font-semibold text-[var(--text)]">{title}</h3>
+        <div className="flex items-center justify-between border-b border-[var(--border-subtle)] px-4 py-3 sm:px-5">
+          <h3 className="text-[14px] font-medium text-[var(--text-primary)]">{title}</h3>
           {action}
         </div>
       )}
-      <div className="p-5">{children}</div>
+      <div className="p-4 sm:p-5">{children}</div>
     </div>
   );
 }
@@ -265,10 +265,11 @@ export function FillPage({ children, className }: { children: React.ReactNode; c
 }
 
 const TREND_TONE: Record<string, string> = {
-  up: "text-[var(--green)]",
-  down: "text-[var(--red)]",
-  neutral: "text-[var(--text2)]",
+  up: "text-[var(--success)]",
+  down: "text-[var(--error)]",
+  neutral: "text-[var(--text-secondary)]",
 };
+
 export function KpiCard({ label, value, delta, trend = "neutral", icon: Icon }: {
   label: string;
   value: string | number;
@@ -277,13 +278,13 @@ export function KpiCard({ label, value, delta, trend = "neutral", icon: Icon }: 
   icon?: LucideIcon;
 }) {
   return (
-    <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] p-4">
+    <div className="rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--surface-1)] p-4">
       <div className="flex items-center justify-between">
-        <span className="font-[family-name:var(--mono)] text-[10px] font-medium uppercase tracking-[0.09em] text-[var(--text3)]">{label}</span>
-        {Icon && <Icon className="size-4 text-[var(--text3)]" />}
+        <span className="font-mono text-[10px] font-medium uppercase tracking-[0.09em] text-[var(--text-tertiary)]">{label}</span>
+        {Icon && <Icon className="size-3.5 text-[var(--text-tertiary)]" />}
       </div>
-      <div className="mt-2 font-[family-name:var(--mono)] text-[26px] font-medium leading-[1.1] tracking-[-0.02em] tabular-nums text-[var(--text)]">{value}</div>
-      {delta && <div className={cn("mt-1 font-[family-name:var(--mono)] text-[11px] font-medium tabular-nums", TREND_TONE[trend])}>{delta}</div>}
+      <div className="mt-2 font-mono text-[24px] font-medium leading-none tracking-tight tabular-nums text-[var(--text-primary)]">{value}</div>
+      {delta && <div className={cn("mt-1.5 font-mono text-[11px] font-medium tabular-nums", TREND_TONE[trend])}>{delta}</div>}
     </div>
   );
 }
@@ -310,14 +311,13 @@ export function MetricSparkline({ data, color = "var(--brand)", width = 120, hei
 
 export function LatencyBar({ value, max = 2000 }: { value: number; max?: number }) {
   const pct = Math.min(100, (value / max) * 100);
-  const tone = value > 1000 ? "var(--red)" : value > 500 ? "var(--amber)" : "var(--green)";
+  const tone = value > 1000 ? "var(--error)" : value > 500 ? "var(--warning)" : "var(--success)";
   return (
     <div className="flex items-center gap-2">
-      <div className="h-1.5 w-20 overflow-hidden rounded-full bg-[var(--bg3)]">
+      <div className="h-1.5 w-20 overflow-hidden rounded-full bg-[var(--surface-3)]">
         <div className="h-full rounded-full" style={{ width: `${pct}%`, background: tone }} />
       </div>
-      <span className="text-[12px] tabular-nums text-[var(--text2)]">{value >= 1000 ? `${(value / 1000).toFixed(2)}s` : `${value}ms`}</span>
+      <span className="font-mono text-[12px] tabular-nums text-[var(--text-secondary)]">{value >= 1000 ? `${(value / 1000).toFixed(2)}s` : `${value}ms`}</span>
     </div>
   );
 }
-

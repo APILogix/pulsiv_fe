@@ -41,13 +41,13 @@ export default function PerformanceDeepDive() {
   const timeCols = 16;
   const heatRows = LATENCY_BUCKETS.map((bucket, bi) => {
     const cells = Array.from({ length: timeCols }, (_, t) =>
-      reqList.filter((r) => bucketIndex(r.latency) === bi && (r.timestamp % timeCols) === t % timeCols).length + (bi <= 3 ? 8 - bi * 2 : 1)
+      reqList.filter((r) => bucketIndex(r.latency) === bi && ((r.timestamp ?? 0) % timeCols) === t % timeCols).length + (bi <= 3 ? 8 - bi * 2 : 1)
     );
     return { label: bucket, cells };
   });
 
   // By route
-  const byRoute = Object.entries(groupBy(reqList, (r) => r.route))
+  const byRoute = Object.entries(groupBy(reqList, (r) => r.route ?? r.url ?? "unknown"))
     .map(([route, rs]) => {
       const ls = rs.map((r) => r.latency);
       const errs = rs.filter((r) => r.statusCode >= 500).length;
@@ -55,7 +55,7 @@ export default function PerformanceDeepDive() {
     })
     .sort((a, b) => b.p95 - a.p95);
 
-  const byService = Object.entries(groupBy(reqList, (r) => r.metadata.service))
+  const byService = Object.entries(groupBy(reqList, (r) => r.metadata?.service ?? "unknown"))
     .map(([service, rs]) => ({ service, p95: percentile(rs.map((r) => r.latency), 95), count: rs.length, errRate: (rs.filter((r) => r.statusCode >= 500).length / rs.length) * 100 }))
     .sort((a, b) => b.p95 - a.p95);
 
@@ -224,12 +224,12 @@ export default function PerformanceDeepDive() {
           {slowReqs.map((r) => (
             <Tr key={r.eventId} onClick={() => navigate(`/observability/requests/${r.requestId}`)}>
               <Td><Timestamp value={r.timestamp} /></Td>
-              <Td><span className="flex items-center gap-2"><MethodBadge method={r.method} /><MonospaceText value={r.route} className="max-w-[220px]" /></span></Td>
+              <Td><span className="flex items-center gap-2"><MethodBadge method={r.method} /><MonospaceText value={r.route ?? r.url ?? "—"} className="max-w-[220px]" /></span></Td>
               <Td className="w-44"><LatencyBar value={r.latency} /></Td>
               <Td><StatusCodeBadge code={r.statusCode} /></Td>
               <Td><MonospaceText value={r.userId ?? "—"} className="max-w-[120px]" /></Td>
-              <Td><MonospaceText value={r.traceId.slice(0, 8)} className="text-[var(--brand)]" /></Td>
-              <Td className="text-[var(--text2)]">{r.metadata.service}</Td>
+              <Td><MonospaceText value={(r.traceId ?? "—").slice(0, 8)} className="text-[var(--brand)]" /></Td>
+              <Td className="text-[var(--text2)]">{r.metadata?.service ?? "—"}</Td>
             </Tr>
           ))}
         </Table>

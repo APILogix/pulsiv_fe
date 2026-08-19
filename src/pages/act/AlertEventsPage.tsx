@@ -1,23 +1,13 @@
 import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import {
-  AlertOctagon,
-  AlertTriangle,
   CheckCircle2,
-  Clock,
-  Eye,
-  Filter,
-  Flame,
-  Radio,
   RefreshCw,
   Search,
-  ShieldCheck,
-  VolumeX,
-  XCircle,
+  ArrowUpRight,
 } from "lucide-react";
 import {
   useAlertEvents,
-  useAlertEventStats,
   useAlertEventMutations,
   useNotificationEntitlement,
 } from "@/modules/alerting/hooks/useAlerting";
@@ -25,17 +15,17 @@ import { IncidentStateBadge } from "@/modules/alerting/components/IncidentStateB
 import { toIncidentView } from "@/modules/alerting/components/incident-view";
 import { SeverityBadge } from "@/shared/observe";
 import { EntitlementRestrictedBanner } from "@/modules/alerting/components/EntitlementRestrictedBanner";
-import type { AlertSeverity, IncidentState } from "@/modules/alerting/api/types";
+import type { IncidentState } from "@/modules/alerting/api/types";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 const STATE_TABS: Array<{ id: string; label: string; state?: IncidentState }> = [
-  { id: "all", label: "All Incidents" },
-  { id: "triggered", label: "Triggered / Firing", state: "triggered" },
-  { id: "acknowledged", label: "Acknowledged", state: "acknowledged" },
-  { id: "escalated", label: "Escalated", state: "escalated" },
-  { id: "muted", label: "Muted / Silenced", state: "muted" },
-  { id: "resolved", label: "Resolved", state: "resolved" },
+  { id: "all", label: "ALL INCIDENTS" },
+  { id: "triggered", label: "FIRING", state: "triggered" },
+  { id: "acknowledged", label: "ACKNOWLEDGED", state: "acknowledged" },
+  { id: "escalated", label: "ESCALATED", state: "escalated" },
+  { id: "muted", label: "SILENCED", state: "muted" },
+  { id: "resolved", label: "RESOLVED", state: "resolved" },
 ];
 
 const SEVERITIES: Array<{ id: string; label: string }> = [
@@ -52,7 +42,6 @@ export default function AlertEventsPage() {
   const [selectedSeverity, setSelectedSeverity] = useState("all");
   const [search, setSearch] = useState("");
 
-  const { data: statsData } = useAlertEventStats();
   const { data: eventsData, isLoading, refetch, isRefetching } = useAlertEvents({ limit: 150 });
   const { isRestricted } = useNotificationEntitlement();
   const mutations = useAlertEventMutations();
@@ -71,7 +60,7 @@ export default function AlertEventsPage() {
   }, [incidents]);
 
   const filtered = useMemo(() => {
-    return incidents.filter((incident) => {
+    return incidents.filter((incident: ReturnType<typeof toIncidentView>) => {
       const matchesTab = selectedTab === "all" || incident.state === selectedTab;
       const matchesSeverity =
         selectedSeverity === "all" || incident.severity === selectedSeverity;
@@ -105,37 +94,46 @@ export default function AlertEventsPage() {
     }
   };
 
+  const firingCount = countsByState["triggered"] ?? 0;
+  const ackCount = countsByState["acknowledged"] ?? 0;
+  const totalCount = incidents.length;
+
   return (
-    <div className="mx-auto w-full max-w-[1400px] space-y-6 p-4 sm:p-6">
-      {/* Header */}
-      <div className="flex flex-col justify-between gap-4 border-b border-border/60 pb-4 sm:flex-row sm:items-center">
+    <div className="flex flex-col gap-5 w-full max-w-[1400px] mx-auto px-4 sm:px-6 py-6 font-sans">
+      
+      {/* ── 1. Page Header ── */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-[var(--border-subtle)] pb-5">
         <div>
-          <div className="flex items-center gap-2">
-            <AlertOctagon className="size-6 text-rose-500" aria-hidden="true" />
-            <h1 className="text-2xl font-bold tracking-tight text-[var(--text)]">
-              Incident Command Center
-            </h1>
+          <div className="flex items-center gap-2 text-[11px] font-[family-name:var(--mono)] uppercase tracking-[0.08em] text-[var(--text-tertiary)]">
+            <span className="inline-block size-1.5 rounded-full bg-[var(--error)]" />
+            <span>Alerts & Incident Response</span>
+            <span>/</span>
+            <span className="text-[var(--text-secondary)]">Incident Feed</span>
           </div>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Live incidents, breach evaluations, and state transitions across all projects.
+          <h1 className="mt-1 text-[22px] font-semibold tracking-[-0.02em] text-[var(--text-primary)] font-[family-name:var(--display)]">
+            Incident Command Center
+          </h1>
+          <p className="text-[13px] text-[var(--text-secondary)]">
+            Active firing alerts, escalation chains, breach acknowledgments, and resolution lifecycle.
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5">
           <button
             onClick={() => refetch()}
             disabled={isRefetching}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium text-[var(--text)] transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)]"
+            className="flex items-center gap-1.5 rounded-[var(--radius-sm)] border border-[var(--border-default)] bg-[var(--surface-1)] px-3 py-1.5 text-[12px] font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-2)] transition-colors"
           >
             <RefreshCw className={cn("size-3.5", isRefetching && "animate-spin")} />
-            Refresh
+            <span>Sync</span>
           </button>
+          
           <Link
             to="/alerts/overview"
-            className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium text-[var(--text)] transition-colors hover:bg-muted"
+            className="flex items-center gap-1.5 rounded-[var(--radius-sm)] border border-[var(--brand-border)] bg-[var(--brand-muted)] px-3 py-1.5 text-[12px] font-medium text-[var(--text-primary)] hover:bg-[var(--brand)] hover:text-white transition-all"
           >
-            <Radio className="size-3.5 text-[var(--brand)]" />
-            Overview
+            <span>Alerting Overview</span>
+            <ArrowUpRight className="size-3.5" />
           </Link>
         </div>
       </div>
@@ -143,149 +141,184 @@ export default function AlertEventsPage() {
       {/* Plan Entitlement Warning */}
       {isRestricted && <EntitlementRestrictedBanner showOwnerDetails={false} />}
 
-      {/* State Filter Tabs */}
-      <div className="flex flex-wrap items-center gap-2 border-b border-border/60 pb-3">
-        {STATE_TABS.map((tab) => {
-          const count = countsByState[tab.id] ?? 0;
-          const isActive = selectedTab === tab.id;
-          return (
-            <button
-              key={tab.id}
-              onClick={() => setSelectedTab(tab.id)}
-              className={cn(
-                "inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors",
-                isActive
-                  ? "bg-[var(--brand)] text-[var(--brand-fg)] shadow-sm"
-                  : "text-muted-foreground hover:bg-muted hover:text-[var(--text)]",
-              )}
-            >
-              <span>{tab.label}</span>
-              {count > 0 && (
-                <span
-                  className={cn(
-                    "rounded-full px-1.5 py-0.2 font-mono text-[10px]",
-                    isActive
-                      ? "bg-white/20 text-white"
-                      : "bg-muted text-muted-foreground",
-                  )}
-                >
-                  {count}
-                </span>
-              )}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Filters Toolbar */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-2.5 size-3.5 text-muted-foreground" />
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by title, service, environment, or fingerprint…"
-            className="w-full rounded-lg border border-border bg-background py-2 pl-9 pr-3 text-xs text-[var(--text)] placeholder:text-muted-foreground focus:border-[var(--brand)] focus:outline-none focus:ring-1 focus:ring-[var(--brand)]"
-          />
+      {/* ── 2. Unified Hero Incident Strip ── */}
+      <div className="grid grid-cols-2 md:grid-cols-4 overflow-hidden rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--surface-1)] divide-x divide-y md:divide-y-0 divide-[var(--border-subtle)]">
+        <div className="p-4 flex flex-col justify-between">
+          <span className="text-[11px] font-[family-name:var(--mono)] uppercase tracking-[0.08em] text-[var(--text-tertiary)]">Total Breaches</span>
+          <div className="mt-2 text-[24px] font-semibold tracking-[-0.03em] text-[var(--text-primary)] font-[family-name:var(--mono)] tabular-nums">
+            {totalCount}
+          </div>
+          <div className="mt-1 text-[11px] font-[family-name:var(--mono)] text-[var(--text-tertiary)]">Recorded in fleet</div>
         </div>
 
+        <div className="p-4 flex flex-col justify-between">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-[family-name:var(--mono)] uppercase tracking-[0.08em] text-[var(--text-tertiary)]">Currently Firing</span>
+            <span className={cn("size-2 rounded-full", firingCount > 0 ? "bg-[var(--error)] animate-pulse" : "bg-[var(--success)]")} />
+          </div>
+          <div className={cn(
+            "mt-2 text-[24px] font-semibold tracking-[-0.03em] font-[family-name:var(--mono)] tabular-nums",
+            firingCount > 0 ? "text-[var(--error)]" : "text-[var(--text-primary)]"
+          )}>
+            {firingCount}
+          </div>
+          <div className="mt-1 text-[11px] font-[family-name:var(--mono)] text-[var(--text-tertiary)]">Requires engineer triage</div>
+        </div>
+
+        <div className="p-4 flex flex-col justify-between">
+          <span className="text-[11px] font-[family-name:var(--mono)] uppercase tracking-[0.08em] text-[var(--text-tertiary)]">Acknowledged</span>
+          <div className="mt-2 text-[24px] font-semibold tracking-[-0.03em] text-[var(--info)] font-[family-name:var(--mono)] tabular-nums">
+            {ackCount}
+          </div>
+          <div className="mt-1 text-[11px] font-[family-name:var(--mono)] text-[var(--text-tertiary)]">Under active triage</div>
+        </div>
+
+        <div className="p-4 flex flex-col justify-between">
+          <span className="text-[11px] font-[family-name:var(--mono)] uppercase tracking-[0.08em] text-[var(--text-tertiary)]">Resolved</span>
+          <div className="mt-2 text-[24px] font-semibold tracking-[-0.03em] text-[var(--success)] font-[family-name:var(--mono)] tabular-nums">
+            {countsByState["resolved"] ?? 0}
+          </div>
+          <div className="mt-1 text-[11px] font-[family-name:var(--mono)] text-[var(--text-tertiary)]">Mitigated incidents</div>
+        </div>
+      </div>
+
+      {/* ── 3. High-Density Filter Toolbar ── */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--surface-1)] p-3">
+        {/* Left: Search + State Tabs */}
+        <div className="flex flex-wrap items-center gap-2.5 flex-1">
+          <div className="relative min-w-[240px] max-w-[340px] flex-1">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-[var(--text-tertiary)]" />
+            <input
+              type="text"
+              placeholder="Search by title, service, environment, or fingerprint…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="h-8 w-full rounded-[var(--radius-sm)] border border-[var(--border-default)] bg-[var(--surface-2)] pl-8 pr-3 text-[12px] text-[var(--text-primary)] placeholder-[var(--text-tertiary)] focus:border-[var(--brand)] focus:outline-none font-[family-name:var(--mono)]"
+            />
+          </div>
+
+          {/* State Segmented Pills */}
+          <div className="flex items-center rounded-[var(--radius-sm)] border border-[var(--border-default)] bg-[var(--surface-2)] p-0.5 text-[11px] font-[family-name:var(--mono)]">
+            {STATE_TABS.map((tab) => {
+              const count = countsByState[tab.id] ?? 0;
+              const isActive = selectedTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setSelectedTab(tab.id)}
+                  className={cn(
+                    "rounded-[4px] px-2 py-0.5 transition-colors font-medium flex items-center gap-1.5",
+                    isActive
+                      ? "bg-[var(--surface-4)] text-[var(--text-primary)] shadow-sm font-semibold"
+                      : "text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]"
+                  )}
+                >
+                  <span>{tab.label}</span>
+                  {count > 0 && (
+                    <span className="text-[9.5px] tabular-nums text-[var(--text-tertiary)]">({count})</span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Right: Severity Dropdown */}
         <div className="flex items-center gap-2">
           <select
             value={selectedSeverity}
             onChange={(e) => setSelectedSeverity(e.target.value)}
-            className="rounded-lg border border-border bg-background px-3 py-2 text-xs text-[var(--text)] focus:border-[var(--brand)] focus:outline-none focus:ring-1 focus:ring-[var(--brand)]"
+            className="h-8 rounded-[var(--radius-sm)] border border-[var(--border-default)] bg-[var(--surface-2)] px-2.5 text-[11px] text-[var(--text-secondary)] focus:border-[var(--brand)] focus:outline-none font-[family-name:var(--mono)]"
           >
             {SEVERITIES.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.label}
-              </option>
+              <option key={s.id} value={s.id}>{s.label}</option>
             ))}
           </select>
         </div>
       </div>
 
-      {/* Incidents Table / Stream */}
+      {/* ── 4. Incidents Table / Stream ── */}
       {isLoading ? (
-        <div className="rounded-xl border border-border/60 bg-card/60 p-12 text-center text-xs text-muted-foreground">
+        <div className="rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--surface-1)] p-12 text-center text-[12px] font-[family-name:var(--mono)] text-[var(--text-tertiary)]">
           <RefreshCw className="mx-auto mb-2 size-5 animate-spin text-[var(--brand)]" />
           Loading active incidents…
         </div>
       ) : filtered.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-border/80 bg-card/40 p-12 text-center">
-          <CheckCircle2 className="mx-auto size-9 text-emerald-400 opacity-80" />
-          <p className="mt-2 text-sm font-semibold text-[var(--text)]">No incidents match filters</p>
-          <p className="mt-1 text-xs text-muted-foreground">
+        <div className="rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--surface-1)] p-12 text-center">
+          <CheckCircle2 className="mx-auto size-8 text-[var(--success)] opacity-80" />
+          <p className="mt-2 text-[14px] font-semibold text-[var(--text-primary)]">No incidents match filters</p>
+          <p className="mt-1 text-[12px] text-[var(--text-tertiary)]">
             {incidents.length === 0
-              ? "All monitored services and threshold policies are healthy."
-              : "Try adjusting your search criteria or state filter."}
+              ? "All monitored services and threshold policies are operational."
+              : "Try adjusting your search query or state filter."}
           </p>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-xl border border-border/60 bg-card/60 shadow-sm">
+        <div className="overflow-hidden rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--surface-1)]">
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="border-b border-border/60 bg-muted/40 text-[10px] uppercase text-muted-foreground font-mono">
+            <table className="w-full text-left text-[12px]">
+              <thead className="border-b border-[var(--border-subtle)] bg-[var(--surface-2)]/40 text-[10px] uppercase text-[var(--text-tertiary)] font-[family-name:var(--mono)] tracking-wider">
                 <tr>
-                  <th className="p-3">State</th>
-                  <th className="p-3">Severity</th>
-                  <th className="p-3">Incident / Source</th>
-                  <th className="p-3">Service & Env</th>
-                  <th className="p-3">Occurrences</th>
-                  <th className="p-3">Last Triggered</th>
-                  <th className="p-3 text-right">Quick Actions</th>
+                  <th className="px-4 py-2.5 font-medium">State</th>
+                  <th className="px-3 py-2.5 font-medium">Severity</th>
+                  <th className="px-3 py-2.5 font-medium">Incident / Title</th>
+                  <th className="px-3 py-2.5 font-medium">Service & Env</th>
+                  <th className="px-3 py-2.5 font-medium">Count</th>
+                  <th className="px-3 py-2.5 font-medium">Last Triggered</th>
+                  <th className="px-4 py-2.5 text-right font-medium">Quick Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border/40 font-normal">
-                {filtered.map((incident) => {
+              <tbody className="divide-y divide-[var(--border-subtle)] font-[family-name:var(--mono)]">
+                {filtered.map((incident: ReturnType<typeof toIncidentView>) => {
                   const isFiring = incident.state === "triggered";
-                  const isAcked = incident.state === "acknowledged";
-                  const isResolved = incident.state === "resolved";
+                  const isResolved = incident.state === "resolved" || incident.state === "closed";
 
                   return (
                     <tr
                       key={incident.id}
                       onClick={() => navigate(`/alerts/${incident.id}`)}
                       className={cn(
-                        "group cursor-pointer transition-colors hover:bg-muted/30",
-                        isFiring && "bg-rose-500/[0.03]",
+                        "group cursor-pointer transition-colors hover:bg-[var(--surface-2)]",
+                        isFiring && "bg-[var(--error-muted)]/20",
                       )}
                     >
-                      <td className="p-3">
+                      <td className="px-4 py-3 align-middle">
                         <IncidentStateBadge state={incident.state} size="sm" />
                       </td>
-                      <td className="p-3">
-                        <SeverityBadge severity={incident.severity} size="sm" />
+                      <td className="px-3 py-3 align-middle">
+                        <SeverityBadge severity={incident.severity} />
                       </td>
-                      <td className="p-3">
-                        <div className="font-semibold text-[var(--text)] group-hover:text-[var(--brand)] transition-colors">
+                      <td className="px-3 py-3 align-middle">
+                        <div className="font-medium text-[var(--text-primary)] group-hover:text-[var(--brand)] transition-colors truncate max-w-[280px]">
                           {incident.title}
                         </div>
-                        <div className="font-mono text-[10px] text-muted-foreground">
+                        <div className="text-[10px] text-[var(--text-tertiary)] truncate max-w-[280px]">
                           {incident.fingerprint}
                         </div>
                       </td>
-                      <td className="p-3">
-                        <span className="font-mono text-[11px] text-[var(--text)]">
+                      <td className="px-3 py-3 align-middle">
+                        <span className="text-[11px] text-[var(--text-primary)]">
                           {incident.service}
                         </span>
-                        <span className="block text-[10px] uppercase text-muted-foreground">
+                        <span className="block text-[9.5px] uppercase text-[var(--text-tertiary)]">
                           {incident.environment}
                         </span>
                       </td>
-                      <td className="p-3 font-mono text-[11px]">
-                        <span className="rounded bg-muted/60 px-1.5 py-0.5 font-semibold text-muted-foreground">
+                      <td className="px-3 py-3 align-middle text-[11px] tabular-nums">
+                        <span className="rounded bg-[var(--surface-3)] px-1.5 py-0.5 font-semibold text-[var(--text-secondary)]">
                           {incident.occurrenceCount}x
                         </span>
                       </td>
-                      <td className="p-3 text-muted-foreground font-mono text-[11px]">
+                      <td className="px-3 py-3 align-middle text-[var(--text-tertiary)] text-[11px] tabular-nums">
                         {new Date(incident.lastTriggeredAt).toLocaleString()}
                       </td>
-                      <td className="p-3 text-right" onClick={(e) => e.stopPropagation()}>
+                      <td className="px-4 py-3 align-middle text-right" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-end gap-1.5">
                           {isFiring && (
                             <button
                               onClick={(e) => handleQuickAck(e, incident.id)}
-                              className="rounded border border-blue-500/30 bg-blue-500/10 px-2 py-1 text-[11px] font-medium text-blue-400 hover:bg-blue-500/20"
+                              className="rounded-[4px] border border-[var(--info)]/30 bg-[var(--info-muted)] px-2 py-1 text-[10.5px] font-medium text-[var(--info)] hover:bg-[var(--info)] hover:text-white transition-colors"
                             >
                               Ack
                             </button>
@@ -293,14 +326,14 @@ export default function AlertEventsPage() {
                           {!isResolved && (
                             <button
                               onClick={(e) => handleQuickResolve(e, incident.id)}
-                              className="rounded border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-[11px] font-medium text-emerald-400 hover:bg-emerald-500/20"
+                              className="rounded-[4px] border border-[var(--success)]/30 bg-[var(--success-muted)] px-2 py-1 text-[10.5px] font-medium text-[var(--success)] hover:bg-[var(--success)] hover:text-white transition-colors"
                             >
                               Resolve
                             </button>
                           )}
                           <button
                             onClick={() => navigate(`/alerts/${incident.id}`)}
-                            className="rounded border border-border px-2 py-1 text-[11px] text-muted-foreground hover:bg-muted hover:text-[var(--text)]"
+                            className="rounded-[4px] border border-[var(--border-default)] bg-[var(--surface-2)] px-2 py-1 text-[10.5px] text-[var(--text-secondary)] hover:bg-[var(--surface-3)] hover:text-[var(--text-primary)] transition-colors"
                           >
                             Details →
                           </button>
@@ -317,3 +350,4 @@ export default function AlertEventsPage() {
     </div>
   );
 }
+

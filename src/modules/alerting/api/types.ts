@@ -428,6 +428,11 @@ export interface AlertDeliveryAttempt {
 }
 
 export interface EventStats {
+  active?: number;
+  acknowledged?: number;
+  total24h?: number;
+  resolved24h?: number;
+  mttrMinutes?: number | null;
   [key: string]: unknown;
 }
 

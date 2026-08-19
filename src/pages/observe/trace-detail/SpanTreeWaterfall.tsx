@@ -1,24 +1,16 @@
-import React, { useState, useMemo } from "react";
+import { useState, useMemo } from "react";
 import {
   Search,
   ChevronRight,
   ChevronDown,
-  Clock,
-  Database,
-  Globe,
-  Layers,
   Flame,
   AlertCircle,
-  CheckCircle2,
-  Copy,
   X,
-  Code2,
-  Filter,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { CopyButton, Button, Badge } from "@/shared/observe";
+import { CopyButton, Button } from "@/shared/observe";
 import { formatDurationMs, formatPercent } from "./helpers";
-import type { SpanTreeNode, TraceSpan } from "./types";
+import type { SpanTreeNode } from "./types";
 
 const KIND_COLORS: Record<string, { bg: string; text: string; bar: string }> = {
   internal: { bg: "bg-[var(--violet-bg)]", text: "text-[var(--violet)]", bar: "bg-[var(--violet)]" },
@@ -40,10 +32,10 @@ function getKindStyle(kind: string) {
 }
 
 export function SpanTreeWaterfall({
-  tree,
+  tree: _tree,
   flatList,
   totalTraceDurationMs,
-  bottleneck,
+  bottleneck: _bottleneck,
 }: {
   tree: SpanTreeNode[];
   flatList: SpanTreeNode[];
@@ -318,10 +310,9 @@ export function SpanTreeWaterfall({
 
                       {/* Bottleneck flame */}
                       {node.isBottleneck && (
-                        <Flame
-                          className="size-3.5 shrink-0 text-[var(--amber)] animate-pulse"
-                          title="Slowest bottleneck span in trace"
-                        />
+                        <span title="Slowest bottleneck span in trace" className="inline-flex">
+                          <Flame className="size-3.5 shrink-0 text-[var(--warning)] animate-pulse" />
+                        </span>
                       )}
                     </div>
 

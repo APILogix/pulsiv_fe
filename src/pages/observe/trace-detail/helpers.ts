@@ -1,4 +1,4 @@
-import type { TraceSpan, SpanTreeNode, TraceDetailData } from "./types";
+import type { TraceSpan, SpanTreeNode } from "./types";
 
 export function formatDurationMs(ms: number | null | undefined): string {
   if (ms === null || ms === undefined || isNaN(ms)) return "0 ms";

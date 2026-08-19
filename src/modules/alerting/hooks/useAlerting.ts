@@ -14,8 +14,8 @@ import {
   deadLettersApi,
   eventsApi,
   incidentsApi,
-  projectAlertsApi,
   orgPoliciesApi,
+  projectAlertsApi,
   projectSubscriptionsApi,
   effectivePolicyApi,
   workspaceApi,
@@ -144,7 +144,7 @@ export function useOrganizationAlertPolicyMutations() {
   };
 }
 
-export function useAlertIncidents(query: { state?: import("../api/types").IncidentState; severity?: string; search?: string; limit?: number; offset?: number } = {}) {
+export function useAlertIncidents(query: { state?: import("../api/types").IncidentState; severity?: import("../api/types").AlertSeverity; search?: string; limit?: number; offset?: number } = {}) {
   const { activeOrgId } = useAlertingScope();
   return useQuery({
     queryKey: alertingKeys.incidents(activeOrgId, query),
@@ -720,11 +720,11 @@ export function useNotificationEntitlement() {
 
   const isProviderActive = (channel: keyof typeof CONNECTOR_FEATURE_KEYS): boolean => {
     const canonicalKey = CONNECTOR_FEATURE_KEYS[channel];
-    const aliasKey = channel in CONNECTOR_ALIAS_KEYS ? CONNECTOR_ALIAS_KEYS[channel as keyof typeof CONNECTOR_ALIAS_KEYS] : null;
+    const aliasKey = channel in CONNECTOR_ALIAS_KEYS ? CONNECTOR_ALIAS_KEYS[channel as keyof typeof CONNECTOR_ALIAS_KEYS] : undefined;
     const legacyKey = CONNECTOR_LEGACY_KEYS[channel];
     return (
       (Boolean(canonicalKey) && raw[canonicalKey]?.booleanValue === true) ||
-      (Boolean(aliasKey) && raw[aliasKey]?.booleanValue === true) ||
+      (Boolean(aliasKey) && (aliasKey ? raw[aliasKey]?.booleanValue === true : false)) ||
       (Boolean(legacyKey) && raw[legacyKey]?.booleanValue === true)
     );
   };

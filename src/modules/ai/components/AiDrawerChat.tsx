@@ -10,7 +10,7 @@ import {
   User,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Timestamp, Button } from "@/shared/observe";
+import { Timestamp } from "@/shared/observe";
 import { Markdown } from "./Markdown";
 import { normalizeAiError } from "../lib/errors";
 import { useAssistantChat } from "../hooks/useAi";
@@ -68,14 +68,12 @@ export function AiDrawerChat() {
   const {
     conversations,
     activeId,
-    setActive,
     startNew,
     ensureConversation,
     addMessage,
     updateMessage,
     renameFromServer,
     deleteConversation,
-    clearAll,
   } = useAssistantStore();
 
   const [input, setInput] = useState("");

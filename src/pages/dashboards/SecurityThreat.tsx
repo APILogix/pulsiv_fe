@@ -30,14 +30,14 @@ export default function SecurityThreat() {
   const [randomJWT] = useState(() => Array.from({ length: 4 }, () => Math.floor(Math.random() * 5)));
 
   // Failed auth by IP
-  const byIp = Object.entries(groupBy(authFails, (r) => r.clientIp))
+  const byIp = Object.entries(groupBy(authFails, (r) => r.clientIp ?? "unknown"))
     .map(([ip, rs]) => ({ ip, count: rs.length, country: countryForIp(ip), endpoint: rs[0]?.route ?? "—" }))
     .sort((a, b) => b.count - a.count)
     .slice(0, 8);
 
   // Sensitive endpoint access
   const sensitiveAccess = SENSITIVE.map((path, i) => {
-    const matched = reqList.filter((r) => r.route.includes(path) || r.url.includes(path));
+    const matched = reqList.filter((r) => (r.route ?? "").includes(path) || (r.url ?? "").includes(path));
     return {
       path,
       count: matched.length || randomCounts[i],
@@ -47,12 +47,12 @@ export default function SecurityThreat() {
   });
 
   // API key abuse (by tenant as proxy)
-  const keyAbuse = Object.entries(groupBy(reqList, (r) => r.tenantId))
+  const keyAbuse = Object.entries(groupBy(reqList, (r) => r.tenantId ?? "default"))
     .map(([tenant, rs]) => {
-      const countries = new Set(rs.map((r) => countryForIp(r.clientIp).code)).size;
-      const errRate = (rs.filter((r) => r.statusCode >= 400).length / rs.length) * 100;
+      const countries = new Set(rs.map((r) => countryForIp(r.clientIp ?? "").code)).size;
+      const errRate = (rs.filter((r) => (r.statusCode ?? 200) >= 400).length / rs.length) * 100;
       const risk = Math.min(100, countries * 12 + errRate);
-      return { key: `pulse_${tenant.slice(0, 6)}`, count: rs.length, countries, errRate, risk };
+      return { key: `monitra_${tenant.slice(0, 6)}`, count: rs.length, countries, errRate, risk };
     })
     .sort((a, b) => b.risk - a.risk)
     .slice(0, 6);

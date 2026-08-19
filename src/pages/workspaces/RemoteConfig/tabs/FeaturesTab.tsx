@@ -1,8 +1,8 @@
 import { Switch } from '@/components/ui/switch';
-import { SectionBanner, FieldTooltip, MicroCopy } from '../components/HelpSystem';
+import { SectionBanner, FieldTooltip } from '../components/HelpSystem';
 import type { SdkConfigState } from '../schema';
 import { cn } from '@/lib/utils';
-import { Zap, ShieldCheck, Cpu, AlertTriangle, Layers } from 'lucide-react';
+import { Zap, Cpu, Layers } from 'lucide-react';
 
 interface FeaturesTabProps {
   features: SdkConfigState['features'];
@@ -25,7 +25,7 @@ const CORE_FEATURES: FeatureToggleDef[] = [
     key: 'errors',
     label: 'Error Tracking',
     tooltip: 'Captures unhandled exceptions, unhandled promise rejections, and manually reported errors with stack traces and breadcrumbs.',
-    onDesc: 'Unhandled exceptions are captured and sent to Pulse.',
+    onDesc: 'Unhandled exceptions are captured and sent to Monitra.',
     offDesc: 'Errors are silently ignored.',
     cost: '< 0.01% CPU',
     sdkReq: 'All SDKs v1.0+',
@@ -33,8 +33,8 @@ const CORE_FEATURES: FeatureToggleDef[] = [
   {
     key: 'logging',
     label: 'Structured Logging',
-    tooltip: "Ships your application's structured log entries (info, warn, error, debug) to Pulse for centralized search and alerting.",
-    onDesc: 'Application logs are shipped to Pulse.',
+    tooltip: "Ships your application's structured log entries (info, warn, error, debug) to Monitra for centralized search and alerting.",
+    onDesc: 'Application logs are shipped to Monitra.',
     offDesc: 'Logs are only printed locally.',
     cost: '~ 0.1% CPU',
     sdkReq: 'Node/Web/Python v1.2+',

@@ -12,7 +12,6 @@ import {
   CheckCircle2,
   ArrowRight,
   Plug,
-  Info,
 } from "lucide-react";
 import { useNotificationEntitlement, useProjectAlertingStatus } from "../hooks/useAlerting";
 import { useProjectMembers } from "@/modules/projects/hooks/useMembers";
@@ -32,7 +31,7 @@ export function EntitlementRestrictedBanner({
   showOwnerDetails = true,
 }: EntitlementRestrictedBannerProps) {
   const activeOrgSlug = useOrgStore((s) => s.activeOrgSlug);
-  const { isRestricted, isLoading: entitlementLoading } = useNotificationEntitlement();
+  const { isRestricted } = useNotificationEntitlement();
   const { data: alertingStatus } = useProjectAlertingStatus(projectId);
   const { data: memberPage } = useProjectMembers(projectId ?? "", { status: "active" });
 

@@ -1,4 +1,4 @@
-import { Clock3, Layers, CheckCircle2, Zap, Network } from "lucide-react";
+import { Clock3, Layers, CheckCircle2, Zap } from "lucide-react";
 import { KpiCard } from "@/shared/observe";
 import { formatDurationMs, formatPercent } from "./helpers";
 import type { TraceDetailData, SpanTreeNode } from "./types";
@@ -20,8 +20,6 @@ export function SummaryCards({
   const isOk = status.toLowerCase() === "ok" || status.toLowerCase() === "success";
 
   const totalErrors = detail.counts?.errors ?? detail.relatedErrors?.length ?? 0;
-  const totalLogs = detail.counts?.logs ?? detail.logs?.length ?? 0;
-  const totalRequests = (entity.requestId || detail.correlations?.requestId ? 1 : 0) + (detail.relatedRequests?.length ?? 0);
 
   const bottleneckPercent = bottleneck && durationMs > 0 ? (bottleneck.durationMs / durationMs) * 100 : 0;
 

@@ -1,4 +1,3 @@
-import React from "react";
 import {
   ShieldCheck,
   History,
@@ -26,7 +25,6 @@ interface RemoteConfigHeaderProps {
   draftChangesCount: number;
   hasErrors: boolean;
   onOpenPublishDrawer: () => void;
-  onDiscardDraft: () => void;
   onOpenRollout: () => void;
   onOpenInheritance: () => void;
   onOpenTelemetry: () => void;
@@ -43,7 +41,6 @@ export function RemoteConfigHeader({
   draftChangesCount,
   hasErrors,
   onOpenPublishDrawer,
-  onDiscardDraft,
   onOpenRollout,
   onOpenInheritance,
   onOpenTelemetry,
@@ -52,22 +49,23 @@ export function RemoteConfigHeader({
   const envName = currentEnv ? `${currentEnv.name} (${currentEnv.slug})` : "All Environments Scope";
 
   return (
-    <div className="flex flex-col gap-4 rounded-[16px] border border-[var(--border)] bg-[var(--bg1)]/80 p-5 shadow-lg backdrop-blur-md">
+    <div className="flex flex-col gap-4 rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--surface-1)] p-4 sm:p-5">
       {/* Top Bar: Scope, Badges, and Primary Control Action */}
       <div className="flex flex-wrap items-center justify-between gap-4">
         {/* Left Side: Environment Selector & Control Title */}
         <div className="flex items-center gap-3">
-          <div className="flex size-10 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500/20 via-sky-500/20 to-emerald-500/20 border border-indigo-500/30 text-indigo-400 shadow-inner">
-            <Cpu className="size-5" />
+          <div className="flex size-9 items-center justify-center rounded-md bg-[var(--surface-2)] border border-[var(--border-default)] text-[var(--brand)] shrink-0">
+            <Cpu className="size-4" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-[17px] font-bold tracking-tight text-[var(--text)]">Remote Configuration Control Plane</h1>
-              <span className="rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-400 border border-emerald-500/30">
+              <h1 className="text-[16px] font-medium tracking-tight text-[var(--text-primary)]">Remote Configuration Control Plane</h1>
+              <span className="rounded-full bg-[var(--success-muted)] px-2 py-0.5 font-mono text-[10px] font-medium uppercase tracking-[0.08em] text-[var(--success)] border border-[var(--success-border)]">
                 Live Engine
               </span>
             </div>
-            <p className="text-[12px] text-[var(--text3)] flex items-center gap-1.5 mt-0.5">
+            <p className="text-[12px] text-[var(--text-secondary)] flex items-center gap-1.5 mt-0.5">
+
               <Globe2 className="size-3 text-[var(--brand)]" /> Active Environment Scope:
               <select
                 value={selectedEnvironmentId}

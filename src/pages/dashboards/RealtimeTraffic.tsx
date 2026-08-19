@@ -43,14 +43,14 @@ export default function RealtimeTraffic() {
   const totalMax = CONN_LIMITS.reduce((s, c) => s + c.max, 0);
   const connPct = (totalConn / totalMax) * 100;
 
-  const topRoutes = Object.entries(groupBy(reqList, (r) => r.route))
+  const topRoutes = Object.entries(groupBy(reqList, (r) => r.route ?? r.url ?? "unknown"))
     .map(([route, rs]) => ({ route, rpm: rs.length * 14, errRate: (rs.filter((r) => r.statusCode >= 500).length / rs.length) * 100, p95: percentile(rs.map((r) => r.latency), 95) }))
     .sort((a, b) => b.rpm - a.rpm)
     .slice(0, 10);
 
   const rateLimitHits = reqList.filter((r) => r.statusCode === 429).length;
-  const liveRows = [...reqList].sort((a, b) => b.timestamp - a.timestamp).slice(0, 40);
-  const errorStream = [...errList].sort((a, b) => b.timestamp - a.timestamp).slice(0, 20);
+  const liveRows = [...reqList].sort((a, b) => (b.timestamp ?? 0) - (a.timestamp ?? 0)).slice(0, 40);
+  const errorStream = [...errList].sort((a, b) => (b.timestamp ?? 0) - (a.timestamp ?? 0)).slice(0, 20);
 
   return (
     <div className="flex flex-col gap-5">
@@ -145,10 +145,10 @@ export default function RealtimeTraffic() {
               <Tr key={r.eventId} onClick={() => navigate(`/observability/requests/${r.requestId}`)}>
                 <Td><Timestamp value={r.timestamp} /></Td>
                 <Td><MethodBadge method={r.method} /></Td>
-                <Td><MonospaceText value={r.route} className="max-w-[200px]" /></Td>
+                <Td><MonospaceText value={r.route ?? r.url ?? "—"} className="max-w-[200px]" /></Td>
                 <Td><StatusCodeBadge code={r.statusCode} /></Td>
                 <Td className="tabular-nums">{formatLatency(r.latency)}</Td>
-                <Td className="text-[var(--text2)]">{r.metadata.service}</Td>
+                <Td className="text-[var(--text2)]">{r.metadata?.service ?? "—"}</Td>
               </Tr>
             ))}
           </Table>
@@ -157,12 +157,12 @@ export default function RealtimeTraffic() {
         <SectionCard title="Error alert stream">
           <div className="flex max-h-[28rem] flex-col divide-y divide-[var(--border)] overflow-auto">
             {errorStream.map((e) => (
-              <button type="button" key={e.eventId} onClick={() => navigate(`/observability/errors/${e.fingerprint}`)} className="flex items-start gap-2 py-2 text-left first:pt-0 hover:opacity-80">
+              <button type="button" key={e.eventId} onClick={() => navigate(`/observability/errors/${e.fingerprint ?? e.eventId}`)} className="flex items-start gap-2 py-2 text-left first:pt-0 hover:opacity-80">
                 <SeverityBadge severity={e.severity} />
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-[12px] font-medium text-[var(--text)]">{e.name}</div>
                   <div className="flex items-center gap-2 text-[11px] text-[var(--text3)]">
-                    <span>{e.metadata.service}</span>·<Timestamp value={e.timestamp} />
+                    <span>{e.metadata?.service ?? "—"}</span>·<Timestamp value={e.timestamp} />
                   </div>
                 </div>
               </button>

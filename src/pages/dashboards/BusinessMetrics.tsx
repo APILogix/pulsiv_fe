@@ -25,7 +25,7 @@ export default function BusinessMetrics() {
   const reqList = requests.data ?? [];
   const total = reqList.length || 1;
 
-  const byEndpoint = Object.entries(groupBy(reqList, (r) => r.route))
+  const byEndpoint = Object.entries(groupBy(reqList, (r) => r.route ?? r.url ?? "unknown"))
     .map(([route, rs]) => {
       const errRate = (rs.filter((r) => r.statusCode >= 400).length / rs.length) * 100;
       return { route, count: rs.length, users: uniqueBy(rs.filter((r) => r.userId), (r) => r.userId!), errRate, life: lifecycle(rs.length, errRate) };
@@ -36,7 +36,7 @@ export default function BusinessMetrics() {
   const c4xx = reqList.filter((r) => r.statusCode >= 400 && r.statusCode < 500).length;
   const c5xx = reqList.filter((r) => r.statusCode >= 500).length;
 
-  const tenants = Object.entries(groupBy(reqList, (r) => r.tenantId))
+  const tenants = Object.entries(groupBy(reqList, (r) => r.tenantId ?? "default"))
     .map(([id, rs]) => ({
       id, count: rs.length,
       users: uniqueBy(rs.filter((r) => r.userId), (r) => r.userId!),

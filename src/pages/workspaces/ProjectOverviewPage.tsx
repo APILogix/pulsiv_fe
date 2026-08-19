@@ -2,35 +2,19 @@ import { useRef, useState } from "react";
 import { Link } from "react-router";
 import { projectPath } from "@/modules/projects/navigation/project-routes";
 import {
-  Activity,
   ArrowRight,
   BarChart3,
-  Clock,
-  Database,
-  HardDrive,
-  KeyRound,
-  Layers,
-  ShieldCheck,
   Sliders,
-  Users,
 } from "lucide-react";
 import { useProjectOverview, useProjectStats } from "@/modules/projects/hooks/useProjects";
 import { useCurrentProject } from "./ProjectShellPage";
 import {
   ChartTooltip,
-  KeyValueGrid,
-  Panel,
-  Pill,
-  Sparkline,
-  StatCard,
   type ChartTooltipState,
-  type KeyValueItem,
 } from "@/shared/ui/pulse";
 import { DetailSkeleton, Timestamp, formatBytes, formatCompact, formatNumber } from "@/shared/observe";
 import { AsyncPanel } from "@/modules/projects/components/project-ui";
 import { cn } from "@/lib/utils";
-
-// ── module-level constants (rules.md §1.2) ───────────────────
 
 const INGESTION_TOGGLES = [
   { key: "errorMonitoringEnabled", label: "Errors" },
@@ -42,8 +26,6 @@ const INGESTION_TOGGLES = [
   { key: "sessionReplayEnabled", label: "Session replay" },
   { key: "releaseTrackingEnabled", label: "Release tracking" },
 ] as const;
-
-// ── hourly distribution ──────────────────────────────────────
 
 function HourlyBars({ hours }: { hours: Array<{ hour: number; eventCount: number }> }) {
   const byHour = new Array(24).fill(0);
@@ -72,13 +54,13 @@ function HourlyBars({ hours }: { hours: Array<{ hour: number; eventCount: number
             <div
               key={hour}
               onPointerEnter={() => setHoverHour(hour)}
-              className="group relative flex-1 cursor-pointer rounded-t-[3px] bg-[var(--bg3)] transition-colors hover:bg-[var(--brand)]/15"
+              className="group relative flex-1 cursor-pointer rounded-t-[2px] bg-[var(--surface-2)] transition-colors hover:bg-[var(--brand-muted)]"
               style={{ height: "100%" }}
             >
               <div
                 className={cn(
-                  "absolute bottom-0 w-full rounded-t-[3px] bg-[var(--brand)] transition-[height,opacity,transform] duration-300 origin-bottom",
-                  isHovered && "brightness-125 shadow-[0_0_12px_var(--brand-glow)]",
+                  "absolute bottom-0 w-full rounded-t-[2px] bg-[var(--brand)] transition-[height,opacity,transform] duration-200 origin-bottom",
+                  isHovered && "brightness-125 shadow-[0_0_10px_var(--brand)]",
                 )}
                 style={{
                   height: `${Math.max(pct, value > 0 ? 3 : 0)}%`,
@@ -90,7 +72,7 @@ function HourlyBars({ hours }: { hours: Array<{ hour: number; eventCount: number
         })}
         <ChartTooltip state={tooltip} />
       </div>
-      <div className="flex justify-between font-[family-name:var(--mono)] text-[10.5px] text-[var(--text3)]">
+      <div className="flex justify-between font-[family-name:var(--mono)] text-[10.5px] text-[var(--text-tertiary)]">
         <span>00:00</span>
         <span>06:00</span>
         <span>12:00</span>
@@ -101,8 +83,6 @@ function HourlyBars({ hours }: { hours: Array<{ hour: number; eventCount: number
   );
 }
 
-// ── breakdown list ───────────────────────────────────────────
-
 function Breakdown({ data, emptyLabel }: { data: Record<string, number>; emptyLabel: string }) {
   const entries = Object.entries(data ?? {})
     .filter(([, value]) => value > 0)
@@ -110,7 +90,7 @@ function Breakdown({ data, emptyLabel }: { data: Record<string, number>; emptyLa
     .slice(0, 8);
 
   if (entries.length === 0) {
-    return <p className="py-2 text-[12.5px] text-[var(--text3)]">{emptyLabel}</p>;
+    return <p className="py-4 text-[12px] font-[family-name:var(--mono)] text-[var(--text-tertiary)]">{emptyLabel}</p>;
   }
 
   const max = Math.max(...entries.map(([, value]) => value), 1);
@@ -118,18 +98,18 @@ function Breakdown({ data, emptyLabel }: { data: Record<string, number>; emptyLa
   return (
     <ul className="flex flex-col gap-2.5">
       {entries.map(([key, value]) => (
-        <li key={key} className="group flex flex-col gap-1" title={`${key.replace(/_/g, " ")} — ${formatNumber(value)} events`}>
-          <div className="flex items-baseline justify-between gap-3">
-            <span className="truncate text-[12.5px] text-[var(--text2)] transition-colors group-hover:text-[var(--text)]">
+        <li key={key} className="group flex flex-col gap-1">
+          <div className="flex items-baseline justify-between gap-3 text-[12px]">
+            <span className="truncate font-[family-name:var(--mono)] text-[var(--text-secondary)] group-hover:text-[var(--text-primary)] transition-colors">
               {key.replace(/_/g, " ")}
             </span>
-            <span className="text-[12.5px] font-semibold tabular-nums text-[var(--text)]">
+            <span className="font-[family-name:var(--mono)] font-semibold tabular-nums text-[var(--text-primary)]">
               {formatCompact(value)}
             </span>
           </div>
-          <div className="h-1.5 overflow-hidden rounded-full bg-[var(--bg3)]">
+          <div className="h-1 overflow-hidden rounded-full bg-[var(--surface-2)]">
             <div
-              className="h-full rounded-full bg-[var(--brand)] transition-[width,filter] duration-500 group-hover:brightness-125 group-hover:shadow-[0_0_8px_var(--brand-glow)]"
+              className="h-full rounded-full bg-[var(--brand)] transition-all duration-300 group-hover:brightness-125"
               style={{ width: `${(value / max) * 100}%` }}
             />
           </div>
@@ -138,8 +118,6 @@ function Breakdown({ data, emptyLabel }: { data: Record<string, number>; emptyLa
     </ul>
   );
 }
-
-// ── page ─────────────────────────────────────────────────────
 
 export default function ProjectOverviewPage() {
   const { projectId, project, orgSlug, publicId } = useCurrentProject();
@@ -161,211 +139,275 @@ export default function ProjectOverviewPage() {
   const trend = (usage.dailyTrend ?? []).map((point) => point.totalEvents);
   const latestTrend = usage.dailyTrend?.[usage.dailyTrend.length - 1];
 
-  const details: KeyValueItem[] = [
-    { label: "Slug", value: <code className="font-[family-name:var(--mono)]">{overview.project.slug}</code> },
-    { label: "Timezone", value: overview.project.timezone },
-    { label: "Environments", value: formatNumber(stats?.stats.environmentCount ?? 0) },
-    { label: "Total requests", value: formatCompact(stats?.stats.totalRequests ?? 0) },
-    { label: "Created", value: <Timestamp value={overview.project.createdAt} /> },
-    { label: "Updated", value: <Timestamp value={overview.project.updatedAt} /> },
-    {
-      label: "Archived",
-      value: overview.project.archivedAt ? <Timestamp value={overview.project.archivedAt} /> : "—",
-    },
-  ];
-
   return (
-    <div className="flex flex-col gap-6">
-      {/* ── headline metrics ── */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard
-          label="Events today"
-          value={formatCompact(usage.totalEventsToday ?? 0)}
-          icon={Activity}
-          tone="brand"
-          series={trend.length > 1 ? trend : undefined}
-          {...(latestTrend
-            ? {
-                trend: latestTrend.changePercent > 0 ? "up" : latestTrend.changePercent < 0 ? "down" : "flat",
-                delta: `${latestTrend.changePercent > 0 ? "+" : ""}${latestTrend.changePercent.toFixed(1)}%`,
-              }
-            : {})}
-        />
-        <StatCard
-          label="Ingested today"
-          value={formatBytes(usage.totalBytesToday ?? 0)}
-          icon={HardDrive}
-          tone="blue"
-          footnote={`Peak hour ${String(usage.peakHour ?? 0).padStart(2, "0")}:00`}
-        />
-        <StatCard
-          label="Current hour"
-          value={formatCompact(usage.currentHourEvents ?? 0)}
-          icon={Clock}
-          tone="violet"
-          footnote="Events in the active hourly bucket"
-        />
-        <StatCard
-          label="Members"
-          value={formatNumber(overview.memberCount ?? 0)}
-          icon={Users}
-          tone="green"
-          footnote={`${formatNumber(overview.apiKeyCount ?? 0)} ingestion keys`}
-        />
+    <div className="flex flex-col gap-5 w-full max-w-[1400px] mx-auto px-4 sm:px-6 py-6 font-sans">
+      
+      {/* ── 1. Page Command Header ── */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-[var(--border-subtle)] pb-5">
+        <div>
+          <div className="flex items-center gap-2 text-[11px] font-[family-name:var(--mono)] uppercase tracking-[0.08em] text-[var(--text-tertiary)]">
+            <span className="inline-block size-1.5 rounded-full bg-[var(--brand)]" />
+            <span>Workspace Fleet</span>
+            <span>/</span>
+            <span className="text-[var(--text-secondary)]">{project.name}</span>
+          </div>
+          <h1 className="mt-1 text-[22px] font-semibold tracking-[-0.02em] text-[var(--text-primary)] font-[family-name:var(--display)]">
+            Project Overview &amp; Telemetry Profile
+          </h1>
+          <p className="text-[13px] text-[var(--text-secondary)]">
+            Active ingestion health, daily throughput trends, pipeline toggles, and infrastructure metadata.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2.5">
+          <Link
+            to={projectPath(orgSlug, publicId, "analytics")}
+            className="flex items-center gap-1.5 rounded-[var(--radius-sm)] border border-[var(--border-default)] bg-[var(--surface-1)] px-3 py-1.5 text-[12px] font-medium text-[var(--text-secondary)] hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)] transition-colors"
+          >
+            <BarChart3 className="size-3.5" />
+            <span>Full Analytics</span>
+          </Link>
+          <Link
+            to={projectPath(orgSlug, publicId, "settings/general")}
+            className="flex items-center gap-1.5 rounded-[var(--radius-sm)] border border-[var(--brand-border)] bg-[var(--brand-muted)] px-3 py-1.5 text-[12px] font-medium text-[var(--text-primary)] hover:bg-[var(--brand)] hover:text-white transition-all"
+          >
+            <Sliders className="size-3.5 text-[var(--brand)]" />
+            <span>Configure Pipelines</span>
+          </Link>
+        </div>
       </div>
 
-      {/* ── traffic shape ── */}
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-        <Panel
-          title="Hourly ingestion (today)"
-          description="Event volume per hour in the project timezone."
-          icon={BarChart3}
-          actions={
+      {/* ── 2. Unified Hero Telemetry Strip ── */}
+      <div className="grid grid-cols-2 md:grid-cols-4 overflow-hidden rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--surface-1)] divide-x divide-y md:divide-y-0 divide-[var(--border-subtle)]">
+        <div className="p-4 flex flex-col justify-between">
+          <span className="text-[11px] font-[family-name:var(--mono)] uppercase tracking-[0.08em] text-[var(--text-tertiary)]">Events Today</span>
+          <div className="mt-2 text-[24px] font-semibold tracking-[-0.03em] text-[var(--text-primary)] font-[family-name:var(--mono)] tabular-nums">
+            {formatCompact(usage.totalEventsToday ?? 0)}
+          </div>
+          <div className="mt-1 text-[11px] font-[family-name:var(--mono)] text-[var(--success)]">
+            {latestTrend?.changePercent ? `${latestTrend.changePercent > 0 ? "+" : ""}${latestTrend.changePercent.toFixed(1)}% vs yesterday` : "Baseline active"}
+          </div>
+        </div>
+
+        <div className="p-4 flex flex-col justify-between">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-[family-name:var(--mono)] uppercase tracking-[0.08em] text-[var(--text-tertiary)]">Ingested Volume</span>
+            <span className="size-2 rounded-full bg-[var(--brand)]" />
+          </div>
+          <div className="mt-2 text-[24px] font-semibold tracking-[-0.03em] text-[var(--brand)] font-[family-name:var(--mono)] tabular-nums">
+            {formatBytes(usage.totalBytesToday ?? 0)}
+          </div>
+          <div className="mt-1 text-[11px] font-[family-name:var(--mono)] text-[var(--text-tertiary)]">
+            Peak at {String(usage.peakHour ?? 0).padStart(2, "0")}:00
+          </div>
+        </div>
+
+        <div className="p-4 flex flex-col justify-between">
+          <span className="text-[11px] font-[family-name:var(--mono)] uppercase tracking-[0.08em] text-[var(--text-tertiary)]">Current Hour Rate</span>
+          <div className="mt-2 text-[24px] font-semibold tracking-[-0.03em] text-[var(--text-primary)] font-[family-name:var(--mono)] tabular-nums">
+            {formatCompact(usage.currentHourEvents ?? 0)}
+          </div>
+          <div className="mt-1 text-[11px] font-[family-name:var(--mono)] text-[var(--text-tertiary)]">Active buffer slice</div>
+        </div>
+
+        <div className="p-4 flex flex-col justify-between">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-[family-name:var(--mono)] uppercase tracking-[0.08em] text-[var(--text-tertiary)]">Ingestion Credentials</span>
+            <span className="size-2 rounded-full bg-[var(--success)]" />
+          </div>
+          <div className="mt-2 text-[24px] font-semibold tracking-[-0.03em] text-[var(--text-primary)] font-[family-name:var(--mono)] tabular-nums">
+            {formatNumber(overview.apiKeyCount ?? 0)}
+          </div>
+          <div className="mt-1 text-[11px] font-[family-name:var(--mono)] text-[var(--text-tertiary)]">
+            Across {formatNumber(overview.memberCount ?? 0)} team members
+          </div>
+        </div>
+      </div>
+
+      {/* ── 3. Traffic Shape Visualizer ── */}
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+        
+        {/* Hourly Distribution */}
+        <div className="rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--surface-1)] p-4">
+          <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-3 mb-4">
+            <div>
+              <h3 className="text-[13px] font-semibold text-[var(--text-primary)] font-[family-name:var(--display)]">
+                Hourly Ingestion Distribution
+              </h3>
+              <p className="text-[11px] font-[family-name:var(--mono)] text-[var(--text-tertiary)]">
+                Ingested payload volume per 60-minute window
+              </p>
+            </div>
             <Link
               to={projectPath(orgSlug, publicId, "analytics")}
-              className="inline-flex items-center gap-1 text-[12.5px] font-medium text-[var(--brand)] hover:underline"
+              className="text-[11.5px] font-[family-name:var(--mono)] text-[var(--brand)] hover:underline flex items-center gap-1"
             >
-              Full analytics <ArrowRight className="size-3.5" aria-hidden="true" />
+              <span>Detailed view</span>
+              <ArrowRight className="size-3" />
             </Link>
-          }
-        >
+          </div>
+
           {usage.hourlyBreakdown?.length ? (
             <HourlyBars hours={usage.hourlyBreakdown} />
           ) : (
-            <p className="py-6 text-center text-[12.5px] text-[var(--text3)]">
+            <p className="py-8 text-center text-[12px] font-[family-name:var(--mono)] text-[var(--text-tertiary)]">
               No events ingested yet today.
             </p>
           )}
-        </Panel>
+        </div>
 
-        <Panel title="Daily trend" description="Rolling event volume." icon={Activity}>
-          {trend.length > 1 ? (
-            <div className="flex flex-col gap-3">
-              <Sparkline
-                data={trend}
-                labels={(usage.dailyTrend ?? []).map((point) => point.date)}
-                height={72}
-                interactive
-                valueFormatter={formatCompact}
-              />
-              <ul className="flex flex-col divide-y divide-[var(--border)]">
-                {(usage.dailyTrend ?? [])
-                  .slice(-5)
-                  .reverse()
-                  .map((point) => (
-                    <li key={point.date} className="flex items-center justify-between gap-3 py-2 transition-colors hover:bg-[var(--bg2)]/60">
-                      <span className="font-[family-name:var(--mono)] text-[11.5px] text-[var(--text3)]">
-                        {point.date}
-                      </span>
-                      <span className="text-[12.5px] font-semibold tabular-nums text-[var(--text)]">
-                        {formatCompact(point.totalEvents)}
-                      </span>
-                      <span
-                        className={cn(
-                          "w-16 text-right text-[11.5px] font-semibold tabular-nums",
-                          point.changePercent > 0
-                            ? "text-[var(--green)]"
-                            : point.changePercent < 0
-                              ? "text-[var(--red)]"
-                              : "text-[var(--text3)]",
-                        )}
-                      >
-                        {point.changePercent > 0 ? "+" : ""}
-                        {point.changePercent.toFixed(1)}%
-                      </span>
-                    </li>
-                  ))}
-              </ul>
+        {/* Daily Trend Summary */}
+        <div className="rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--surface-1)] p-4">
+          <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-3 mb-3">
+            <h3 className="text-[13px] font-semibold text-[var(--text-primary)] font-[family-name:var(--display)]">
+              7-Day Rolling Trajectory
+            </h3>
+            <span className="text-[11px] font-[family-name:var(--mono)] text-[var(--text-tertiary)]">
+              Daily aggregates
+            </span>
+          </div>
+
+          {trend.length > 0 ? (
+            <div className="divide-y divide-[var(--border-subtle)]">
+              {(usage.dailyTrend ?? [])
+                .slice(-5)
+                .reverse()
+                .map((point) => (
+                  <div key={point.date} className="flex items-center justify-between py-2 hover:bg-[var(--surface-2)]/40 px-1.5 rounded-[3px] transition-colors">
+                    <span className="font-[family-name:var(--mono)] text-[11.5px] text-[var(--text-secondary)]">
+                      {point.date}
+                    </span>
+                    <span className="font-[family-name:var(--mono)] text-[12px] font-semibold tabular-nums text-[var(--text-primary)]">
+                      {formatCompact(point.totalEvents)}
+                    </span>
+                    <span
+                      className={cn(
+                        "font-[family-name:var(--mono)] text-[11px] font-medium tabular-nums",
+                        point.changePercent > 0
+                          ? "text-[var(--success)]"
+                          : point.changePercent < 0
+                            ? "text-[var(--error)]"
+                            : "text-[var(--text-tertiary)]",
+                      )}
+                    >
+                      {point.changePercent > 0 ? "+" : ""}
+                      {point.changePercent.toFixed(1)}%
+                    </span>
+                  </div>
+                ))}
             </div>
           ) : (
-            <p className="py-6 text-center text-[12.5px] text-[var(--text3)]">Not enough history yet.</p>
+            <p className="py-8 text-center text-[12px] font-[family-name:var(--mono)] text-[var(--text-tertiary)]">
+              Not enough daily history yet.
+            </p>
           )}
-        </Panel>
+        </div>
       </div>
 
-      {/* ── breakdowns ── */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <Panel title="By category" description="Share of today's ingestion." icon={Layers}>
-          <Breakdown data={usage.categoryBreakdown} emptyLabel="No categorised events today." />
-        </Panel>
-        <Panel title="By event type" description="Top event types today." icon={Database}>
-          <Breakdown data={usage.eventTypeBreakdown} emptyLabel="No typed events today." />
-        </Panel>
+      {/* ── 4. Breakdowns Grid ── */}
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+        <div className="rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--surface-1)] p-4">
+          <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-3 mb-3">
+            <h3 className="text-[13px] font-semibold text-[var(--text-primary)] font-[family-name:var(--display)]">
+              Breakdown by Category
+            </h3>
+            <span className="text-[11px] font-[family-name:var(--mono)] text-[var(--text-tertiary)]">Share of traffic</span>
+          </div>
+          <Breakdown data={usage.categoryBreakdown} emptyLabel="No categorized events recorded today." />
+        </div>
+
+        <div className="rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--surface-1)] p-4">
+          <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-3 mb-3">
+            <h3 className="text-[13px] font-semibold text-[var(--text-primary)] font-[family-name:var(--display)]">
+              Breakdown by Event Type
+            </h3>
+            <span className="text-[11px] font-[family-name:var(--mono)] text-[var(--text-tertiary)]">Top signal sources</span>
+          </div>
+          <Breakdown data={usage.eventTypeBreakdown} emptyLabel="No typed events recorded today." />
+        </div>
       </div>
 
-      {/* ── configuration snapshot ── */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-        <Panel
-          title="Ingestion pipelines"
-          description="Which telemetry types this project accepts."
-          icon={ShieldCheck}
-          actions={
+      {/* ── 5. Pipelines & Metadata ── */}
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+        
+        {/* Pipelines State */}
+        <div className="rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--surface-1)] p-4">
+          <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-3 mb-3">
+            <h3 className="text-[13px] font-semibold text-[var(--text-primary)] font-[family-name:var(--display)]">
+              Active Ingestion Pipelines
+            </h3>
             <Link
               to={projectPath(orgSlug, publicId, "settings/general")}
-              className="inline-flex items-center gap-1 text-[12.5px] font-medium text-[var(--brand)] hover:underline"
+              className="text-[11.5px] font-[family-name:var(--mono)] text-[var(--brand)] hover:underline"
             >
-              Edit <Sliders className="size-3.5" aria-hidden="true" />
+              Configure →
             </Link>
-          }
-        >
-          <div className="flex flex-wrap gap-2">
+          </div>
+
+          <div className="flex flex-wrap gap-2 mb-4">
             {INGESTION_TOGGLES.map((toggle) => {
               const enabled = Boolean(settings?.[toggle.key]);
               return (
-                <Pill key={toggle.key} tone={enabled ? "green" : "neutral"} dot>
-                  {toggle.label}
-                </Pill>
+                <span
+                  key={toggle.key}
+                  className={cn(
+                    "inline-flex items-center gap-1.5 rounded-[var(--radius-sm)] border px-2.5 py-1 text-[11px] font-medium font-[family-name:var(--mono)]",
+                    enabled
+                      ? "border-[var(--success)]/25 bg-[var(--success-muted)] text-[var(--success)]"
+                      : "border-[var(--border-subtle)] bg-[var(--surface-2)] text-[var(--text-tertiary)]"
+                  )}
+                >
+                  <span className={cn("size-1.5 rounded-full", enabled ? "bg-[var(--success)]" : "bg-[var(--text-tertiary)]")} />
+                  <span>{toggle.label}</span>
+                </span>
               );
             })}
           </div>
-          <dl className="mt-5 grid grid-cols-2 gap-4">
-            <div>
-              <dt className="text-[11px] font-medium uppercase tracking-[0.1em] text-[var(--text3)]">Retention</dt>
-              <dd className="mt-1 text-[15px] font-semibold tabular-nums text-[var(--text)]">
-                {settings?.dataRetentionDays ?? "—"} days
-              </dd>
-            </div>
-            <div>
-              <dt className="text-[11px] font-medium uppercase tracking-[0.1em] text-[var(--text3)]">Sampling</dt>
-              <dd className="mt-1 text-[15px] font-semibold tabular-nums text-[var(--text)]">
-                {settings ? `${(settings.samplingRate * 100).toFixed(0)}%` : "—"}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-[11px] font-medium uppercase tracking-[0.1em] text-[var(--text3)]">PII scrubbing</dt>
-              <dd className="mt-1">
-                <Pill tone={settings?.piiScrubbingEnabled ? "green" : "amber"}>
-                  {settings?.piiScrubbingEnabled ? "On" : "Off"}
-                </Pill>
-              </dd>
-            </div>
-            <div>
-              <dt className="text-[11px] font-medium uppercase tracking-[0.1em] text-[var(--text3)]">IP collection</dt>
-              <dd className="mt-1">
-                <Pill tone={settings?.ipCollectionEnabled ? "amber" : "green"}>
-                  {settings?.ipCollectionEnabled ? "Collected" : "Not collected"}
-                </Pill>
-              </dd>
-            </div>
-          </dl>
-        </Panel>
 
-        <Panel title="Project details" icon={KeyRound}>
-          <KeyValueGrid items={details} columns={2} />
-          {project.tags.length > 0 && (
-            <div className="mt-5 flex flex-wrap gap-1.5">
-              {project.tags.map((tag) => (
-                <span
-                  key={tag}
-                  className="rounded-full bg-[var(--bg2)] px-2 py-0.5 text-[11px] font-medium text-[var(--text2)] ring-1 ring-inset ring-[var(--border)]"
-                >
-                  {tag}
-                </span>
-              ))}
+          <div className="grid grid-cols-2 gap-3 border-t border-[var(--border-subtle)] pt-3 font-[family-name:var(--mono)] text-[11px]">
+            <div>
+              <span className="text-[var(--text-tertiary)] uppercase tracking-wider">Retention</span>
+              <div className="mt-0.5 text-[13px] font-semibold text-[var(--text-primary)]">{settings?.dataRetentionDays ?? 30} days</div>
             </div>
-          )}
-        </Panel>
+            <div>
+              <span className="text-[var(--text-tertiary)] uppercase tracking-wider">Sampling Rate</span>
+              <div className="mt-0.5 text-[13px] font-semibold text-[var(--text-primary)]">{settings ? `${(settings.samplingRate * 100).toFixed(0)}%` : "100%"}</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Project Metadata */}
+        <div className="rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--surface-1)] p-4">
+          <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-3 mb-3">
+            <h3 className="text-[13px] font-semibold text-[var(--text-primary)] font-[family-name:var(--display)]">
+              Project Environment Profile
+            </h3>
+            <span className="text-[11px] font-[family-name:var(--mono)] text-[var(--text-tertiary)]">
+              {stats?.stats.environmentCount ?? 1} environments
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 text-[12px] font-[family-name:var(--mono)]">
+            <div>
+              <span className="text-[10.5px] uppercase tracking-wider text-[var(--text-tertiary)]">Slug Identifier</span>
+              <div className="mt-0.5 text-[var(--text-primary)] font-semibold">{overview.project.slug}</div>
+            </div>
+            <div>
+              <span className="text-[10.5px] uppercase tracking-wider text-[var(--text-tertiary)]">Assigned Timezone</span>
+              <div className="mt-0.5 text-[var(--text-primary)]">{overview.project.timezone || "UTC"}</div>
+            </div>
+            <div>
+              <span className="text-[10.5px] uppercase tracking-wider text-[var(--text-tertiary)]">Fleet Requests (Total)</span>
+              <div className="mt-0.5 text-[var(--text-primary)] font-semibold">{formatCompact(stats?.stats.totalRequests ?? 0)}</div>
+            </div>
+            <div>
+              <span className="text-[10.5px] uppercase tracking-wider text-[var(--text-tertiary)]">Created</span>
+              <div className="mt-0.5 text-[var(--text-secondary)]"><Timestamp value={overview.project.createdAt} /></div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
 }
+

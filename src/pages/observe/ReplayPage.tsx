@@ -48,9 +48,9 @@ export default function ReplayPage() {
     { key: "play", header: "", width: "40px", cell: () => <PlayCircle className="size-4 text-[var(--brand)]" /> },
     { key: "session", header: "Session", width: "1fr", cell: (r) => <span className="truncate font-[family-name:var(--mono)] text-[12px] text-[var(--text)]">{r.sessionId}</span> },
     { key: "segment", header: "Segment", width: "90px", align: "right", cell: (r) => <span className="tabular-nums">{r.segmentId ?? (r as any).segment_id ?? 0}</span> },
-    { key: "duration", header: "Duration", width: "100px", align: "right", cell: (r) => <span className="tabular-nums font-[family-name:var(--mono)] text-[12px] text-[var(--text3)]">{(r.durationMs ?? (r as any).duration_ms ?? 0)}ms</span> },
+    { key: "duration", header: "Duration", width: "100px", align: "right", cell: (r) => <span className="tabular-nums font-[family-name:var(--mono)] text-[12px] text-[var(--text3)]">{((r as any).durationMs ?? (r as any).duration_ms ?? 0)}ms</span> },
     { key: "time", header: "Recorded", width: "120px", cell: (r) => <Timestamp value={(r as any).occurredAt ?? r.timestamp} /> },
-    { key: "env", header: "Environment", width: "120px", cell: (r) => <EnvironmentBadge environment={r.environment ?? (r as any).metadata?.environment} /> },
+    { key: "env", header: "Environment", width: "120px", cell: (r) => <EnvironmentBadge environment={(r as any).environment ?? (r as any).metadata?.environment} /> },
     { key: "ai", header: "", width: "90px", cell: (r) => <AskAiButton question={`Summarize what happened in session replay ${r.sessionId} (segment ${r.segmentId}, ${(r as any).durationMs ?? 0}ms).`} /> },
   ];
 
@@ -79,7 +79,7 @@ export default function ReplayPage() {
         items={rows}
         queryKey={["replay-page", query, timeRangeState, cursor]}
         columns={columns}
-        getKey={(r) => (r as any).publicId ?? r.id ?? r.eventId ?? String(Math.random())}
+        getKey={(r) => (r as any).publicId ?? (r as any).id ?? r.eventId ?? String(Math.random())}
         pagination={{
           nextCursor: data?.pagination?.nextCursor,
           previousCursor: data?.pagination?.previousCursor,

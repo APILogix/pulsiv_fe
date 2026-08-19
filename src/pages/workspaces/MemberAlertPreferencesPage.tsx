@@ -15,7 +15,6 @@ import {
   useAlertPreferences,
   type MemberNotificationPreference,
 } from "@/modules/projects/hooks/useAlertPreferences";
-import { useNotificationEntitlement } from "@/modules/alerting/hooks/useAlerting";
 import { EntitlementRestrictedBanner } from "@/modules/alerting/components/EntitlementRestrictedBanner";
 import { useCurrentProject } from "./ProjectShellPage";
 import {

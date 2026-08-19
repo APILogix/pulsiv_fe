@@ -28,13 +28,6 @@ const REGRESSION_OPTS = [
   { value: "false", label: "Non-regressed" },
 ];
 
-const ENV_OPTS = [
-  { value: "", label: "All environments" },
-  { value: "production", label: "Production" },
-  { value: "staging", label: "Staging" },
-  { value: "development", label: "Development" },
-];
-
 const RELEASE_OPTS = [
   { value: "", label: "All releases" },
   { value: "v3.1.0", label: "v3.1.0" },

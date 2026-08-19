@@ -55,9 +55,9 @@ export default function DeadLettersPage() {
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <KpiCard label="Total" value={jobs.length} icon={Inbox} />
-        <KpiCard label="Pending retry" value={jobs.filter((j) => j.status === "pending_retry").length} trend={jobs.some((j) => j.status === "pending_retry") ? "down" : "neutral"} />
-        <KpiCard label="Exhausted" value={jobs.filter((j) => j.status === "exhausted").length} trend="down" />
-        <KpiCard label="Discarded" value={jobs.filter((j) => j.status === "discarded").length} />
+        <KpiCard label="Pending retry" value={((jobs ?? []) as any[]).filter((j: any) => j.status === "pending_retry").length} trend={((jobs ?? []) as any[]).some((j: any) => j.status === "pending_retry") ? "down" : "neutral"} />
+        <KpiCard label="Exhausted" value={((jobs ?? []) as any[]).filter((j: any) => j.status === "exhausted").length} trend="down" />
+        <KpiCard label="Discarded" value={((jobs ?? []) as any[]).filter((j: any) => j.status === "discarded").length} />
       </div>
 
       <div className="flex">
@@ -72,7 +72,7 @@ export default function DeadLettersPage() {
         <div className="flex flex-1 items-center justify-center text-[13px] text-[var(--text3)]">No dead-lettered jobs — the pipeline is healthy.</div>
       ) : (
         <Table headers={["Source queue", "Events", "Error", "Retries", "Failed at", "Status", ""]} maxHeight="calc(100vh - 22rem)">
-          {jobs.map((j) => (
+          {((jobs ?? []) as any[]).map((j: any) => (
             <Tr key={j.id}>
               <Td><span className="font-[family-name:var(--mono)] text-[12px]">{j.sourceQueue}</span></Td>
               <Td><span className="tabular-nums text-[var(--text2)]">{j.eventIds.length}</span></Td>

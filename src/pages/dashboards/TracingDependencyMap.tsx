@@ -120,11 +120,11 @@ export default function TracingDependencyMap() {
             <Tr key={t.eventId} onClick={() => navigate(`/observability/traces/${t.traceId}`)}>
               <Td><MonospaceText value={t.traceId.slice(0, 8)} className="text-[var(--brand)]" /></Td>
               <Td><MonospaceText value={t.rootSpan?.name ?? "—"} className="max-w-[220px]" /></Td>
-              <Td><span style={{ color: t.totalDuration > 1000 ? "var(--red)" : t.totalDuration > 300 ? "var(--amber)" : "var(--green)" }} className="tabular-nums font-semibold">{formatDuration(t.totalDuration)}</span></Td>
-              <Td className="tabular-nums">{t.spanCount}</Td>
+              <Td><span style={{ color: (t.totalDuration ?? 0) > 1000 ? "var(--red)" : (t.totalDuration ?? 0) > 300 ? "var(--amber)" : "var(--green)" }} className="tabular-nums font-semibold">{formatDuration(t.totalDuration ?? 0)}</span></Td>
+              <Td className="tabular-nums">{t.spanCount ?? 0}</Td>
               <Td><StatusBadge status={t.isPartial ? "in_progress" : t.rootSpan?.status === "error" ? "error" : "ok"} /></Td>
               <Td><Timestamp value={t.rootSpan?.startTime ?? now} /></Td>
-              <Td className="text-[var(--text2)]">{t.metadata.service}</Td>
+              <Td className="text-[var(--text2)]">{t.metadata?.service ?? "—"}</Td>
             </Tr>
           ))}
         </Table>
@@ -167,8 +167,8 @@ export default function TracingDependencyMap() {
       </SectionCard>
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <StatTile label="Avg trace duration" value={formatDuration(traceList.reduce((s, t) => s + t.totalDuration, 0) / (traceList.length || 1))} />
-        <StatTile label="Avg spans/trace" value={Math.round(traceList.reduce((s, t) => s + t.spanCount, 0) / (traceList.length || 1))} />
+        <StatTile label="Avg trace duration" value={formatDuration(traceList.reduce((s, t) => s + (t.totalDuration ?? 0), 0) / (traceList.length || 1))} />
+        <StatTile label="Avg spans/trace" value={Math.round(traceList.reduce((s, t) => s + (t.spanCount ?? 0), 0) / (traceList.length || 1))} />
         <StatTile label="DB query patterns" value={dbGroups.length} />
         <StatTile label="External deps" value={extByHost.length} />
       </div>

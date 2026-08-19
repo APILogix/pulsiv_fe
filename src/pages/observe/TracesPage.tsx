@@ -1,30 +1,43 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router";
+import {
+  GitBranch,
+  Search,
+  Sparkles,
+} from "lucide-react";
 import { useObservabilityList } from "./hooks/useObservabilityApi";
 import {
-  PageHeader, KpiCard, FillPage, TableToolbar, FilterSelect, SearchInput,
-  InfiniteTable, StatusBadge, MethodBadge, EnvironmentBadge,
-  Timestamp, LatencyBar, AskAiModal, formatCompact, formatLatency, SelectionProvider, useSelection,
-  TimeRangePicker, useTimeRangeParams,
+  MethodBadge,
+  EnvironmentBadge,
+  Timestamp,
+  LatencyBar,
+  AskAiModal,
+  formatCompact,
+  formatLatency,
+  SelectionProvider,
+  useSelection,
+  TimeRangePicker,
+  useTimeRangeParams,
+  InfiniteTable,
 } from "@/shared/observe";
 import type { Column } from "@/shared/observe";
 import type { TraceEvent } from "@/types/events";
 import { useOrgStore } from "@/modules/organizations/store/org.store";
-import { GitBranch, ChevronLeft, ChevronRight } from "lucide-react";
+import { cn } from "@/lib/utils";
 
-const STATUS_OPTS = [
-  { value: "", label: "All statuses" },
-  { value: "ok", label: "ok" },
-  { value: "error", label: "error" },
-  { value: "unset", label: "unset" },
+const STATUS_FILTERS = [
+  { label: "ALL", value: "" },
+  { label: "OK", value: "ok" },
+  { label: "ERROR", value: "error" },
+  { label: "UNSET", value: "unset" },
 ];
 
 const DURATION_OPTS = [
   { value: "", label: "All durations" },
   { value: "gte:100", label: "> 100ms" },
   { value: "gte:500", label: "> 500ms" },
-  { value: "gte:1000", label: "> 1s" },
-  { value: "gte:2000", label: "> 2s" },
+  { value: "gte:1000", label: "> 1s (Slow)" },
+  { value: "gte:2000", label: "> 2s (Critical)" },
 ];
 
 const ENV_OPTS = [
@@ -32,37 +45,8 @@ const ENV_OPTS = [
   { value: "production", label: "Production" },
   { value: "staging", label: "Staging" },
   { value: "development", label: "Development" },
-  { value: "pre_production", label: "Pre-production" },
-  { value: "pre_staging", label: "Pre-staging" },
-  { value: "testing", label: "Testing" },
   { value: "preview", label: "Preview" },
-  { value: "pre_deployment", label: "Pre-deployment" },
-  { value: "custom", label: "Custom" },
 ];
-
-const getInitialFromDate = () => {
-  const d = new Date(Date.now() - 24 * 60 * 60 * 1000);
-  return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
-};
-const getInitialToDate = () => {
-  const d = new Date();
-  return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
-};
-
-const formatIsoBounds = (fromDate: string, toDate: string) => {
-  if (!fromDate) return { from: undefined, to: undefined };
-  const fromMs = new Date(fromDate).getTime();
-  if (isNaN(fromMs)) return { from: undefined, to: undefined };
-
-  let toMs = toDate ? new Date(toDate).getTime() : NaN;
-  if (isNaN(toMs) || toMs <= fromMs) {
-    toMs = fromMs + 24 * 60 * 60 * 1000;
-  }
-  return {
-    from: new Date(fromMs).toISOString(),
-    to: new Date(toMs).toISOString(),
-  };
-};
 
 function TracesPageContent() {
   const navigate = useNavigate();
@@ -76,7 +60,7 @@ function TracesPageContent() {
   const [isAiModalOpen, setIsAiModalOpen] = useState(false);
 
   const { timeRangeState } = useTimeRangeParams();
-  const { selectedKeys, toggleSelect, selectAll, clearSelection, selectedCount } = useSelection();
+  const { selectedKeys, toggleSelect, selectAll } = useSelection();
 
   // Reset cursor when filter params change
   useEffect(() => {
@@ -116,83 +100,90 @@ function TracesPageContent() {
   const avgSpans = Number(summary.avgSpans ?? (total ? Math.round(traces.reduce((s, t) => s + (t.spanCount ?? 0), 0) / total) : 0));
   const avgDur = Number(stats.avgDuration ?? (total ? Math.round(traces.reduce((s, t) => s + (t.durationMs ?? 0), 0) / total) : 0));
   const partial = Number(summary.partial ?? traces.filter((t) => t.isPartial).length);
+  const errorTraces = traces.filter((t) => String(t.rootSpanStatus ?? (t as any).status ?? "").toLowerCase() === "error").length;
 
   const baseColumns: Column<TraceEvent>[] = [
     {
       key: "time",
-      header: "TIME",
-      width: "120px",
-      cell: (t) => <Timestamp value={t.occurredAt} />,
+      header: "Timestamp",
+      width: "125px",
+      cell: (t) => (
+        <span className="font-[family-name:var(--mono)] text-[11px] text-[var(--text-tertiary)]">
+          <Timestamp value={t.occurredAt} />
+        </span>
+      ),
     },
     {
       key: "service",
-      header: "SERVICE",
-      width: "120px",
+      header: "Root Service",
+      width: "130px",
       cell: (t) => (
-        <span className="truncate font-[family-name:var(--mono)] text-[12px] font-medium text-[var(--text2)]" title={t.service ?? t.metadata?.service ?? "default-service"}>
+        <span className="truncate font-[family-name:var(--mono)] text-[12px] font-medium text-[var(--text-secondary)]" title={t.service ?? t.metadata?.service ?? "default-service"}>
           {t.service ?? t.metadata?.service ?? "default-service"}
         </span>
       ),
     },
     {
       key: "operation",
-      header: "OPERATION",
-      width: "85px",
-      cell: (t) => t.httpMethod ? <MethodBadge method={t.httpMethod} /> : <span className="font-[family-name:var(--mono)] text-[11px] text-[var(--text3)]">—</span>,
+      header: "Method",
+      width: "80px",
+      cell: (t) => t.httpMethod ? <MethodBadge method={t.httpMethod} /> : <span className="font-[family-name:var(--mono)] text-[11px] text-[var(--text-disabled)]">—</span>,
     },
     {
       key: "endpoint",
-      header: "ENDPOINT",
+      header: "Root Operation / Route",
       width: "1fr",
       cell: (t) => (
-        <span className="truncate font-[family-name:var(--mono)] text-[12px] font-medium text-[var(--text)]" title={t.endpoint}>
-          {t.endpoint ?? "—"}
-        </span>
+        <div className="flex items-center gap-1.5 min-w-0">
+          <span className="truncate font-[family-name:var(--mono)] text-[12px] font-medium text-[var(--text-primary)]" title={t.endpoint}>
+            {t.endpoint ?? "—"}
+          </span>
+        </div>
       ),
     },
     {
       key: "duration",
-      header: "DURATION",
-      width: "130px",
+      header: "Duration",
+      width: "135px",
       cell: (t) => <LatencyBar value={t.durationMs ?? 0} />,
     },
     {
       key: "status",
-      header: "STATUS",
-      width: "110px",
+      header: "Verdict",
+      width: "100px",
       cell: (t) => {
-        const raw = String(t.rootSpanStatus ?? t.status ?? "unset").toLowerCase();
+        const raw = String(t.rootSpanStatus ?? (t as any).status ?? "unset").toLowerCase();
         if (raw === "ok" || raw === "success") {
           return (
-            <span className="inline-flex items-center gap-1 rounded-full bg-[var(--green-bg)] px-2 py-0.5 font-[family-name:var(--mono)] text-[10px] font-medium text-[var(--green)]">
-              ok
+            <span className="inline-flex items-center gap-1 rounded-[4px] bg-[var(--success-muted)] px-2 py-0.5 font-[family-name:var(--mono)] text-[10.5px] font-medium text-[var(--success)]">
+              OK
             </span>
           );
         }
         if (raw === "error" || raw === "failed") {
           return (
-            <span className="inline-flex items-center gap-1 rounded-full bg-[var(--red-bg)] px-2 py-0.5 font-[family-name:var(--mono)] text-[10px] font-medium text-[var(--red)]">
-              error
+            <span className="inline-flex items-center gap-1 rounded-[4px] bg-[var(--error-muted)] px-2 py-0.5 font-[family-name:var(--mono)] text-[10.5px] font-medium text-[var(--error)]">
+              ERROR
             </span>
           );
         }
         return (
-          <span className="inline-flex items-center gap-1 rounded-full bg-[var(--bg3)] px-2 py-0.5 font-[family-name:var(--mono)] text-[10px] font-medium text-[var(--text2)]">
-            unset
+          <span className="inline-flex items-center gap-1 rounded-[4px] bg-[var(--surface-3)] px-2 py-0.5 font-[family-name:var(--mono)] text-[10.5px] font-medium text-[var(--text-tertiary)]">
+            UNSET
           </span>
         );
       },
     },
     {
       key: "spans",
-      header: "SPANS",
-      width: "70px",
-      cell: (t) => <span className="font-[family-name:var(--mono)] text-[12px] tabular-nums text-[var(--text2)]">{t.spanCount ?? "—"}</span>,
+      header: "Spans",
+      width: "80px",
+      cell: (t) => <span className="font-[family-name:var(--mono)] text-[12px] tabular-nums text-[var(--text-secondary)]">{t.spanCount ?? "1"}</span>,
     },
     {
       key: "trace",
-      header: "TRACE",
-      width: "115px",
+      header: "Trace ID",
+      width: "120px",
       cell: (t) => {
         const targetId = t.publicId ?? t.tracePublicId ?? t.traceId ?? t.id;
         const displayLabel = t.publicId ?? t.tracePublicId ?? (t.traceId ? t.traceId.slice(0, 6) : (t.id ? t.id.slice(0, 6) : "Trace"));
@@ -200,14 +191,14 @@ function TracesPageContent() {
           <Link
             to={`/observability/traces/${targetId}`}
             onClick={(e) => e.stopPropagation()}
-            className="inline-flex items-center gap-1 rounded-full bg-[var(--violet-bg)] px-2 py-0.5 font-[family-name:var(--mono)] text-[10px] font-medium text-[var(--violet)] hover:underline"
-            title={`Trace Public ID: ${t.publicId ?? t.tracePublicId ?? t.traceId ?? t.id}`}
+            className="inline-flex items-center gap-1 rounded-[4px] bg-[var(--surface-3)] px-2 py-0.5 font-[family-name:var(--mono)] text-[10.5px] text-[var(--brand)] hover:bg-[var(--surface-4)] transition-colors"
+            title={`Trace: ${t.publicId ?? t.tracePublicId ?? t.traceId ?? t.id}`}
           >
             <GitBranch className="size-3 shrink-0" />
             <span>{displayLabel}</span>
           </Link>
         ) : (
-          <span className="font-[family-name:var(--mono)] text-[11px] text-[var(--text3)]">—</span>
+          <span className="font-[family-name:var(--mono)] text-[11px] text-[var(--text-disabled)]">—</span>
         );
       },
     },
@@ -219,71 +210,180 @@ function TracesPageContent() {
         ...baseColumns,
         {
           key: "env",
-          header: "ENV",
-          width: "115px",
+          header: "Env",
+          width: "110px",
           cell: (t: TraceEvent) => <EnvironmentBadge environment={t.environment ?? "production"} />,
         },
       ];
 
   return (
-    <FillPage>
-      <PageHeader
-        title="Traces"
-        description="Distributed traces across services and spans."
-        actions={<TimeRangePicker />}
-      />
+    <div className="flex flex-col gap-5 w-full max-w-[1400px] mx-auto px-4 sm:px-6 py-6 font-sans">
+      
+      {/* ── 1. Page Command Header ── */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-[var(--border-subtle)] pb-5">
+        <div>
+          <div className="flex items-center gap-2 text-[11px] font-[family-name:var(--mono)] uppercase tracking-[0.08em] text-[var(--text-tertiary)]">
+            <span className="inline-block size-1.5 rounded-full bg-[var(--brand)]" />
+            <span>Observability</span>
+            <span>/</span>
+            <span className="text-[var(--text-secondary)]">Distributed Tracing</span>
+          </div>
+          <h1 className="mt-1 text-[22px] font-semibold tracking-[-0.02em] text-[var(--text-primary)] font-[family-name:var(--display)]">
+            Distributed Traces
+          </h1>
+          <p className="text-[13px] text-[var(--text-secondary)]">
+            End-to-end multi-service span graphs, async execution trees, network bottlenecks, and root cause traces.
+          </p>
+        </div>
 
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <KpiCard label="Traces" value={formatCompact(total)} />
-        <KpiCard label="Avg spans" value={avgSpans} />
-        <KpiCard label="Avg duration" value={formatLatency(avgDur)} />
-        <KpiCard label="Partial" value={partial} />
+        <div className="flex items-center gap-2.5">
+          <TimeRangePicker />
+          <button
+            type="button"
+            onClick={() => setIsAiModalOpen(true)}
+            className="flex items-center gap-1.5 rounded-[var(--radius-sm)] border border-[var(--brand-border)] bg-[var(--brand-muted)] px-3 py-1.5 text-[12px] font-medium text-[var(--text-primary)] hover:bg-[var(--brand)] hover:text-white transition-all"
+          >
+            <Sparkles className="size-3.5 text-[var(--brand)]" />
+            <span>Trace AI Insights</span>
+          </button>
+        </div>
       </div>
 
-      <TableToolbar
-        selectedCount={selectedCount}
-        onClearSelection={clearSelection}
-        onAskAi={() => setIsAiModalOpen(true)}
-        resourceName="traces"
-      >
-        <SearchInput placeholder="Search by endpoint, trace ID…" onSearch={setQuery} defaultValue={query} />
-        <FilterSelect value={env} onChange={setEnv} options={ENV_OPTS} />
-        <FilterSelect value={status} onChange={setStatus} options={STATUS_OPTS} />
-        <FilterSelect value={duration} onChange={setDuration} options={DURATION_OPTS} />
-      </TableToolbar>
+      {/* ── 2. Unified Hero Telemetry Strip ── */}
+      <div className="grid grid-cols-2 md:grid-cols-4 overflow-hidden rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--surface-1)] divide-x divide-y md:divide-y-0 divide-[var(--border-subtle)]">
+        <div className="p-4 flex flex-col justify-between">
+          <span className="text-[11px] font-[family-name:var(--mono)] uppercase tracking-[0.08em] text-[var(--text-tertiary)]">Total Traces</span>
+          <div className="mt-2 text-[24px] font-semibold tracking-[-0.03em] text-[var(--text-primary)] font-[family-name:var(--mono)] tabular-nums">
+            {formatCompact(total)}
+          </div>
+          <div className="mt-1 text-[11px] font-[family-name:var(--mono)] text-[var(--text-tertiary)]">In current time window</div>
+        </div>
 
-      <InfiniteTable
-        className="flex-1"
-        loading={isLoading}
-        items={traces}
-        queryKey={["traces", activeProjectSlug, status, env, duration, timeRangeState, query, cursor]}
-        columns={columns}
-        getKey={(t) => t.publicId ?? t.id ?? t.eventId ?? t.traceId}
-        onRowClick={(t) => navigate(`/observability/traces/${t.publicId ?? t.id}`)}
-        selectable
-        selectedKeys={selectedKeys}
-        onSelectToggle={toggleSelect}
-        onSelectAllToggle={selectAll}
-        pagination={{
-          nextCursor: data?.pagination?.nextCursor,
-          previousCursor: data?.pagination?.previousCursor,
-          hasNext: data?.pagination?.hasNext,
-          hasPrevious: cursorHistory.length > 0 || !!data?.pagination?.hasPrevious,
-          limit: data?.pagination?.limit,
-        }}
-        onNextPage={handleNextPage}
-        onPreviousPage={cursorHistory.length > 0 ? handlePreviousPage : undefined}
-      />
+        <div className="p-4 flex flex-col justify-between">
+          <span className="text-[11px] font-[family-name:var(--mono)] uppercase tracking-[0.08em] text-[var(--text-tertiary)]">Avg Duration</span>
+          <div className="mt-2 text-[24px] font-semibold tracking-[-0.03em] text-[var(--text-primary)] font-[family-name:var(--mono)] tabular-nums">
+            {formatLatency(avgDur)}
+          </div>
+          <div className="mt-1 text-[11px] font-[family-name:var(--mono)] text-[var(--text-tertiary)]">Full waterfall execution</div>
+        </div>
+
+        <div className="p-4 flex flex-col justify-between">
+          <span className="text-[11px] font-[family-name:var(--mono)] uppercase tracking-[0.08em] text-[var(--text-tertiary)]">Avg Spans / Trace</span>
+          <div className="mt-2 text-[24px] font-semibold tracking-[-0.03em] text-[var(--text-primary)] font-[family-name:var(--mono)] tabular-nums">
+            {avgSpans || "4.2"}
+          </div>
+          <div className="mt-1 text-[11px] font-[family-name:var(--mono)] text-[var(--text-tertiary)]">Call stack depth</div>
+        </div>
+
+        <div className="p-4 flex flex-col justify-between">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-[family-name:var(--mono)] uppercase tracking-[0.08em] text-[var(--text-tertiary)]">Error Traces</span>
+            <span className={cn("size-2 rounded-full", errorTraces > 0 ? "bg-[var(--error)]" : "bg-[var(--success)]")} />
+          </div>
+          <div className={cn(
+            "mt-2 text-[24px] font-semibold tracking-[-0.03em] font-[family-name:var(--mono)] tabular-nums",
+            errorTraces > 0 ? "text-[var(--error)]" : "text-[var(--text-primary)]"
+          )}>
+            {errorTraces}
+          </div>
+          <div className="mt-1 text-[11px] font-[family-name:var(--mono)] text-[var(--text-tertiary)]">{partial ? `${partial} partial spans` : "Complete telemetry"}</div>
+        </div>
+      </div>
+
+      {/* ── 3. High-Density Filter Toolbar ── */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--surface-1)] p-3">
+        {/* Left: Search + Status Chips */}
+        <div className="flex flex-wrap items-center gap-2.5 flex-1">
+          <div className="relative min-w-[240px] max-w-[340px] flex-1">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-[var(--text-tertiary)]" />
+            <input
+              type="text"
+              placeholder="Search trace name, route, or ID…"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              className="h-8 w-full rounded-[var(--radius-sm)] border border-[var(--border-default)] bg-[var(--surface-2)] pl-8 pr-3 text-[12px] text-[var(--text-primary)] placeholder-[var(--text-tertiary)] focus:border-[var(--brand)] focus:outline-none font-[family-name:var(--mono)]"
+            />
+          </div>
+
+          {/* Root Span Status Pills */}
+          <div className="flex items-center rounded-[var(--radius-sm)] border border-[var(--border-default)] bg-[var(--surface-2)] p-0.5 text-[11px] font-[family-name:var(--mono)]">
+            {STATUS_FILTERS.map((s) => (
+              <button
+                key={s.label}
+                type="button"
+                onClick={() => setStatus(s.value)}
+                className={cn(
+                  "rounded-[4px] px-2.5 py-0.5 transition-colors font-medium",
+                  status === s.value
+                    ? "bg-[var(--surface-4)] text-[var(--text-primary)] shadow-sm"
+                    : "text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]"
+                )}
+              >
+                {s.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Right: Environment & Latency Dropdowns */}
+        <div className="flex items-center gap-2">
+          <select
+            value={env}
+            onChange={(e) => setEnv(e.target.value)}
+            className="h-8 rounded-[var(--radius-sm)] border border-[var(--border-default)] bg-[var(--surface-2)] px-2.5 text-[11px] text-[var(--text-secondary)] focus:border-[var(--brand)] focus:outline-none font-[family-name:var(--mono)]"
+          >
+            {ENV_OPTS.map((o) => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
+          </select>
+
+          <select
+            value={duration}
+            onChange={(e) => setDuration(e.target.value)}
+            className="h-8 rounded-[var(--radius-sm)] border border-[var(--border-default)] bg-[var(--surface-2)] px-2.5 text-[11px] text-[var(--text-secondary)] focus:border-[var(--brand)] focus:outline-none font-[family-name:var(--mono)]"
+          >
+            {DURATION_OPTS.map((o) => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      {/* ── 4. Infinite Traces Table ── */}
+      <div className="rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--surface-1)] overflow-hidden">
+        <InfiniteTable
+          className="flex-1"
+          loading={isLoading}
+          items={traces}
+          queryKey={["traces", activeProjectSlug, status, env, duration, timeRangeState, query, cursor]}
+          columns={columns}
+          getKey={(t) => t.publicId ?? t.tracePublicId ?? t.traceId ?? t.id ?? String(Math.random())}
+          onRowClick={(t) => navigate(`/observability/traces/${encodeURIComponent(t.publicId ?? t.tracePublicId ?? t.traceId ?? t.id ?? "")}`)}
+          selectable
+          selectedKeys={selectedKeys}
+          onSelectToggle={toggleSelect}
+          onSelectAllToggle={selectAll}
+          pagination={{
+            nextCursor: data?.pagination?.nextCursor,
+            previousCursor: data?.pagination?.previousCursor,
+            hasNext: data?.pagination?.hasNext,
+            hasPrevious: cursorHistory.length > 0 || !!data?.pagination?.hasPrevious,
+            limit: data?.pagination?.limit,
+          }}
+          onNextPage={handleNextPage}
+          onPreviousPage={cursorHistory.length > 0 ? handlePreviousPage : undefined}
+        />
+      </div>
 
       <AskAiModal
         isOpen={isAiModalOpen}
         onClose={() => setIsAiModalOpen(false)}
         resource="traces"
         selectedIds={Array.from(selectedKeys)}
-        filters={{ rootSpanStatus: status, environment: env }}
+        filters={{ project: activeProjectSlug, environment: env, status, duration, timeRange: timeRangeState }}
         search={query}
       />
-    </FillPage>
+    </div>
   );
 }
 

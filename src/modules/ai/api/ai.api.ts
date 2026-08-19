@@ -9,7 +9,7 @@ import type {
   ChatResponse,
   CreatedJob,
   InvestigationInput,
-  InvestigationKind,
+  InvestigationResource,
   KnowledgeDoc,
   ReportKind,
 } from "../types";
@@ -25,17 +25,6 @@ function idempotencyConfig() {
       : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
   return { headers: { "Idempotency-Key": key } };
 }
-
-// Resource kind → backend feature endpoint. Kept internal so the UI never
-// exposes backend implementation details.
-const INVESTIGATION_ROUTES: Record<InvestigationKind, string> = {
-  error: "/error-explanation",
-  stack_trace: "/stack-trace-analysis",
-  trace: "/trace-analysis",
-  span: "/span-analysis",
-  log: "/log-summary",
-  deployment: "/deployment-correlation",
-};
 
 const REPORT_QUERY: Record<ReportKind, string> = {
   weekly: "Generate the weekly reliability report for this organization.",

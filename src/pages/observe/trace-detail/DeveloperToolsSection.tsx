@@ -1,5 +1,4 @@
-import React, { useState } from "react";
-import { Copy, Download, Code2, Check } from "lucide-react";
+import { Download } from "lucide-react";
 import { Button, CopyButton } from "@/shared/observe";
 import { SectionShell } from "./ui";
 import { sectionDomId, toCopyableJson } from "./helpers";

@@ -58,14 +58,14 @@ export default function GeoAnalytics() {
   const dau = uniqueBy(reqList.filter((r) => r.userId), (r) => r.userId!) || 125;
   const mau = Math.round(dau * 4.2);
 
-  const browsers = bucketUserAgent(reqList, [
+  const browsers = bucketUserAgent(reqList.map((r) => ({ userAgent: r.userAgent ?? "" })), [
     ["Chrome", /Chrome/], ["Safari", /Safari/], ["Firefox", /Firefox/], ["Edge", /Edg/],
   ]);
-  const os = bucketUserAgent(reqList, [
+  const os = bucketUserAgent(reqList.map((r) => ({ userAgent: r.userAgent ?? "" })), [
     ["Windows", /Windows/], ["macOS", /Mac OS/], ["Linux", /Linux/], ["iOS", /iPhone|iPad/], ["Android", /Android/],
   ]);
 
-  const tenants = Object.entries(groupBy(reqList, (r) => r.tenantId))
+  const tenants = Object.entries(groupBy(reqList, (r) => r.tenantId ?? "default"))
     .map(([id, rs]) => ({
       id, count: rs.length,
       users: uniqueBy(rs.filter((r) => r.userId), (r) => r.userId!),

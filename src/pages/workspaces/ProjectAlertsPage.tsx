@@ -3,14 +3,12 @@ import { useNavigate } from "react-router";
 import {
   AlertOctagon,
   CheckCircle2,
-  Filter,
   RefreshCw,
   Search,
 } from "lucide-react";
 import { useCurrentProject } from "./ProjectShellPage";
 import {
   useProjectAlerts,
-  useNotificationEntitlement,
 } from "@/modules/alerting/hooks/useAlerting";
 import { IncidentStateBadge } from "@/modules/alerting/components/IncidentStateBadge";
 import { toIncidentView } from "@/modules/alerting/components/incident-view";
@@ -21,7 +19,7 @@ import { cn } from "@/lib/utils";
 import { useProjectAlertingStatus } from "@/modules/alerting/hooks/useAlerting";
 
 export default function ProjectAlertsPage() {
-  const { projectId, orgSlug } = useCurrentProject();
+  const { projectId } = useCurrentProject();
   const navigate = useNavigate();
   const [selectedStatus, setSelectedStatus] = useState("all");
   const [selectedSeverity, setSelectedSeverity] = useState("all");
@@ -39,7 +37,7 @@ export default function ProjectAlertsPage() {
 
 
   const filtered = useMemo(() => {
-    return incidents.filter((incident) => {
+    return ((incidents ?? []) as any[]).filter((incident: any) => {
       const matchesStatus =
         selectedStatus === "all" ||
         (selectedStatus === "active"
@@ -167,7 +165,7 @@ export default function ProjectAlertsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/40 font-normal">
-                {filtered.map((incident) => (
+                {((filtered ?? []) as any[]).map((incident: any) => (
                   <tr
                     key={incident.id}
                     onClick={() => navigate(`/alerts/${incident.id}`)}
@@ -177,7 +175,7 @@ export default function ProjectAlertsPage() {
                       <IncidentStateBadge state={incident.state} size="sm" />
                     </td>
                     <td className="p-3">
-                      <SeverityBadge severity={incident.severity} size="sm" />
+                      <SeverityBadge severity={incident.severity} />
                     </td>
                     <td className="p-3">
                       <div className="font-semibold text-[var(--text)] group-hover:text-[var(--brand)] transition-colors">

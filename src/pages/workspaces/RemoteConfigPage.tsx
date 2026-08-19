@@ -1,10 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   CheckCircle2,
-  Clock3,
-  FlaskConical,
-  Hash,
-  History,
   RotateCcw,
   ServerCog,
   ShieldCheck,
@@ -20,7 +16,6 @@ import {
   SubmitButton,
   inputClass,
 } from "@/shared/observe";
-import { cn } from "@/lib/utils";
 import { RouteLoadingRegion } from "@/shared/ui/loading";
 import { toast } from "sonner";
 import { useOrganizations } from "@/modules/organizations/hooks/useOrganizations";
@@ -32,7 +27,6 @@ import {
 } from "@/modules/projects/hooks/useSdkConfigs";
 import { useEnvironments } from "@/modules/projects/hooks/useEnvironments";
 import type { ProjectEnvironment } from "@/modules/projects/api/types";
-import type { SdkConfigView } from "@/modules/projects/api/sdk-configs.api";
 import { useCurrentProject } from "@/pages/workspaces/ProjectShellPage";
 
 import { RemoteConfigHeader } from "./RemoteConfig/components/RemoteConfigHeader";
@@ -87,7 +81,7 @@ function VersionsTab({
   if (!versions.length) {
     return (
       <SectionCard title="Revision History">
-        <div className="text-[13px] text-[var(--text3)]">No revisions have been published for this config yet.</div>
+        <div className="text-[13px] text-[var(--text-tertiary)]">No revisions have been published for this config yet.</div>
       </SectionCard>
     );
   }
@@ -95,32 +89,32 @@ function VersionsTab({
   const sorted = [...versions].sort((a, b) => (b.revision ?? 0) - (a.revision ?? 0));
 
   return (
-    <SectionCard
-      title="Published Revision Log & Rollbacks"
-      description="Immutable historical snapshot tree. Instantly compare or restore previous revisions."
-    >
-      <div className="space-y-3 py-2">
+    <SectionCard title="Published Revision Log & Rollbacks">
+      <p className="text-[12px] text-[var(--text-secondary)] mb-4">
+        Immutable historical snapshot tree. Instantly compare or restore previous revisions.
+      </p>
+      <div className="space-y-3">
         {sorted.map((version, index) => {
           const previous = sorted[index + 1];
           const changedCount = previous ? countChangedKeys(previous.compiledSnapshot, version.compiledSnapshot) : null;
           return (
-            <div key={version.id} className="rounded-xl border border-[var(--border)] bg-[var(--bg2)]/60 p-4 transition-all hover:bg-[var(--bg2)] flex flex-wrap items-center justify-between gap-3">
+            <div key={version.id} className="rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-2)] p-3.5 transition-colors hover:border-[var(--border-default)] flex flex-wrap items-center justify-between gap-3">
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
-                  <span className="font-bold text-sm text-[var(--text)]">Revision #{version.revision}</span>
+                  <span className="font-mono text-[13px] font-medium text-[var(--text-primary)]">Revision #{version.revision}</span>
                   <StatusBadge status={version.changeType ?? "publish"} />
                 </div>
-                <div className="mt-1 text-xs text-[var(--text3)]">
+                <div className="mt-1 text-[12px] text-[var(--text-tertiary)]">
                   {version.environmentName || "Environment Scope"} · {formatDate(version.publishedAt)}
                   {changedCount !== null && (
                     <> · {changedCount === 0 ? "No field changes" : `${changedCount} field${changedCount === 1 ? "" : "s"} modified`}</>
                   )}
                 </div>
-                {version.changeSummary && <div className="mt-1 text-xs font-mono text-[var(--brand)]">{version.changeSummary}</div>}
+                {version.changeSummary && <div className="mt-1 font-mono text-[12px] text-[var(--brand)]">{version.changeSummary}</div>}
               </div>
               <Button
                 type="button"
-                variant="ghost"
+                variant="outline"
                 disabled={rollbackConfig.isPending}
                 onClick={() =>
                   rollbackConfig.mutate({
@@ -129,9 +123,9 @@ function VersionsTab({
                     revision: version.revision,
                   })
                 }
-                className="h-8 px-3 text-xs gap-1.5 border border-[var(--border)] text-[var(--text2)] hover:text-[var(--text)]"
+                className="h-8 px-2.5 text-[12px] gap-1.5"
               >
-                <RotateCcw className="size-3.5 text-amber-400" />
+                <RotateCcw className="size-3 text-[var(--warning)]" />
                 Rollback
               </Button>
             </div>
@@ -217,7 +211,10 @@ function ResolveTab({
 
   return (
     <div className="grid gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
-      <SectionCard title="SDK Delivery Sandbox" description="Simulate live payload resolution for any environment and SDK target platform.">
+      <SectionCard title="SDK Delivery Sandbox">
+        <p className="text-[12px] text-[var(--text-secondary)] mb-4">
+          Simulate live payload resolution for any environment and SDK target platform.
+        </p>
         <form onSubmit={handleResolve} className="flex flex-col gap-4">
           <label className="flex flex-col gap-1.5">
             <span className="text-[12px] font-bold uppercase tracking-wider text-[var(--text3)]">Target Environment</span>
@@ -418,7 +415,6 @@ export default function RemoteConfigPage() {
           draftChangesCount={panelState.diffCount}
           hasErrors={panelState.hasErrors}
           onOpenPublishDrawer={() => setPublishDrawerOpen(true)}
-          onDiscardDraft={panelState.discardDraft}
           onOpenRollout={() => setActiveSection("rollout")}
           onOpenInheritance={() => setActiveSection("inheritance")}
           onOpenTelemetry={() => setActiveSection("telemetry")}

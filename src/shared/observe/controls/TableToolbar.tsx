@@ -8,7 +8,7 @@ interface TableToolbarProps {
   onClearSelection?: () => void;
   onExport?: () => void;
   onRefresh?: () => void;
-  onAskAi: () => void;
+  onAskAi?: () => void;
   resourceName?: string;
   className?: string;
 }

@@ -1,5 +1,4 @@
-import React from "react";
-import { GitCommit, ArrowRight, ShieldCheck, AlertTriangle, Layers, Info } from "lucide-react";
+import { GitCommit, ArrowRight, ShieldCheck } from "lucide-react";
 import { SectionCard } from "@/shared/observe";
 
 export function DependencyGraphModal() {

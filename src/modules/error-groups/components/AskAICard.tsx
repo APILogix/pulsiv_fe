@@ -23,7 +23,7 @@ export function AskAICard({ group }: AskAICardProps) {
   const handleOpenDrawer = () => {
     useAiDrawerStore.getState().openInvestigate({
       resourceType: "error",
-      publicId: group.publicId,
+      publicId: group.publicId ?? group.fingerprint ?? "unknown",
     });
   };
 

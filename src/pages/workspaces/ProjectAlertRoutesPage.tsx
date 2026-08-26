@@ -235,13 +235,13 @@ export default function ProjectAlertRoutesPage() {
                   <Toggle
                     checked={isActiveOf(route)}
                     label={`Toggle ${route.name}`}
-                    onChange={(checked) => toggleRoute({ routeId: route.id, isActive: checked })}
+                    onChange={(checked) => toggleRoute.mutate({ routeId: route.id, isActive: checked })}
                   />
                 </Td>
                 <Td>
-                  <Timestamp iso={route.createdAt} />
+                  <Timestamp value={route.createdAt} />
                 </Td>
-                <Td align="right">
+                <Td className="text-right">
                   <div className="flex items-center justify-end gap-1">
                     <button
                       type="button"
@@ -254,7 +254,7 @@ export default function ProjectAlertRoutesPage() {
                     <button
                       type="button"
                       aria-label={`Delete ${route.name}`}
-                      onClick={() => deleteRoute(route.id)}
+                      onClick={() => deleteRoute.mutate(route.id)}
                       className="rounded-[6px] p-1 text-[var(--text2)] transition-colors hover:bg-[var(--bg2)] hover:text-rose-400"
                     >
                       <Trash2 size={14} />

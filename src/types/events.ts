@@ -60,15 +60,15 @@ export interface ErrorEvent {
   name?: string;
   errorName?: string;
   stack?: StackFrame[];
-  fingerprint?: string;
-  timestamp?: number;
+  fingerprint: string;
+  timestamp: number;
   occurredAt?: string;
   severity: SeverityLevel;
   context?: Record<string, unknown>;
   breadcrumbs?: Breadcrumb[];
   traceId?: string;
   spanId?: string;
-  metadata?: EventMetadata;
+  metadata: EventMetadata;
   user?: EventUser;
   tags?: Record<string, string>;
   mechanism?: string;
@@ -125,14 +125,16 @@ export interface RequestEvent {
   tenantId?: string;
   sessionId?: string;
   clientIp?: string;
-  userAgent?: string;
+  userAgent: string;
   referer?: string;
-  route?: string;
-  traceId?: string;
+  route: string;
+  traceId: string;
   hasTrace?: boolean;
   hasError?: boolean;
   spanId?: string;
-  metadata?: EventMetadata;
+  metadata: EventMetadata;
+  name?: string;
+  service?: string;
 }
 
 export interface SpanEvent {
@@ -185,6 +187,7 @@ export interface TraceEvent {
   eventId: string;
   traceId: string;
   occurredAt?: string | number;
+  timestamp: number;
   rootSpanName?: string;
   rootSpan?: AggregatedSpanEvent;
   rootSpanId?: string;
@@ -193,18 +196,19 @@ export interface TraceEvent {
   endpoint?: string;
   httpMethod?: string;
   statusCode?: number;
-  spanCount?: number;
+  spanCount: number;
   durationMs?: number;
   totalDurationMs?: number;
-  totalDuration?: number;
+  totalDuration: number;
   isPartial?: boolean;
   environment?: string;
   service?: string;
-  metadata?: EventMetadata;
+  metadata: EventMetadata;
   requestId?: string;
   sessionId?: string;
   userId?: string;
   tenantId?: string;
+  status?: string;
   __pulseInternal?: boolean;
 }
 
@@ -234,14 +238,19 @@ export interface MetricEvent {
 
 export interface LogEvent {
   type: "log";
+  id?: string;
   eventId: string;
   level: LogLevel;
+  severity?: LogLevel;
   message: string;
   timestamp: number;
+  occurredAt?: number | string;
   args?: unknown[];
   requestId?: string;
   traceId?: string;
   spanId?: string;
+  environment?: string;
+  service?: string;
   metadata: EventMetadata;
 }
 
@@ -290,10 +299,13 @@ export interface CronCheckInEvent {
 
 export interface ReplayEvent {
   type: "replay";
+  id?: string;
   eventId: string;
   sessionId: string;
   segmentId: number;
   timestamp: number;
+  durationMs?: number;
+  environment?: string;
   events: { type: string; timestamp: number; data: Record<string, unknown> }[];
   metadata: EventMetadata;
 }

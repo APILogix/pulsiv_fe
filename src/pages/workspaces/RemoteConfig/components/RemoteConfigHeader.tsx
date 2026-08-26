@@ -1,4 +1,3 @@
-import React from "react";
 import {
   ShieldCheck,
   History,
@@ -26,7 +25,7 @@ interface RemoteConfigHeaderProps {
   draftChangesCount: number;
   hasErrors: boolean;
   onOpenPublishDrawer: () => void;
-  onDiscardDraft: () => void;
+  onDiscardDraft?: () => void;
   onOpenRollout: () => void;
   onOpenInheritance: () => void;
   onOpenTelemetry: () => void;
@@ -43,7 +42,7 @@ export function RemoteConfigHeader({
   draftChangesCount,
   hasErrors,
   onOpenPublishDrawer,
-  onDiscardDraft,
+  onDiscardDraft: _onDiscardDraft,
   onOpenRollout,
   onOpenInheritance,
   onOpenTelemetry,

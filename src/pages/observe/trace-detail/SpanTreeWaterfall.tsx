@@ -16,7 +16,7 @@ import {
   Filter,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { CopyButton, Button, Badge } from "@/shared/observe";
+import { CopyButton, Button } from "@/shared/observe";
 import { formatDurationMs, formatPercent } from "./helpers";
 import type { SpanTreeNode, TraceSpan } from "./types";
 
@@ -318,10 +318,9 @@ export function SpanTreeWaterfall({
 
                       {/* Bottleneck flame */}
                       {node.isBottleneck && (
-                        <Flame
-                          className="size-3.5 shrink-0 text-[var(--amber)] animate-pulse"
-                          title="Slowest bottleneck span in trace"
-                        />
+                        <span title="Slowest bottleneck span in trace">
+                          <Flame className="size-3.5 shrink-0 text-[var(--amber)] animate-pulse" />
+                        </span>
                       )}
                     </div>
 

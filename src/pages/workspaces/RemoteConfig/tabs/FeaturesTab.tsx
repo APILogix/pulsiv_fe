@@ -1,8 +1,8 @@
 import { Switch } from '@/components/ui/switch';
-import { SectionBanner, FieldTooltip, MicroCopy } from '../components/HelpSystem';
+import { SectionBanner, FieldTooltip } from '../components/HelpSystem';
 import type { SdkConfigState } from '../schema';
 import { cn } from '@/lib/utils';
-import { Zap, ShieldCheck, Cpu, AlertTriangle, Layers } from 'lucide-react';
+import { Zap, Cpu, Layers } from 'lucide-react';
 
 interface FeaturesTabProps {
   features: SdkConfigState['features'];

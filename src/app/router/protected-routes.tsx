@@ -191,7 +191,8 @@ const RolesPermissionsPage = lazy(() => import("@/pages/team/RolesPermissionsPag
  */
 function OrgRouteGuard() {
   const { orgSlug } = useParams<{ orgSlug: string }>();
-  const { organizations, activeOrgId, activeOrgSlug, setActiveOrg, isLoading } = useOrganizations();
+  const { organizations, activeOrgId, activeOrgSlug, isLoading } = useOrganizations();
+  const setActiveOrg = useOrgStore((s) => s.setActiveOrg);
 
   useEffect(() => {
     if (!orgSlug || isLoading || !organizations.length) return;

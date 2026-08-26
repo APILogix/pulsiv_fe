@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState, type ElementType } from "react";
 import {
   SlidersHorizontal,
   Search,
@@ -15,7 +15,6 @@ import {
   FileSpreadsheet,
   Share2,
   ChevronRight,
-  Pin,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -23,7 +22,7 @@ export interface NavSectionItem {
   id: string;
   label: string;
   group: "settings" | "operations" | "control";
-  icon: React.ElementType;
+  icon: ElementType;
   changedCount?: number;
   errorCount?: number;
   danger?: boolean;

@@ -14,7 +14,7 @@ import {
   type QueueOverflowStrategy,
   type FieldError,
 } from '../bounds';
-import { Activity, Radio, RefreshCw, ShieldAlert, Cpu } from 'lucide-react';
+import { Activity, Radio, RefreshCw } from 'lucide-react';
 
 const inputClass =
   'w-full rounded-[8px] border border-[var(--border)] bg-[var(--bg2)] px-3 py-1.5 text-[13px] text-[var(--text)] outline-none transition-colors focus:border-[var(--brand)] focus:ring-1 focus:ring-[var(--brand)] disabled:opacity-50 font-mono';

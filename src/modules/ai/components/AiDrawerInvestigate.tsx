@@ -132,7 +132,6 @@ export function AiDrawerInvestigate() {
                 <span className="text-[12px] font-medium text-[var(--text3)]">Grounded Root Cause Analysis</span>
                 <Button
                   variant="secondary"
-                  size="sm"
                   onClick={handleFollowUpChat}
                   className="h-7 text-[11px] gap-1 text-[var(--ai)] border-[var(--ai)]/30 hover:bg-[var(--ai-bg)]"
                 >
@@ -228,7 +227,6 @@ export function AiDrawerInvestigate() {
                 <span className="text-[12px] font-medium text-[var(--text3)]">Investigation Result</span>
                 <Button
                   variant="secondary"
-                  size="sm"
                   onClick={handleFollowUpChat}
                   className="h-7 text-[11px] gap-1 text-[var(--ai)] border-[var(--ai)]/30 hover:bg-[var(--ai-bg)]"
                 >

@@ -1,5 +1,4 @@
-import React from "react";
-import { Layers, ArrowRight, ShieldCheck, Check, AlertCircle, Sparkles, Building2, Folder, Globe, Cpu } from "lucide-react";
+import { ShieldCheck, Check, Sparkles, Building2, Folder, Globe, Cpu } from "lucide-react";
 import { SectionCard } from "@/shared/observe";
 
 interface InheritanceVisualizerProps {
@@ -62,7 +61,7 @@ export function InheritanceVisualizer({ environmentName }: InheritanceVisualizer
     >
       <div className="flex flex-col gap-4 py-2">
         <div className="grid gap-3">
-          {layers.map((layer, index) => {
+          {layers.map((layer) => {
             const Icon = layer.icon;
             return (
               <div key={layer.level} className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-[var(--border)] bg-[var(--bg2)]/60 p-4 transition-all hover:bg-[var(--bg2)]">

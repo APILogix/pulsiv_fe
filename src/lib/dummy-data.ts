@@ -119,10 +119,10 @@ export const dummyErrorGroups = dummyErrorEvents.reduce((acc, evt) => {
   if (!acc[fp]) {
     acc[fp] = {
       fingerprint: fp,
-      name: evt.name,
-      message: evt.message,
+      name: evt.name ?? "Error",
+      message: evt.message ?? "",
       severity: evt.severity,
-      mechanism: evt.mechanism,
+      mechanism: evt.mechanism ?? "sdk",
       count: 0,
       firstSeen: evt.timestamp,
       lastSeen: evt.timestamp,
@@ -283,6 +283,7 @@ export const dummyTraceEvents: TraceEvent[] = Array.from({ length: 80 }, (_, i) 
     type: "trace",
     eventId: `trace_${traceId}`,
     traceId,
+    timestamp: Date.now() - (i % 24) * 3600 * 1000,
     rootSpan: buildSpanTree(0),
     spanCount,
     totalDuration,

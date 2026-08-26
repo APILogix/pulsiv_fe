@@ -6,6 +6,7 @@ import type {
   ChatRequest,
   InvestigationInput,
   InvestigationKind,
+  InvestigationResource,
   ReportKind,
 } from "../types";
 

@@ -329,7 +329,7 @@ export default function AlertEventDetailPage() {
                       {delivery.attemptNumber} of {delivery.maxAttempts}
                     </td>
                     <td className="p-2.5 font-mono text-[11px] text-muted-foreground">
-                      {new Date(delivery.attemptedAt).toLocaleTimeString()}
+                      {delivery.attemptedAt ? new Date(delivery.attemptedAt).toLocaleTimeString() : "—"}
                     </td>
                   </tr>
                 ))}

@@ -9,6 +9,7 @@ import {
   Lightbulb,
   CheckCircle2,
   Copy,
+  type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button, CopyButton } from "@/shared/observe";
@@ -21,7 +22,7 @@ const QUICK_INTENTS: Array<{
   id: AIIntent;
   label: string;
   desc: string;
-  icon: React.ComponentProps<typeof Zap>["icon"];
+  icon: LucideIcon;
 }> = [
   {
     id: "performance",

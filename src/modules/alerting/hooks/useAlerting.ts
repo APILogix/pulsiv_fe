@@ -144,7 +144,7 @@ export function useOrganizationAlertPolicyMutations() {
   };
 }
 
-export function useAlertIncidents(query: { state?: import("../api/types").IncidentState; severity?: string; search?: string; limit?: number; offset?: number } = {}) {
+export function useAlertIncidents(query: { state?: import("../api/types").IncidentState; severity?: import("../api/types").EventListQuery['severity']; search?: string; limit?: number; offset?: number } = {}) {
   const { activeOrgId } = useAlertingScope();
   return useQuery({
     queryKey: alertingKeys.incidents(activeOrgId, query),
@@ -724,7 +724,7 @@ export function useNotificationEntitlement() {
     const legacyKey = CONNECTOR_LEGACY_KEYS[channel];
     return (
       (Boolean(canonicalKey) && raw[canonicalKey]?.booleanValue === true) ||
-      (Boolean(aliasKey) && raw[aliasKey]?.booleanValue === true) ||
+      (Boolean(aliasKey) && raw[aliasKey as string]?.booleanValue === true) ||
       (Boolean(legacyKey) && raw[legacyKey]?.booleanValue === true)
     );
   };

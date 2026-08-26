@@ -10,6 +10,7 @@ import type {
   CreatedJob,
   InvestigationInput,
   InvestigationKind,
+  InvestigationResource,
   KnowledgeDoc,
   ReportKind,
 } from "../types";
@@ -34,6 +35,8 @@ const INVESTIGATION_ROUTES: Record<InvestigationKind, string> = {
   trace: "/trace-analysis",
   span: "/span-analysis",
   log: "/log-summary",
+  logs: "/log-summary",
+  request: "/request-explanation",
   deployment: "/deployment-correlation",
 };
 

@@ -61,7 +61,7 @@ export default function AiInvestigationsPage() {
       <PageHero
         title="AI Root Cause Analysis"
         description="Provide a canonical resource reference. The backend automatically retrieves and correlates surrounding telemetry to determine the root cause."
-        badge={{ label: "Grounded Analysis", variant: "ai" }}
+        eyebrow="Grounded Analysis"
         actions={
           <Button
             variant="secondary"
@@ -177,7 +177,6 @@ export default function AiInvestigationsPage() {
             </div>
             <Button
               variant="secondary"
-              size="sm"
               onClick={handleOpenInDrawer}
               className="gap-1.5 text-[12px]"
             >

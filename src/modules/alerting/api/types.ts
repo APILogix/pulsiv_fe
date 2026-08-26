@@ -423,11 +423,21 @@ export interface AlertDeliveryAttempt {
   latencyMs: number | null;
   retryCount: number;
   externalMessageId: string | null;
+  channelType?: string;
+  destination?: string;
+  attemptNumber?: number;
+  maxAttempts?: number;
+  attemptedAt?: string;
   createdAt: string;
   updatedAt: string;
 }
 
 export interface EventStats {
+  active?: number;
+  acknowledged?: number;
+  total24h?: number;
+  resolved24h?: number;
+  mttrMinutes?: number | null;
   [key: string]: unknown;
 }
 

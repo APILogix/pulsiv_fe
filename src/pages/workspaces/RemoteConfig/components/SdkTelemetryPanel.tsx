@@ -1,5 +1,4 @@
-import React from "react";
-import { Share2, Cpu, CheckCircle2, AlertCircle, Wifi, Activity, Layers, RefreshCw } from "lucide-react";
+import { CheckCircle2, Wifi, Activity, RefreshCw } from "lucide-react";
 import { SectionCard, StatusBadge } from "@/shared/observe";
 
 interface SdkTelemetryPanelProps {

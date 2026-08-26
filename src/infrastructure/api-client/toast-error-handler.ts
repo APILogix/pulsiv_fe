@@ -35,7 +35,11 @@ export function presentApiErrorToast(error: ApiError): void {
     displayMessage = 'Something went wrong on our server. Please try again.';
   }
 
-  toast.error(displayMessage, {
-    description: error.requestId ? `Request ID: ${error.requestId.slice(0, 16)}...` : undefined,
-  });
+  if (error.status >= 500) {
+    toast.error(displayMessage);
+  } else if (error.status >= 400 && error.status < 500) {
+    toast.warning(displayMessage);
+  } else {
+    toast.error(displayMessage);
+  }
 }

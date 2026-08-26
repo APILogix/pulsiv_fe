@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { SlidersHorizontal, Percent, ShieldCheck, Play, Pause, AlertCircle, CheckCircle2, Zap } from "lucide-react";
+import { useState } from "react";
+import { Percent, ShieldCheck, Play, Pause, Zap } from "lucide-react";
 import { Button, SectionCard } from "@/shared/observe";
 
 interface RolloutStrategyPanelProps {

@@ -26,11 +26,42 @@ const SEVERITY_STYLES: Record<string, string> = {
   P4: "bg-[var(--bg3)] text-[var(--text2)]",
 };
 
-export function SeverityBadge({ severity }: { severity?: string | null }) {
-  const safeSev = severity ?? "info";
+export function SeverityBadge({ severity, size }: { severity?: string | null; size?: string }) {
+  if (!severity) return null;
+  const s = severity.toLowerCase();
+  let color = "var(--text2)";
+  let bg = "var(--bg2)";
+  let border = "var(--border)";
+  let dot = "var(--text3)";
+
+  if (s === "error" || s === "critical" || s === "fatal") {
+    color = "var(--red)";
+    bg = "var(--red-bg)";
+    border = "var(--red-border)";
+    dot = "var(--red)";
+  } else if (s === "warning" || s === "warn") {
+    color = "var(--amber)";
+    bg = "var(--amber-bg)";
+    border = "var(--amber-border)";
+    dot = "var(--amber)";
+  } else if (s === "info" || s === "debug") {
+    color = "var(--blue)";
+    bg = "var(--blue-bg)";
+    border = "var(--blue-border)";
+    dot = "var(--blue)";
+  }
+
+  const px = size === "sm" ? "px-1.5" : "px-2";
+  const py = size === "sm" ? "py-0" : "py-0.5";
+  const textSz = size === "sm" ? "text-[10px]" : "text-[11px]";
+
   return (
-    <span className={cn("inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.08em] font-[family-name:var(--mono)]", SEVERITY_STYLES[safeSev] ?? SEVERITY_STYLES.debug)}>
-      {safeSev}
+    <span
+      className={`inline-flex items-center gap-1.5 rounded-full border ${px} ${py} ${textSz} font-medium uppercase tracking-wider`}
+      style={{ color, backgroundColor: bg, borderColor: border }}
+    >
+      <span className="size-1.5 rounded-full" style={{ backgroundColor: dot }} />
+      {severity}
     </span>
   );
 }
@@ -235,17 +266,21 @@ export function PageHeader({ title, description, breadcrumbs, actions }: {
   );
 }
 
-export function SectionCard({ title, action, children, className }: {
+export function SectionCard({ title, description, action, children, className }: {
   title?: string;
+  description?: React.ReactNode;
   action?: React.ReactNode;
   children: React.ReactNode;
   className?: string;
 }) {
   return (
     <div className={cn("rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)]", className)}>
-      {title && (
+      {(title || description || action) && (
         <div className="flex items-center justify-between border-b border-[var(--border)] px-5 py-3">
-          <h3 className="text-[14px] font-semibold text-[var(--text)]">{title}</h3>
+          <div>
+            {title && <h3 className="text-[14px] font-semibold text-[var(--text)]">{title}</h3>}
+            {description && <p className="mt-0.5 text-[12px] text-[var(--text2)]">{description}</p>}
+          </div>
           {action}
         </div>
       )}

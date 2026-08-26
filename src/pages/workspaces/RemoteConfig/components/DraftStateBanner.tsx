@@ -1,5 +1,4 @@
-import React from "react";
-import { AlertTriangle, Rocket, RotateCcw, CheckCircle2, ShieldAlert } from "lucide-react";
+import { AlertTriangle, Rocket, RotateCcw } from "lucide-react";
 import { Button } from "@/shared/observe";
 import { cn } from "@/lib/utils";
 

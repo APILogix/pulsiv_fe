@@ -2,10 +2,11 @@ import { Link } from 'react-router';
 import { motion } from 'framer-motion';
 import clsx from 'clsx';
 
-import { PulsivLogo } from '@/shared/components/PulsivLogo';
+import { SentinelLogo } from '@/shared/components/PulsivLogo';
 import { mainNavigation, type MainNavItem } from '@/app/navigation/navigation';
 import { prefetchRoute } from '@/app/router/route-prefetch';
 import { SPRING, DURATION, EASE } from '@/shared/motion';
+import { useAiDrawerStore } from '@/modules/ai/store/ai-drawer.store';
 
 /**
  * PrimaryRail — Phase 6 (sidebar motion) + Phase 13 (route prefetch).
@@ -38,17 +39,24 @@ function ActiveMarker() {
   );
 }
 
+import { useOrgStore } from '@/modules/organizations/store/org.store';
+import { orgPath } from '@/app/router/org-routes';
+
 export function PrimaryRail({ activeRailItem, handleRailClick }: PrimaryRailProps) {
+  const activeOrgSlug = useOrgStore((s) => s.activeOrgSlug);
+  const dashboardPath = orgPath(activeOrgSlug, '/dashboard');
+
   return (
     <nav className="w-[var(--rail-width)] bg-[var(--sidebar)] border-r border-[var(--border)] flex flex-col items-center py-4 z-[100] shrink-0 relative font-sans">
       <Link
-        to="/dashboard"
+        to={dashboardPath}
         aria-label="Go to dashboard"
-        onPointerEnter={() => prefetchRoute('/dashboard')}
+        onPointerEnter={() => prefetchRoute(dashboardPath)}
         className="flex items-center justify-center mb-6 cursor-pointer text-foreground"
       >
-        <PulsivLogo size={32} animate={true} />
+        <SentinelLogo size={32} animate={true} />
       </Link>
+
 
       <div className="flex flex-col gap-2 w-full items-center grow">
         {mainNavigation.map((item: MainNavItem) => {
@@ -74,23 +82,40 @@ export function PrimaryRail({ activeRailItem, handleRailClick }: PrimaryRailProp
             </motion.span>
           );
 
+          if (item.isDrawerTrigger) {
+            return (
+              <button
+                key={item.label}
+                type="button"
+                aria-label={`Open ${item.label}`}
+                className={className}
+                data-title={item.label}
+                onClick={() => useAiDrawerStore.getState().openChat()}
+              >
+                {icon}
+              </button>
+            );
+          }
+
           if (!item.children || item.children.length === 0) {
+            const targetPath = orgPath(activeOrgSlug, item.path);
             return (
               <Link
                 key={item.label}
-                to={item.path}
+                to={targetPath}
                 aria-label={item.label}
                 aria-current={isActive ? 'page' : undefined}
                 className={className}
                 data-title={item.label}
-                onPointerEnter={() => prefetchRoute(item.path)}
-                onFocus={() => prefetchRoute(item.path)}
+                onPointerEnter={() => prefetchRoute(targetPath)}
+                onFocus={() => prefetchRoute(targetPath)}
               >
                 {isActive && <ActiveMarker />}
                 {icon}
               </Link>
             );
           }
+
 
           return (
             <button

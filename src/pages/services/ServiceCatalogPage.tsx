@@ -1,89 +1,162 @@
-import { PageHeader, SectionCard, StatusBadge, Button, formatNumber } from "@/shared/observe";
-import { FolderGit2, Plus, Search } from "lucide-react";
 import { useState } from "react";
-import { toast } from "sonner";
-
-interface ServiceItem {
-  id: string;
-  name: string;
-  language: string;
-  rps: number;
-  errorRate: number;
-  latencyMs: number;
-  status: "healthy" | "degraded" | "critical";
-  lastDeploys: string;
-}
-
-const SERVICES: ServiceItem[] = [
-  { id: "1", name: "auth-service", language: "Go", rps: 1450, errorRate: 0.02, latencyMs: 12, status: "healthy", lastDeploys: "10m ago" },
-  { id: "2", name: "billing-worker", language: "TypeScript", rps: 120, errorRate: 1.4, latencyMs: 150, status: "healthy", lastDeploys: "1h ago" },
-  { id: "3", name: "ingestion-gateway", language: "Rust", rps: 18500, errorRate: 0.001, latencyMs: 2, status: "healthy", lastDeploys: "2d ago" },
-  { id: "4", name: "query-api", language: "Go", rps: 450, errorRate: 4.8, latencyMs: 240, status: "degraded", lastDeploys: "3h ago" },
-  { id: "5", name: "alerting-engine", language: "TypeScript", rps: 80, errorRate: 12.5, latencyMs: 85, status: "critical", lastDeploys: "5m ago" },
-];
+import { useNavigate } from "react-router";
+import { FolderGit2, Search, ArrowUpRight } from "lucide-react";
+import { PageHeader, SectionCard, StatusBadge, formatNumber } from "@/shared/observe";
+import { Skeleton } from "@/components/ui/skeleton";
+import { AnimatedEmptyState } from "@/shared/motion";
+import { Button } from "@/components/ui/button";
+import { useServicesAnalytics } from "@/modules/analytics";
 
 export default function ServiceCatalogPage() {
+  const navigate = useNavigate();
   const [query, setQuery] = useState("");
-  const filtered = SERVICES.filter(s => s.name.toLowerCase().includes(query.toLowerCase()));
+  const { data: servicesRes, isLoading } = useServicesAnalytics();
+
+  const servicesList = servicesRes?.data?.table?.rows ?? [];
+  const filtered = servicesList.filter((s) => s.service.toLowerCase().includes(query.toLowerCase()));
 
   return (
-    <div className="flex flex-col gap-6 pb-10">
-      <PageHeader 
-        title="Service Catalog" 
+    <div className="flex flex-col gap-6 pb-10 max-w-[1400px] w-full">
+      <PageHeader
+        title="Service Catalog"
         description="Unified registry of all monitored services, runtime technologies, and health indicators."
-        actions={<Button variant="primary" onClick={() => toast.info("Service registration flow coming soon")}><Plus className="size-4 mr-2" /> Register service</Button>}
       />
 
-      <div className="flex items-center gap-3 bg-[var(--bg1)] border border-[var(--border)] rounded-[10px] px-3 py-2 max-w-md">
-        <Search className="size-4 text-[var(--text3)]" />
-        <input 
-          type="text" 
-          placeholder="Filter services..." 
+      <div className="flex items-center gap-3 bg-[var(--bg1)] border border-[var(--border)] rounded-[10px] px-3 py-2 max-w-[600px] w-full">
+        <Search className="size-4 text-[var(--text3)] shrink-0" />
+        <input
+          type="text"
+          placeholder="Filter services by name..."
           className="bg-transparent border-none outline-none text-sm text-[var(--text)] w-full placeholder:text-[var(--text3)]"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
       </div>
 
-      <div className="grid grid-cols-1 gap-4">
-        {filtered.map(service => (
-          <SectionCard key={service.id} className="hover:border-[var(--brand)] transition-colors">
-            <div className="flex flex-wrap items-center justify-between gap-4">
+      {isLoading ? (
+        <div className="grid grid-cols-1 gap-4 animate-in fade-in duration-500">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div
+              key={i}
+              className="flex flex-wrap items-center justify-between gap-4 rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] p-4"
+            >
               <div className="flex items-center gap-3">
-                <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-[var(--bg3)] text-[var(--text2)]">
-                  <FolderGit2 className="size-5" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-[var(--text)] text-[15px]">{service.name}</h3>
-                  <div className="flex items-center gap-2 mt-1 text-xs text-[var(--text3)]">
-                    <span className="rounded bg-[var(--bg3)] px-1.5 py-0.5 font-medium">{service.language}</span>
-                    <span>•</span>
-                    <span>Deployed {service.lastDeploys}</span>
-                  </div>
+                <Skeleton className="size-10 rounded-lg shrink-0" />
+                <div className="flex flex-col gap-2">
+                  <Skeleton className="h-5 w-48" />
+                  <Skeleton className="h-3 w-32" />
                 </div>
               </div>
 
               <div className="flex items-center gap-8 flex-wrap">
-                <div className="text-right">
-                  <div className="text-xs text-[var(--text3)] uppercase tracking-wider font-medium">Throughput</div>
-                  <div className="text-sm font-semibold text-[var(--text)] mt-0.5">{formatNumber(service.rps)} rps</div>
+                <div className="flex flex-col items-end gap-1.5">
+                  <Skeleton className="h-3 w-14" />
+                  <Skeleton className="h-4 w-16" />
                 </div>
-                <div className="text-right">
-                  <div className="text-xs text-[var(--text3)] uppercase tracking-wider font-medium">P95 Latency</div>
-                  <div className="text-sm font-semibold text-[var(--text)] mt-0.5">{service.latencyMs} ms</div>
+                <div className="flex flex-col items-end gap-1.5">
+                  <Skeleton className="h-3 w-16" />
+                  <Skeleton className="h-4 w-14" />
                 </div>
-                <div className="text-right">
-                  <div className="text-xs text-[var(--text3)] uppercase tracking-wider font-medium">Error Rate</div>
-                  <div className={`text-sm font-semibold mt-0.5 ${service.errorRate > 4 ? "text-[var(--red)]" : "text-[var(--text)]"}`}>{service.errorRate}%</div>
+                <div className="flex flex-col items-end gap-1.5">
+                  <Skeleton className="h-3 w-16" />
+                  <Skeleton className="h-4 w-12" />
                 </div>
-                <div>
-                  <StatusBadge status={service.status === "healthy" ? "active" : service.status === "degraded" ? "warning" : "suspended"} />
-                </div>
+                <Skeleton className="h-6 w-20 rounded-full" />
               </div>
             </div>
-          </SectionCard>
-        ))}
-      </div>
+          ))}
+        </div>
+      ) : filtered.length === 0 ? (
+        query ? (
+          <AnimatedEmptyState
+            illustration="search"
+            title="No matching services"
+            description={`No registered services match "${query}". Try adjusting your search query or clear the filter.`}
+            action={
+              <Button variant="outline" size="sm" onClick={() => setQuery("")}>
+                Clear filter
+              </Button>
+            }
+          />
+        ) : (
+          <AnimatedEmptyState
+            illustration="folder"
+            title="No services discovered yet"
+            description="Monitored microservices, background workers, and API gateways will automatically register here once telemetry is ingested."
+            action={
+              <Button variant="default" size="sm" onClick={() => navigate("/admin/sdk-config")}>
+                Install Telemetry SDK
+              </Button>
+            }
+            secondaryAction={
+              <Button variant="outline" size="sm" onClick={() => navigate("/ingestion/endpoints")}>
+                View Ingestion Endpoints
+              </Button>
+            }
+            hint="Services instrumented with the Pulsiv OpenTelemetry exporter will automatically appear above."
+          />
+        )
+      ) : (
+        <div className="grid grid-cols-1 gap-4">
+          {filtered.map((service) => {
+            const availability = service.availabilityPct ?? 100;
+            const status = availability >= 99 ? "active" : availability >= 95 ? "warning" : "suspended";
+            const errRate = service.errorRatePct ?? 0;
+
+            return (
+              <div
+                key={service.service}
+                className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] hover:border-[var(--brand)] transition-colors cursor-pointer group p-5"
+                onClick={() => navigate(`/dashboards/performance?service=${encodeURIComponent(service.service)}`)}
+              >
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-[var(--bg3)] text-[var(--text2)] group-hover:text-[var(--brand)] group-hover:bg-[var(--brand-bg)] transition-colors">
+                      <FolderGit2 className="size-5" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-semibold text-[var(--text)] text-[15px] group-hover:text-[var(--brand)] transition-colors">
+                          {service.service}
+                        </h3>
+                        <ArrowUpRight className="size-3.5 text-[var(--text3)] opacity-0 group-hover:opacity-100 transition-opacity" />
+                      </div>
+                      <div className="flex items-center gap-2 mt-1 text-xs text-[var(--text3)]">
+                        <span className="rounded bg-[var(--bg3)] px-1.5 py-0.5 font-medium">Service</span>
+                        <span>•</span>
+                        <span>Apdex {service.apdex ? service.apdex.toFixed(2) : "1.00"}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-8 flex-wrap">
+                    <div className="text-right">
+                      <div className="text-xs text-[var(--text3)] uppercase tracking-wider font-medium">Requests</div>
+                      <div className="text-sm font-semibold text-[var(--text)] mt-0.5">{formatNumber(service.requests)}</div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-xs text-[var(--text3)] uppercase tracking-wider font-medium">P95 Latency</div>
+                      <div className="text-sm font-semibold text-[var(--text)] mt-0.5">
+                        {service.p95Ms ? `${Math.round(service.p95Ms)} ms` : "—"}
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-xs text-[var(--text3)] uppercase tracking-wider font-medium">Error Rate</div>
+                      <div className={`text-sm font-semibold mt-0.5 ${errRate > 4 ? "text-[var(--red)]" : "text-[var(--text)]"}`}>
+                        {errRate.toFixed(2)}%
+                      </div>
+                    </div>
+                    <div>
+                      <StatusBadge status={status} />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
+

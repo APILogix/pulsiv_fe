@@ -1,7 +1,7 @@
 import { SectionBanner, FieldTooltip } from '../components/HelpSystem';
 import type { SdkConfigState } from '../schema';
 import { Switch } from '@/components/ui/switch';
-import { Radio, Server, Database, Code } from 'lucide-react';
+import { Radio } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface InstrumentationTabProps {
@@ -45,7 +45,7 @@ export function InstrumentationTab({ instrumentation, onChange }: Instrumentatio
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {INSTRUMENTS.map(({ key, label, desc, category, tooltip }) => {
+          {INSTRUMENTS.map(({ key, label, desc, tooltip }) => {
             const isActive = instrumentation[key];
             return (
               <div

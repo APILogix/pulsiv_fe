@@ -315,7 +315,7 @@ export default function OrgSettingsPage() {
               <Field label="Organization name">
                 <input name="name" defaultValue={org.name} className={inputClass} required />
               </Field>
-              <Field label="Slug" hint={`Used in URLs: pulsiv.io/org/${org.slug}`}>
+              <Field label="Slug" hint={`Used in URLs: sentinel.io/org/${org.slug}`}>
                 <input
                   value={org.slug}
                   className={`${inputClass} font-[family-name:var(--mono)] text-[12.5px]`}

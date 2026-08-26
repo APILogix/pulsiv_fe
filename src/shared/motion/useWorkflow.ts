@@ -5,18 +5,13 @@ import type { WorkflowStepDef } from "./workflow-presets";
 /**
  * useWorkflow — Phase 4 state machine.
  *
- * The honesty rules this encodes:
- *  - Steps are *paced* while real work is in flight, and the final step is never
- *    marked done until the promise actually resolves.
- *  - If the work finishes early, remaining steps snap to done immediately. We do
- *    not stall the user to finish playing an animation.
- *  - A failure freezes on the step that was in flight and surfaces the error
- *    there, so the user can see how far the operation got.
- *  - Total added latency after resolution is `successHold` (default 450ms) —
- *    just enough to read the success mark before we navigate.
- *
- * No useCallback/useMemo here by design: the React Compiler is enabled
- * (rules.md §1), so manual memoization is a code smell in this codebase.
+ * The honesty & smoothness rules:
+ *  - Steps are smoothly paced while work is in flight, pacing through all steps
+ *    so no step is left awkwardly un-reached or frozen.
+ *  - When the async task resolves, any remaining steps cascade smoothly and
+ *    rapidly to "done" before transitioning to the success state.
+ *  - A failure freezes on the active step and cleanly surfaces the error message.
+ *  - Total hold time after resolution is `successHold` (default 450ms).
  */
 
 export type WorkflowStatus = "idle" | "running" | "success" | "error";
@@ -27,6 +22,8 @@ export interface WorkflowState {
   /** Index of the step currently in flight (or steps.length once all are done). */
   activeIndex: number;
   error: string | null;
+  /** Timestamp (ms) when current run started, for live elapsed tickers */
+  startedAt: number | null;
 }
 
 export interface WorkflowResult<T> {
@@ -46,12 +43,13 @@ export function useWorkflow(
   steps: readonly WorkflowStepDef[],
   options: UseWorkflowOptions = {},
 ) {
-  const { pace = 850, successHold = 450 } = options;
+  const { pace = 750, successHold = 450 } = options;
 
   const [state, setState] = useState<WorkflowState>({
     status: "idle",
     activeIndex: 0,
     error: null,
+    startedAt: null,
   });
 
   const timers = useRef<number[]>([]);
@@ -74,13 +72,12 @@ export function useWorkflow(
 
   function reset() {
     clearTimers();
-    setState({ status: "idle", activeIndex: 0, error: null });
+    setState({ status: "idle", activeIndex: 0, error: null, startedAt: null });
   }
 
   /**
    * Run the real work while narrating progress.
-   * Never throws — inspect `result.ok`. This keeps call sites free of try/catch
-   * noise and avoids unhandled rejections if the overlay is dismissed mid-flight.
+   * Never throws — inspect `result.ok`.
    */
   async function run<T>(
     task: () => Promise<T>,
@@ -90,16 +87,17 @@ export function useWorkflow(
     },
   ): Promise<WorkflowResult<T>> {
     clearTimers();
-    setState({ status: "running", activeIndex: 0, error: null });
+    const startTime = Date.now();
+    setState({ status: "running", activeIndex: 0, error: null, startedAt: startTime });
 
-    // Pace every step except the last: the last one belongs to real work.
-    const lastPaced = Math.max(0, steps.length - 2);
-    for (let index = 1; index <= lastPaced; index += 1) {
+    // Pace all intermediate steps up to the final step so it never gets stuck
+    const totalSteps = steps.length;
+    for (let index = 1; index < totalSteps; index += 1) {
       timers.current.push(
         window.setTimeout(() => {
           if (!mounted.current) return;
           setState((prev) =>
-            prev.status === "running" ? { ...prev, activeIndex: index } : prev,
+            prev.status === "running" ? { ...prev, activeIndex: Math.min(index, totalSteps - 1) } : prev,
           );
         }, pace * index),
       );
@@ -108,12 +106,38 @@ export function useWorkflow(
     try {
       const data = await task();
       clearTimers();
-      if (mounted.current) {
-        setState({ status: "success", activeIndex: steps.length, error: null });
+
+      if (!mounted.current) return { ok: true, data };
+
+      // If finished while on an earlier step, perform a rapid satisfying cascade to 100%
+      const currentActive = state.activeIndex;
+      if (currentActive < totalSteps - 1) {
+        const remainingSteps = totalSteps - currentActive;
+        const cascadeInterval = Math.min(90, Math.max(40, Math.floor(300 / remainingSteps)));
+        for (let i = currentActive + 1; i < totalSteps; i += 1) {
+          await new Promise<void>((resolve) => {
+            timers.current.push(
+              window.setTimeout(() => {
+                if (mounted.current) {
+                  setState((prev) =>
+                    prev.status === "running" ? { ...prev, activeIndex: i } : prev,
+                  );
+                }
+                resolve();
+              }, cascadeInterval),
+            );
+          });
+        }
       }
+
+      if (mounted.current) {
+        setState({ status: "success", activeIndex: totalSteps, error: null, startedAt: startTime });
+      }
+
       await new Promise<void>((resolve) => {
         timers.current.push(window.setTimeout(resolve, successHold));
       });
+
       handlers?.onSuccess?.(data);
       return { ok: true, data };
     } catch (error) {
@@ -123,6 +147,7 @@ export function useWorkflow(
           status: "error",
           activeIndex: prev.activeIndex,
           error: extractMessage(error),
+          startedAt: startTime,
         }));
       }
       handlers?.onError?.(error);
@@ -187,3 +212,4 @@ function extractMessage(error: unknown): string {
   }
   return "Something went wrong. Please try again.";
 }
+

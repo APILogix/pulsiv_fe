@@ -26,25 +26,24 @@ export function AuthHeading({
 }) {
   const centered = align === "center";
   return (
-    <div className={cn("mb-5 flex flex-col gap-2", centered && "items-center text-center")}>
+    <div className={cn("mb-5 flex flex-col gap-2.5", centered && "items-center text-center")}>
+      {!hideLogo && (
+        <div className={cn("flex items-center mb-0.5", centered ? "justify-center" : "justify-start")}>
+          <div className="inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--bg2)]/60 px-2.5 py-1 text-[11px] font-mono tracking-[0.14em] text-[var(--text2)] shadow-sm">
+            <span className="size-1.5 rounded-full bg-[var(--brand)]" />
+            <span className="font-bold text-[var(--text)] tracking-[0.12em]">SENT<span className="text-[var(--brand)]">I</span>NEL</span>
+            <span className="text-[var(--text3)] text-[9px] font-medium">CONSOLE</span>
+          </div>
+        </div>
+      )}
       {icon && <IconChip icon={icon} tone={tone} size="lg" />}
       {eyebrow && (
         <p className="font-mono text-[10px] font-medium uppercase tracking-[0.09em] text-[var(--text3)]">{eyebrow}</p>
       )}
       <div className={cn("flex flex-col gap-1.5", centered && "items-center")}>
-        <div className={cn("flex items-center justify-between gap-3", centered && "flex-col items-center")}>
-          <h1 className="font-[family-name:var(--display)] text-[26px] font-semibold leading-tight tracking-[-0.03em] text-[var(--text)]">
-            {title}
-          </h1>
-          {!hideLogo && (
-            <span
-              className="font-[family-name:var(--mono)] text-[22px] font-bold tracking-[0.16em] text-[var(--text)] shrink-0"
-              aria-label="Pulsiv"
-            >
-              PULS<span className="text-[var(--brand)]">I</span>V
-            </span>
-          )}
-        </div>
+        <h1 className="font-[family-name:var(--display)] text-[24px] sm:text-[26px] font-semibold leading-tight tracking-[-0.03em] text-[var(--text)]">
+          {title}
+        </h1>
         {description && (
           <p className={cn("text-[13px] leading-[1.5] text-[var(--text2)]", centered ? "max-w-[38ch]" : "max-w-[44ch]")}>
             {description}

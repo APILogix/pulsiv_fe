@@ -1,142 +1,54 @@
 import { useState } from "react";
 import {
-  AlertTriangle,
   Bug,
-  FlaskConical,
-  GitBranch,
-  GitCommit,
   ListTree,
+  ArrowLeftRight,
+  ScrollText,
   Loader2,
   Play,
-  ScrollText,
-  Terminal,
+  PanelRight,
+  FlaskConical,
 } from "lucide-react";
-import { PageHero, Panel, SegmentedControl, fieldInputClass, fieldTextareaClass, EmptyPanel } from "@/shared/ui/pulse";
+import { PageHero, Panel, SegmentedControl, fieldInputClass } from "@/shared/ui/pulse";
 import { Button } from "@/shared/observe";
 import { AiErrorState } from "@/modules/ai/components/states";
 import { InvestigationResult } from "@/modules/ai/components/InvestigationResult";
 import { aiApi } from "@/modules/ai/api/ai.api";
 import { useActiveOrgId, useInvestigation } from "@/modules/ai/hooks/useAi";
-import type { InvestigationInput, InvestigationKind } from "@/modules/ai/types";
+import { useAiDrawerStore } from "@/modules/ai/store/ai-drawer.store";
+import type { InvestigationResource } from "@/modules/ai/types";
 
-const KINDS: { value: InvestigationKind; label: string; icon: typeof Bug }[] = [
-  { value: "error", label: "Error", icon: Bug },
-  { value: "stack_trace", label: "Stack trace", icon: AlertTriangle },
-  { value: "trace", label: "Trace", icon: ListTree },
-  { value: "span", label: "Span", icon: GitBranch },
-  { value: "log", label: "Logs", icon: ScrollText },
-  { value: "deployment", label: "Deployment", icon: GitCommit },
+const RESOURCES: { value: InvestigationResource; label: string; icon: typeof Bug; placeholder: string }[] = [
+  { value: "error", label: "Error", icon: Bug, placeholder: "e.g. ERR-000000001 or err_01JXYZ..." },
+  { value: "trace", label: "Trace", icon: ListTree, placeholder: "e.g. TRC-000000001 or trace_01JXYZ..." },
+  { value: "request", label: "Request", icon: ArrowLeftRight, placeholder: "e.g. REQ-000000001 or req_01JXYZ..." },
+  { value: "logs", label: "Logs", icon: ScrollText, placeholder: "e.g. LOG-000000001 or log_01JXYZ..." },
 ];
-
-const PLACEHOLDERS: Record<InvestigationKind, string> = {
-  error: "What was happening when this error occurred? (optional context)",
-  stack_trace: "Any additional context about when this stack trace appeared…",
-  trace: "What do you want to understand about this trace?",
-  span: "What do you want to understand about these spans?",
-  log: "What should the AI look for in these logs?",
-  deployment: "Which deployment or release window should the AI correlate?",
-};
-
-function parseJsonSafe(value: string): { ok: true; data: unknown } | { ok: false; error: string } {
-  if (!value.trim()) return { ok: true, data: undefined };
-  try {
-    return { ok: true, data: JSON.parse(value) };
-  } catch {
-    return { ok: false, error: "Enter valid JSON." };
-  }
-}
 
 export default function AiInvestigationsPage() {
   const orgId = useActiveOrgId();
   const investigation = useInvestigation();
-  const [kind, setKind] = useState<InvestigationKind>("error");
+  const openInvestigateDrawer = useAiDrawerStore((s) => s.openInvestigate);
 
-  // Shared context
-  const [service, setService] = useState("");
-  const [environment, setEnvironment] = useState("");
-  const [severity, setSeverity] = useState("");
-  const [query, setQuery] = useState("");
+  const [resource, setResource] = useState<InvestigationResource>("error");
+  const [publicId, setPublicId] = useState("");
+  const [inputError, setInputError] = useState<string | null>(null);
 
-  // Kind-specific
-  const [exceptionType, setExceptionType] = useState("");
-  const [exceptionMessage, setExceptionMessage] = useState("");
-  const [stackTrace, setStackTrace] = useState("");
-  const [payload, setPayload] = useState(""); // trace / spans / logs / deployment payload
-  const [jsonError, setJsonError] = useState<string | null>(null);
-
-  const buildInput = (): InvestigationInput | null => {
-    setJsonError(null);
-    const base: InvestigationInput = {};
-    if (query.trim()) base.user_query = query.trim();
-    if (service.trim()) base.service_name = service.trim();
-    if (environment.trim()) base.environment_name = environment.trim();
-    if (severity.trim()) base.severity = severity.trim();
-
-    switch (kind) {
-      case "error": {
-        if (exceptionType.trim()) base.exception_type = exceptionType.trim();
-        if (exceptionMessage.trim()) base.exception_message = exceptionMessage.trim();
-        const parsed = parseJsonSafe(payload);
-        if (!parsed.ok) {
-          setJsonError(parsed.error);
-          return null;
-        }
-        if (parsed.data && typeof parsed.data === "object") {
-          base.error_payload = parsed.data as Record<string, unknown>;
-        }
-        break;
-      }
-      case "stack_trace": {
-        if (exceptionType.trim()) base.exception_type = exceptionType.trim();
-        base.stack_trace = stackTrace;
-        break;
-      }
-      case "trace": {
-        const parsed = parseJsonSafe(payload);
-        if (!parsed.ok) {
-          setJsonError(parsed.error);
-          return null;
-        }
-        if (parsed.data && typeof parsed.data === "object" && !Array.isArray(parsed.data)) {
-          base.trace = parsed.data as Record<string, unknown>;
-        }
-        break;
-      }
-      case "span": {
-        const parsed = parseJsonSafe(payload);
-        if (!parsed.ok) {
-          setJsonError(parsed.error);
-          return null;
-        }
-        if (Array.isArray(parsed.data)) base.spans = parsed.data;
-        break;
-      }
-      case "log": {
-        if (payload.trim()) {
-          const parsed = parseJsonSafe(payload);
-          base.logs = parsed.ok && Array.isArray(parsed.data)
-            ? parsed.data
-            : payload.split("\n").map((line) => line.trim()).filter(Boolean);
-        }
-        break;
-      }
-      case "deployment": {
-        const parsed = parseJsonSafe(payload);
-        if (!parsed.ok) {
-          setJsonError(parsed.error);
-          return null;
-        }
-        if (Array.isArray(parsed.data)) base.deployment_events = parsed.data;
-        break;
-      }
-    }
-    return base;
-  };
+  const activeMeta = RESOURCES.find((r) => r.value === resource) ?? RESOURCES[0];
 
   const handleRun = () => {
-    const input = buildInput();
-    if (!input) return;
-    investigation.mutate({ kind, input });
+    const trimmed = publicId.trim();
+    if (!trimmed) {
+      setInputError("Please enter a canonical Public ID to investigate.");
+      return;
+    }
+    setInputError(null);
+    investigation.mutate({ resource, publicId: trimmed });
+  };
+
+  const handleOpenInDrawer = () => {
+    const trimmed = publicId.trim();
+    openInvestigateDrawer(trimmed ? { resourceType: resource, publicId: trimmed } : undefined);
   };
 
   const handleFeedback = async (helpful: boolean) => {
@@ -144,208 +56,137 @@ export default function AiInvestigationsPage() {
     await aiApi.submitFeedback(orgId, investigation.data.request_id, { helpful });
   };
 
-  const showStack = kind === "stack_trace";
-  const showError = kind === "error";
-  const showJsonPayload = kind === "trace" || kind === "span" || kind === "deployment";
-  const showLogs = kind === "log";
-
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-6 p-6">
       <PageHero
-        eyebrow="Artificial Intelligence"
-        title="AI Investigations"
-        description="Investigate errors, traces, logs, spans, stack traces, and deployments in one place. The AI selects the right analysis for the resource you choose."
-        icon={FlaskConical}
+        title="AI Root Cause Analysis"
+        description="Provide a canonical resource reference. The backend automatically retrieves and correlates surrounding telemetry to determine the root cause."
+        eyebrow="Grounded Analysis"
+        actions={
+          <Button
+            variant="secondary"
+            onClick={handleOpenInDrawer}
+            className="gap-2 text-[12.5px] border-[var(--ai)]/30 text-[var(--ai)] hover:bg-[var(--ai-bg)]"
+          >
+            <PanelRight className="size-4" />
+            Open AI Drawer
+          </Button>
+        }
       />
 
-      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,420px)_minmax(0,1fr)]">
-        {/* Composer */}
-        <div className="flex flex-col gap-4 lg:sticky lg:top-4">
-          <Panel title="What are you investigating?" icon={FlaskConical} tone="ai">
-            <div className="flex flex-col gap-4">
+      {/* Input Form — strictly constrained to Dual-Width max-w-[680px] */}
+      <div className="w-full max-w-[680px]">
+        <Panel
+          title="What are you investigating?"
+          description="Select the resource type and enter its canonical Public ID."
+        >
+          <div className="flex flex-col gap-5 pt-2">
+            <label className="flex flex-col gap-2">
+              <span className="text-[12px] font-medium text-[var(--text2)]">Resource Type</span>
               <SegmentedControl
-                ariaLabel="Investigation type"
-                value={kind}
+                ariaLabel="Investigation resource"
+                value={resource}
                 onChange={(v) => {
-                  setKind(v);
-                  setJsonError(null);
+                  setResource(v);
+                  setInputError(null);
                 }}
-                options={KINDS}
-                className="flex-wrap"
+                options={RESOURCES}
+                className="w-full"
               />
+            </label>
 
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <label className="flex flex-col gap-1.5">
-                  <span className="text-[12px] font-medium text-[var(--text2)]">Service</span>
-                  <input
-                    className={fieldInputClass}
-                    value={service}
-                    onChange={(e) => setService(e.target.value)}
-                    placeholder="payments-api"
-                  />
-                </label>
-                <label className="flex flex-col gap-1.5">
-                  <span className="text-[12px] font-medium text-[var(--text2)]">Environment</span>
-                  <input
-                    className={fieldInputClass}
-                    value={environment}
-                    onChange={(e) => setEnvironment(e.target.value)}
-                    placeholder="production"
-                  />
-                </label>
-                <label className="flex flex-col gap-1.5 sm:col-span-2">
-                  <span className="text-[12px] font-medium text-[var(--text2)]">Severity</span>
-                  <select
-                    className={fieldInputClass}
-                    value={severity}
-                    onChange={(e) => setSeverity(e.target.value)}
-                  >
-                    <option value="">Unspecified</option>
-                    <option value="low">Low</option>
-                    <option value="medium">Medium</option>
-                    <option value="high">High</option>
-                    <option value="critical">Critical</option>
-                  </select>
-                </label>
-              </div>
-
-              {showError && (
-                <>
-                  <label className="flex flex-col gap-1.5">
-                    <span className="text-[12px] font-medium text-[var(--text2)]">Exception type</span>
-                    <input
-                      className={fieldInputClass}
-                      value={exceptionType}
-                      onChange={(e) => setExceptionType(e.target.value)}
-                      placeholder="TypeError"
-                    />
-                  </label>
-                  <label className="flex flex-col gap-1.5">
-                    <span className="text-[12px] font-medium text-[var(--text2)]">Exception message</span>
-                    <textarea
-                      className={fieldTextareaClass}
-                      value={exceptionMessage}
-                      onChange={(e) => setExceptionMessage(e.target.value)}
-                      placeholder="Cannot read properties of undefined…"
-                    />
-                  </label>
-                  <label className="flex flex-col gap-1.5">
-                    <span className="text-[12px] font-medium text-[var(--text2)]">
-                      Error payload <span className="text-[var(--text3)]">(JSON, optional)</span>
-                    </span>
-                    <textarea
-                      className={`${fieldTextareaClass} font-[family-name:var(--mono)] text-[12px]`}
-                      value={payload}
-                      onChange={(e) => setPayload(e.target.value)}
-                      placeholder='{ "statusCode": 500 }'
-                    />
-                  </label>
-                </>
+            <label className="flex flex-col gap-1.5">
+              <span className="text-[12px] font-medium text-[var(--text2)]">Public ID</span>
+              <input
+                className={`${fieldInputClass} font-[family-name:var(--mono)] text-[13px]`}
+                value={publicId}
+                onChange={(e) => {
+                  setPublicId(e.target.value);
+                  setInputError(null);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleRun();
+                }}
+                placeholder={activeMeta.placeholder}
+                autoFocus
+              />
+              {inputError ? (
+                <p className="text-[11.5px] text-[var(--red)]">{inputError}</p>
+              ) : (
+                <p className="text-[11px] text-[var(--text3)]">
+                  Enter the public ID format (e.g. <span className="font-[family-name:var(--mono)]">{activeMeta.value === 'error' ? 'ERR-000000001' : activeMeta.value === 'trace' ? 'TRC-000000001' : activeMeta.value === 'request' ? 'REQ-000000001' : 'LOG-000000001'}</span>)
+                </p>
               )}
+            </label>
 
-              {showStack && (
-                <>
-                  <label className="flex flex-col gap-1.5">
-                    <span className="text-[12px] font-medium text-[var(--text2)]">Exception type</span>
-                    <input
-                      className={fieldInputClass}
-                      value={exceptionType}
-                      onChange={(e) => setExceptionType(e.target.value)}
-                      placeholder="NullPointerException"
-                    />
-                  </label>
-                  <label className="flex flex-col gap-1.5">
-                    <span className="text-[12px] font-medium text-[var(--text2)]">Stack trace</span>
-                    <textarea
-                      className={`${fieldTextareaClass} min-h-[160px] font-[family-name:var(--mono)] text-[12px]`}
-                      value={stackTrace}
-                      onChange={(e) => setStackTrace(e.target.value)}
-                      placeholder="Paste the full stack trace here…"
-                    />
-                  </label>
-                </>
-              )}
-
-              {showJsonPayload && (
-                <label className="flex flex-col gap-1.5">
-                  <span className="text-[12px] font-medium text-[var(--text2)]">
-                    {kind === "trace" ? "Trace" : kind === "span" ? "Spans" : "Deployment events"}{" "}
-                    <span className="text-[var(--text3)]">
-                      (JSON {kind === "trace" ? "object" : "array"})
-                    </span>
-                  </span>
-                  <textarea
-                    className={`${fieldTextareaClass} min-h-[160px] font-[family-name:var(--mono)] text-[12px]`}
-                    value={payload}
-                    onChange={(e) => setPayload(e.target.value)}
-                    placeholder={kind === "trace" ? '{ "traceId": "…", "spans": [] }' : "[ { … } ]"}
-                  />
-                </label>
-              )}
-
-              {showLogs && (
-                <label className="flex flex-col gap-1.5">
-                  <span className="text-[12px] font-medium text-[var(--text2)]">
-                    Log lines <span className="text-[var(--text3)]">(one per line, or JSON array)</span>
-                  </span>
-                  <textarea
-                    className={`${fieldTextareaClass} min-h-[160px] font-[family-name:var(--mono)] text-[12px]`}
-                    value={payload}
-                    onChange={(e) => setPayload(e.target.value)}
-                    placeholder="2026-07-27T10:00:00Z ERROR connection reset…"
-                  />
-                </label>
-              )}
-
-              <label className="flex flex-col gap-1.5">
-                <span className="text-[12px] font-medium text-[var(--text2)]">Question / context</span>
-                <textarea
-                  className={fieldTextareaClass}
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder={PLACEHOLDERS[kind]}
-                />
-              </label>
-
-              {jsonError && <p className="text-[12.5px] text-[var(--red)]">{jsonError}</p>}
-
-              <Button variant="primary" onClick={handleRun} disabled={investigation.isPending} className="w-full justify-center">
+            <div className="flex items-center justify-between border-t border-[var(--border)] pt-4">
+              <span className="text-[11.5px] text-[var(--text3)]">
+                AI correlates error groups, traces, requests, and stack frames
+              </span>
+              <Button
+                variant="primary"
+                onClick={handleRun}
+                disabled={investigation.isPending || !publicId.trim()}
+                className="min-w-[140px] justify-center"
+              >
                 {investigation.isPending ? (
                   <>
                     <Loader2 className="size-4 animate-spin" /> Investigating…
                   </>
                 ) : (
                   <>
-                    <Play className="size-4" /> Run investigation
+                    <Play className="size-4" /> Run Investigation
                   </>
                 )}
               </Button>
             </div>
-          </Panel>
-        </div>
-
-        {/* Results */}
-        <div className="min-w-0">
-          {investigation.isPending ? (
-            <Panel title="Analysis in progress" icon={Terminal} tone="ai">
-              <div className="flex items-center gap-3 text-[13px] text-[var(--text2)]">
-                <Loader2 className="size-4 animate-spin text-[var(--ai)]" />
-                Correlating telemetry and generating a grounded analysis…
-              </div>
-            </Panel>
-          ) : investigation.isError ? (
-            <AiErrorState error={investigation.error} onRetry={handleRun} />
-          ) : investigation.data ? (
-            <InvestigationResult answer={investigation.data} onFeedback={handleFeedback} />
-          ) : (
-            <EmptyPanel
-              icon={FlaskConical}
-              title="No investigation yet"
-              description="Choose a resource type, add the context you have, and run an investigation. Results include root cause, evidence, a timeline, suggested fixes, and confidence."
-            />
-          )}
-        </div>
+          </div>
+        </Panel>
       </div>
+
+      {/* Results View — expands for rich telemetry density */}
+      {investigation.isPending && (
+        <div className="w-full max-w-[1100px] flex flex-col items-center justify-center gap-4 rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] px-6 py-20 text-center shadow-sm">
+          <div className="flex size-14 items-center justify-center rounded-full bg-[var(--ai-bg)] text-[var(--ai)] animate-pulse">
+            <FlaskConical className="size-7" />
+          </div>
+          <div className="flex flex-col gap-1 max-w-[400px]">
+            <h3 className="text-[15px] font-semibold text-[var(--text)]">Analyzing Telemetry Context</h3>
+            <p className="text-[12.5px] text-[var(--text3)] leading-relaxed">
+              Correlating trace critical paths, correlated logs, error stack frames, and service dependencies for{" "}
+              <code className="font-[family-name:var(--mono)] text-[var(--text)]">{publicId}</code>
+            </p>
+          </div>
+        </div>
+      )}
+
+      {investigation.isError && (
+        <div className="w-full max-w-[1100px]">
+          <AiErrorState error={investigation.error} onRetry={handleRun} />
+        </div>
+      )}
+
+      {investigation.data && (
+        <div className="w-full max-w-[1200px] flex flex-col gap-4">
+          <div className="flex items-center justify-between border-b border-[var(--border)] pb-3">
+            <div>
+              <h2 className="text-[16px] font-semibold text-[var(--text)]">Root Cause Analysis</h2>
+              <p className="text-[12px] text-[var(--text3)]">
+                Grounded investigation results for {resource.toUpperCase()} {publicId}
+              </p>
+            </div>
+            <Button
+              variant="secondary"
+              onClick={handleOpenInDrawer}
+              className="gap-1.5 text-[12px]"
+            >
+              <PanelRight className="size-3.5" />
+              Continue in Drawer
+            </Button>
+          </div>
+          <InvestigationResult answer={investigation.data} onFeedback={handleFeedback} />
+        </div>
+      )}
     </div>
   );
 }

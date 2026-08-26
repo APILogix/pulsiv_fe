@@ -6,16 +6,10 @@
  * read-shape for the UI. No business logic lives here.
  */
 
-// ── Investigation kinds (mapped to backend feature endpoints internally) ──
-// The UI never surfaces the backend route names — it only exposes the
-// resource the user wants to investigate.
-export type InvestigationKind =
-  | "error"
-  | "trace"
-  | "log"
-  | "span"
-  | "stack_trace"
-  | "deployment";
+// ── Investigation resources (canonical reference model) ──
+// The user provides only resource + publicId. The backend resolves all context.
+export type InvestigationResource = "error" | "trace" | "request" | "logs";
+export type InvestigationKind = InvestigationResource | "log" | "span" | "stack_trace" | "deployment";
 
 export type AiResponseStatus =
   | "SUCCESS"
@@ -86,9 +80,10 @@ export interface AiAnswer {
   metadata?: Record<string, unknown>;
 }
 
-/** Input accepted by an investigation request. All fields optional; the UI
- *  fills the relevant ones for the chosen resource kind. */
+/** Canonical investigation request input: user provides only resource + publicId. */
 export interface InvestigationInput {
+  resource: InvestigationResource;
+  publicId: string;
   user_query?: string;
   service_name?: string;
   environment_name?: string;

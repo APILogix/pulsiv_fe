@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { Link } from 'react-router';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { loginSchema, type LoginFormData } from '../schemas/auth.schema';
 import { AuthButton, AuthField, PasswordInput, fieldInputClass } from '@/shared/ui/pulse';
@@ -10,46 +9,6 @@ import { AuthButton, AuthField, PasswordInput, fieldInputClass } from '@/shared/
 interface LoginFormProps {
   login: (data: LoginFormData) => void;
   isPending: boolean;
-}
-
-const STEPS = [
-  { id: 'email', label: 'Email' },
-  { id: 'password', label: 'Password' },
-] as const;
-
-function StepIndicator({ step }: { step: 'email' | 'password' }) {
-  const activeIndex = step === 'email' ? 0 : 1;
-  return (
-    <ol className="mb-1 flex items-center gap-2" aria-label={`Step ${activeIndex + 1} of 2`}>
-      {STEPS.map((item, index) => {
-        const done = index < activeIndex;
-        const active = index === activeIndex;
-        return (
-          <li key={item.id} className="flex items-center gap-2">
-            {index > 0 && <span className="h-px w-5 bg-[var(--border)]" aria-hidden="true" />}
-            <span
-              className={cn(
-                'inline-flex items-center gap-1.5 rounded-full px-2 py-1 font-[family-name:var(--mono)] text-[10px] font-medium uppercase tracking-[0.08em] ring-1 ring-inset transition-colors duration-150',
-                active
-                  ? 'bg-[var(--brand-bg)] text-[var(--brand)] ring-[var(--brand)]/30'
-                  : done
-                    ? 'bg-[var(--green-bg)] text-[var(--green)] ring-[var(--green)]/25'
-                    : 'bg-[var(--bg2)] text-[var(--text3)] ring-[var(--border)]'
-              )}
-              aria-current={active ? 'step' : undefined}
-            >
-              {done ? (
-                <Check className="size-3" aria-hidden="true" />
-              ) : (
-                <span className="font-[family-name:var(--mono)] tabular-nums">{index + 1}</span>
-              )}
-              {item.label}
-            </span>
-          </li>
-        );
-      })}
-    </ol>
-  );
 }
 
 export function LoginForm({ login, isPending }: LoginFormProps) {
@@ -65,10 +24,9 @@ export function LoginForm({ login, isPending }: LoginFormProps) {
 
   return (
     <form onSubmit={handleSubmit(login)} className="flex flex-col gap-4">
-      <StepIndicator step={step} />
 
       {step === 'email' ? (
-        <>
+        <div className="flex flex-col gap-4 animate-in fade-in-50 duration-150">
           <AuthField
             label="Work email"
             htmlFor="email"
@@ -83,24 +41,24 @@ export function LoginForm({ login, isPending }: LoginFormProps) {
               autoFocus
               {...register('email')}
               disabled={isPending}
-              className={cn(fieldInputClass, 'h-10 font-[family-name:var(--mono)] text-[13px]')}
+              className={cn(fieldInputClass, 'h-10 font-mono text-[13px]')}
             />
           </AuthField>
 
           <p className="border-t border-[var(--border)] pt-4 text-[12px] leading-5 text-[var(--text3)]">
-            By continuing, you agree to Pulsiv&apos;s Terms and Conditions and Privacy Policy.
+            By continuing, you agree to Sentinel&apos;s Terms and Conditions and Privacy Policy.
           </p>
 
           <AuthButton type="button" onClick={continueToPassword} disabled={isPending}>
             Continue
           </AuthButton>
-        </>
+        </div>
       ) : (
-        <>
+        <div className="flex flex-col gap-4 animate-in fade-in-50 duration-150">
           <div className="flex items-center justify-between gap-3 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg2)] px-3 py-2.5">
             <div className="min-w-0">
-              <p className="font-[family-name:var(--mono)] text-[10px] font-medium uppercase tracking-[0.09em] text-[var(--text3)]">Signing in as</p>
-              <span className="mt-0.5 block min-w-0 truncate font-[family-name:var(--mono)] text-[12px] text-[var(--text)]">
+              <p className="font-mono text-[10px] font-medium uppercase tracking-[0.09em] text-[var(--text3)]">Signing in as</p>
+              <span className="mt-0.5 block min-w-0 truncate font-mono text-[12px] text-[var(--text)]">
                 {getValues('email')}
               </span>
             </div>
@@ -140,7 +98,7 @@ export function LoginForm({ login, isPending }: LoginFormProps) {
           <AuthButton type="submit" pending={isPending}>
             Sign in
           </AuthButton>
-        </>
+        </div>
       )}
     </form>
   );

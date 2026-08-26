@@ -8,9 +8,17 @@
  */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useOrgStore } from "@/modules/organizations/store/org.store";
+import { orgApi } from "@/modules/organizations/api/org.api";
+import { toIncidentView } from "../components/incident-view";
 import {
   deadLettersApi,
   eventsApi,
+  incidentsApi,
+  projectAlertsApi,
+  orgPoliciesApi,
+  projectSubscriptionsApi,
+  effectivePolicyApi,
+  workspaceApi,
   metricsApi,
   policiesApi,
   routingApi,
@@ -40,6 +48,7 @@ import type {
   UpdateRuleBindingBody,
   UpdateRuleBody,
   UpsertEscalationStepBody,
+  OrganizationAlertPolicy,
 } from "../api/types";
 
 /** Live surfaces refresh on this cadence (rules.md: never poll under 5s). */
@@ -78,12 +87,105 @@ export const alertingKeys = {
   templates: (orgId: string | null, query?: unknown) => ["alerting", "templates", orgId, query] as const,
   routingRules: (orgId: string | null) => ["alerting", "routing-rules", orgId] as const,
   metrics: (orgId: string | null, query?: unknown) => ["alerting", "metrics", orgId, query] as const,
+  workspace: (orgId: string | null) => ["alerting", "workspace", orgId] as const,
+  orgPolicies: (orgId: string | null, query?: unknown) => ["alerting", "org-policies", orgId, query] as const,
+  orgPolicy: (orgId: string | null, id: string) => ["alerting", "org-policy", orgId, id] as const,
+  incidents: (orgId: string | null, query?: unknown) => ["alerting", "incidents", orgId, query] as const,
 };
 
 /** Broad invalidation used after any mutation that can move alerting state. */
 function useInvalidateAlerting() {
   const queryClient = useQueryClient();
   return () => queryClient.invalidateQueries({ queryKey: alertingKeys.all, exact: false });
+}
+
+// ── Workspace and V2 policies ───────────────────────────────
+
+export function useAlertingWorkspace() {
+  const { activeOrgId } = useAlertingScope();
+  return useQuery({
+    queryKey: alertingKeys.workspace(activeOrgId),
+    queryFn: () => workspaceApi.get(activeOrgId!),
+    enabled: !!activeOrgId,
+  });
+}
+
+export function useOrganizationAlertPolicies(query: { limit?: number; offset?: number } = {}) {
+  const { activeOrgId } = useAlertingScope();
+  return useQuery({
+    queryKey: alertingKeys.orgPolicies(activeOrgId, query),
+    queryFn: () => orgPoliciesApi.list(activeOrgId!, query),
+    enabled: !!activeOrgId,
+  });
+}
+
+export function useOrganizationAlertPolicy(policyId: string | undefined) {
+  const { activeOrgId } = useAlertingScope();
+  return useQuery({
+    queryKey: alertingKeys.orgPolicy(activeOrgId, policyId ?? ""),
+    queryFn: () => orgPoliciesApi.getById(activeOrgId!, policyId!),
+    enabled: !!activeOrgId && !!policyId,
+  });
+}
+
+export function useOrganizationAlertPolicyMutations() {
+  const { requireOrgId } = useAlertingScope();
+  const invalidate = useInvalidateAlerting();
+  return {
+    create: useMutation({
+      mutationFn: (body: Partial<OrganizationAlertPolicy>) => orgPoliciesApi.create(requireOrgId(), body),
+      onSuccess: invalidate,
+    }),
+    createVersion: useMutation({
+      mutationFn: ({ policyId, definition }: { policyId: string; definition: Json }) =>
+        orgPoliciesApi.createVersion(requireOrgId(), policyId, definition),
+      onSuccess: invalidate,
+    }),
+  };
+}
+
+export function useAlertIncidents(query: { state?: import("../api/types").IncidentState; severity?: import("../api/types").EventListQuery['severity']; search?: string; limit?: number; offset?: number } = {}) {
+  const { activeOrgId } = useAlertingScope();
+  return useQuery({
+    queryKey: alertingKeys.incidents(activeOrgId, query),
+    queryFn: async () => {
+      const result = await incidentsApi.list(activeOrgId!, query);
+      return { ...result, data: result.data.map(toIncidentView) };
+    },
+    enabled: !!activeOrgId,
+    refetchInterval: LIVE_REFETCH_MS,
+  });
+}
+
+export function useProjectPolicySubscriptions(projectId: string | undefined) {
+  const { activeOrgId } = useAlertingScope();
+  return useQuery({
+    queryKey: ["alerting", "project-subscriptions", activeOrgId, projectId],
+    queryFn: () => projectSubscriptionsApi.list(activeOrgId!, projectId!),
+    enabled: !!activeOrgId && !!projectId,
+  });
+}
+
+export function useProjectPolicyMutations(projectId: string) {
+  const { activeOrgId, requireOrgId } = useAlertingScope();
+  const queryClient = useQueryClient();
+  const key = ["alerting", "project-subscriptions", activeOrgId, projectId];
+  const invalidate = () => queryClient.invalidateQueries({ queryKey: key });
+  return {
+    subscribe: useMutation({ mutationFn: (policyId: string) => projectSubscriptionsApi.subscribe(requireOrgId(), projectId, policyId), onSuccess: invalidate }),
+    updateState: useMutation({ mutationFn: ({ subscriptionId, state }: { subscriptionId: string; state: import("../api/types").SubscriptionState }) => projectSubscriptionsApi.updateState(requireOrgId(), projectId, subscriptionId, state), onSuccess: invalidate }),
+    updateOverride: useMutation({ mutationFn: ({ subscriptionId, override }: { subscriptionId: string; override: Record<string, unknown> }) => projectSubscriptionsApi.updateOverride(requireOrgId(), projectId, subscriptionId, override), onSuccess: invalidate }),
+    remove: useMutation({ mutationFn: (subscriptionId: string) => projectSubscriptionsApi.delete(requireOrgId(), projectId, subscriptionId), onSuccess: invalidate }),
+  };
+}
+
+export function useProjectEffectivePolicies(projectId: string | undefined) {
+  const { activeOrgId } = useAlertingScope();
+  return useQuery({
+    queryKey: ["alerting", "effective-policies", activeOrgId, projectId],
+    queryFn: () => effectivePolicyApi.listAll(activeOrgId!, projectId!),
+    enabled: !!activeOrgId && !!projectId,
+  });
 }
 
 // ── Rules ────────────────────────────────────────────────────
@@ -521,3 +623,183 @@ export function useAlertMetrics(query: MetricsQuery = {}) {
     enabled: !!activeOrgId,
   });
 }
+
+// ── Project Scoped Alerts ────────────────────────────────────────
+
+export function useProjectAlerts(
+  projectId: string | undefined,
+  query: { status?: string; severity?: string; limit?: number; offset?: number } = {},
+) {
+  const { activeOrgId } = useAlertingScope();
+  return useQuery({
+    queryKey: ["alerting", "project-alerts", activeOrgId, projectId, query],
+    queryFn: () => projectAlertsApi.list(activeOrgId!, projectId!, query),
+    enabled: !!activeOrgId && !!projectId,
+    refetchInterval: LIVE_REFETCH_MS,
+  });
+}
+
+export function useProjectAlert(projectId: string | undefined, alertEventId: string | undefined) {
+  const { activeOrgId } = useAlertingScope();
+  return useQuery({
+    queryKey: ["alerting", "project-alert", activeOrgId, projectId, alertEventId],
+    queryFn: () => projectAlertsApi.get(activeOrgId!, projectId!, alertEventId!),
+    enabled: !!activeOrgId && !!projectId && !!alertEventId,
+    refetchInterval: LIVE_REFETCH_MS,
+  });
+}
+
+// ── Entitlement Decision Hook ────────────────────────────────────
+
+export const CONNECTOR_FEATURE_KEYS = {
+  email: "integrations.email",
+  slack: "integrations.slack",
+  discord: "integrations.discord",
+  teams: "integrations.microsoft_teams",
+  pagerduty: "integrations.pagerduty",
+  webhook: "integrations.webhook",
+  sms: "integrations.sms",
+} as const;
+
+export const CONNECTOR_ALIAS_KEYS = {
+  teams: "integrations.teams",
+} as const;
+
+export const CONNECTOR_LEGACY_KEYS = {
+  email: "email_alerts",
+  slack: "slack_connector",
+  discord: "discord_connector",
+  teams: "teams_connector",
+  pagerduty: "pagerduty_connector",
+  webhook: "webhook_connector",
+  sms: "sms_connector",
+} as const;
+
+export interface NotificationEntitlementDecision {
+  mode: "NORMAL_CONNECTOR" | "EMAIL_ONLY_RESTRICTED";
+  connectorAccess: boolean;
+  alertingEnabled: boolean;
+  externalConnectorsEnabled: boolean;
+  managedEmailEnabled: boolean;
+  reason: "CONNECTOR_ACCESS_ALLOWED" | "CONNECTOR_ENTITLEMENT_REQUIRED" | "ENTITLEMENT_UNKNOWN";
+  featureKeys: string[];
+  providers: {
+    slack: boolean;
+    discord: boolean;
+    teams: boolean;
+    pagerduty: boolean;
+    webhook: boolean;
+    sms: boolean;
+    email: boolean;
+  };
+  isProviderAllowed: (channelKind: string, connectorBacked?: boolean) => boolean;
+}
+
+export function useNotificationEntitlement() {
+  const { activeOrgId } = useAlertingScope();
+  const query = useQuery({
+    queryKey: ["organizations", activeOrgId, "entitlements"],
+    queryFn: () => orgApi.getEntitlements(activeOrgId!),
+    enabled: !!activeOrgId,
+    staleTime: 60_000,
+  });
+
+  const raw = query.data ?? {};
+  const alertRulesLimit = raw["alert_rules"]?.integerValue ?? raw["quota.alert_rules"]?.integerValue ?? 0;
+  const alertingEnabled =
+    raw["alerting.enabled"]?.booleanValue === true ||
+    raw["in_app_alerts"]?.booleanValue === true ||
+    raw["email_alerts"]?.booleanValue === true ||
+    alertRulesLimit > 0 ||
+    alertRulesLimit === -1;
+
+  const connectorLimit = raw["quota.connectors"]?.integerValue ?? raw["connectors"]?.integerValue ?? 0;
+  const integrationLimit = raw["quota.integrations"]?.integerValue ?? 0;
+  const effectiveLimit =
+    connectorLimit > 0 || connectorLimit === -1 ? connectorLimit : integrationLimit;
+
+  const isProviderActive = (channel: keyof typeof CONNECTOR_FEATURE_KEYS): boolean => {
+    const canonicalKey = CONNECTOR_FEATURE_KEYS[channel];
+    const aliasKey = channel in CONNECTOR_ALIAS_KEYS ? CONNECTOR_ALIAS_KEYS[channel as keyof typeof CONNECTOR_ALIAS_KEYS] : null;
+    const legacyKey = CONNECTOR_LEGACY_KEYS[channel];
+    return (
+      (Boolean(canonicalKey) && raw[canonicalKey]?.booleanValue === true) ||
+      (Boolean(aliasKey) && raw[aliasKey as string]?.booleanValue === true) ||
+      (Boolean(legacyKey) && raw[legacyKey]?.booleanValue === true)
+    );
+  };
+
+  const providers = {
+    slack: isProviderActive("slack"),
+    discord: isProviderActive("discord"),
+    teams: isProviderActive("teams"),
+    pagerduty: isProviderActive("pagerduty"),
+    webhook: isProviderActive("webhook"),
+    sms: isProviderActive("sms"),
+    email: isProviderActive("email"),
+  };
+
+  const enabledProviders = (Object.keys(CONNECTOR_FEATURE_KEYS) as Array<keyof typeof CONNECTOR_FEATURE_KEYS>).filter(
+    (ch) => providers[ch],
+  );
+
+  const externalConnectorsEnabled = (effectiveLimit === -1 || effectiveLimit > 0) && enabledProviders.length > 0;
+  const connectorAccess = alertingEnabled && externalConnectorsEnabled;
+  const managedEmailEnabled = alertingEnabled || raw["email_alerts"]?.booleanValue === true;
+
+  const featureKeys = [
+    "alerting.enabled",
+    "quota.connectors",
+    "quota.integrations",
+    "connectors",
+    "alert_rules",
+    ...Object.values(CONNECTOR_FEATURE_KEYS),
+    ...Object.values(CONNECTOR_ALIAS_KEYS),
+    ...Object.values(CONNECTOR_LEGACY_KEYS),
+  ];
+
+  const decision: NotificationEntitlementDecision = {
+    mode: connectorAccess ? "NORMAL_CONNECTOR" : "EMAIL_ONLY_RESTRICTED",
+    connectorAccess,
+    alertingEnabled,
+    externalConnectorsEnabled,
+    managedEmailEnabled,
+    reason: query.isError
+      ? "ENTITLEMENT_UNKNOWN"
+      : connectorAccess
+        ? "CONNECTOR_ACCESS_ALLOWED"
+        : "CONNECTOR_ENTITLEMENT_REQUIRED",
+    featureKeys,
+    providers,
+    isProviderAllowed: (channelKind: string, connectorBacked = true) => {
+      if (channelKind === "in_app") return true;
+      if (channelKind === "email" && !connectorBacked) return true;
+      if (channelKind in providers) {
+        return providers[channelKind as keyof typeof providers];
+      }
+      return false;
+    },
+  };
+
+  return {
+    ...query,
+    decision,
+    connectorAccess,
+    isRestricted: decision.mode === "EMAIL_ONLY_RESTRICTED",
+  };
+}
+
+export function useProjectAlertingStatus(projectId?: string | null) {
+  const { activeOrgId } = useAlertingScope();
+  return useQuery({
+    queryKey: ["alerting", "status", activeOrgId, projectId],
+    queryFn: () => {
+      if (!activeOrgId || !projectId) throw new Error("Missing org or project");
+      return projectAlertsApi.getStatus(activeOrgId, projectId);
+    },
+    enabled: !!activeOrgId && !!projectId,
+    staleTime: 30_000,
+  });
+}
+
+

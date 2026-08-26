@@ -55,8 +55,10 @@ function mapCurrentBillingUsage(usage: any): t.CurrentBillingUsage {
 }
 
 export const orgApi = {
-  // Core
-  createOrganization: (data: t.CreateOrganizationBody) => apiClient.post('/organizations', data).then(r => r.data.data as t.Organization),
+  createOrganization: (data: t.CreateOrganizationBody, options?: { idempotencyKey?: string }) =>
+    apiClient.post('/organizations', data, {
+      headers: options?.idempotencyKey ? { 'Idempotency-Key': options.idempotencyKey } : undefined,
+    }).then(r => r.data.data as t.Organization),
   switchOrganization: (orgId: string) => apiClient.post('/organizations/switch', { orgId }).then(r => {
     const session = r.data.data as { access_token: string; expires_at: string; current_org_id: string };
     tokenService.setAccessToken(session.access_token, session.expires_at);

@@ -4,7 +4,7 @@ import { AnimatePresence, LazyMotion, domAnimation, m, useReducedMotion } from "
 import { MetricLoader } from "@/shared/ui/loading";
 import { LOGIN_METRICS_FLAG } from "../services/post-login-setup-flag";
 
-/** Returning-user transition shown after authentication while dashboard data warms. */
+/** Returning-user transition shown briefly after authentication. */
 export function LoginMetricsTransition() {
   const reduceMotion = useReducedMotion();
   const [active, setActive] = useState(() => {
@@ -15,7 +15,7 @@ export function LoginMetricsTransition() {
   useEffect(() => {
     if (!active) return;
     try { sessionStorage.removeItem(LOGIN_METRICS_FLAG); } catch { /* storage unavailable */ }
-    const timer = window.setTimeout(() => setActive(false), reduceMotion ? 450 : 2200);
+    const timer = window.setTimeout(() => setActive(false), reduceMotion ? 150 : 350);
     return () => window.clearTimeout(timer);
   }, [active, reduceMotion]);
 
@@ -23,11 +23,11 @@ export function LoginMetricsTransition() {
     <LazyMotion features={domAnimation}>
       <AnimatePresence>
         {active && (
-          <m.div className="fixed inset-0 z-[105] flex min-h-dvh items-center justify-center bg-[var(--bg)] p-5" initial={reduceMotion ? false : { opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+          <m.div className="fixed inset-0 z-[105] flex min-h-dvh items-center justify-center bg-[var(--bg)]/90 backdrop-blur-sm p-5" initial={reduceMotion ? false : { opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}>
             <MetricLoader
-              label="Fetching your workspace details"
-              detail="Synchronizing organization settings, recent telemetry, and dashboard metrics"
-              className="min-h-0 max-w-[620px] border-0 bg-transparent"
+              label="Connecting workspace"
+              detail="Synchronizing organization settings and telemetry"
+              className="min-h-0 max-w-[420px] border border-border bg-[var(--bg1)] shadow-xl"
             />
           </m.div>
         )}
@@ -35,3 +35,4 @@ export function LoginMetricsTransition() {
     </LazyMotion>
   );
 }
+

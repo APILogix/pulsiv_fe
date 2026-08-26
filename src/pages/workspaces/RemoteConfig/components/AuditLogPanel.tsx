@@ -17,7 +17,7 @@ const MOCK_AUDIT_LOGS: AuditEntry[] = [
   {
     id: "aud-109",
     timestamp: "2026-08-04 20:15:22",
-    actor: "vikas@pulsiv.io (Platform Admin)",
+    actor: "vikas@sentinel.io (Platform Admin)",
     action: "PUBLISH_REVISION",
     environment: "Production (prod)",
     revision: 14,
@@ -37,7 +37,7 @@ const MOCK_AUDIT_LOGS: AuditEntry[] = [
   {
     id: "aud-107",
     timestamp: "2026-08-04 14:10:05",
-    actor: "alex.dev@pulsiv.io (DevOps Lead)",
+    actor: "alex.dev@sentinel.io (DevOps Lead)",
     action: "ROLLBACK_REVISION",
     environment: "Staging (staging)",
     revision: 12,
@@ -47,7 +47,7 @@ const MOCK_AUDIT_LOGS: AuditEntry[] = [
   {
     id: "aud-106",
     timestamp: "2026-08-03 22:00:19",
-    actor: "vikas@pulsiv.io (Platform Admin)",
+    actor: "vikas@sentinel.io (Platform Admin)",
     action: "PUBLISH_REVISION",
     environment: "Development (dev)",
     revision: 11,

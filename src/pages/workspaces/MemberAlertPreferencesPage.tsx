@@ -15,6 +15,8 @@ import {
   useAlertPreferences,
   type MemberNotificationPreference,
 } from "@/modules/projects/hooks/useAlertPreferences";
+import { useNotificationEntitlement } from "@/modules/alerting/hooks/useAlerting";
+import { EntitlementRestrictedBanner } from "@/modules/alerting/components/EntitlementRestrictedBanner";
 import { useCurrentProject } from "./ProjectShellPage";
 import {
   IconChip,
@@ -112,6 +114,8 @@ export default function MemberAlertPreferencesPage() {
           </UiButton>
         }
       />
+
+      <EntitlementRestrictedBanner projectId={projectId} />
 
       <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
         <StatCard label="Preferences" value={preferences.length} icon={Bell} tone="brand" />

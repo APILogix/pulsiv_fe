@@ -61,10 +61,6 @@ export function normalizeTheme(_value?: string | null): SentinelTheme {
   return 'mono';
 }
 
-function readStoredTheme(): SentinelTheme {
-  return 'mono';
-}
-
 /**
  * Apply the theme as a hard cut: set data-theme to mono.
  */

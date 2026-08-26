@@ -1,103 +1,95 @@
 import axios, { type AxiosError, type AxiosInstance } from 'axios';
+import { ApiError } from './api-error';
+import { presentApiErrorToast } from './toast-error-handler';
 import { useAuthStore } from '@/modules/auth/store/auth.store';
 
-/**
- * Maps backend error responses ({ error: { code, message, details } })
- * to readable user-facing strings.
- */
-const ERROR_CODE_MESSAGES: Record<string, string> = {
-  INVALID_CREDENTIALS: 'Invalid email or password.',
-  USER_NOT_FOUND: 'No account found with that email.',
-  USER_EXISTS: 'An account with that email already exists.',
-  EMAIL_IN_USE: 'An account with that email already exists.',
-  EMAIL_NOT_VERIFIED: 'Please verify your email address before signing in.',
-  ACCOUNT_LOCKED: 'Your account is locked. Please try again later or contact support.',
-  USER_SUSPENDED: 'Your account has been suspended. Contact support for details.',
-  USER_DELETED: 'This account has been deleted.',
-  RATE_LIMITED: 'Too many attempts. Please wait a moment and try again.',
-  MFA_REQUIRED: 'Multi-factor authentication is required.',
-  MFA_INVALID: 'Invalid MFA code.',
-  MFA_CHALLENGE_EXPIRED: 'The MFA challenge has expired. Please start over.',
-  STEP_UP_REQUIRED: 'Additional verification is required to complete this action.',
-  PASSWORD_INCORRECT: 'Current password is incorrect.',
-  PASSWORD_REUSE_NOT_ALLOWED: 'Cannot reuse a recent password.',
-  PASSWORD_RESET_INVALID: 'Invalid or expired reset token.',
-  PASSWORD_RESET_EXPIRED: 'The reset link has expired. Please request a new one.',
-  PASSWORD_EXPIRED: 'Your password has expired. Please reset it.',
-  MFA_ALREADY_ENABLED: 'MFA is already enabled.',
-  MFA_NOT_ENABLED: 'MFA is not enabled.',
-  MFA_DEVICE_NOT_FOUND: 'MFA device not found.',
-  SESSION_INVALID: 'Your session is invalid. Please sign in again.',
-  SESSION_EXPIRED: 'Your session has expired. Please sign in again.',
-  EMAIL_VERIFICATION_INVALID: 'Invalid or expired verification token.',
-  SSO_REQUIRED: 'Single sign-on is required for this account.',
-  SSO_NOT_CONFIGURED: 'SSO is not configured for this organization.',
-  SAML_NOT_CONFIGURED: 'SAML is not configured for this organization.',
-  IDENTITY_ALREADY_LINKED: 'This identity provider is already linked.',
-  SOCIAL_LOGIN_FAILED: 'Social login failed. Please try again.',
-  INSUFFICIENT_PERMISSIONS: 'You do not have permission to perform this action.',
-  VALIDATION_ERROR: 'Please check your input and try again.',
-  INVALID_OPERATION: 'This operation is not allowed in the current state.',
-  DELETION_ALREADY_SCHEDULED: 'Account deletion is already scheduled.',
-};
+export function normalizeAxiosError(error: unknown): ApiError {
+  if (error instanceof ApiError) return error;
 
-export function getErrorMessage(error: unknown): string {
   if (axios.isAxiosError(error)) {
-    const backendError = error.response?.data?.error;
-    if (backendError) {
-      if (backendError.code && ERROR_CODE_MESSAGES[backendError.code]) {
-        return ERROR_CODE_MESSAGES[backendError.code];
-      }
-      return backendError.message || 'An error occurred. Please try again.';
+    const status = error.response?.status || 500;
+    const responseData = error.response?.data;
+    
+    // Parse canonical error envelope if present
+    if (responseData && typeof responseData === 'object' && 'error' in responseData) {
+      const backendErr = (responseData as any).error;
+      const code = backendErr?.code || (status === 404 ? 'NOT_FOUND' : 'INTERNAL_ERROR');
+      const message = backendErr?.message || error.message || 'Request failed';
+      const details = backendErr?.details || null;
+      const requestId = (responseData as any).requestId || (error.response?.headers?.['x-request-id'] as string);
+
+      return new ApiError(status, code, message, details, requestId);
     }
 
+    // Network & Timeout failures
     if (error.code === 'ERR_NETWORK') {
-      return 'Unable to reach the server. Check your connection.';
+      return new ApiError(503, 'SERVICE_UNAVAILABLE', 'Unable to reach the server. Please check your network connection.');
     }
     if (error.code === 'ECONNABORTED') {
-      return 'Request timed out. Please try again.';
+      return new ApiError(504, 'UPSTREAM_TIMEOUT', 'Request timed out. Please try again.');
     }
+
+    const message = error.message || 'An unexpected error occurred.';
+    return new ApiError(status, 'INTERNAL_ERROR', message, null, error.response?.headers?.['x-request-id'] as string);
   }
 
-  return error instanceof Error
-    ? error.message
-    : 'An unexpected error occurred. Please try again.';
-}
-
-export function getErrorCode(error: unknown): string | null {
-  if (axios.isAxiosError(error)) {
-    return error.response?.data?.error?.code ?? null;
-  }
-  return null;
+  return new ApiError(500, 'INTERNAL_ERROR', error instanceof Error ? error.message : 'An unexpected error occurred.');
 }
 
 /**
- * Error interceptor — surfaces readable error messages for non-401 failures
- * (401 is handled by the refresh interceptor). Re-throws so callers can
- * map error codes to user-friendly text via getErrorMessage().
- * 
- * Also intercepts 403 STEP_UP_REQUIRED to trigger the global MFA modal and retry.
+ * Extract human-readable error message from ApiError, Axios error, or generic Error instance.
+ */
+export function getErrorMessage(error: unknown): string {
+  if (typeof error === 'string') return error;
+  if (!error) return 'An unexpected error occurred.';
+
+  if (error instanceof ApiError) {
+    return error.message;
+  }
+
+  const normalized = normalizeAxiosError(error);
+  return normalized.message || 'An unexpected error occurred.';
+}
+
+/**
+ * Extract error code string from ApiError, Axios error, or generic Error instance.
+ */
+export function getErrorCode(error: unknown): string {
+  if (!error) return 'UNKNOWN';
+
+  if (error instanceof ApiError) {
+    return error.code;
+  }
+
+  const normalized = normalizeAxiosError(error);
+  return normalized.code || 'UNKNOWN';
+}
+
+/**
+ * Global Error Interceptor — maps all backend error responses to ApiError
+ * and triggers toast notifications. Handles step-up 403 challenge re-tries.
  */
 export function createErrorInterceptor(client: AxiosInstance) {
   return async function errorInterceptor(error: AxiosError) {
-    if (error.response?.status === 403) {
-      const code = getErrorCode(error);
-      if (code === 'STEP_UP_REQUIRED' && error.config) {
-        try {
-          const { triggerStepUp } = useAuthStore.getState();
-          
-          // Wait for the user to complete the step-up challenge
-          await triggerStepUp();
-          
-          // Retry the original request
-          return client.request(error.config);
-        } catch {
-          // Step-up failed or was cancelled, reject the original request
-          return Promise.reject(error);
-        }
+    const apiError = normalizeAxiosError(error);
+
+    // 403 STEP_UP_REQUIRED handling
+    if (apiError.status === 403 && apiError.code === 'STEP_UP_REQUIRED' && error.config) {
+      try {
+        const { triggerStepUp } = useAuthStore.getState();
+        await triggerStepUp();
+        return client.request(error.config);
+      } catch {
+        // Step-up cancelled/failed
       }
     }
 
-    return Promise.reject(error);
+    // Present toast notification (skip for silent requests if config specifies skipToast)
+    const skipToast = (error.config as any)?.skipToast === true;
+    if (!skipToast) {
+      presentApiErrorToast(apiError);
+    }
+
+    return Promise.reject(apiError);
   };
 }

@@ -1,5 +1,6 @@
 import { Menu, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { OrgSwitcher } from './OrgSwitcher';
+import { ProjectSwitcher } from './ProjectSwitcher';
 import { GlobalSearch } from './GlobalSearch';
 import { NotificationCenter } from './NotificationCenter';
 import { HelpMenu } from './HelpMenu';
@@ -14,24 +15,24 @@ export function AppHeader({ onMenuClick }: AppHeaderProps) {
   const { isFlyoutOpen, setIsFlyoutOpen, hasInnerItems } = useSidebarStore();
 
   return (
-    <header className="h-[var(--header-height)] shrink-0 border-b border-[var(--border)] bg-[var(--bg1)]/80 backdrop-blur-md flex items-center px-4 sticky top-0 z-10 w-full gap-2 md:gap-4">
+    <header className="h-[var(--header-height)] shrink-0 border-b border-[var(--border)] bg-[var(--bg1)]/80 backdrop-blur-md flex items-center px-2.5 sm:px-4 sticky top-0 z-10 w-full gap-1.5 sm:gap-3">
       {/* Mobile Menu Button */}
       <button 
         type="button"
         onClick={onMenuClick}
-        className="md:hidden p-2 -ml-2 text-[var(--text2)] hover:text-[var(--text)] rounded-[var(--radius)] hover:bg-[var(--bg2)]"
+        className="md:hidden p-1.5 -ml-1 text-[var(--text2)] hover:text-[var(--text)] rounded-[var(--radius)] hover:bg-[var(--bg2)] shrink-0"
         aria-label="Open menu"
       >
-        <Menu size={20} />
+        <Menu size={18} />
       </button>
 
       {/* Left Section */}
-      <div className="flex items-center flex-1 min-w-0 gap-2">
+      <div className="flex items-center gap-1 sm:gap-2 min-w-0 shrink">
         {hasInnerItems && (
           <button
             type="button"
             onClick={() => setIsFlyoutOpen(!isFlyoutOpen)}
-            className="hidden md:flex p-2 -ml-2 text-[var(--text2)] hover:text-[var(--text)] rounded-[var(--radius)] hover:bg-[var(--bg2)] transition-colors"
+            className="hidden md:flex p-1.5 text-[var(--text2)] hover:text-[var(--text)] rounded-[var(--radius)] hover:bg-[var(--bg2)] transition-colors shrink-0"
             title={isFlyoutOpen ? "Close inner sidebar" : "Open inner sidebar"}
             aria-label={isFlyoutOpen ? "Close inner sidebar" : "Open inner sidebar"}
           >
@@ -39,15 +40,17 @@ export function AppHeader({ onMenuClick }: AppHeaderProps) {
           </button>
         )}
         <OrgSwitcher />
+        <span className="text-[var(--border2)] font-light shrink-0 text-xs sm:text-sm">/</span>
+        <ProjectSwitcher />
       </div>
 
-      {/* Center Section */}
-      <div className="hidden lg:flex flex-1 justify-center max-w-2xl px-4">
+      {/* Center Section - Search */}
+      <div className="flex-1 flex justify-center px-1 sm:px-2 min-w-0 max-w-xs sm:max-w-md lg:max-w-lg">
         <GlobalSearch />
       </div>
 
       {/* Right Section */}
-      <div className="flex items-center gap-1 md:gap-2 flex-1 justify-end">
+      <div className="flex items-center gap-1 sm:gap-1.5 shrink-0 justify-end ml-auto">
         <NotificationCenter />
         <HelpMenu />
         <UserAvatarMenu />

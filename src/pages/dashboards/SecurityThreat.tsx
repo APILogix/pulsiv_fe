@@ -30,7 +30,7 @@ export default function SecurityThreat() {
   const [randomJWT] = useState(() => Array.from({ length: 4 }, () => Math.floor(Math.random() * 5)));
 
   // Failed auth by IP
-  const byIp = Object.entries(groupBy(authFails, (r) => r.clientIp))
+  const byIp = Object.entries(groupBy(authFails, (r) => r.clientIp ?? "127.0.0.1"))
     .map(([ip, rs]) => ({ ip, count: rs.length, country: countryForIp(ip), endpoint: rs[0]?.route ?? "—" }))
     .sort((a, b) => b.count - a.count)
     .slice(0, 8);
@@ -47,9 +47,9 @@ export default function SecurityThreat() {
   });
 
   // API key abuse (by tenant as proxy)
-  const keyAbuse = Object.entries(groupBy(reqList, (r) => r.tenantId))
+  const keyAbuse = Object.entries(groupBy(reqList, (r) => r.tenantId ?? "unknown"))
     .map(([tenant, rs]) => {
-      const countries = new Set(rs.map((r) => countryForIp(r.clientIp).code)).size;
+      const countries = new Set(rs.map((r) => countryForIp(r.clientIp ?? "").code)).size;
       const errRate = (rs.filter((r) => r.statusCode >= 400).length / rs.length) * 100;
       const risk = Math.min(100, countries * 12 + errRate);
       return { key: `pulse_${tenant.slice(0, 6)}`, count: rs.length, countries, errRate, risk };

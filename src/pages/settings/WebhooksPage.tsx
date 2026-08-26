@@ -132,7 +132,7 @@ export default function WebhooksPage() {
         />
       </div>
 
-      <Panel title="Create endpoint" description="Pulsiv signs every payload with a per-endpoint secret." icon={Plus}>
+      <Panel title="Create endpoint" description="Sentinel signs every payload with a per-endpoint secret." icon={Plus}>
         <form action={createAction} className="flex flex-wrap items-end gap-3">
           <div className="min-w-[280px] flex-1">
             <Field label="Endpoint URL">

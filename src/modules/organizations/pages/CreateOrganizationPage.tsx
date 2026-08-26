@@ -1,10 +1,9 @@
-import { useActionState, useEffect, useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getAllCountries, getAllTimezones } from 'countries-and-timezones';
-import { Loader2, Sparkles } from 'lucide-react';
+import { CheckCircle2, Loader2, Sparkles, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
-import { useFormStatus } from 'react-dom';
 import { orgApi } from '../api/org.api';
 import { orgQueryKeys } from '../hooks/useOrganizations';
 import { useOrgStore } from '../store/org.store';
@@ -12,16 +11,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { PulsivLogo } from '@/shared/components/PulsivLogo';
+import { SentinelLogo } from '@/shared/components/PulsivLogo';
 import { markOrganizationSetup } from '@/modules/auth/services/post-login-setup-flag';
-import { ORGANIZATION_WORKFLOW, WorkflowOverlay, useWorkflow } from '@/shared/motion';
-
-interface OrgFormState {
-  error: string | null;
-  success: boolean;
-  orgId?: string;
-  slug?: string;
-}
+import { useDebounce } from '@/shared/hooks/useDebounce';
+import { JiraOrgCreationAnimation } from '../components/JiraOrgCreationAnimation';
 
 const INDUSTRIES = [
   'Technology',
@@ -45,17 +38,6 @@ const ALL_TIMEZONES = Object.values(getAllTimezones())
   .filter((timezone) => !timezone.deprecated && !timezone.aliasOf)
   .sort((a, b) => a.name.localeCompare(b.name));
 
-function SubmitButton() {
-  const { pending } = useFormStatus();
-
-  return (
-    <Button type="submit" disabled={pending} className="h-10 w-full sm:w-auto sm:min-w-52">
-      {pending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
-      {pending ? 'Creating organization...' : 'Create organization'}
-    </Button>
-  );
-}
-
 function slugify(value: string) {
   return value
     .trim()
@@ -63,11 +45,6 @@ function slugify(value: string) {
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
     .slice(0, 80);
-}
-
-function normalizeOptional(value: FormDataEntryValue | null) {
-  const normalized = typeof value === 'string' ? value.trim() : '';
-  return normalized.length > 0 ? normalized : undefined;
 }
 
 function isValidTimezone(value: string) {
@@ -84,121 +61,194 @@ export default function CreateOrganizationPage() {
   const queryClient = useQueryClient();
   const setActiveOrgId = useOrgStore((s) => s.setActiveOrgId);
   const setActiveOrgSlug = useOrgStore((s) => s.setActiveOrgSlug);
+
+  // Form Fields State
   const [orgName, setOrgName] = useState('');
+  const [description, setDescription] = useState('');
+  const [industry, setIndustry] = useState('');
+  const [companySize, setCompanySize] = useState('');
   const [countryName, setCountryName] = useState('');
-  const derivedSlug = slugify(orgName);
+  const [timezone, setTimezone] = useState('');
+  const [billingEmail, setBillingEmail] = useState('');
+  const [formError, setFormError] = useState<string | null>(null);
+
+  // Debounced Name & Slug Checking
+  const debouncedOrgName = useDebounce(orgName, 300);
+  const derivedSlug = slugify(debouncedOrgName);
+  const isDebouncingSlug = orgName.trim().length > 0 && orgName.trim() !== debouncedOrgName.trim();
+
   const timezones = (() => {
     const selectedCountry = COUNTRIES.find((country) => country.name === countryName);
-
     if (!selectedCountry) return ALL_TIMEZONES;
-
     const allowedTimezones = new Set(selectedCountry.timezones);
-    return ALL_TIMEZONES.filter((timezone) => allowedTimezones.has(timezone.name));
+    return ALL_TIMEZONES.filter((tz) => allowedTimezones.has(tz.name));
   })();
 
-  const { data: slugAvailability } = useQuery({
+  // Debounced slug availability query
+  const { data: slugAvailability, isFetching: isCheckingSlug } = useQuery({
     queryKey: [...orgQueryKeys.lists(), 'slug-availability', derivedSlug],
     queryFn: () => orgApi.checkSlugAvailability(derivedSlug),
-    enabled: derivedSlug.length > 1,
+    enabled: derivedSlug.length > 1 && !isDebouncingSlug,
     staleTime: 30_000,
   });
 
-  /**
-   * Creating an organization provisions real resources server-side, so it earns
-   * a narrated workflow rather than a spinner (Phase 4). The steps are paced
-   * while the request is in flight and the final one only completes when the API
-   * actually responds — we never claim work that hasn't happened.
-   */
-  const workflow = useWorkflow(ORGANIZATION_WORKFLOW, { pace: 700 });
+  // Slug Availability Computations
+  const isSlugChecking = isDebouncingSlug || isCheckingSlug;
+  const isSlugValid = derivedSlug.length >= 2;
+  const isSlugAvailable = isSlugValid && !isSlugChecking && slugAvailability?.available === true;
+  const isSlugTaken = isSlugValid && !isSlugChecking && slugAvailability?.available === false;
 
-  const [state, submitAction, isPending] = useActionState(
-    async (_previousState: OrgFormState, formData: FormData): Promise<OrgFormState> => {
-      const name = (formData.get('name') as string)?.trim();
-      const description = normalizeOptional(formData.get('description'));
-      const industry = normalizeOptional(formData.get('industry'));
-      const companySize = normalizeOptional(formData.get('companySize'));
-      const country = normalizeOptional(formData.get('country'));
-      const timezone = normalizeOptional(formData.get('timezone'));
-      const billingEmail = normalizeOptional(formData.get('billingEmail'));
+  // Creation Animation & Lifecycle State
+  const [isCreating, setIsCreating] = useState(false);
+  const [isComplete, setIsComplete] = useState(false);
+  const [creationError, setCreationError] = useState<string | null>(null);
+  const isSubmittingRef = useRef(false);
 
-      // Client-side validation runs before the overlay, so a bad field never
-      // shows a progress animation it would immediately have to fail.
-      if (!name) return { success: false, error: 'Organization name is required.' };
-      if (timezone && !isValidTimezone(timezone)) {
-        return { success: false, error: 'Select a valid timezone from the list.' };
-      }
-      if (billingEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(billingEmail)) {
-        return { success: false, error: 'Enter a valid billing email address.' };
-      }
+  const isFormSubmittable = orgName.trim().length > 0 && isSlugAvailable && !isCreating;
 
-      const result = await workflow.run(() =>
-        orgApi.createOrganization({
-          name,
-          description,
-          industry,
-          companySize,
-          country,
-          timezone,
-          billingEmail,
-        }),
-      );
+  const handleResetForm = () => {
+    isSubmittingRef.current = false;
+    setOrgName('');
+    setDescription('');
+    setIndustry('');
+    setCompanySize('');
+    setCountryName('');
+    setTimezone('');
+    setBillingEmail('');
+    setFormError(null);
+    setCreationError(null);
+    setIsCreating(false);
+    setIsComplete(false);
+    queryClient.invalidateQueries({ queryKey: [...orgQueryKeys.lists(), 'slug-availability'] });
+  };
 
-      if (!result.ok || !result.data) {
-        const responseError = result.error as any;
-        const detail = responseError?.response?.data?.message || responseError?.message;
-        
-        let errorMessage = 'Unable to create the organization. Please try again.';
-        if (typeof detail === 'string') {
-          errorMessage = detail;
-        } else if (detail && typeof detail === 'object' && typeof detail.message === 'string') {
-          errorMessage = detail.message;
-        }
+  const handleCreateOrganization = async (e?: React.FormEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
 
-        return {
-          success: false,
-          error: errorMessage,
-        };
-      }
+    if (isSubmittingRef.current || isCreating) {
+      return;
+    }
+
+    const trimmedName = orgName.trim();
+    if (!trimmedName) {
+      setFormError('Organization name is required.');
+      toast.error('Organization name is required.');
+      return;
+    }
+
+    if (isSlugTaken) {
+      setFormError('This workspace URL is already taken. Please choose another organization name.');
+      toast.error('Workspace URL is already taken.');
+      return;
+    }
+
+    if (!isSlugAvailable) {
+      setFormError('Please wait for the workspace URL availability check.');
+      toast.error('Checking workspace URL availability...');
+      return;
+    }
+
+    if (timezone && !isValidTimezone(timezone)) {
+      setFormError('Select a valid timezone from the list.');
+      toast.error('Select a valid timezone from the list.');
+      return;
+    }
+    if (billingEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(billingEmail.trim())) {
+      setFormError('Enter a valid billing email address.');
+      toast.error('Enter a valid billing email address.');
+      return;
+    }
+
+    setFormError(null);
+    setCreationError(null);
+    setIsComplete(false);
+    setIsCreating(true);
+    isSubmittingRef.current = true;
+
+    try {
+      const idempotencyKey = typeof crypto !== 'undefined' && crypto.randomUUID
+        ? crypto.randomUUID()
+        : `org_create_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+
+      const createdOrg = await orgApi.createOrganization({
+        name: trimmedName,
+        slug: derivedSlug || undefined,
+        description: description.trim() || undefined,
+        industry: industry || undefined,
+        companySize: companySize || undefined,
+        country: countryName || undefined,
+        timezone: timezone || undefined,
+        billingEmail: billingEmail.trim() || undefined,
+      }, { idempotencyKey });
+
+      // Brief pause to display completion stage
+      await new Promise((r) => setTimeout(r, 450));
+      setIsComplete(true);
 
       queryClient.invalidateQueries({ queryKey: orgQueryKeys.lists() });
-      return { success: true, error: null, orgId: result.data.id, slug: result.data.slug };
-    },
-    { success: false, error: null },
-  );
-
-  useEffect(() => {
-    if (state.success && state.orgId) {
-      toast.success('Organization created');
-      setActiveOrgId(state.orgId);
-      setActiveOrgSlug(state.slug ?? null);
+      setActiveOrgId(createdOrg.id);
+      setActiveOrgSlug(createdOrg.slug ?? null);
       markOrganizationSetup();
-      navigate('/dashboard');
-    }
-  }, [state, navigate, setActiveOrgId, setActiveOrgSlug]);
+      toast.success('Organization created successfully!');
 
-  useEffect(() => {
-    if (state.error) toast.error(state.error);
-  }, [state.error]);
+      // Celebration hold before navigating to dashboard
+      setTimeout(() => {
+        navigate('/dashboard');
+      }, 950);
+    } catch (err: any) {
+      isSubmittingRef.current = false;
+      const responseData = err?.response?.data;
+      let errorMessage = 'Unable to create the organization. Please try again.';
+
+      if (typeof responseData?.error?.message === 'string') {
+        errorMessage = responseData.error.message;
+      } else if (typeof responseData?.message === 'string') {
+        errorMessage = responseData.message;
+      } else if (responseData?.error && typeof responseData.error === 'string') {
+        errorMessage = responseData.error;
+      } else if (typeof err?.message === 'string') {
+        errorMessage = err.message;
+      }
+
+      setCreationError(errorMessage);
+      toast.error(errorMessage);
+    }
+  };
+
+  const handleCancelAnimation = () => {
+    isSubmittingRef.current = false;
+    setIsCreating(false);
+    setCreationError(null);
+    setIsComplete(false);
+  };
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-[var(--bg)] p-3 sm:p-6">
-      <WorkflowOverlay
-        open={workflow.isActive}
-        title="Setting up your organization"
-        description="Provisioning your workspace. This takes a few seconds."
-        steps={ORGANIZATION_WORKFLOW}
-        state={workflow}
-        successLabel="Workspace ready"
-        onCancel={workflow.reset}
+      {/* Modern Non-Freezing Provisioning Animation Overlay */}
+      <JiraOrgCreationAnimation
+        open={isCreating}
+        orgName={orgName}
+        slug={derivedSlug}
+        isComplete={isComplete}
+        error={creationError}
+        onRetry={() => handleCreateOrganization()}
+        onCancel={handleCancelAnimation}
+        onResetForm={handleResetForm}
       />
+
       <section className="w-full max-w-3xl rounded-2xl border border-border bg-[var(--bg1)] shadow-2xl shadow-black/25">
         <div className="border-b border-border px-5 py-5 sm:px-8 sm:py-6">
           <div className="flex items-start gap-4">
             <div className="flex size-11 shrink-0 items-center justify-center rounded-xl border border-[var(--green)]/20 bg-[var(--green)]/10">
-              <PulsivLogo size={27} />
+              <SentinelLogo size={27} />
             </div>
             <div className="min-w-0">
-              <h1 className="text-xl font-semibold tracking-tight text-[var(--text)] sm:text-2xl">Create your organization</h1>
+              <h1 className="text-xl font-semibold tracking-tight text-[var(--text)] sm:text-2xl">
+                Create your organization
+              </h1>
               <p className="mt-1 max-w-xl text-sm leading-6 text-[var(--text2)]">
                 Set up your shared workspace. You can update these details at any time from organization settings.
               </p>
@@ -206,38 +256,80 @@ export default function CreateOrganizationPage() {
           </div>
         </div>
 
-        <form action={submitAction} className="p-5 sm:p-8">
+        <form onSubmit={handleCreateOrganization} className="p-5 sm:p-8">
           <div className="grid grid-cols-1 gap-x-5 gap-y-4 sm:grid-cols-2">
             <div className="space-y-2 sm:col-span-2">
-              <Label htmlFor="name" className="text-[var(--text2)]">Organization name <span className="text-[var(--red)]">*</span></Label>
+              <Label htmlFor="name" className="text-[var(--text2)]">
+                Organization name <span className="text-[var(--red)]">*</span>
+              </Label>
               <Input
                 id="name"
                 name="name"
+                value={orgName}
                 placeholder="e.g. Acme Corp"
                 required
-                disabled={isPending}
-                onChange={(event) => setOrgName(event.target.value)}
+                disabled={isCreating}
+                onChange={(event) => {
+                  setOrgName(event.target.value);
+                  if (formError) setFormError(null);
+                }}
                 className="h-10 bg-[var(--bg2)] text-[var(--text)]"
               />
+
+              {/* Debounced Workspace URL & Availability Indicator */}
               {derivedSlug ? (
-                <p className="text-xs text-[var(--text3)]">
-                  Workspace URL: <span className="font-mono text-[var(--text2)]">{derivedSlug}</span>
-                  {slugAvailability ? (
-                    <span className={slugAvailability.available ? 'ml-2 text-[var(--green)]' : 'ml-2 text-[var(--red)]'}>
-                      {slugAvailability.available ? 'Available' : 'Unavailable'}
+                <div className="space-y-1.5 pt-0.5">
+                  <div className="flex items-center gap-2 text-xs text-[var(--text3)] transition-all">
+                    <span>
+                      Workspace URL: <span className="font-mono font-medium text-[var(--text2)]">/{derivedSlug}</span>
                     </span>
-                  ) : null}
-                </p>
+                    {isSlugChecking ? (
+                      <span className="inline-flex items-center gap-1 text-[var(--brand)] font-medium">
+                        <Loader2 className="size-3 animate-spin" />
+                        <span>Checking...</span>
+                      </span>
+                    ) : slugAvailability ? (
+                      <span
+                        className={
+                          slugAvailability.available
+                            ? 'inline-flex items-center gap-1 text-[var(--green)] font-medium'
+                            : 'inline-flex items-center gap-1 text-[var(--red)] font-medium'
+                        }
+                      >
+                        {slugAvailability.available ? (
+                          <>
+                            <CheckCircle2 className="size-3.5" />
+                            <span>Available</span>
+                          </>
+                        ) : (
+                          <>
+                            <XCircle className="size-3.5" />
+                            <span>URL taken</span>
+                          </>
+                        )}
+                      </span>
+                    ) : null}
+                  </div>
+                  {isSlugTaken && (
+                    <p className="text-[11px] font-medium text-[var(--red)]">
+                      The URL <span className="font-mono font-semibold">/{derivedSlug}</span> is already claimed by another organization. Please choose a different organization name.
+                    </p>
+                  )}
+                </div>
               ) : null}
             </div>
 
             <div className="space-y-2 sm:col-span-2">
-              <Label htmlFor="description" className="text-[var(--text2)]">Description <span className="text-[var(--text3)]">(optional)</span></Label>
+              <Label htmlFor="description" className="text-[var(--text2)]">
+                Description <span className="text-[var(--text3)]">(optional)</span>
+              </Label>
               <Textarea
                 id="description"
                 name="description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
                 placeholder="What does your team do?"
-                disabled={isPending}
+                disabled={isCreating}
                 className="min-h-20 resize-none bg-[var(--bg2)] text-[var(--text)]"
                 rows={2}
               />
@@ -245,17 +337,37 @@ export default function CreateOrganizationPage() {
 
             <div className="space-y-2">
               <Label htmlFor="industry" className="text-[var(--text2)]">Industry</Label>
-              <select id="industry" name="industry" disabled={isPending} defaultValue="" aria-label="Industry" className="h-10 w-full rounded-lg border border-input bg-[var(--bg2)] px-2.5 text-sm text-[var(--text)] outline-none transition-colors focus:border-ring focus:ring-3 focus:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50">
-                <option value="" disabled>Select an industry</option>
-                {INDUSTRIES.map((industry) => <option key={industry} value={industry}>{industry}</option>)}
+              <select
+                id="industry"
+                name="industry"
+                disabled={isCreating}
+                value={industry}
+                onChange={(e) => setIndustry(e.target.value)}
+                aria-label="Industry"
+                className="h-10 w-full rounded-lg border border-input bg-[var(--bg2)] px-2.5 text-sm text-[var(--text)] outline-none transition-colors focus:border-ring focus:ring-3 focus:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <option value="">Select an industry</option>
+                {INDUSTRIES.map((ind) => (
+                  <option key={ind} value={ind}>{ind}</option>
+                ))}
               </select>
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="companySize" className="text-[var(--text2)]">Company size</Label>
-              <select id="companySize" name="companySize" disabled={isPending} defaultValue="" aria-label="Company size" className="h-10 w-full rounded-lg border border-input bg-[var(--bg2)] px-2.5 text-sm text-[var(--text)] outline-none transition-colors focus:border-ring focus:ring-3 focus:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50">
-                <option value="" disabled>Select team size</option>
-                {COMPANY_SIZES.map((size) => <option key={size} value={size}>{size} people</option>)}
+              <select
+                id="companySize"
+                name="companySize"
+                disabled={isCreating}
+                value={companySize}
+                onChange={(e) => setCompanySize(e.target.value)}
+                aria-label="Company size"
+                className="h-10 w-full rounded-lg border border-input bg-[var(--bg2)] px-2.5 text-sm text-[var(--text)] outline-none transition-colors focus:border-ring focus:ring-3 focus:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <option value="">Select team size</option>
+                {COMPANY_SIZES.map((size) => (
+                  <option key={size} value={size}>{size} people</option>
+                ))}
               </select>
             </div>
 
@@ -265,14 +377,16 @@ export default function CreateOrganizationPage() {
                 id="country"
                 name="country"
                 autoComplete="country-name"
-                disabled={isPending}
+                disabled={isCreating}
                 value={countryName}
                 onChange={(event) => setCountryName(event.target.value)}
                 aria-label="Country"
                 className="h-10 w-full rounded-lg border border-input bg-[var(--bg2)] px-2.5 text-sm text-[var(--text)] outline-none transition-colors focus:border-ring focus:ring-3 focus:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50"
               >
-                <option value="" disabled>Select a country</option>
-                {COUNTRIES.map((country) => <option key={country.id} value={country.name}>{country.name}</option>)}
+                <option value="">Select a country</option>
+                {COUNTRIES.map((country) => (
+                  <option key={country.id} value={country.name}>{country.name}</option>
+                ))}
               </select>
             </div>
 
@@ -281,31 +395,70 @@ export default function CreateOrganizationPage() {
               <select
                 id="timezone"
                 name="timezone"
-                disabled={isPending}
-                defaultValue=""
+                disabled={isCreating}
+                value={timezone}
+                onChange={(e) => setTimezone(e.target.value)}
                 aria-label="Timezone"
                 className="h-10 w-full rounded-lg border border-input bg-[var(--bg2)] px-2.5 text-sm text-[var(--text)] outline-none transition-colors focus:border-ring focus:ring-3 focus:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50"
               >
-                <option value="" disabled>{countryName ? 'Select a timezone' : 'Select a country first'}</option>
-                {timezones.map((timezone) => <option key={timezone.name} value={timezone.name}>{`${timezone.name} (UTC${timezone.utcOffsetStr})`}</option>)}
+                <option value="">{countryName ? 'Select a timezone' : 'Select a country first'}</option>
+                {timezones.map((tz) => (
+                  <option key={tz.name} value={tz.name}>
+                    {`${tz.name} (UTC${tz.utcOffsetStr})`}
+                  </option>
+                ))}
               </select>
             </div>
 
             <div className="space-y-2 sm:col-span-2">
-              <Label htmlFor="billingEmail" className="text-[var(--text2)]">Billing email <span className="text-[var(--text3)]">(optional)</span></Label>
-              <Input id="billingEmail" name="billingEmail" type="email" placeholder="billing@acme.com" autoComplete="email" disabled={isPending} className="h-10 bg-[var(--bg2)] text-[var(--text)]" />
+              <Label htmlFor="billingEmail" className="text-[var(--text2)]">
+                Billing email <span className="text-[var(--text3)]">(optional)</span>
+              </Label>
+              <Input
+                id="billingEmail"
+                name="billingEmail"
+                type="email"
+                value={billingEmail}
+                onChange={(e) => setBillingEmail(e.target.value)}
+                placeholder="billing@acme.com"
+                autoComplete="email"
+                disabled={isCreating}
+                className="h-10 bg-[var(--bg2)] text-[var(--text)]"
+              />
             </div>
           </div>
 
-          {state.error ? (
-            <div role="alert" className="mt-5 rounded-lg border border-[rgba(239,68,68,0.35)] bg-[var(--red-bg)] px-3 py-2.5 text-sm text-[var(--red)]">
-              {state.error}
+          {formError ? (
+            <div
+              role="alert"
+              className="mt-5 rounded-lg border border-[rgba(239,68,68,0.35)] bg-[var(--red-bg)] px-3 py-2.5 text-sm text-[var(--red)]"
+            >
+              {formError}
             </div>
           ) : null}
 
           <div className="mt-6 flex flex-col-reverse gap-3 border-t border-border pt-5 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-xs leading-5 text-[var(--text3)]">Only the organization name is required. The rest can be completed later.</p>
-            <SubmitButton />
+            <p className="text-xs leading-5 text-[var(--text3)]">
+              Only the organization name is required. The rest can be completed later.
+            </p>
+            <Button
+              type="submit"
+              disabled={!isFormSubmittable}
+              className="h-10 w-full sm:w-auto sm:min-w-52 bg-[var(--brand)] hover:opacity-90 shadow-md shadow-[var(--brand)]/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+            >
+              {isCreating ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Sparkles className="mr-2 h-4 w-4" />
+              )}
+              {isCreating
+                ? 'Creating organization...'
+                : isSlugChecking
+                ? 'Checking availability...'
+                : isSlugTaken
+                ? 'Workspace URL taken'
+                : 'Create organization'}
+            </Button>
           </div>
         </form>
       </section>

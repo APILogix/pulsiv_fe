@@ -18,6 +18,7 @@ import type {
   AlertMetric,
   AlertRoutingRule,
   AlertRule,
+  AlertingWorkspaceSnapshot,
   AlertRuleBinding,
   AlertRuleRevision,
   AlertSilence,
@@ -33,16 +34,25 @@ import type {
   EffectiveRuleResult,
   EventListQuery,
   EventStats,
+  IncidentOccurrence,
+  IncidentState,
+  IncidentStateHistory,
   IngestEventBody,
   Json,
   MetricsQuery,
+  OrganizationAlertPolicy,
+  AlertIncident,
+  EffectivePolicy,
   Paged,
   PreviewTemplateResult,
+  ProjectOverride,
+  ProjectSubscription,
   ResolveEventBody,
   RuleListQuery,
   RuleTemplate,
   SilenceFromEventBody,
   SilenceListQuery,
+  SubscriptionState,
   TestRoutingBody,
   TestRoutingResult,
   TestRuleResult,
@@ -391,3 +401,164 @@ export const metricsApi = {
     return camelizeDeep(data.data ?? []);
   },
 };
+
+// ── Organization Policies Catalog API ──────────────────────────────
+
+export const workspaceApi = {
+  get: async (orgId: string): Promise<AlertingWorkspaceSnapshot> => {
+    const { data } = await apiClient.get(`/organizations/${orgId}/alert-workspace`);
+    return camelizeDeep(data.data);
+  },
+};
+
+export const orgPoliciesApi = {
+  list: async (orgId: string, query: { limit?: number; offset?: number } = {}): Promise<Paged<OrganizationAlertPolicy>> => {
+    const { data } = await apiClient.get(`/organizations/${orgId}/alert-policies`, { params: query });
+    return paged<OrganizationAlertPolicy>(camelizeDeep(data), query.limit ?? 15);
+  },
+
+  getById: async (orgId: string, policyId: string): Promise<OrganizationAlertPolicy> => {
+    const { data } = await apiClient.get(`/organizations/${orgId}/alert-policies/${policyId}`);
+    return camelizeDeep(data.data);
+  },
+
+  create: async (orgId: string, body: Partial<OrganizationAlertPolicy>): Promise<OrganizationAlertPolicy> => {
+    const { data } = await apiClient.post(`/organizations/${orgId}/alert-policies`, body);
+    return camelizeDeep(data.data);
+  },
+
+  createVersion: async (orgId: string, policyId: string, definition: Json): Promise<OrganizationAlertPolicy> => {
+    const { data } = await apiClient.post(`/organizations/${orgId}/alert-policies/${policyId}/versions`, { definition });
+    return camelizeDeep(data.data);
+  },
+
+  delete: async (orgId: string, policyId: string): Promise<void> => {
+    await apiClient.delete(`/organizations/${orgId}/alert-policies/${policyId}`);
+  },
+};
+
+// ── Project Subscriptions & Overrides API ──────────────────────────
+
+export const projectSubscriptionsApi = {
+  list: async (orgId: string, projectId: string): Promise<ProjectSubscription[]> => {
+    const { data } = await apiClient.get(`/organizations/${orgId}/projects/${projectId}/subscriptions`);
+    return camelizeDeep(data.data ?? []);
+  },
+
+  subscribe: async (orgId: string, projectId: string, policyId: string): Promise<ProjectSubscription> => {
+    const { data } = await apiClient.post(`/organizations/${orgId}/projects/${projectId}/subscriptions`, { policyId });
+    return camelizeDeep(data.data);
+  },
+
+  updateState: async (orgId: string, projectId: string, subscriptionId: string, state: SubscriptionState): Promise<ProjectSubscription> => {
+    const { data } = await apiClient.patch(`/organizations/${orgId}/projects/${projectId}/subscriptions/${subscriptionId}`, { state });
+    return camelizeDeep(data.data);
+  },
+
+  updateOverride: async (orgId: string, projectId: string, subscriptionId: string, override: Partial<ProjectOverride>): Promise<ProjectOverride> => {
+    const { data } = await apiClient.post(`/organizations/${orgId}/projects/${projectId}/subscriptions/${subscriptionId}/overrides`, override);
+    return camelizeDeep(data.data);
+  },
+
+  delete: async (orgId: string, projectId: string, subscriptionId: string): Promise<void> => {
+    await apiClient.delete(`/organizations/${orgId}/projects/${projectId}/subscriptions/${subscriptionId}`);
+  },
+};
+
+// ── Effective Policy Resolver API ─────────────────────────────────
+
+export const effectivePolicyApi = {
+  resolve: async (orgId: string, projectId: string, policyId: string): Promise<EffectivePolicy> => {
+    const { data } = await apiClient.get(`/organizations/${orgId}/projects/${projectId}/effective-policies/${policyId}`);
+    return camelizeDeep(data.data);
+  },
+
+  listAll: async (orgId: string, projectId: string): Promise<EffectivePolicy[]> => {
+    const { data } = await apiClient.get(`/organizations/${orgId}/projects/${projectId}/effective-policies`);
+    return camelizeDeep(data.data ?? []);
+  },
+};
+
+// ── Stateful Incidents Command Center API ─────────────────────────
+
+export const projectAlertsApi = {
+  list: async (
+    orgId: string,
+    projectId: string,
+    query: { status?: string; severity?: string; limit?: number; offset?: number } = {},
+  ): Promise<Paged<AlertEvent>> => {
+    const { data } = await apiClient.get(`/organizations/${orgId}/projects/${projectId}/alerts`, {
+      params: query,
+    });
+    return paged<AlertEvent>(data);
+  },
+
+  get: async (orgId: string, projectId: string, alertEventId: string): Promise<AlertEvent> => {
+    const { data } = await apiClient.get(
+      `/organizations/${orgId}/projects/${projectId}/alerts/${alertEventId}`,
+    );
+    return camelizeDeep(data.data);
+  },
+
+  getStatus: async (orgId: string, projectId: string): Promise<import("./types").ProjectAlertingStatus> => {
+    const { data } = await apiClient.get(
+      `/organizations/${orgId}/projects/${projectId}/alerting/status`,
+    );
+    return camelizeDeep(data.data);
+  },
+};
+
+
+export const incidentsApi = {
+  list: async (
+    orgId: string,
+    params?: EventListQuery,
+  ): Promise<Paged<AlertEvent>> => {
+    const { data } = await apiClient.get(`${alertingBase(orgId)}/events`, { params });
+    return paged<AlertEvent>(data);
+  },
+
+  getById: async (orgId: string, eventId: string): Promise<AlertEvent> => {
+    const { data } = await apiClient.get(`${alertingBase(orgId)}/events/${eventId}`);
+    return camelizeDeep(data.data);
+  },
+
+  stats: async (orgId: string): Promise<EventStats> => {
+    const { data } = await apiClient.get(`${alertingBase(orgId)}/events/stats`);
+    return camelizeDeep(data.data);
+  },
+
+  acknowledge: async (
+    orgId: string,
+    eventId: string,
+    body: AcknowledgeEventBody = {},
+  ): Promise<AlertEvent> => {
+    const { data } = await apiClient.post(`${alertingBase(orgId)}/events/${eventId}/acknowledge`, body);
+    return camelizeDeep(data.data);
+  },
+
+  resolve: async (
+    orgId: string,
+    eventId: string,
+    body: ResolveEventBody = {},
+  ): Promise<AlertEvent> => {
+    const { data } = await apiClient.post(`${alertingBase(orgId)}/events/${eventId}/resolve`, body);
+    return camelizeDeep(data.data);
+  },
+
+  silence: async (
+    orgId: string,
+    eventId: string,
+    body: SilenceFromEventBody = {},
+  ): Promise<AlertSilence> => {
+    const { data } = await apiClient.post(`${alertingBase(orgId)}/events/${eventId}/silence`, body);
+    return camelizeDeep(data.data);
+  },
+
+  deliveries: async (orgId: string, eventId: string): Promise<AlertDeliveryAttempt[]> => {
+    const { data } = await apiClient.get(`${alertingBase(orgId)}/events/${eventId}/deliveries`);
+    return camelizeDeep(data.data ?? []);
+  },
+};
+
+

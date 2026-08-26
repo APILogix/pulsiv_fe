@@ -4,17 +4,24 @@ import { useObservabilityList } from "./hooks/useObservabilityApi";
 import { useTimeRangeStore, TIME_RANGES } from "@/stores/timeRangeStore";
 import {
   PageHeader, KpiCard, SectionCard, SeverityBadge, StatusCodeBadge, MetricSparkline,
-  Timestamp, FilterSelect, formatCompact, formatLatency,
+  Timestamp, FilterSelect, formatCompact, formatLatency, TimeRangePicker, useTimeRangeParams,
 } from "@/shared/observe";
 
 const TIME_OPTIONS = TIME_RANGES.map((r) => ({ value: r, label: r }));
 
 export default function ExecutiveDashboard() {
-  const timeRange = useTimeRangeStore((s) => s.timeRange);
-  const setTimeRange = useTimeRangeStore((s) => s.setTimeRange);
+  const { timeRangeState } = useTimeRangeParams();
   
-  const { data: errors } = useObservabilityList<any>("errors");
-  const { data: requests } = useObservabilityList<any>("requests");
+  const { data: errors } = useObservabilityList<any>("errors", {
+    range: timeRangeState.mode === "preset" ? timeRangeState.range : undefined,
+    from: timeRangeState.from,
+    to: timeRangeState.to,
+  });
+  const { data: requests } = useObservabilityList<any>("requests", {
+    range: timeRangeState.mode === "preset" ? timeRangeState.range : undefined,
+    from: timeRangeState.from,
+    to: timeRangeState.to,
+  });
 
   const reqList = requests?.items ?? [];
   const errList = errors?.items ?? [];
@@ -42,7 +49,7 @@ export default function ExecutiveDashboard() {
       <PageHeader
         title="Executive Dashboard"
         description="High-level service overview across all monitored projects."
-        actions={<FilterSelect label="Range" value={timeRange} onChange={setTimeRange} options={TIME_OPTIONS} />}
+        actions={<TimeRangePicker />}
       />
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-6">

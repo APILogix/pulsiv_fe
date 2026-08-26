@@ -1,119 +1,26 @@
-/**
- * Escalation policies — `GET/POST/DELETE /organizations/:orgId/alerting/escalation-policies`.
- *
- * Backend model: a policy is a named repeat/maxRepeats envelope; the ordered
- * steps (waitMinutes, connectorIds, routeIds, notifyOnCall) are edited on the
- * detail page via `PUT /escalation-policies/:id/steps`.
- */
-import { useState } from "react";
+import { useMemo } from "react";
 import { useNavigate } from "react-router";
-import { toast } from "sonner";
-import { Plus, PhoneForwarded } from "lucide-react";
-import { PageHeader, KpiCard, FillPage, InfiniteCards } from "@/shared/observe";
-import { Button as UiButton } from "@/components/ui/button";
-import {
-  useEscalationPolicies,
-  useEscalationPolicyMutations,
-} from "@/modules/alerting/hooks/useAlerting";
-import { apiErrorMessage, DialogField, FormDialog } from "@/modules/projects/components/project-ui";
-import { EnabledPill } from "@/modules/alerting/components/alerting-ui";
-import { fieldInputClass, fieldTextareaClass } from "@/shared/ui/pulse";
+import { Clock, TrendingUp } from "lucide-react";
+import { useAlertingWorkspace } from "@/modules/alerting/hooks/useAlerting";
+
+interface EscalationRow {
+  id: string;
+  systemKey: string;
+  name: string;
+  description: string;
+  acknowledgementTimeoutSeconds: number;
+  repeatIntervalSeconds: number;
+  maxRepeats: number;
+  steps: Array<{ stepNumber: number; waitSeconds: number; connectorIds: string[]; routeIds: string[] }>;
+}
 
 export default function EscalationsPage() {
   const navigate = useNavigate();
-  const { data, isLoading } = useEscalationPolicies({ limit: 100 });
-  const { create } = useEscalationPolicyMutations();
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [formError, setFormError] = useState<string | null>(null);
-  const policies = data?.data ?? [];
+  const { data, isLoading } = useAlertingWorkspace();
+  const policies = useMemo(() => (data?.escalationPolicies ?? []) as unknown as EscalationRow[], [data]);
 
-  const handleCreate = (form: FormData) => {
-    setFormError(null);
-    const name = String(form.get("name") ?? "").trim();
-    if (!name) {
-      setFormError("Name is required.");
-      return;
-    }
-    const repeatMinutesRaw = String(form.get("repeatIntervalMinutes") ?? "").trim();
-    create.mutate(
-      {
-        name,
-        description: String(form.get("description") ?? "").trim() || undefined,
-        repeatIntervalMinutes: repeatMinutesRaw ? Number(repeatMinutesRaw) : undefined,
-        maxRepeats: Number(form.get("maxRepeats") ?? 0),
-      },
-      {
-        onSuccess: (policy) => {
-          toast.success("Escalation policy created");
-          setDialogOpen(false);
-          navigate(`/alerts/escalations/${policy.id}`);
-        },
-        onError: (err) => setFormError(apiErrorMessage(err, "Could not create policy.")),
-      },
-    );
-  };
-
-  return (
-    <FillPage>
-      <PageHeader
-        title="Escalation policies"
-        description="Ordered notification steps with wait times, connectors, routes, and on-call fan-out."
-        actions={<UiButton onClick={() => setDialogOpen(true)}><Plus className="size-4" /> New policy</UiButton>}
-      />
-
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <KpiCard label="Policies" value={policies.length} icon={PhoneForwarded} />
-        <KpiCard label="Active" value={policies.filter((p) => p.isActive).length} />
-        <KpiCard label="Repeating" value={policies.filter((p) => p.repeatIntervalMinutes != null).length} />
-        <KpiCard label="Inactive" value={policies.filter((p) => !p.isActive).length} />
-      </div>
-
-      <InfiniteCards
-        className="flex-1"
-        loading={isLoading}
-        items={policies}
-        queryKey={["escalation-policies"]}
-        getKey={(p) => p.id}
-        renderCard={(p) => (
-          <div role="button" tabIndex={0} onClick={() => navigate(`/alerts/escalations/${p.id}`)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(`/alerts/escalations/${p.id}`); } }} className="cursor-pointer rounded-[12px] border border-[var(--border)] bg-[var(--bg1)] p-4 hover:border-[var(--input)]">
-            <div className="flex items-center justify-between">
-              <span className="font-semibold text-[var(--text)]">{p.name}</span>
-              <EnabledPill enabled={p.isActive} />
-            </div>
-            <p className="mt-1.5 line-clamp-2 text-[13px] text-[var(--text2)]">{p.description ?? "No description."}</p>
-            <div className="mt-3 flex items-center gap-2 border-t border-[var(--border)] pt-3 text-[12px] text-[var(--text3)]">
-              <span>{p.repeatIntervalMinutes != null ? `Repeats every ${p.repeatIntervalMinutes}m` : "No repeat"}</span>
-              <span className="ml-auto">Max {p.maxRepeats} repeats</span>
-            </div>
-          </div>
-        )}
-      />
-
-      <FormDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        title="New escalation policy"
-        description="Steps are configured on the policy detail page after creation."
-        submitLabel="Create policy"
-        pending={create.isPending}
-        error={formError}
-        onSubmit={handleCreate}
-      >
-        <DialogField label="Name" name="name" required>
-          <input id="name" name="name" className={fieldInputClass} placeholder="Primary on-call" />
-        </DialogField>
-        <DialogField label="Description" name="description">
-          <textarea id="description" name="description" className={fieldTextareaClass} placeholder="When should this policy be used?" />
-        </DialogField>
-        <div className="grid grid-cols-2 gap-4">
-          <DialogField label="Repeat interval (min)" name="repeatIntervalMinutes" hint="Leave blank to never repeat.">
-            <input id="repeatIntervalMinutes" name="repeatIntervalMinutes" type="number" min={1} className={fieldInputClass} />
-          </DialogField>
-          <DialogField label="Max repeats" name="maxRepeats">
-            <input id="maxRepeats" name="maxRepeats" type="number" min={0} defaultValue={0} className={fieldInputClass} />
-          </DialogField>
-        </div>
-      </FormDialog>
-    </FillPage>
-  );
+  return <div className="mx-auto w-full max-w-[1400px] space-y-6 p-6">
+    <div className="border-b border-border/60 pb-4"><div className="flex items-center gap-2"><TrendingUp className="h-6 w-6 text-purple-500" /><h1 className="text-2xl font-bold">Escalation Policies</h1></div><p className="mt-1 text-xs text-muted-foreground">Provisioned escalation defaults remain connector-free until your organization configures delivery targets.</p></div>
+    {isLoading ? <div className="py-12 text-center text-sm text-muted-foreground">Loading escalation policies…</div> : policies.length === 0 ? <div className="rounded-xl border border-dashed border-border p-12 text-center text-sm text-muted-foreground">No escalation policies are configured.</div> : <div className="space-y-5">{policies.map((policy) => <button key={policy.id} onClick={() => navigate(`/alerts/escalations/${policy.id}`)} className="block w-full rounded-xl border border-border/60 bg-card/60 p-6 text-left shadow-sm transition-colors hover:border-primary/40"><div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start"><div><div className="flex items-center gap-2"><h2 className="text-lg font-bold">{policy.name}</h2><span className="rounded border border-primary/20 bg-primary/10 px-2 py-0.5 text-[10px] uppercase text-primary">{policy.systemKey}</span></div><p className="mt-1 text-xs text-muted-foreground">{policy.description}</p></div><div className="flex items-center gap-1 text-xs text-muted-foreground"><Clock className="h-3.5 w-3.5" />Ack timeout {Math.round(policy.acknowledgementTimeoutSeconds / 60)}m</div></div><div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-3">{(policy.steps ?? []).map((step) => <div key={step.stepNumber} className="rounded-lg border border-border/40 bg-muted/20 p-3"><div className="flex justify-between text-xs font-semibold"><span>Step {step.stepNumber}</span><span>+{Math.round(step.waitSeconds / 60)}m</span></div><p className="mt-2 text-[11px] text-muted-foreground">{step.connectorIds.length || step.routeIds.length ? "Configured target" : "No connector selected"}</p></div>)}</div></button>)}</div>}
+  </div>;
 }

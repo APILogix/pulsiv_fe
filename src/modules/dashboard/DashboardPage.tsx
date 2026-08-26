@@ -105,7 +105,7 @@ function TopKpiRow({ total, rate, p95Val, degradedCount }: { total: number, rate
           API calls (24h)
         </div>
         <div className="mt-3 flex items-center justify-between">
-          <span className="font-[family-name:var(--mono)] text-[28px] font-medium tabular-nums leading-none tracking-[-0.02em] text-[var(--text)]">
+          <span className="font-[family-name:var(--mono)] text-[26px] font-medium tabular-nums leading-none tracking-[-0.02em] text-[var(--text)]">
             {formatCompact(total * 1240)}
           </span>
           <TrendWave color="var(--green)" />
@@ -120,7 +120,7 @@ function TopKpiRow({ total, rate, p95Val, degradedCount }: { total: number, rate
           Error rate
         </div>
         <div className="mt-3 flex items-center justify-between">
-          <span className="font-[family-name:var(--mono)] text-[28px] font-medium tabular-nums leading-none tracking-[-0.02em] text-[var(--text)]">
+          <span className="font-[family-name:var(--mono)] text-[26px] font-medium tabular-nums leading-none tracking-[-0.02em] text-[var(--text)]">
             {rate.toFixed(2)}%
           </span>
           <TrendWave color="var(--red)" />
@@ -135,7 +135,7 @@ function TopKpiRow({ total, rate, p95Val, degradedCount }: { total: number, rate
           P95 latency
         </div>
         <div className="mt-3 flex items-center justify-between">
-          <span className="font-[family-name:var(--mono)] text-[28px] font-medium tabular-nums leading-none tracking-[-0.02em] text-[var(--text)]">
+          <span className="font-[family-name:var(--mono)] text-[26px] font-medium tabular-nums leading-none tracking-[-0.02em] text-[var(--text)]">
             {formatLatency(p95Val)}
           </span>
           <TrendWave color="var(--violet)" />
@@ -150,9 +150,10 @@ function TopKpiRow({ total, rate, p95Val, degradedCount }: { total: number, rate
           Availability
         </div>
         <div className="mt-3 flex items-center justify-between">
-          <span className="font-[family-name:var(--mono)] text-[28px] font-medium tabular-nums leading-none tracking-[-0.02em] text-[var(--text)]">
+          <span className="font-[family-name:var(--mono)] text-[26px] font-medium tabular-nums leading-none tracking-[-0.02em] text-[var(--text)]">
             {degradedCount > 0 ? "77.20%" : "99.99%"}
           </span>
+          <TrendWave color="var(--green)" />
         </div>
         <div className="mt-2 font-[family-name:var(--mono)] text-[11px] font-medium tabular-nums" style={{ color: "var(--green)" }}>
           +0.01%
@@ -164,9 +165,10 @@ function TopKpiRow({ total, rate, p95Val, degradedCount }: { total: number, rate
           Revenue at risk
         </div>
         <div className="mt-3 flex items-center justify-between">
-          <span className="font-[family-name:var(--mono)] text-[28px] font-medium tabular-nums leading-none tracking-[-0.02em] text-[var(--text)]">
+          <span className="font-[family-name:var(--mono)] text-[26px] font-medium tabular-nums leading-none tracking-[-0.02em] text-[var(--text)]">
             $4,845
           </span>
+          <TrendWave color="var(--red)" />
         </div>
         <div className="mt-2 font-[family-name:var(--mono)] text-[11px] font-medium tabular-nums" style={{ color: "var(--red)" }}>
           17 failed payments
@@ -181,7 +183,7 @@ function ChartCard({ title, badge, children }: {
   title: string; badge?: string; children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)]">
+    <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] flex flex-col justify-between">
       <div className="flex items-center justify-between px-5 pt-4 pb-2">
         <h3 className="text-[14px] font-semibold text-[var(--text)]">{title}</h3>
         {badge && (
@@ -190,7 +192,7 @@ function ChartCard({ title, badge, children }: {
           </span>
         )}
       </div>
-      <div className="px-2 pb-3">{children}</div>
+      <div className="px-3 pb-3.5 pt-1">{children}</div>
     </div>
   );
 }
@@ -202,7 +204,7 @@ function ChartCard({ title, badge, children }: {
 const Y_VOL = [0, 40, 80, 120, 160]; // thousands
 
 function VolumeChart({ data, errData }: { data: number[]; errData: number[] }) {
-  const W = 760, H = 240, PL = 42, PR = 8, PT = 10, PB = 28;
+  const W = 760, H = 220, PL = 38, PR = 12, PT = 10, PB = 28;
   const cw = W - PL - PR, ch = H - PT - PB;
   const max = 160000;
   const toY = (v: number) => PT + ch - (v / max) * ch;
@@ -219,21 +221,17 @@ function VolumeChart({ data, errData }: { data: number[]; errData: number[] }) {
         const y = toY(k * 1000);
         return (
           <g key={k}>
-            <line x1={PL} x2={W - PR} y1={y} y2={y} stroke="var(--border)" strokeWidth={1} />
+            <line x1={PL} x2={W - PR} y1={y} y2={y} stroke="var(--border)" strokeWidth={1} strokeDasharray="3 3" />
             <text x={PL - 6} y={y + 3} textAnchor="end" fill="var(--text3)" fontSize={10} style={MONO}>
               {k === 0 ? "0" : `${k}k`}
             </text>
           </g>
         );
       })}
-      {/* Request volume is the product's own data → brand channel (§2.7),
-          with a flat low-alpha fill (§3). Green is reserved for verdicts. */}
       <path d={smoothArea(pts, base)} fill="var(--brand)" fillOpacity={0.16} />
       <path d={smoothLine(pts)} fill="none" stroke="var(--brand)" strokeWidth={2} />
-      {/* Error volume — the truth channel reporting facts. */}
       <path d={smoothArea(ePts, base)} fill="var(--red-bg)" />
       <path d={smoothLine(ePts)} fill="none" stroke="var(--red)" strokeWidth={1.5} />
-      {/* X-axis time labels */}
       {TIME_LABELS.map((l, i) => (
         <text key={l} x={PL + (i / (TIME_LABELS.length - 1)) * cw} y={H - 5}
           textAnchor="middle" fill="var(--text3)" fontSize={10} style={MONO}>{l}</text>
@@ -243,7 +241,7 @@ function VolumeChart({ data, errData }: { data: number[]; errData: number[] }) {
 }
 
 function LatencyChart({ p50, p95, p99 }: { p50: number[]; p95: number[]; p99: number[] }) {
-  const W = 760, H = 240, PL = 42, PR = 8, PT = 10, PB = 28;
+  const W = 760, H = 220, PL = 38, PR = 12, PT = 10, PB = 28;
   const cw = W - PL - PR, ch = H - PT - PB;
   const max = 600;
   const yVals = [0, 150, 300, 450, 600];
@@ -251,8 +249,6 @@ function LatencyChart({ p50, p95, p99 }: { p50: number[]; p95: number[]; p99: nu
   const toX = (i: number, len: number) => PL + (i / (len - 1)) * cw;
   const mkPts = (d: number[]): [number, number][] => d.map((v, i) => [toX(i, d.length), toY(v)]);
 
-  // Measured percentiles are product data, not verdicts and not model output:
-  // brand → blue → amber. Cyan stays reserved for the AI channel (§2.4, §11.3).
   const lines = [
     { data: p50, color: "var(--brand)", label: "p50" },
     { data: p95, color: "var(--blue)", label: "p95" },
@@ -266,7 +262,7 @@ function LatencyChart({ p50, p95, p99 }: { p50: number[]; p95: number[]; p99: nu
           const y = toY(v);
           return (
             <g key={v}>
-              <line x1={PL} x2={W - PR} y1={y} y2={y} stroke="var(--border)" strokeWidth={1} />
+              <line x1={PL} x2={W - PR} y1={y} y2={y} stroke="var(--border)" strokeWidth={1} strokeDasharray="3 3" />
               <text x={PL - 6} y={y + 3} textAnchor="end" fill="var(--text3)" fontSize={10} style={MONO}>{v}</text>
             </g>
           );
@@ -279,10 +275,10 @@ function LatencyChart({ p50, p95, p99 }: { p50: number[]; p95: number[]; p99: nu
             textAnchor="middle" fill="var(--text3)" fontSize={10} style={MONO}>{l}</text>
         ))}
       </svg>
-      <div className="flex items-center gap-5 px-5 pt-1">
+      <div className="flex items-center gap-5 px-5 pt-2">
         {lines.map((s) => (
-          <span key={s.label} className="flex items-center gap-1.5 text-[11px] text-[var(--text2)]">
-            <span className="inline-block h-2.5 w-2.5 rounded-[2px]" style={{ background: s.color }} />
+          <span key={s.label} className="flex items-center gap-1.5 text-[11px] text-[var(--text2)] font-[family-name:var(--mono)]">
+            <span className="inline-block h-2 w-2 rounded-full" style={{ background: s.color }} />
             {s.label}
           </span>
         ))}
@@ -292,13 +288,13 @@ function LatencyChart({ p50, p95, p99 }: { p50: number[]; p95: number[]; p99: nu
 }
 
 function StatusCodesChart() {
-  const W = 700, H = 280, PL = 42, PR = 8, PT = 10, PB = 28;
+  const W = 760, H = 220, PL = 38, PR = 12, PT = 10, PB = 28;
   const cw = W - PL - PR, ch = H - PT - PB;
   const max = 160000;
   const yVals = [0, 40, 80, 120, 160];
   const n = STATUS_BUCKETS.length;
   const bw = cw / n;
-  const barW = bw * 0.55;
+  const barW = bw * 0.45;
   const toY = (v: number) => PT + ch - (v / max) * ch;
   const base = PT + ch;
 
@@ -309,7 +305,7 @@ function StatusCodesChart() {
           const y = toY(k * 1000);
           return (
             <g key={k}>
-              <line x1={PL} x2={W - PR} y1={y} y2={y} stroke="var(--border)" strokeWidth={1} />
+              <line x1={PL} x2={W - PR} y1={y} y2={y} stroke="var(--border)" strokeWidth={1} strokeDasharray="3 3" />
               <text x={PL - 6} y={y + 3} textAnchor="end" fill="var(--text3)" fontSize={10} style={MONO}>
                 {k === 0 ? "0" : `${k}k`}
               </text>
@@ -324,11 +320,8 @@ function StatusCodesChart() {
           const h5 = (b.s5 / max) * ch;
           return (
             <g key={b.t}>
-              {/* 2xx — green (base) */}
               <rect x={x} y={base - h2} width={barW} height={h2} fill="var(--green)" rx={2} />
-              {/* 4xx — amber (stacked) */}
               <rect x={x} y={base - h2 - h4} width={barW} height={h4} fill="var(--amber)" />
-              {/* 5xx — red (top) */}
               <rect x={x} y={base - h2 - h4 - h5} width={barW} height={h5} fill="var(--red)" rx={2} />
               <text x={cx} y={H - 5} textAnchor="middle" fill="var(--text3)" fontSize={10} style={MONO}>
                 {b.t}
@@ -337,14 +330,14 @@ function StatusCodesChart() {
           );
         })}
       </svg>
-      <div className="flex items-center gap-5 px-5 pt-1">
+      <div className="flex items-center gap-5 px-5 pt-2">
         {[
           { c: "var(--green)", l: "2xx" },
           { c: "var(--amber)", l: "4xx" },
           { c: "var(--red)", l: "5xx" },
         ].map((x) => (
-          <span key={x.l} className="flex items-center gap-1.5 text-[11px] text-[var(--text2)]">
-            <span className="inline-block h-2.5 w-2.5 rounded-[2px]" style={{ background: x.c }} />
+          <span key={x.l} className="flex items-center gap-1.5 text-[11px] text-[var(--text2)] font-[family-name:var(--mono)]">
+            <span className="inline-block h-2 w-2 rounded-full" style={{ background: x.c }} />
             {x.l}
           </span>
         ))}
@@ -360,10 +353,10 @@ function StatusCodesChart() {
 function ServiceHealthPanel() {
   return (
     <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] p-5">
-      <h3 className="text-[14px] font-semibold text-[var(--text)] mb-4">Service health</h3>
-      <div className="flex flex-col gap-3">
+      <h3 className="text-[14px] font-semibold text-[var(--text)] mb-3.5">Service health</h3>
+      <div className="flex flex-col gap-2.5">
         {SERVICES.map((s) => (
-          <div key={s.name} className="flex items-center gap-3">
+          <div key={s.name} className="flex items-center gap-3 py-0.5">
             <span
               className="size-2 rounded-full shrink-0"
               style={{ background: s.healthy ? "var(--green)" : "var(--amber)" }}
@@ -387,12 +380,12 @@ function ServiceHealthPanel() {
 function RecentActivityPanel() {
   return (
     <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] p-5">
-      <h3 className="text-[14px] font-semibold text-[var(--text)] mb-4">Recent activity</h3>
-      <div className="flex flex-col gap-4">
+      <h3 className="text-[14px] font-semibold text-[var(--text)] mb-3.5">Recent activity</h3>
+      <div className="flex flex-col gap-3.5">
         {ACTIVITY.map((a) => {
           const s = SEV_MAP[a.sev];
           return (
-            <div key={`${a.title}-${a.at}`} className="flex gap-3">
+            <div key={`${a.title}-${a.at}`} className="flex gap-3 items-start">
               <span
                 className="mt-0.5 shrink-0 rounded-full px-2 py-0.5 font-[family-name:var(--mono)] text-[10px] font-medium uppercase tracking-[0.08em] leading-snug"
                 style={{ background: s.bg, color: s.fg }}
@@ -466,19 +459,19 @@ function TopEndpointsPanel() {
 
 function DashboardSkeleton() {
   return (
-    <div className="flex flex-col gap-6 p-4 lg:p-8 max-w-[1400px] mx-auto w-full">
-      <div className="h-14" />
+    <div className="flex flex-col gap-6 w-full max-w-[1400px] mx-auto px-4 sm:px-6 py-6">
+      <div className="h-10" />
       {/* TopKpiRow Skeleton */}
       <div className="flex flex-row gap-0 rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] overflow-hidden">
         {Array.from({ length: 5 }).map((_, i) => (
-          <div key={`ks-${i}`} className="loading-skeleton h-[140px] flex-1 border-r border-[var(--border)] bg-[var(--bg2)] min-w-[200px]" />
+          <div key={`ks-${i}`} className="loading-skeleton h-[120px] flex-1 border-r border-[var(--border)] bg-[var(--bg2)] min-w-[200px]" />
         ))}
       </div>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className="loading-skeleton h-[300px] rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)]" />
-        <div className="loading-skeleton h-[300px] rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)]" />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <div className="loading-skeleton h-[280px] rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)]" />
+        <div className="loading-skeleton h-[280px] rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)]" />
       </div>
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
         <div className="loading-skeleton lg:col-span-3 h-[340px] rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)]" />
         <div className="loading-skeleton lg:col-span-2 h-[340px] rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)]" />
       </div>
@@ -515,9 +508,9 @@ export default function DashboardPage() {
   const degradedCount = SERVICES.length - healthyCount;
 
   return (
-    <div className="flex flex-col gap-6 p-4 lg:p-8 max-w-[1400px] mx-auto w-full">
+    <div className="flex flex-col gap-6 w-full max-w-[1400px] mx-auto px-4 sm:px-6 py-6">
       {/* ── Header ── */}
-      <div className="flex flex-wrap items-start justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3 pb-1">
         <div>
           <h1 className="font-[family-name:var(--display)] text-[22px] font-semibold tracking-[-0.02em] text-[var(--text)]">Dashboard</h1>
           <p className="mt-1 text-[13px] leading-[1.5] text-[var(--text2)]">
@@ -536,7 +529,7 @@ export default function DashboardPage() {
       />
 
       {/* ── Request Volume + Latency Percentiles ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         <ChartCard title="Request volume" badge="Last 24h">
           <VolumeChart data={volumeData} errData={errorVolData} />
         </ChartCard>
@@ -546,16 +539,16 @@ export default function DashboardPage() {
       </div>
 
       {/* ── Status Codes / Top Endpoints + Service Health / Recent Activity ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
         {/* Left column: charts & table */}
-        <div className="lg:col-span-3 flex flex-col gap-4">
+        <div className="lg:col-span-3 flex flex-col gap-5">
           <ChartCard title="Status codes" badge="Last 24h">
             <StatusCodesChart />
           </ChartCard>
           <TopEndpointsPanel />
         </div>
         {/* Right column: AI insights rail, health & activity (§5.2) */}
-        <div className="lg:col-span-2 flex flex-col gap-4">
+        <div className="lg:col-span-2 flex flex-col gap-5">
           <AiInsightCard
             title="Latency anomaly on alert-dispatcher"
             confidence={94}

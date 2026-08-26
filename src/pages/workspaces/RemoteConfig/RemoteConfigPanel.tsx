@@ -37,10 +37,10 @@ interface RemoteConfigPanelProps {
   isSaving?: boolean;
   environmentName: string;
   currentRevision: number;
-  activeSection: string;
+  activeSection?: string;
   onStateChange?: (state: RemoteConfigPanelHandle) => void;
-  publishDrawerOpen: boolean;
-  onClosePublishDrawer: () => void;
+  publishDrawerOpen?: boolean;
+  onClosePublishDrawer?: () => void;
 }
 
 export function RemoteConfigPanel({
@@ -49,10 +49,10 @@ export function RemoteConfigPanel({
   isSaving,
   environmentName,
   currentRevision,
-  activeSection,
+  activeSection = 'features',
   onStateChange,
-  publishDrawerOpen,
-  onClosePublishDrawer,
+  publishDrawerOpen = false,
+  onClosePublishDrawer = () => {},
 }: RemoteConfigPanelProps) {
   const baseConfig: SdkConfigState = useMemo(() => normalizeSdkConfig(initialConfig), [initialConfig]);
   const [draft, setDraft] = useState<SdkConfigState>(baseConfig);

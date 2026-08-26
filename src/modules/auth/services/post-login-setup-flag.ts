@@ -1,5 +1,5 @@
-export const ORGANIZATION_SETUP_FLAG = "pulsiv:organization-setup";
-export const LOGIN_METRICS_FLAG = "pulsiv:login-metrics";
+export const ORGANIZATION_SETUP_FLAG = "sentinel:organization-setup";
+export const LOGIN_METRICS_FLAG = "sentinel:login-metrics";
 
 function markTransition(key: string) {
   try {

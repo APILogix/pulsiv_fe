@@ -1,10 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   CheckCircle2,
-  Clock3,
-  FlaskConical,
-  Hash,
-  History,
   RotateCcw,
   ServerCog,
   ShieldCheck,
@@ -20,7 +16,6 @@ import {
   SubmitButton,
   inputClass,
 } from "@/shared/observe";
-import { cn } from "@/lib/utils";
 import { RouteLoadingRegion } from "@/shared/ui/loading";
 import { toast } from "sonner";
 import { useOrganizations } from "@/modules/organizations/hooks/useOrganizations";
@@ -32,7 +27,6 @@ import {
 } from "@/modules/projects/hooks/useSdkConfigs";
 import { useEnvironments } from "@/modules/projects/hooks/useEnvironments";
 import type { ProjectEnvironment } from "@/modules/projects/api/types";
-import type { SdkConfigView } from "@/modules/projects/api/sdk-configs.api";
 import { useCurrentProject } from "@/pages/workspaces/ProjectShellPage";
 
 import { RemoteConfigHeader } from "./RemoteConfig/components/RemoteConfigHeader";

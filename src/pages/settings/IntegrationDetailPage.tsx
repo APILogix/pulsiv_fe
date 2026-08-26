@@ -205,7 +205,7 @@ export default function IntegrationDetailPage() {
     },
     {
       title: "Verify connectivity",
-      description: "Run a test connection to confirm Pulsiv can reach the destination.",
+      description: "Run a test connection to confirm Sentinel can reach the destination.",
       done: testRuns.length > 0,
     },
     {
@@ -266,7 +266,7 @@ export default function IntegrationDetailPage() {
           label={isActive ? "Connector enabled" : "Connector disabled"}
           description={
             isActive
-              ? "Pulsiv is delivering matching events to this connector."
+              ? "Sentinel is delivering matching events to this connector."
               : "Deliveries are paused. Existing configuration and routes are preserved."
           }
           htmlFor="connector-enabled"
@@ -283,7 +283,7 @@ export default function IntegrationDetailPage() {
 
       <Panel
         title="Recent test runs"
-        description="Connectivity checks and the latency Pulsiv measured."
+        description="Connectivity checks and the latency Sentinel measured."
         icon={Clock}
         bodyClassName={testRuns.length === 0 ? undefined : "p-0"}
         actions={

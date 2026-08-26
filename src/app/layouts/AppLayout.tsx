@@ -8,6 +8,7 @@ import { AppDualSidebar } from './AppDualSidebar';
 import { PostLoginSetup } from '@/modules/auth/components/PostLoginSetup';
 import { LoginMetricsTransition } from '@/modules/auth/components/LoginMetricsTransition';
 import { RouteBoundary, ScrollToTop, useScrollRestoration } from '@/shared/motion';
+import { AiDrawer } from '@/modules/ai/components/AiDrawer';
 
 const handleMenuClick = () => {
   window.dispatchEvent(new CustomEvent('toggle-mobile-sidebar'));
@@ -48,9 +49,10 @@ export function AppLayout() {
               that rely on `h-full` (ModuleLayout, ProjectShellPage) still
               resolve their height through the transition element.
             */}
-            <RouteBoundary scope="module" padded className="flex min-h-0 w-full flex-1 flex-col">
+            <RouteBoundary scope="module" padded={false} className="flex min-h-0 w-full flex-1 flex-col">
               <Outlet />
             </RouteBoundary>
+
           </AppErrorBoundary>
         </div>
         <ScrollToTop targetRef={scrollRef} />
@@ -58,6 +60,7 @@ export function AppLayout() {
       <PulseCommandPalette />
       <LoginMetricsTransition />
       <PostLoginSetup />
+      <AiDrawer />
     </div>
   );
 }

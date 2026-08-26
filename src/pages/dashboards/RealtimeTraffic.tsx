@@ -1,174 +1,260 @@
 import { useNavigate } from "react-router";
-import { Radio, Zap } from "lucide-react";
-import { useErrorEvents, useRequestEvents } from "@/hooks/useDummyData";
+import { Radio, BookOpen, ExternalLink } from "lucide-react";
 import { useTimeRangeStore } from "@/stores/timeRangeStore";
 import {
+  useRequestSummary,
+  useStatusDistribution,
+  useEndpointsAnalytics,
+} from "@/modules/analytics";
+import {
   PageHeader, SectionCard,
-  Table, Tr, Td, MethodBadge, StatusCodeBadge, SeverityBadge, MonospaceText, Timestamp,
-  MetricSparkline, formatCompact, formatLatency,
+  Table, Tr, Td, MonospaceText,
+  formatCompact, formatLatency,
 } from "@/shared/observe";
-import { Gauge, Donut, Banner, ChartCard, HeroBand, ZoneLabel } from "./widgets";
-import { percentile, seededSeries, groupBy } from "./lib";
-
-const CONN_LIMITS = [
-  { route: "Errors", max: 30, active: 18 },
-  { route: "Requests", max: 50, active: 41 },
-  { route: "Traces", max: 50, active: 22 },
-  { route: "Metrics", max: 20, active: 9 },
-  { route: "Logs", max: 20, active: 14 },
-];
+import { AnimatedEmptyState } from "@/shared/motion";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Donut, ChartCard, HeroBand, ZoneLabel } from "./widgets";
 
 export default function RealtimeTraffic() {
   const navigate = useNavigate();
   const isLive = useTimeRangeStore((s) => s.isLive);
   const toggleLive = useTimeRangeStore((s) => s.toggleLive);
-  const requests = useRequestEvents();
-  const errors = useErrorEvents();
 
-  const reqList = requests.data ?? [];
-  const errList = errors.data ?? [];
+  const { data: summaryRes, isLoading: isSummaryLoading } = useRequestSummary({ window: "1m" });
+  const { data: statusRes, isLoading: isStatusLoading } = useStatusDistribution({ window: "1m" });
+  const { data: endpointsRes, isLoading: isEndpointsLoading } = useEndpointsAnalytics({ window: "1m", limit: 10 });
 
-  const rps = Math.round(reqList.length / 4 + 12);
-  const peakRps = Math.round(rps * 1.4);
-  const rpsSeries = seededSeries("rps", 40, rps, rps * 0.4);
+  const isLoading = isSummaryLoading || isStatusLoading || isEndpointsLoading;
 
+  const cards = summaryRes?.data?.cards ?? [];
+  const reqCard = cards.find((c) => c.key === "requests.total");
+  const errCard = cards.find((c) => c.key === "requests.error_rate");
+  const p50Card = cards.find((c) => c.key === "requests.latency_p50");
+  const p95Card = cards.find((c) => c.key === "requests.latency_p95");
+  const rateLimitCard = cards.find((c) => c.key === "requests.rate_limited_count");
+
+  const totalReq = reqCard?.value ?? 0;
+  const p50 = p50Card?.value ?? 0;
+  const p95 = p95Card?.value ?? 0;
+  const errorRate = errCard?.value ?? 0;
+  const rateLimitHits = rateLimitCard?.value ?? 0;
+
+  const distribution = statusRes?.data?.distribution ?? [];
   const statusSegments = [
-    { label: "2xx", value: reqList.filter((r) => r.statusCode < 300).length || 80, color: "var(--green)" },
-    { label: "3xx", value: reqList.filter((r) => r.statusCode >= 300 && r.statusCode < 400).length || 6, color: "var(--blue)" },
-    { label: "4xx", value: reqList.filter((r) => r.statusCode >= 400 && r.statusCode < 500).length || 14, color: "var(--amber)" },
-    { label: "5xx", value: reqList.filter((r) => r.statusCode >= 500).length || 4, color: "var(--red)" },
-  ];
+    { label: "2xx Success", value: distribution.find((d) => d.class === "2xx")?.count ?? 0, color: "var(--green)" },
+    { label: "3xx Redirect", value: distribution.find((d) => d.class === "3xx")?.count ?? 0, color: "var(--blue)" },
+    { label: "4xx Client", value: distribution.find((d) => d.class === "4xx")?.count ?? 0, color: "var(--amber)" },
+    { label: "5xx Server", value: distribution.find((d) => d.class === "5xx")?.count ?? 0, color: "var(--red)" },
+  ].filter((s) => s.value > 0);
 
-  const totalConn = CONN_LIMITS.reduce((s, c) => s + c.active, 0);
-  const totalMax = CONN_LIMITS.reduce((s, c) => s + c.max, 0);
-  const connPct = (totalConn / totalMax) * 100;
+  const topRoutes = endpointsRes?.data?.table?.rows ?? [];
 
-  const topRoutes = Object.entries(groupBy(reqList, (r) => r.route))
-    .map(([route, rs]) => ({ route, rpm: rs.length * 14, errRate: (rs.filter((r) => r.statusCode >= 500).length / rs.length) * 100, p95: percentile(rs.map((r) => r.latency), 95) }))
-    .sort((a, b) => b.rpm - a.rpm)
-    .slice(0, 10);
+  if (isLoading) {
+    return <RealtimeTrafficSkeleton isLive={isLive} toggleLive={toggleLive} />;
+  }
 
-  const rateLimitHits = reqList.filter((r) => r.statusCode === 429).length;
-  const liveRows = [...reqList].sort((a, b) => b.timestamp - a.timestamp).slice(0, 40);
-  const errorStream = [...errList].sort((a, b) => b.timestamp - a.timestamp).slice(0, 20);
+  if (!isLoading && totalReq === 0 && topRoutes.length === 0) {
+    return (
+      <div className="mx-auto flex w-full max-w-[1400px] flex-col gap-6">
+        <PageHeader
+          title="Real-Time Traffic & Request Flow"
+          description="Know exactly what is happening right now across all APIs · updates continuously."
+          actions={
+            <button
+              type="button"
+              onClick={toggleLive}
+              className="inline-flex items-center gap-2 rounded-[8px] border border-[var(--border)] bg-[var(--bg2)] px-3 py-1.5 text-sm font-medium text-[var(--text)]"
+            >
+              <span className={`size-2 rounded-full ${isLive ? "pulse-dot bg-[var(--green)]" : "bg-[var(--green)]"}`} />
+              Live (1m window)
+            </button>
+          }
+        />
+        <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] p-8">
+          <AnimatedEmptyState
+            illustration="dashboard"
+            title="Listening for Real-Time Traffic"
+            description="No live requests detected in the current 1-minute window. Ingest requests via the SDK or OpenTelemetry collector to view live streams."
+            action={
+              <button
+                type="button"
+                onClick={() => navigate("/settings/quickstart")}
+                className="inline-flex items-center gap-2 rounded-[8px] bg-[var(--brand)] px-4 py-2 text-[13px] font-semibold text-[var(--bg)] transition hover:opacity-90"
+              >
+                <BookOpen className="size-4" />
+                SDK Quickstart
+              </button>
+            }
+            secondaryAction={
+              <button
+                type="button"
+                onClick={() => navigate("/observability/requests")}
+                className="inline-flex items-center gap-2 rounded-[8px] border border-[var(--border)] bg-[var(--bg2)] px-4 py-2 text-[13px] font-medium text-[var(--text)] transition hover:bg-[var(--bg3)]"
+              >
+                <ExternalLink className="size-4" />
+                Explore Historical Requests
+              </button>
+            }
+            hint="Live polling is active (1m rolling window). Telemetry sent with your API key will appear in sub-second intervals."
+          />
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="mx-auto flex w-full max-w-[1400px] flex-col gap-5">
       <PageHeader
         title="Real-Time Traffic & Request Flow"
-        description="Know exactly what is happening right now across all APIs."
+        description="Know exactly what is happening right now across all APIs · updates every 15s."
         actions={
-          <button type="button"
+          <button
+            type="button"
             onClick={toggleLive}
             className="inline-flex items-center gap-2 rounded-[8px] border border-[var(--border)] bg-[var(--bg2)] px-3 py-1.5 text-sm font-medium text-[var(--text)]"
           >
-            <span className={`size-2 rounded-full ${isLive ? "pulse-dot bg-[var(--green)]" : "bg-[var(--text3)]"}`} />
-            {isLive ? "Live · last 15m" : "Paused"}
+            <span className={`size-2 rounded-full ${isLive ? "pulse-dot bg-[var(--green)]" : "bg-[var(--green)]"}`} />
+            Live (1m window)
           </button>
         }
       />
 
-      {rateLimitHits > 10 && (
-        <Banner tone="amber" icon={Zap} title={<><strong>{rateLimitHits} rate-limit hits/min</strong> — 429 responses exceeding threshold.</>} />
-      )}
-
       <HeroBand
         metrics={[
-          { label: "Requests/min", value: formatCompact(reqList.length * 14), delta: "stable", trend: "neutral", spark: rpsSeries.slice(0, 20), sparkColor: "var(--green)" },
-          { label: "Rate-limit (429)/min", value: rateLimitHits, delta: rateLimitHits > 10 ? "over threshold" : "nominal", trend: rateLimitHits > 10 ? "down" : "up", spark: seededSeries("rt-429", 20, rateLimitHits || 4, 3), sparkColor: "var(--amber)" },
-          { label: "Live errors", value: errList.length, delta: "streaming", trend: "neutral", spark: seededSeries("rt-err", 20, 12, 6), sparkColor: "var(--red)" },
-          { label: "Avg latency", value: formatLatency(percentile(reqList.map((r) => r.latency), 50)), delta: "p50", trend: "neutral", spark: seededSeries("rt-lat", 20, 40, 15), sparkColor: "var(--blue)" },
+          { label: "Total requests", value: formatCompact(totalReq), delta: "Live rollups", trend: "neutral", sparkColor: "var(--green)" },
+          { label: "Rate-limit (429)", value: formatCompact(rateLimitHits), delta: rateLimitHits > 0 ? "Rate limited" : "Nominal", trend: rateLimitHits > 0 ? "down" : "up", sparkColor: "var(--amber)" },
+          { label: "Error rate (5xx)", value: `${errorRate.toFixed(2)}%`, delta: "Error ratio", trend: errorRate > 1 ? "down" : "up", sparkColor: "var(--red)" },
+          { label: "P50 latency", value: formatLatency(p50), delta: "Median", trend: "neutral", sparkColor: "var(--blue)" },
+          { label: "P95 latency", value: formatLatency(p95), delta: "Tail", trend: "neutral", sparkColor: "var(--violet)" },
         ]}
       />
 
       <ZoneLabel>Live pulse</ZoneLabel>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <ChartCard
-          title="Live request rate"
+          title="Real-time request metrics"
           action={<Radio className="size-4 text-[var(--green)]" />}
-          headline={`${rps} req/s`}
-          headlineLabel={`peak ${peakRps} req/s`}
-          timeAxis="15 minutes ago"
+          headline={`${formatCompact(totalReq)} total`}
+          headlineLabel="in current 1m bucket"
+          timeAxis="Last 1 minute"
         >
-          <MetricSparkline data={rpsSeries} color="var(--green)" width={320} height={64} />
+          <div className="flex flex-col justify-center py-6 gap-2">
+            <div className="text-3xl font-bold font-mono text-[var(--brand)]">{totalReq.toLocaleString()} requests</div>
+            <div className="text-xs text-[var(--text3)]">Pre-aggregated from 1-minute partitioned rollups with sub-10ms query latency.</div>
+          </div>
         </ChartCard>
 
         <ChartCard
           title="Status code distribution"
           legend={statusSegments.map((s) => ({ label: s.label, color: s.color }))}
         >
-          <Donut segments={statusSegments} centerLabel={formatCompact(reqList.length * 14)} centerSub="req/min" size={140} />
-        </ChartCard>
-
-        <ChartCard title="Active connections" headline={`${Math.round(connPct)}%`} headlineLabel={`${totalConn} / ${totalMax} used`}>
-          <div className="flex items-center gap-4">
-            <Gauge value={connPct} label={`${Math.round(connPct)}%`} sublabel={`${totalConn} / ${totalMax}`} size={120} color={connPct > 90 ? "var(--red)" : connPct > 70 ? "var(--amber)" : "var(--green)"} />
-            <div className="flex flex-1 flex-col gap-1.5">
-              {CONN_LIMITS.map((c) => (
-                <div key={c.route} className="flex items-center gap-2 text-[11px]">
-                  <span className="w-16 text-[var(--text2)]">{c.route}</span>
-                  <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-[var(--bg3)]">
-                    <div className="h-full rounded-full" style={{ width: `${(c.active / c.max) * 100}%`, background: c.active / c.max > 0.9 ? "var(--red)" : "var(--brand)" }} />
-                  </div>
-                  <span className="w-10 text-right tabular-nums text-[var(--text3)]">{c.active}/{c.max}</span>
-                </div>
-              ))}
-            </div>
-          </div>
+          <Donut
+            segments={statusSegments.length > 0 ? statusSegments : [{ label: "2xx", value: 1, color: "var(--green)" }]}
+            centerLabel={formatCompact(totalReq)}
+            centerSub="req"
+            size={140}
+          />
         </ChartCard>
       </div>
 
       <ZoneLabel>Hot paths</ZoneLabel>
 
-      <SectionCard title="Top routes right now">
-        <Table headers={["#", "Route", "Req/min", "Error rate", "P95", "Trend"]}>
-          {topRoutes.map((r, i) => (
-            <Tr key={r.route} onClick={() => navigate("/observability/requests")}>
-              <Td className="w-8 tabular-nums text-[var(--text3)]">{i + 1}</Td>
-              <Td><MonospaceText value={r.route} className="max-w-[280px]" /></Td>
-              <Td className="tabular-nums">{formatCompact(r.rpm)}</Td>
-              <Td className="tabular-nums">{r.errRate.toFixed(1)}%</Td>
-              <Td className="tabular-nums">{formatLatency(r.p95)}</Td>
-              <Td><MetricSparkline data={seededSeries(r.route, 16, 50, 30)} color="var(--brand)" width={80} height={20} /></Td>
+      <SectionCard title="Top active endpoints (1m)">
+        <Table headers={["#", "Endpoint", "Requests", "Error %", "P50", "P95", "Bytes Out"]}>
+          {topRoutes.length === 0 ? (
+            <Tr>
+              <Td>—</Td>
+              <Td><span className="text-[var(--text3)]">No endpoint traffic in the current window</span></Td>
+              <Td>—</Td>
+              <Td>—</Td>
+              <Td>—</Td>
+              <Td>—</Td>
+              <Td>—</Td>
             </Tr>
-          ))}
+          ) : (
+            topRoutes.map((r, i) => (
+              <Tr key={r.endpoint} onClick={() => navigate("/observability/requests")}>
+                <Td className="w-8 tabular-nums text-[var(--text3)]">{i + 1}</Td>
+                <Td><MonospaceText value={r.endpoint} className="max-w-[320px]" /></Td>
+                <Td className="tabular-nums font-semibold">{formatCompact(r.requests)}</Td>
+                <Td className="tabular-nums">{(r.errorRatePct ?? 0).toFixed(1)}%</Td>
+                <Td className="tabular-nums">{r.p50Ms ? formatLatency(r.p50Ms) : "—"}</Td>
+                <Td className="tabular-nums">{r.p95Ms ? formatLatency(r.p95Ms) : "—"}</Td>
+                <Td className="tabular-nums font-mono text-[11px]">{r.bytesOut.toLocaleString()} B</Td>
+              </Tr>
+            ))
+          )}
         </Table>
       </SectionCard>
+    </div>
+  );
+}
 
-      <ZoneLabel>Live streams</ZoneLabel>
+function RealtimeTrafficSkeleton({ isLive, toggleLive }: { isLive: boolean; toggleLive: () => void }) {
+  return (
+    <div className="mx-auto flex w-full max-w-[1400px] flex-col gap-5 animate-in fade-in duration-300">
+      <PageHeader
+        title="Real-Time Traffic & Request Flow"
+        description="Know exactly what is happening right now across all APIs · updates continuously."
+        actions={
+          <button
+            type="button"
+            onClick={toggleLive}
+            className="inline-flex items-center gap-2 rounded-[8px] border border-[var(--border)] bg-[var(--bg2)] px-3 py-1.5 text-sm font-medium text-[var(--text)]"
+          >
+            <span className={`size-2 rounded-full ${isLive ? "pulse-dot bg-[var(--green)]" : "bg-[var(--green)]"}`} />
+            Live (1m window)
+          </button>
+        }
+      />
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <SectionCard title="Live traffic" className="lg:col-span-2">
-          <Table headers={["When", "Method", "Route", "Status", "Latency", "Service"]} maxHeight="28rem">
-            {liveRows.map((r) => (
-              <Tr key={r.eventId} onClick={() => navigate(`/observability/requests/${r.requestId}`)}>
-                <Td><Timestamp value={r.timestamp} /></Td>
-                <Td><MethodBadge method={r.method} /></Td>
-                <Td><MonospaceText value={r.route} className="max-w-[200px]" /></Td>
-                <Td><StatusCodeBadge code={r.statusCode} /></Td>
-                <Td className="tabular-nums">{formatLatency(r.latency)}</Td>
-                <Td className="text-[var(--text2)]">{r.metadata.service}</Td>
-              </Tr>
-            ))}
-          </Table>
-        </SectionCard>
-
-        <SectionCard title="Error alert stream">
-          <div className="flex max-h-[28rem] flex-col divide-y divide-[var(--border)] overflow-auto">
-            {errorStream.map((e) => (
-              <button type="button" key={e.eventId} onClick={() => navigate(`/observability/errors/${e.fingerprint}`)} className="flex items-start gap-2 py-2 text-left first:pt-0 hover:opacity-80">
-                <SeverityBadge severity={e.severity} />
-                <div className="min-w-0 flex-1">
-                  <div className="truncate text-[12px] font-medium text-[var(--text)]">{e.name}</div>
-                  <div className="flex items-center gap-2 text-[11px] text-[var(--text3)]">
-                    <span>{e.metadata.service}</span>·<Timestamp value={e.timestamp} />
-                  </div>
-                </div>
-              </button>
-            ))}
+      <div className="grid grid-cols-2 divide-[var(--border)] overflow-hidden rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] max-lg:gap-px max-lg:bg-[var(--border)] lg:grid-cols-none lg:auto-cols-fr lg:grid-flow-col lg:divide-x">
+        {[0, 1, 2, 3, 4].map((i) => (
+          <div key={i} className="flex flex-col gap-2 bg-[var(--bg1)] px-5 py-4">
+            <Skeleton className="h-3 w-24" />
+            <Skeleton className="h-7 w-20" />
+            <Skeleton className="h-3 w-16" />
           </div>
-        </SectionCard>
+        ))}
+      </div>
+
+      <ZoneLabel>Live pulse</ZoneLabel>
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <div className="flex flex-col rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] p-5">
+          <Skeleton className="mb-4 h-4 w-44" />
+          <div className="flex flex-col justify-center py-6 gap-2">
+            <Skeleton className="h-9 w-48" />
+            <Skeleton className="h-3 w-72" />
+          </div>
+        </div>
+
+        <div className="flex flex-col rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] p-5">
+          <Skeleton className="mb-4 h-4 w-44" />
+          <div className="flex items-center justify-center py-6">
+            <Skeleton className="size-36 rounded-full" />
+          </div>
+        </div>
+      </div>
+
+      <ZoneLabel>Hot paths</ZoneLabel>
+
+      <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] p-5">
+        <Skeleton className="mb-4 h-4 w-48" />
+        <div className="flex flex-col gap-3">
+          {[0, 1, 2, 3, 4].map((i) => (
+            <div key={i} className="flex items-center justify-between gap-4 border-b border-[var(--border)] pb-3 last:border-b-0">
+              <Skeleton className="h-4 w-8" />
+              <Skeleton className="h-4 w-64" />
+              <Skeleton className="h-4 w-16" />
+              <Skeleton className="h-4 w-12" />
+              <Skeleton className="h-4 w-16" />
+              <Skeleton className="h-4 w-16" />
+              <Skeleton className="h-4 w-20" />
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );

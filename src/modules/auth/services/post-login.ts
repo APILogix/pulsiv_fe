@@ -32,5 +32,16 @@ export async function completeLogin(
   }
 
   markLoginMetricsTransition();
-  navigate('/dashboard', { replace: true });
+  const targetSlug =
+    session.default_org_slug ??
+    session.organizations?.find((o) => o.id === (session.current_org_id ?? session.default_org_id))?.slug ??
+    session.organizations?.[0]?.slug ??
+    null;
+
+  if (targetSlug) {
+    navigate(`/${targetSlug}/dashboard`, { replace: true });
+  } else {
+    navigate('/dashboard', { replace: true });
+  }
 }
+

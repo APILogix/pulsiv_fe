@@ -6,6 +6,7 @@ import type {
   ChatRequest,
   InvestigationInput,
   InvestigationKind,
+  InvestigationResource,
   ReportKind,
 } from "../types";
 
@@ -38,8 +39,17 @@ export function useAiCreditUsage() {
 export function useInvestigation() {
   const orgId = useActiveOrgId();
   return useMutation({
-    mutationFn: (vars: { kind: InvestigationKind; input: InvestigationInput }) =>
-      aiApi.investigate(orgId!, vars.kind, vars.input),
+    mutationFn: (
+      vars:
+        | { resource: InvestigationResource; publicId: string }
+        | { kind?: InvestigationKind; input?: InvestigationInput },
+    ) => {
+      const resource = (
+        'resource' in vars ? vars.resource : vars.kind ?? vars.input?.resource
+      ) as InvestigationResource;
+      const publicId = ('publicId' in vars ? vars.publicId : vars.input?.publicId) ?? '';
+      return aiApi.investigate(orgId!, resource, publicId);
+    },
   });
 }
 

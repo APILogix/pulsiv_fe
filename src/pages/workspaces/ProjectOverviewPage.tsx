@@ -163,7 +163,6 @@ export default function ProjectOverviewPage() {
 
   const details: KeyValueItem[] = [
     { label: "Slug", value: <code className="font-[family-name:var(--mono)]">{overview.project.slug}</code> },
-    { label: "Visibility", value: <span className="capitalize">{overview.project.visibility}</span> },
     { label: "Timezone", value: overview.project.timezone },
     { label: "Environments", value: formatNumber(stats?.stats.environmentCount ?? 0) },
     { label: "Total requests", value: formatCompact(stats?.stats.totalRequests ?? 0) },

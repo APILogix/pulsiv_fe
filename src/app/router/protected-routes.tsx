@@ -1,11 +1,12 @@
-import { lazy } from "react";
-import { RouteObject, Navigate } from "react-router";
+import { lazy, useEffect } from "react";
+import { RouteObject, Navigate, Outlet, useParams, useLocation } from "react-router";
 import { RequireAuth } from "./route-guards";
 import NotFoundPage from "@/shared/components/NotFoundPage";
 
 import { AuthenticatedAppLayout } from "../layouts/AuthenticatedAppLayout";
 import { useOrganizations } from "@/modules/organizations/hooks/useOrganizations";
 import { useOrgStore } from "@/modules/organizations/store/org.store";
+import { orgRoutes } from "./org-routes";
 
 const DashboardPage = lazy(() => import("@/modules/dashboard/index").then((m) => ({ default: m.DashboardPage ?? (() => null) })));
 const SecurityCenterPage = lazy(() => import("@/modules/auth/pages/SecurityCenterPage").then((m) => ({ default: m.default })));
@@ -51,14 +52,15 @@ const ServiceDependenciesPage = lazy(() => import("@/pages/services/ServiceDepen
 const ServiceSlosPage = lazy(() => import("@/pages/services/ServiceSlosPage"));
 
 // ── Pulse observability surfaces ──
-// Observe
 const ExecutiveDashboard = lazy(() => import("@/pages/observe/ExecutiveDashboard"));
 const RequestsPage = lazy(() => import("@/pages/observe/RequestsPage"));
 const RequestDetailPage = lazy(() => import("@/pages/observe/RequestDetailPage"));
-const EventsExplorer = lazy(() => import("@/pages/observe/EventsExplorer"));
-const EventDetailPage = lazy(() => import("@/pages/observe/EventDetailPage"));
+const SpanDetailPage = lazy(() => import("@/pages/observe/SpanDetailPage"));
+
 const ErrorGroupsPage = lazy(() => import("@/pages/observe/ErrorGroupsPage"));
 const ErrorDetailPage = lazy(() => import("@/pages/observe/ErrorDetailPage"));
+const ErrorGroupsListPage = lazy(() => import("@/modules/error-groups/pages/ErrorGroupsListPage"));
+const ErrorGroupDetailPage = lazy(() => import("@/modules/error-groups/pages/ErrorGroupDetailPage"));
 const ServiceHealthPage = lazy(() => import("@/pages/observe/ServiceHealthPage"));
 const LatencyPage = lazy(() => import("@/pages/observe/LatencyPage"));
 const TracesPage = lazy(() => import("@/pages/observe/TracesPage"));
@@ -66,8 +68,11 @@ const TraceDetailPage = lazy(() => import("@/pages/observe/TraceDetailPage"));
 const LogsPage = lazy(() => import("@/pages/observe/LogsPage"));
 const LogDetailPage = lazy(() => import("@/pages/observe/LogDetailPage"));
 const MetricsPage = lazy(() => import("@/pages/observe/MetricsPage"));
+const MetricDetailPage = lazy(() => import("@/pages/observe/MetricDetailPage"));
 const ProfilingPage = lazy(() => import("@/pages/observe/ProfilingPage"));
+const ProfileDetailPage = lazy(() => import("@/pages/observe/ProfileDetailPage"));
 const CronsPage = lazy(() => import("@/pages/observe/CronsPage"));
+const CronDetailPage = lazy(() => import("@/pages/observe/CronDetailPage"));
 const ReplayPage = lazy(() => import("@/pages/observe/ReplayPage"));
 const RuntimeMetricsPage = lazy(() => import("@/pages/observe/RuntimeMetricsPage"));
 const EventLoopPage = lazy(() => import("@/pages/observe/EventLoopPage"));
@@ -88,11 +93,11 @@ const ProjectEnvironmentsPage = lazy(() => import("@/pages/workspaces/ProjectEnv
 const ProjectApiKeysPage = lazy(() => import("@/pages/workspaces/ProjectApiKeysPage"));
 const ProjectActivityPage = lazy(() => import("@/pages/workspaces/ProjectActivityPage"));
 const RemoteConfigPage = lazy(() => import("@/pages/workspaces/RemoteConfigPage"));
+const ProjectAlertsPage = lazy(() => import("@/pages/workspaces/ProjectAlertsPage"));
 const ProjectAlertRoutesPage = lazy(() => import("@/pages/workspaces/ProjectAlertRoutesPage"));
 const ProjectThresholdsPage = lazy(() => import("@/pages/workspaces/ProjectThresholdsPage"));
 const ProjectAlertChannelsPage = lazy(() => import("@/pages/workspaces/ProjectAlertChannelsPage"));
 const ProjectConnectorsPage = lazy(() => import("@/pages/workspaces/ProjectConnectorsPage"));
-
 
 const ProjectMembersPage = lazy(() => import("@/pages/workspaces/ProjectMembersPage"));
 const AlertRouteWizardPage = lazy(() => import("@/pages/workspaces/AlertRouteWizardPage"));
@@ -100,11 +105,12 @@ const MemberAlertPreferencesPage = lazy(() => import("@/pages/workspaces/MemberA
 const AlertDeliveryLogsPage = lazy(() => import("@/pages/workspaces/AlertDeliveryLogsPage"));
 const DeadLetterQueuePage = lazy(() => import("@/pages/workspaces/DeadLetterQueuePage"));
 
-
 // Act
+const AlertOverviewPage = lazy(() => import("@/pages/act/AlertOverviewPage"));
 const AlertEventsPage = lazy(() => import("@/pages/act/AlertEventsPage"));
 const AlertEventDetailPage = lazy(() => import("@/pages/act/AlertEventDetailPage"));
 const AlertRulesPage = lazy(() => import("@/pages/act/AlertRulesPage"));
+const OrgPolicyDetailPage = lazy(() => import("@/pages/act/OrgPolicyDetailPage"));
 const AlertRuleDetailPage = lazy(() => import("@/pages/act/AlertRuleDetailPage"));
 const EscalationsPage = lazy(() => import("@/pages/act/EscalationsPage"));
 const EscalationDetailPage = lazy(() => import("@/pages/act/EscalationDetailPage"));
@@ -163,7 +169,7 @@ const InvoicesPage = lazy(() => import("@/pages/billing/InvoicesPage"));
 const InvoiceDetailPage = lazy(() => import("@/pages/billing/InvoiceDetailPage"));
 const PaymentMethodsPage = lazy(() => import("@/pages/billing/PaymentMethodsPage"));
 
-// Settings (new surfaces — others reuse existing module components)
+// Settings
 const WebhooksPage = lazy(() => import("@/pages/settings/WebhooksPage"));
 const WebhookDetailPage = lazy(() => import("@/pages/settings/WebhookDetailPage"));
 const IntegrationsPage = lazy(() => import("@/pages/settings/IntegrationsPage"));
@@ -176,36 +182,82 @@ const IntegrationsAuditPage = lazy(() => import("@/pages/settings/IntegrationsAu
 // Super Admin / Billing Plans
 const BillingPlansPage = lazy(() => import("@/pages/admin/BillingPlansPage"));
 
-// New Roles Page
+// Roles Page
 const RolesPermissionsPage = lazy(() => import("@/pages/team/RolesPermissionsPage"));
 
-function LegacyProjectsRedirect({ segment }: { segment?: "new" }) {
-  const activeOrgSlug = useOrgStore((state) => state.activeOrgSlug);
-  const { organizations, isLoading } = useOrganizations();
+/**
+ * Route guard component for /:orgSlug subtree.
+ * Ensures the organization slug belongs to the user and synchronizes Zustand state.
+ */
+function OrgRouteGuard() {
+  const { orgSlug } = useParams<{ orgSlug: string }>();
+  const { organizations, activeOrgId, activeOrgSlug, isLoading } = useOrganizations();
+  const setActiveOrg = useOrgStore((s) => s.setActiveOrg);
 
-  if (isLoading) return null;
+  useEffect(() => {
+    if (!orgSlug || isLoading || !organizations.length) return;
 
-  const orgSlug = activeOrgSlug ?? organizations[0]?.slug ?? null;
+    const matchingOrg = organizations.find((o) => o.slug?.toLowerCase() === orgSlug.toLowerCase());
+    if (matchingOrg) {
+      if (activeOrgId !== matchingOrg.id || activeOrgSlug !== matchingOrg.slug) {
+        setActiveOrg({ id: matchingOrg.id, slug: matchingOrg.slug });
+      }
+    }
+  }, [orgSlug, organizations, activeOrgId, activeOrgSlug, setActiveOrg, isLoading]);
 
-  if (orgSlug) {
-    return <Navigate to={`/${orgSlug}/projects${segment ? `/${segment}` : ""}`} replace />;
+  if (isLoading && !organizations.length) {
+    return null;
   }
 
-  return <Navigate to="/dashboard" replace />;
+  if (orgSlug && organizations.length > 0) {
+    const hasAccess = organizations.some((o) => o.slug?.toLowerCase() === orgSlug.toLowerCase());
+    if (!hasAccess) {
+      const fallbackSlug = activeOrgSlug ?? organizations[0]?.slug;
+      if (fallbackSlug) {
+        return <Navigate to={`/${fallbackSlug}/dashboard`} replace />;
+      }
+      return <Navigate to="/onboarding/organization" replace />;
+    }
+  }
+
+  return <Outlet />;
 }
 
 /**
- * Route elements are plain lazy components. Loading UI is owned by the layout
- * boundaries (AppLayout → module scope, ModuleLayout/SettingsLayout/
- * ProjectShellPage → page scope), which resolve a route-shaped skeleton from the
- * URL. A per-route wrapper here would render a generic loader on top of that and
- * defeat the point.
+ * Redirect component for legacy unscoped routes (e.g. /dashboard, /projects, /settings).
+ * Resolves the active organization slug and forwards the user to /:orgSlug/...
  */
+function OrgScopedRedirect({ target = "dashboard", wildcard = false }: { target?: string; wildcard?: boolean }) {
+  const activeOrgSlug = useOrgStore((state) => state.activeOrgSlug);
+  const { organizations, isLoading } = useOrganizations();
+  const location = useLocation();
+
+  if (isLoading && !activeOrgSlug) return null;
+
+  const orgSlug = activeOrgSlug ?? organizations[0]?.slug ?? null;
+  if (!orgSlug) {
+    return <Navigate to="/onboarding/organization" replace />;
+  }
+
+  if (wildcard) {
+    const pathname = location.pathname.replace(/^\/+/, "");
+    return <Navigate to={`/${orgSlug}/${pathname}`} replace />;
+  }
+
+  const destination = target ? `/${orgSlug}/${target.replace(/^\//, "")}` : `/${orgSlug}/dashboard`;
+  return <Navigate to={destination} replace />;
+}
+
 export const protectedRoutes: RouteObject[] = [
   {
     element: <AuthenticatedAppLayout />,
     children: [
-          { index: true, element: <DashboardPage /> },
+      // Top-level /:orgSlug organization-scoped route tree
+      {
+        path: ":orgSlug",
+        element: <OrgRouteGuard />,
+        children: [
+          { index: true, element: <Navigate to="dashboard" replace /> },
           { path: "dashboard", element: <DashboardPage /> },
 
           {
@@ -236,21 +288,24 @@ export const protectedRoutes: RouteObject[] = [
               { index: true, element: <ExecutiveDashboard /> },
               { path: "requests", element: <RequestsPage /> },
               { path: "requests/:requestId", element: <RequestDetailPage /> },
-              { path: "events", element: <EventsExplorer /> },
-              { path: "events/:eventId", element: <EventDetailPage /> },
+
               { path: "errors", element: <ErrorGroupsPage /> },
               { path: "errors/:fingerprint", element: <ErrorDetailPage /> },
               { path: "errors/:fingerprint/occurrences/:eventId", element: <ErrorDetailPage /> },
-              { path: "service-health", element: <ServiceHealthPage /> },
+              { path: "error-groups", element: <ErrorGroupsListPage /> },
+              { path: "error-groups/:groupId", element: <ErrorGroupDetailPage /> },
               { path: "latency", element: <LatencyPage /> },
               { path: "traces", element: <TracesPage /> },
               { path: "traces/:traceId", element: <TraceDetailPage /> },
-              { path: "traces/:traceId/spans/:spanId", element: <TraceDetailPage /> },
+              { path: "traces/:traceId/spans/:spanId", element: <SpanDetailPage /> },
               { path: "logs", element: <LogsPage /> },
               { path: "logs/:eventId", element: <LogDetailPage /> },
               { path: "metrics", element: <MetricsPage /> },
+              { path: "metrics/:metricId", element: <MetricDetailPage /> },
               { path: "profiling", element: <ProfilingPage /> },
+              { path: "profiling/:profileId", element: <ProfileDetailPage /> },
               { path: "crons", element: <CronsPage /> },
+              { path: "crons/:checkinId", element: <CronDetailPage /> },
               { path: "replay", element: <ReplayPage /> },
               { path: "runtime-metrics", element: <RuntimeMetricsPage /> },
               { path: "event-loop", element: <EventLoopPage /> },
@@ -269,77 +324,72 @@ export const protectedRoutes: RouteObject[] = [
           },
 
           {
-            path: ":orgSlug",
-            children: [
-              {
-                path: "projects",
-                children: [
-                  {
-                    element: <ModuleLayout />,
-                    children: [
-                      { index: true, element: <ProjectsPage /> },
-                      { path: "new", element: <CreateProjectWizardPage /> },
-                    ]
-                  }
-                ],
-              },
-              {
-                path: "p/:projectPublicId",
-                element: <ProjectShellPage />,
-                children: [
-                  { index: true, element: <Navigate to="overview" replace /> },
-
-                  // Monitor
-                  { path: "overview", element: <ProjectOverviewPage /> },
-                  { path: "analytics", element: <ProjectAnalyticsPage /> },
-                  { path: "usage", element: <ProjectUsagePage /> },
-                  { path: "activity", element: <ProjectActivityPage /> },
-
-                  // Telemetry
-                  { path: "environments", element: <ProjectEnvironmentsPage /> },
-                  { path: "api-keys", element: <ProjectApiKeysPage /> },
-                  { path: "remote-config", element: <RemoteConfigPage /> },
-
-                  // Alerting
-                  { path: "alert-rules", element: <ProjectThresholdsPage /> },
-                  { path: "alert-channels", element: <ProjectAlertChannelsPage /> },
-                  { path: "routes", element: <ProjectAlertRoutesPage /> },
-                  { path: "routes/:routeId", element: <AlertRouteWizardPage /> },
-                  { path: "connectors", element: <ProjectConnectorsPage /> },
-                  { path: "deliveries", element: <AlertDeliveryLogsPage /> },
-                  { path: "dlq", element: <DeadLetterQueuePage /> },
-                  { path: "preferences", element: <MemberAlertPreferencesPage /> },
-
-                  // Team
-                  { path: "members", element: <ProjectMembersPage /> },
-
-                  // Configuration
-                  { path: "settings", element: <Navigate to="general" replace /> },
-                  { path: "settings/general", element: <ProjectSettingsPage /> },
-
-                  // Legacy paths — kept so existing links and bookmarks resolve.
-                  { path: "alert-thresholds", element: <Navigate to="../alert-rules" replace /> },
-                  { path: "thresholds", element: <Navigate to="../alert-rules" replace /> },
-                  { path: "channels", element: <Navigate to="../alert-channels" replace /> },
-                ]
-              }
-            ],
-          },
-          {
             path: "projects",
             children: [
-              { index: true, element: <LegacyProjectsRedirect /> },
-              { path: "new", element: <LegacyProjectsRedirect segment="new" /> },
+              {
+                element: <ModuleLayout />,
+                children: [
+                  { index: true, element: <ProjectsPage /> },
+                  { path: "new", element: <CreateProjectWizardPage /> },
+                ],
+              },
               { path: ":projectId/*", element: <ProjectUuidRedirect /> },
-            ]
+            ],
           },
+
+          {
+            path: "p/:projectPublicId",
+            element: <ProjectShellPage />,
+            children: [
+              { index: true, element: <Navigate to="overview" replace /> },
+
+              // Monitor
+              { path: "overview", element: <ProjectOverviewPage /> },
+              { path: "analytics", element: <ProjectAnalyticsPage /> },
+              { path: "usage", element: <ProjectUsagePage /> },
+              { path: "activity", element: <ProjectActivityPage /> },
+
+              // Telemetry
+              { path: "environments", element: <ProjectEnvironmentsPage /> },
+              { path: "api-keys", element: <ProjectApiKeysPage /> },
+              { path: "remote-config", element: <RemoteConfigPage /> },
+
+              // Alerting
+              { path: "alerts", element: <ProjectAlertsPage /> },
+              { path: "alert-rules", element: <ProjectThresholdsPage /> },
+              { path: "alert-channels", element: <ProjectAlertChannelsPage /> },
+              { path: "routes", element: <ProjectAlertRoutesPage /> },
+              { path: "routes/:routeId", element: <AlertRouteWizardPage /> },
+              { path: "connectors", element: <ProjectConnectorsPage /> },
+              { path: "deliveries", element: <AlertDeliveryLogsPage /> },
+              { path: "dlq", element: <DeadLetterQueuePage /> },
+              { path: "preferences", element: <MemberAlertPreferencesPage /> },
+
+              // Team
+              { path: "members", element: <ProjectMembersPage /> },
+
+              // Configuration
+              { path: "settings", element: <Navigate to="general" replace /> },
+              { path: "settings/general", element: <ProjectSettingsPage /> },
+
+              // Legacy paths
+              { path: "alert-thresholds", element: <Navigate to="../alert-rules" replace /> },
+              { path: "thresholds", element: <Navigate to="../alert-rules" replace /> },
+              { path: "channels", element: <Navigate to="../alert-channels" replace /> },
+            ],
+          },
+
           {
             path: "alerts",
             element: <ModuleLayout />,
             children: [
               { index: true, element: <AlertEventsPage /> },
+              { path: "overview", element: <AlertOverviewPage /> },
+              { path: "incidents", element: <AlertEventsPage /> },
+              { path: "incidents/:incidentId", element: <AlertEventDetailPage /> },
               { path: ":incidentId", element: <AlertEventDetailPage /> },
               { path: "rules", element: <AlertRulesPage /> },
+              { path: "policies/:policyId", element: <OrgPolicyDetailPage /> },
               { path: "rules/:ruleId", element: <AlertRuleDetailPage /> },
               { path: "escalations", element: <EscalationsPage /> },
               { path: "escalations/:policyId", element: <EscalationDetailPage /> },
@@ -348,11 +398,11 @@ export const protectedRoutes: RouteObject[] = [
               { path: "routing", element: <RoutingRulesPage /> },
               { path: "metrics", element: <AlertMetricsPage /> },
               { path: "dead-letters", element: <AlertDeadLettersPage /> },
-              // Legacy paths — kept so existing links and bookmarks resolve.
               { path: "channels", element: <Navigate to="../templates" replace /> },
               { path: "channels/:channelId", element: <Navigate to="../templates" replace /> },
             ],
           },
+
           {
             path: "automation",
             element: <ModuleLayout />,
@@ -369,6 +419,7 @@ export const protectedRoutes: RouteObject[] = [
               { path: "audit", element: <AutomationAuditPage /> },
             ],
           },
+
           {
             path: "ingestion",
             element: <ModuleLayout />,
@@ -381,6 +432,7 @@ export const protectedRoutes: RouteObject[] = [
               { path: "rate-limits", element: <RateLimitsPage /> },
             ],
           },
+
           {
             path: "ai",
             element: <ModuleLayout />,
@@ -394,6 +446,7 @@ export const protectedRoutes: RouteObject[] = [
               { path: "settings", element: <AiSettingsPage /> },
             ],
           },
+
           {
             path: "admin",
             element: <ModuleLayout />,
@@ -402,10 +455,10 @@ export const protectedRoutes: RouteObject[] = [
               { path: "settings", element: <OrgSettingsPage /> },
               { path: "domains", element: <DomainsPage /> },
               { path: "team", element: <TeamPage /> },
-              { path: "teams", element: <Navigate to="/admin/team" replace /> },
-              { path: "members", element: <Navigate to="/admin/team" replace /> },
+              { path: "teams", element: <Navigate to="team" replace /> },
+              { path: "members", element: <Navigate to="team" replace /> },
               { path: "members/:userId", element: <MemberDetailPage /> },
-              { path: "invitations", element: <Navigate to="/admin/team" replace /> },
+              { path: "invitations", element: <Navigate to="team" replace /> },
               { path: "sso", element: <SsoPage /> },
               { path: "scim", element: <ScimPage /> },
               { path: "roles", element: <RolesPermissionsPage /> },
@@ -415,6 +468,7 @@ export const protectedRoutes: RouteObject[] = [
               { path: "compliance", element: <CompliancePage /> },
             ],
           },
+
           {
             path: "super-admin",
             element: <ModuleLayout />,
@@ -422,6 +476,7 @@ export const protectedRoutes: RouteObject[] = [
               { path: "billing", element: <BillingPlansPage /> },
             ],
           },
+
           {
             path: "billing",
             element: <ModuleLayout />,
@@ -447,6 +502,7 @@ export const protectedRoutes: RouteObject[] = [
               { path: "audit", element: <IntegrationsAuditPage /> },
             ],
           },
+
           {
             path: "developer",
             element: <ModuleLayout />,
@@ -455,26 +511,28 @@ export const protectedRoutes: RouteObject[] = [
               { path: "custom-settings", element: <SdkConfigPage /> },
             ],
           },
+
           {
             path: "settings",
             element: <SettingsLayout />,
             children: [
-              { index: true, element: <Navigate to="/account/overview" replace /> },
-              { path: "profile", element: <Navigate to="/account/profile" replace /> },
-              { path: "password", element: <Navigate to="/account/security/password" replace /> },
-              { path: "mfa", element: <Navigate to="/account/security/mfa" replace /> },
-              { path: "sessions", element: <Navigate to="/account/activity/active-sessions" replace /> },
-              { path: "backup-codes", element: <Navigate to="/account/security/recovery-codes" replace /> },
-              { path: "trusted-devices", element: <Navigate to="/account/activity/active-sessions" replace /> },
-              { path: "linked-accounts", element: <Navigate to="/account/connected/linked-accounts" replace /> },
-              { path: "email-verification", element: <Navigate to="/account/profile" replace /> },
+              { index: true, element: <Navigate to="../account/overview" replace /> },
+              { path: "profile", element: <Navigate to="../account/profile" replace /> },
+              { path: "password", element: <Navigate to="../account/security/password" replace /> },
+              { path: "mfa", element: <Navigate to="../account/security/mfa" replace /> },
+              { path: "sessions", element: <Navigate to="../account/activity/active-sessions" replace /> },
+              { path: "backup-codes", element: <Navigate to="../account/security/recovery-codes" replace /> },
+              { path: "trusted-devices", element: <Navigate to="../account/activity/active-sessions" replace /> },
+              { path: "linked-accounts", element: <Navigate to="../account/connected/linked-accounts" replace /> },
+              { path: "email-verification", element: <Navigate to="../account/profile" replace /> },
               { path: "authentication-policy", element: <EffectiveAuthPolicyPage /> },
               { path: "mfa-recovery", element: <MfaRecoveryPanel /> },
               { path: "privacy", element: <PrivacyAndDeletionPanel /> },
-              { path: "personal-logs", element: <Navigate to="/account/activity/login-history" replace /> },
-              { path: "security", element: <Navigate to="/account/overview" replace /> },
+              { path: "personal-logs", element: <Navigate to="../account/activity/login-history" replace /> },
+              { path: "security", element: <Navigate to="../account/overview" replace /> },
             ],
           },
+
           {
             path: "account",
             element: <SettingsLayout />,
@@ -482,7 +540,7 @@ export const protectedRoutes: RouteObject[] = [
               { index: true, element: <Navigate to="overview" replace /> },
               { path: "overview", element: <AccountOverviewPanel /> },
               { path: "profile", element: <PersonalDetailsPanel /> },
-              { path: "email", element: <Navigate to="/account/profile" replace /> },
+              { path: "email", element: <Navigate to="profile" replace /> },
               { path: "security/password", element: <ChangePasswordPanel /> },
               { path: "security/mfa", element: <MfaSecurityPanel /> },
               { path: "security/passkeys", element: <MfaSecurityPanel /> },
@@ -492,15 +550,38 @@ export const protectedRoutes: RouteObject[] = [
               { path: "connected/linked-accounts", element: <LinkedAccountsPanel /> },
             ],
           },
+        ],
+      },
 
-          { path: "auth/security", element: <SecurityCenterPage /> },
-          { path: "auth/sessions", element: <SessionsPage /> },
-          { path: "auth/step-up", element: <StepUpPage /> },
-          // Catch-all for unmatched paths within the authenticated app shell
-          { path: "*", element: <NotFoundPage /> },
+      // Unscoped legacy redirects to active org
+      { index: true, element: <OrgScopedRedirect target="dashboard" /> },
+      { path: "dashboard", element: <OrgScopedRedirect target="dashboard" /> },
+      { path: "dashboards/*", element: <OrgScopedRedirect wildcard /> },
+      { path: "observability/*", element: <OrgScopedRedirect wildcard /> },
+      { path: "services/*", element: <OrgScopedRedirect wildcard /> },
+      { path: "projects", element: <OrgScopedRedirect target="projects" /> },
+      { path: "projects/new", element: <OrgScopedRedirect target="projects/new" /> },
+      { path: "projects/:projectId/*", element: <ProjectUuidRedirect /> },
+      { path: "alerts/*", element: <OrgScopedRedirect wildcard /> },
+      { path: "automation/*", element: <OrgScopedRedirect wildcard /> },
+      { path: "ingestion/*", element: <OrgScopedRedirect wildcard /> },
+      { path: "ai/*", element: <OrgScopedRedirect wildcard /> },
+      { path: "admin/*", element: <OrgScopedRedirect wildcard /> },
+      { path: "billing/*", element: <OrgScopedRedirect wildcard /> },
+      { path: "connectors/*", element: <OrgScopedRedirect wildcard /> },
+      { path: "developer/*", element: <OrgScopedRedirect wildcard /> },
+      { path: "settings/*", element: <OrgScopedRedirect wildcard /> },
+      { path: "account/*", element: <OrgScopedRedirect wildcard /> },
+
+      { path: "auth/security", element: <SecurityCenterPage /> },
+      { path: "auth/sessions", element: <SessionsPage /> },
+      { path: "auth/step-up", element: <StepUpPage /> },
+
+      // Catch-all for unmatched paths within the authenticated app shell
+      { path: "*", element: <NotFoundPage /> },
     ],
   },
-  // Routes that require auth but render OUTSIDE the main app shell (no sidebar)
+  // Routes that render outside the main app shell
   {
     element: <RequireAuth />,
     children: [

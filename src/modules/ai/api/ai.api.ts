@@ -10,6 +10,7 @@ import type {
   CreatedJob,
   InvestigationInput,
   InvestigationKind,
+  InvestigationResource,
   KnowledgeDoc,
   ReportKind,
 } from "../types";
@@ -34,6 +35,8 @@ const INVESTIGATION_ROUTES: Record<InvestigationKind, string> = {
   trace: "/trace-analysis",
   span: "/span-analysis",
   log: "/log-summary",
+  logs: "/log-summary",
+  request: "/request-explanation",
   deployment: "/deployment-correlation",
 };
 
@@ -53,10 +56,20 @@ const REPORT_MODE: Record<ReportKind, string> = {
 };
 
 export const aiApi = {
-  investigate: (orgId: string, kind: InvestigationKind, input: InvestigationInput) =>
-    apiClient
-      .post(`${base(orgId)}${INVESTIGATION_ROUTES[kind]}`, input, idempotencyConfig())
-      .then((r) => r.data as AiAnswer),
+  investigate: (
+    orgId: string,
+    resourceOrInput: InvestigationResource | InvestigationInput,
+    maybePublicId?: string,
+  ) => {
+    const payload =
+      typeof resourceOrInput === 'object' && resourceOrInput !== null
+        ? { resource: resourceOrInput.resource, publicId: resourceOrInput.publicId }
+        : { resource: resourceOrInput, publicId: maybePublicId! };
+
+    return apiClient
+      .post(`${base(orgId)}/investigate`, payload, idempotencyConfig())
+      .then((r) => r.data as AiAnswer);
+  },
 
   chat: (orgId: string, input: ChatRequest) =>
     apiClient

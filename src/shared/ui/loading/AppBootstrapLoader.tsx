@@ -26,13 +26,12 @@ import { useMotionPreference } from "@/shared/motion/MotionProvider";
 
 const BOOT_STAGES = [
   "Initializing workspace",
-  "Loading AI engine",
   "Connecting workspace",
-  "Preparing dashboard",
-  "Almost ready",
+  "Ready",
 ] as const;
 
-const STAGE_INTERVAL = 700;
+const STAGE_INTERVAL = 250;
+
 
 function BrandMark({ animate }: { animate: boolean }) {
   return (
@@ -132,7 +131,7 @@ export function AppBootstrapLoader({ message = "Loading application" }: { messag
           className="flex flex-col items-center gap-2.5"
         >
           <span className="font-[family-name:var(--display)] text-[22px] font-semibold tracking-tight text-[var(--text)]">
-            Pulsiv
+            Sentinel
           </span>
 
           {/* stage copy — fixed height so the layout never shifts between stages */}
@@ -199,12 +198,13 @@ export function AppBootstrapGate({
           className={cn("fixed inset-0 z-[120]", className)}
           initial={{ opacity: 1 }}
           animate={{ opacity: 1 }}
-          exit={{ opacity: 0, scale: 1.02 }}
-          transition={{ duration: 0.34, ease: EASE.standard }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.16, ease: EASE.standard }}
         >
           <AppBootstrapLoader message={message} />
         </motion.div>
       )}
     </AnimatePresence>
+
   );
 }

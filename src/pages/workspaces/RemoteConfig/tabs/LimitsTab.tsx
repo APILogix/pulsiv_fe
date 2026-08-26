@@ -1,9 +1,9 @@
-import { SectionBanner, FieldTooltip } from '../components/HelpSystem';
+import { SectionBanner } from '../components/HelpSystem';
 import { NumberField } from '../components/NumberField';
 import type { SdkConfigState } from '../schema';
 import { BOUNDS, type FieldError } from '../bounds';
 import { Switch } from '@/components/ui/switch';
-import { Sliders, Building2, Cpu } from 'lucide-react';
+import { Sliders, Building2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface LimitsTabProps {

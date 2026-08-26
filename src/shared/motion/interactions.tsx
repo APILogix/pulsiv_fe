@@ -58,8 +58,6 @@ export function AnimatedButton({
         "relative overflow-hidden",
         className,
       )}
-      whileHover={disabled || loading ? undefined : { y: -1 }}
-      whileTap={disabled || loading ? undefined : { scale: 0.975, y: 0 }}
       transition={{ duration: DURATION.fast, ease: EASE.standard }}
       {...props}
     >

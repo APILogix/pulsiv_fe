@@ -254,7 +254,7 @@ export default function IntegrationsPage() {
                 </Notice>
               )}
 
-              <Field label="Integration name" hint="A friendly name for this connection inside Pulsiv.">
+              <Field label="Integration name" hint="A friendly name for this connection inside Sentinel.">
                 <input
                   name="name"
                   required
@@ -293,7 +293,7 @@ export default function IntegrationsPage() {
       <PageHero
         eyebrow="Connectors"
         title="Integrations"
-        description="Route alerts, incidents, and delivery events from Pulsiv into the tools your team already runs on."
+        description="Route alerts, incidents, and delivery events from Sentinel into the tools your team already runs on."
         icon={Cable}
         actions={
           <Button onClick={() => navigate("/connectors/audit")}>
@@ -313,7 +313,7 @@ export default function IntegrationsPage() {
           <EmptyPanel
             icon={Plug}
             title="No connectors yet"
-            description="Connect Slack, a webhook endpoint, or email to start routing alerts out of Pulsiv."
+            description="Connect Slack, a webhook endpoint, or email to start routing alerts out of Sentinel."
             action={
               <Button variant="primary" onClick={scrollToCatalog}>
                 Browse the catalog
@@ -334,7 +334,7 @@ export default function IntegrationsPage() {
       </section>
 
       <section id={CATALOG_ANCHOR} className="flex flex-col gap-4">
-        <SectionHeading title="Available connectors" description="Everything else Pulsiv can deliver to." />
+        <SectionHeading title="Available connectors" description="Everything else Sentinel can deliver to." />
         {loadingTypes ? (
           <GridSkeleton />
         ) : availableTypes.length === 0 ? (

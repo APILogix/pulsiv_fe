@@ -1,117 +1,319 @@
-/**
- * Alert events — `GET/POST /organizations/:orgId/alerting/events`.
- *
- * This is the incident center: every fired alert rule (or hand-ingested
- * event) lands here as an `AlertEvent`. Operators acknowledge, resolve, or
- * silence directly from the list. Status values come straight from the
- * backend `AlertEventStatusSchema` — pending/processing/firing/resolved/
- * acknowledged/suppressed/silenced/error.
- */
-import { useState } from "react";
-import { useNavigate } from "react-router";
-import { Siren } from "lucide-react";
-import { toast } from "sonner";
+import { useMemo, useState } from "react";
+import { Link, useNavigate } from "react-router";
 import {
-  PageHeader, KpiCard, FillPage, InfiniteTable, SeverityBadge, Timestamp, FilterSelect,
-} from "@/shared/observe";
-import type { Column } from "@/shared/observe";
-import { useAlertEvents, useAlertEventStats } from "@/modules/alerting/hooks/useAlerting";
-import { apiErrorMessage } from "@/modules/projects/components/project-ui";
-import { EventStatusPill, withAllOption } from "@/modules/alerting/components/alerting-ui";
-import { ALERT_EVENT_STATUSES, ALERT_SEVERITIES, type AlertEvent, type AlertEventStatus } from "@/modules/alerting/api/types";
+  AlertOctagon,
+  AlertTriangle,
+  CheckCircle2,
+  Clock,
+  Eye,
+  Filter,
+  Flame,
+  Radio,
+  RefreshCw,
+  Search,
+  ShieldCheck,
+  VolumeX,
+  XCircle,
+} from "lucide-react";
+import {
+  useAlertEvents,
+  useAlertEventStats,
+  useAlertEventMutations,
+  useNotificationEntitlement,
+} from "@/modules/alerting/hooks/useAlerting";
+import { IncidentStateBadge } from "@/modules/alerting/components/IncidentStateBadge";
+import { toIncidentView } from "@/modules/alerting/components/incident-view";
+import { SeverityBadge } from "@/shared/observe";
+import { EntitlementRestrictedBanner } from "@/modules/alerting/components/EntitlementRestrictedBanner";
+import type { AlertSeverity, IncidentState } from "@/modules/alerting/api/types";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
-const STATUS_OPTS = withAllOption(ALERT_EVENT_STATUSES, "All statuses");
-const SEVERITY_OPTS = withAllOption(ALERT_SEVERITIES, "All severities");
-const VIEWS = ["list", "kanban"] as const;
-const COLUMNS: AlertEventStatus[] = ["firing", "acknowledged", "resolved"];
+const STATE_TABS: Array<{ id: string; label: string; state?: IncidentState }> = [
+  { id: "all", label: "All Incidents" },
+  { id: "triggered", label: "Triggered / Firing", state: "triggered" },
+  { id: "acknowledged", label: "Acknowledged", state: "acknowledged" },
+  { id: "escalated", label: "Escalated", state: "escalated" },
+  { id: "muted", label: "Muted / Silenced", state: "muted" },
+  { id: "resolved", label: "Resolved", state: "resolved" },
+];
+
+const SEVERITIES: Array<{ id: string; label: string }> = [
+  { id: "all", label: "All severities" },
+  { id: "critical", label: "Critical" },
+  { id: "error", label: "Error" },
+  { id: "warning", label: "Warning" },
+  { id: "info", label: "Info" },
+];
 
 export default function AlertEventsPage() {
   const navigate = useNavigate();
-  const [status, setStatus] = useState("");
-  const [severity, setSeverity] = useState("");
-  const [view, setView] = useState<(typeof VIEWS)[number]>("list");
+  const [selectedTab, setSelectedTab] = useState("all");
+  const [selectedSeverity, setSelectedSeverity] = useState("all");
+  const [search, setSearch] = useState("");
 
-  const query = {
-    ...(status ? { status: status as AlertEventStatus } : {}),
-    ...(severity ? { severity: severity as AlertEvent["severity"] } : {}),
-    limit: 100,
+  const { data: statsData } = useAlertEventStats();
+  const { data: eventsData, isLoading, refetch, isRefetching } = useAlertEvents({ limit: 150 });
+  const { isRestricted } = useNotificationEntitlement();
+  const mutations = useAlertEventMutations();
+
+  const incidents = useMemo(
+    () => (eventsData?.data ?? []).map(toIncidentView),
+    [eventsData],
+  );
+
+  const countsByState = useMemo(() => {
+    const map: Record<string, number> = { all: incidents.length };
+    for (const inc of incidents) {
+      map[inc.state] = (map[inc.state] ?? 0) + 1;
+    }
+    return map;
+  }, [incidents]);
+
+  const filtered = useMemo(() => {
+    return incidents.filter((incident) => {
+      const matchesTab = selectedTab === "all" || incident.state === selectedTab;
+      const matchesSeverity =
+        selectedSeverity === "all" || incident.severity === selectedSeverity;
+      const matchesSearch =
+        search.trim() === "" ||
+        `${incident.title} ${incident.service} ${incident.environment} ${incident.fingerprint}`
+          .toLowerCase()
+          .includes(search.toLowerCase());
+
+      return matchesTab && matchesSeverity && matchesSearch;
+    });
+  }, [incidents, selectedTab, selectedSeverity, search]);
+
+  const handleQuickAck = async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    try {
+      await mutations.acknowledge.mutateAsync({ id, body: { comment: "Quick acknowledge from command center" } });
+      toast.success("Incident acknowledged");
+    } catch {
+      toast.error("Failed to acknowledge incident");
+    }
   };
-  const { data, isLoading, error } = useAlertEvents(query);
-  const { data: stats } = useAlertEventStats();
-  const events = data?.data ?? [];
 
-  if (error) toast.error(apiErrorMessage(error, "Could not load alert events."));
-
-  const firing = events.filter((e) => e.status === "firing").length;
-  const acknowledged = events.filter((e) => e.status === "acknowledged").length;
-  const resolved = events.filter((e) => e.status === "resolved").length;
-
-  const columns: Column<AlertEvent>[] = [
-    { key: "severity", header: "Severity", width: "90px", cell: (e) => <SeverityBadge severity={e.severity} /> },
-    { key: "source", header: "Source", width: "1fr", cell: (e) => <span className="truncate font-medium">{e.source}</span> },
-    { key: "fingerprint", header: "Fingerprint", width: "160px", cell: (e) => <span className="truncate font-[family-name:var(--mono)] text-[12px] text-[var(--text2)]">{e.fingerprint}</span> },
-    { key: "status", header: "Status", width: "130px", cell: (e) => <EventStatusPill status={e.status} /> },
-    { key: "duplicates", header: "Duplicates", width: "100px", cell: (e) => <span className="tabular-nums text-[var(--text2)]">{e.duplicateCount}</span> },
-    { key: "started", header: "Started", width: "120px", cell: (e) => <Timestamp value={e.startedAt} /> },
-  ];
+  const handleQuickResolve = async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    try {
+      await mutations.resolve.mutateAsync({ id, body: { reason: "Resolved manually from command center" } });
+      toast.success("Incident marked resolved");
+    } catch {
+      toast.error("Failed to resolve incident");
+    }
+  };
 
   return (
-    <FillPage>
-      <PageHeader
-        title="Alert events"
-        description="Incident center for triggered alerts, hand-ingested events, and their lifecycle."
-        actions={
-          <div className="flex gap-1 rounded-[8px] border border-[var(--border)] p-0.5">
-            {VIEWS.map((v) => (
-              <button type="button" key={v} onClick={() => setView(v)} className={cn("rounded-[6px] px-3 py-1 text-[12px] capitalize", view === v ? "bg-[var(--brand-bg)] text-[var(--brand)]" : "text-[var(--text3)]")}>{v}</button>
-            ))}
+    <div className="mx-auto w-full max-w-[1400px] space-y-6 p-4 sm:p-6">
+      {/* Header */}
+      <div className="flex flex-col justify-between gap-4 border-b border-border/60 pb-4 sm:flex-row sm:items-center">
+        <div>
+          <div className="flex items-center gap-2">
+            <AlertOctagon className="size-6 text-rose-500" aria-hidden="true" />
+            <h1 className="text-2xl font-bold tracking-tight text-[var(--text)]">
+              Incident Command Center
+            </h1>
           </div>
-        }
-      />
+          <p className="mt-1 text-xs text-muted-foreground">
+            Live incidents, breach evaluations, and state transitions across all projects.
+          </p>
+        </div>
 
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <KpiCard label="Firing" value={firing} icon={Siren} trend={firing > 0 ? "down" : "neutral"} />
-        <KpiCard label="Acknowledged" value={acknowledged} />
-        <KpiCard label="Resolved" value={resolved} trend="up" />
-        <KpiCard label="Total (period)" value={stats ? String(Object.values(stats).length) : events.length} />
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => refetch()}
+            disabled={isRefetching}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium text-[var(--text)] transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)]"
+          >
+            <RefreshCw className={cn("size-3.5", isRefetching && "animate-spin")} />
+            Refresh
+          </button>
+          <Link
+            to="/alerts/overview"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium text-[var(--text)] transition-colors hover:bg-muted"
+          >
+            <Radio className="size-3.5 text-[var(--brand)]" />
+            Overview
+          </Link>
+        </div>
       </div>
 
-      {view === "list" ? (
-        <>
-          <div className="flex gap-3">
-            <FilterSelect value={status} onChange={setStatus} options={STATUS_OPTS} label="Status" />
-            <FilterSelect value={severity} onChange={setSeverity} options={SEVERITY_OPTS} label="Severity" />
-          </div>
-          <InfiniteTable
-            className="flex-1"
-            loading={isLoading}
-            items={events}
-            queryKey={["alert-events", status, severity]}
-            columns={columns}
-            getKey={(e) => e.id}
-            onRowClick={(e) => navigate(`/alerts/${e.id}`)}
-            emptyMessage="No alert events match these filters."
+      {/* Plan Entitlement Warning */}
+      {isRestricted && <EntitlementRestrictedBanner showOwnerDetails={false} />}
+
+      {/* State Filter Tabs */}
+      <div className="flex flex-wrap items-center gap-2 border-b border-border/60 pb-3">
+        {STATE_TABS.map((tab) => {
+          const count = countsByState[tab.id] ?? 0;
+          const isActive = selectedTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setSelectedTab(tab.id)}
+              className={cn(
+                "inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors",
+                isActive
+                  ? "bg-[var(--brand)] text-[var(--brand-fg)] shadow-sm"
+                  : "text-muted-foreground hover:bg-muted hover:text-[var(--text)]",
+              )}
+            >
+              <span>{tab.label}</span>
+              {count > 0 && (
+                <span
+                  className={cn(
+                    "rounded-full px-1.5 py-0.2 font-mono text-[10px]",
+                    isActive
+                      ? "bg-white/20 text-white"
+                      : "bg-muted text-muted-foreground",
+                  )}
+                >
+                  {count}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Filters Toolbar */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute left-3 top-2.5 size-3.5 text-muted-foreground" />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search by title, service, environment, or fingerprint…"
+            className="w-full rounded-lg border border-border bg-background py-2 pl-9 pr-3 text-xs text-[var(--text)] placeholder:text-muted-foreground focus:border-[var(--brand)] focus:outline-none focus:ring-1 focus:ring-[var(--brand)]"
           />
-        </>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <select
+            value={selectedSeverity}
+            onChange={(e) => setSelectedSeverity(e.target.value)}
+            className="rounded-lg border border-border bg-background px-3 py-2 text-xs text-[var(--text)] focus:border-[var(--brand)] focus:outline-none focus:ring-1 focus:ring-[var(--brand)]"
+          >
+            {SEVERITIES.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      {/* Incidents Table / Stream */}
+      {isLoading ? (
+        <div className="rounded-xl border border-border/60 bg-card/60 p-12 text-center text-xs text-muted-foreground">
+          <RefreshCw className="mx-auto mb-2 size-5 animate-spin text-[var(--brand)]" />
+          Loading active incidents…
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-border/80 bg-card/40 p-12 text-center">
+          <CheckCircle2 className="mx-auto size-9 text-emerald-400 opacity-80" />
+          <p className="mt-2 text-sm font-semibold text-[var(--text)]">No incidents match filters</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {incidents.length === 0
+              ? "All monitored services and threshold policies are healthy."
+              : "Try adjusting your search criteria or state filter."}
+          </p>
+        </div>
       ) : (
-        <div className="sidebar-scroll grid min-h-0 flex-1 grid-cols-1 gap-4 overflow-y-auto lg:grid-cols-3">
-          {COLUMNS.map((col) => (
-            <div key={col} className="rounded-[12px] border border-[var(--border)] bg-[var(--bg1)] p-3">
-              <div className="mb-2 text-sm font-semibold capitalize text-[var(--text)]">{col} ({events.filter((e) => e.status === col).length})</div>
-              <div className="flex flex-col gap-2">
-                {events.flatMap((e) => e.status === col ? [(
-                  <div key={e.id} role="button" tabIndex={0} onClick={() => navigate(`/alerts/${e.id}`)} onKeyDown={(ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); navigate(`/alerts/${e.id}`); } }} className="cursor-pointer rounded-[8px] border border-[var(--border)] bg-[var(--bg2)] p-3 hover:border-[var(--input)]">
-                    <div className="flex items-center justify-between"><SeverityBadge severity={e.severity} /><Timestamp value={e.startedAt} /></div>
-                    <div className="mt-1.5 text-[13px] font-medium text-[var(--text)]">{e.source}</div>
-                    <div className="truncate text-[12px] text-[var(--text3)]">{e.fingerprint}</div>
-                  </div>
-                )] : [])}
-              </div>
-            </div>
-          ))}
+        <div className="overflow-hidden rounded-xl border border-border/60 bg-card/60 shadow-sm">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="border-b border-border/60 bg-muted/40 text-[10px] uppercase text-muted-foreground font-mono">
+                <tr>
+                  <th className="p-3">State</th>
+                  <th className="p-3">Severity</th>
+                  <th className="p-3">Incident / Source</th>
+                  <th className="p-3">Service & Env</th>
+                  <th className="p-3">Occurrences</th>
+                  <th className="p-3">Last Triggered</th>
+                  <th className="p-3 text-right">Quick Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border/40 font-normal">
+                {filtered.map((incident) => {
+                  const isFiring = incident.state === "triggered";
+                  const isAcked = incident.state === "acknowledged";
+                  const isResolved = incident.state === "resolved";
+
+                  return (
+                    <tr
+                      key={incident.id}
+                      onClick={() => navigate(`/alerts/${incident.id}`)}
+                      className={cn(
+                        "group cursor-pointer transition-colors hover:bg-muted/30",
+                        isFiring && "bg-rose-500/[0.03]",
+                      )}
+                    >
+                      <td className="p-3">
+                        <IncidentStateBadge state={incident.state} size="sm" />
+                      </td>
+                      <td className="p-3">
+                        <SeverityBadge severity={incident.severity} size="sm" />
+                      </td>
+                      <td className="p-3">
+                        <div className="font-semibold text-[var(--text)] group-hover:text-[var(--brand)] transition-colors">
+                          {incident.title}
+                        </div>
+                        <div className="font-mono text-[10px] text-muted-foreground">
+                          {incident.fingerprint}
+                        </div>
+                      </td>
+                      <td className="p-3">
+                        <span className="font-mono text-[11px] text-[var(--text)]">
+                          {incident.service}
+                        </span>
+                        <span className="block text-[10px] uppercase text-muted-foreground">
+                          {incident.environment}
+                        </span>
+                      </td>
+                      <td className="p-3 font-mono text-[11px]">
+                        <span className="rounded bg-muted/60 px-1.5 py-0.5 font-semibold text-muted-foreground">
+                          {incident.occurrenceCount}x
+                        </span>
+                      </td>
+                      <td className="p-3 text-muted-foreground font-mono text-[11px]">
+                        {new Date(incident.lastTriggeredAt).toLocaleString()}
+                      </td>
+                      <td className="p-3 text-right" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-end gap-1.5">
+                          {isFiring && (
+                            <button
+                              onClick={(e) => handleQuickAck(e, incident.id)}
+                              className="rounded border border-blue-500/30 bg-blue-500/10 px-2 py-1 text-[11px] font-medium text-blue-400 hover:bg-blue-500/20"
+                            >
+                              Ack
+                            </button>
+                          )}
+                          {!isResolved && (
+                            <button
+                              onClick={(e) => handleQuickResolve(e, incident.id)}
+                              className="rounded border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-[11px] font-medium text-emerald-400 hover:bg-emerald-500/20"
+                            >
+                              Resolve
+                            </button>
+                          )}
+                          <button
+                            onClick={() => navigate(`/alerts/${incident.id}`)}
+                            className="rounded border border-border px-2 py-1 text-[11px] text-muted-foreground hover:bg-muted hover:text-[var(--text)]"
+                          >
+                            Details →
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
-    </FillPage>
+    </div>
   );
 }

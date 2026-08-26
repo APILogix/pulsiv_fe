@@ -2,6 +2,7 @@ import type { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from 'axio
 import { toast } from 'sonner';
 import { useAuthStore } from '@/modules/auth/store/auth.store';
 import { tokenService } from '@/modules/auth/services/token.service';
+import { useBootstrapStore } from '@/modules/bootstrap';
 
 /**
  * 401 → refresh → retry interceptor.
@@ -52,6 +53,7 @@ function flushQueue(error: unknown | null): void {
 function handleRefreshSessionExpired(): void {
   tokenService.clearTokens();
   useAuthStore.getState().clearAuth();
+  useBootstrapStore.getState().clearBootstrap();
 
   if (!signedOutToastShown) {
     signedOutToastShown = true;

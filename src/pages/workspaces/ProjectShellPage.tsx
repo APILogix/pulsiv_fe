@@ -31,6 +31,10 @@ export function useCurrentProject(): ProjectContextValue {
   return ctx;
 }
 
+export function useOptionalCurrentProject(): ProjectContextValue | null {
+  return useContext(ProjectContext);
+}
+
 // ── module-level constants (rules.md §1.2) ───────────────────
 
 export const PROJECT_STATUS_TONE: Record<ProjectStatus, SurfaceTone> = {

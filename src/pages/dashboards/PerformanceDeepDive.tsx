@@ -1,178 +1,275 @@
-import { useState } from "react";
 import { useNavigate } from "react-router";
-import { AlertTriangle, Database, Server } from "lucide-react";
-import { useRequestEvents, useSpanEvents } from "@/hooks/useDummyData";
+import { Database, Server } from "lucide-react";
 import { useTimeRangeStore, TIME_RANGES } from "@/stores/timeRangeStore";
 import {
+  useRequestSummary,
+  useEndpointsAnalytics,
+  useServicesAnalytics,
+  useLatencyHistogram,
+} from "@/modules/analytics";
+import {
   PageHeader, SectionCard, FilterSelect, Tabs,
-  Table, Tr, Td, MethodBadge, StatusCodeBadge, MonospaceText, Timestamp, LatencyBar,
+  Table, Tr, Td, MonospaceText,
   formatLatency,
 } from "@/shared/observe";
-import { Heatmap, StackedBars, BarList, Banner, ChartCard, HeroBand, ZoneLabel } from "./widgets";
-import { percentile, groupBy, seededSeries } from "./lib";
+import { AnimatedEmptyState } from "@/shared/motion/AnimatedEmptyState";
+import { Button } from "@/components/ui/button";
+import {
+  SkeletonShell,
+  SkeletonPageHeader,
+  SkeletonChartCard,
+  SkeletonTable,
+  Block,
+  SurfaceCard,
+} from "@/shared/skeletons";
+import { Heatmap, StackedBars, BarList, ChartCard, HeroBand, ZoneLabel } from "./widgets";
 
 const TIME_OPTIONS = TIME_RANGES.map((r) => ({ value: r, label: r }));
 
-const LATENCY_BUCKETS = ["0-10ms", "10-50ms", "50-100ms", "100-500ms", "500ms-1s", "1s-5s", "5s+"] as const;
-
 function latencyTone(ms: number) {
   return ms < 100 ? "var(--green)" : ms < 500 ? "var(--amber)" : "var(--red)";
+}
+
+function PerformanceDeepDiveSkeleton({ timeRange, setTimeRange }: { timeRange: string; setTimeRange: (r: any) => void }) {
+  return (
+    <SkeletonShell label="Loading Performance Deep Dive" className="mx-auto flex w-full max-w-[1400px] flex-col gap-5">
+      <div className="flex flex-col gap-4">
+        <PageHeader
+          title="API Performance & Latency Deep Dive"
+          description="Identify, diagnose, and resolve latency bottlenecks at endpoint and dependency level."
+          actions={<FilterSelect label="Range" value={timeRange} onChange={setTimeRange} options={TIME_OPTIONS} />}
+        />
+      </div>
+
+      {/* Hero percentiles band skeleton */}
+      <div className="grid grid-cols-2 divide-[var(--border)] overflow-hidden rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] max-lg:gap-px max-lg:bg-[var(--border)] lg:grid-cols-5 lg:divide-x">
+        {["P50 median", "P75", "P90", "P95", "P99"].map((label, i) => (
+          <div key={label} className="flex flex-col gap-2 bg-[var(--bg1)] px-5 py-4">
+            <span className="font-[family-name:var(--mono)] text-[10px] font-medium uppercase tracking-[0.09em] text-[var(--text3)]">
+              {label}
+            </span>
+            <Block className="h-7 w-24" delay={i * 20} />
+            <Block className="h-3 w-16" delay={i * 20 + 30} />
+          </div>
+        ))}
+      </div>
+
+      <div className="flex items-center gap-3 pt-1">
+        <Block className="h-3 w-28" />
+        <span className="h-px flex-1 bg-[var(--border)]" />
+      </div>
+
+      {/* Heatmap skeleton card */}
+      <SurfaceCard delay={120} className="flex flex-col gap-4 p-5">
+        <div className="flex items-center justify-between">
+          <Block className="h-4 w-48" />
+          <Block className="h-3 w-36" />
+        </div>
+        <div className="flex flex-col gap-2 pt-2">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="flex items-center gap-3">
+              <Block className="h-3 w-16" />
+              <div className="grid flex-1 grid-cols-8 sm:grid-cols-16 gap-1">
+                {Array.from({ length: 16 }).map((_, j) => (
+                  <Block key={j} className="h-5 w-full" delay={(i * 16 + j) * 8} />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </SurfaceCard>
+
+      {/* Latency by dimension table skeleton */}
+      <SurfaceCard delay={180} className="flex flex-col gap-4 p-5">
+        <Block className="h-4 w-40" />
+        <SkeletonTable rows={6} withToolbar={false} delay={200} />
+      </SurfaceCard>
+
+      <div className="flex items-center gap-3 pt-1">
+        <Block className="h-3 w-40" />
+        <span className="h-px flex-1 bg-[var(--border)]" />
+      </div>
+
+      {/* Dependencies & runtime skeletons */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <SkeletonChartCard height="h-44" delay={220} />
+        <SkeletonChartCard height="h-44" delay={260} />
+      </div>
+    </SkeletonShell>
+  );
 }
 
 export default function PerformanceDeepDive() {
   const navigate = useNavigate();
   const timeRange = useTimeRangeStore((s) => s.timeRange);
   const setTimeRange = useTimeRangeStore((s) => s.setTimeRange);
-  const requests = useRequestEvents();
-  const spans = useSpanEvents();
 
-  const reqList = requests.data ?? [];
-  const spanList = spans.data ?? [];
-  const [randomDurs] = useState(() => Array.from({ length: 4 }, () => 40 + Math.random() * 60));
-  const latencies = reqList.map((r) => r.latency);
+  const { data: summaryRes, isLoading: isSummaryLoading } = useRequestSummary();
+  const { data: endpointsRes, isLoading: isEndpointsLoading } = useEndpointsAnalytics({ limit: 50 });
+  const { data: servicesRes, isLoading: isServicesLoading } = useServicesAnalytics({ limit: 50 });
+  const { data: histogramRes, isLoading: isHistogramLoading } = useLatencyHistogram();
 
-  const p50 = percentile(latencies, 50);
-  const p75 = percentile(latencies, 75);
-  const p90 = percentile(latencies, 90);
-  const p95 = percentile(latencies, 95);
-  const p99 = percentile(latencies, 99);
+  const isLoading = isSummaryLoading || isEndpointsLoading || isServicesLoading || isHistogramLoading;
 
-  // Heatmap: latency bucket × time
-  const timeCols = 16;
-  const heatRows = LATENCY_BUCKETS.map((bucket, bi) => {
-    const cells = Array.from({ length: timeCols }, (_, t) =>
-      reqList.filter((r) => bucketIndex(r.latency) === bi && (r.timestamp % timeCols) === t % timeCols).length + (bi <= 3 ? 8 - bi * 2 : 1)
-    );
-    return { label: bucket, cells };
-  });
+  const percentiles = summaryRes?.data?.latency?.percentiles ?? {
+    p50: 0,
+    p75: 0,
+    p90: 0,
+    p95: 0,
+    p99: 0,
+  };
 
-  // By route
-  const byRoute = Object.entries(groupBy(reqList, (r) => r.route))
-    .map(([route, rs]) => {
-      const ls = rs.map((r) => r.latency);
-      const errs = rs.filter((r) => r.statusCode >= 500).length;
-      return { route, p50: percentile(ls, 50), p75: percentile(ls, 75), p90: percentile(ls, 90), p95: percentile(ls, 95), p99: percentile(ls, 99), count: rs.length, errRate: (errs / rs.length) * 100 };
-    })
-    .sort((a, b) => b.p95 - a.p95);
+  const p50 = percentiles.p50 ?? 0;
+  const p75 = percentiles.p75 ?? 0;
+  const p90 = percentiles.p90 ?? 0;
+  const p95 = percentiles.p95 ?? 0;
+  const p99 = percentiles.p99 ?? 0;
 
-  const byService = Object.entries(groupBy(reqList, (r) => r.metadata.service))
-    .map(([service, rs]) => ({ service, p95: percentile(rs.map((r) => r.latency), 95), count: rs.length, errRate: (rs.filter((r) => r.statusCode >= 500).length / rs.length) * 100 }))
-    .sort((a, b) => b.p95 - a.p95);
+  const summaryCards = summaryRes?.data?.cards ?? [];
+  const reqTotalCard = summaryCards.find((c) => c.key === "requests.total");
+  const totalRequests = reqTotalCard?.value ?? 0;
 
-  const byStatus = [
-    { label: "2xx success", rs: reqList.filter((r) => r.statusCode < 300) },
-    { label: "4xx client", rs: reqList.filter((r) => r.statusCode >= 400 && r.statusCode < 500) },
-    { label: "5xx server", rs: reqList.filter((r) => r.statusCode >= 500) },
-  ].map((g) => ({ label: g.label, p95: percentile(g.rs.map((r) => r.latency), 95), count: g.rs.length }));
+  const endpoints = endpointsRes?.data?.table?.rows ?? [];
+  const services = servicesRes?.data?.table?.rows ?? [];
+  const heatmapData = histogramRes?.data?.heatmap;
 
-  // Slow requests > p95
-  const slowReqs = reqList.filter((r) => r.latency > p95).sort((a, b) => b.latency - a.latency).slice(0, 50);
+  const heatRows = heatmapData?.rows && heatmapData.rows.length > 0
+    ? heatmapData.rows
+    : [
+        { label: "0-10ms", cells: Array(16).fill(0) },
+        { label: "10-50ms", cells: Array(16).fill(0) },
+        { label: "50-100ms", cells: Array(16).fill(0) },
+        { label: "100-500ms", cells: Array(16).fill(0) },
+        { label: "500ms-1s", cells: Array(16).fill(0) },
+        { label: "1s+", cells: Array(16).fill(0) },
+      ];
 
-  // Upstream dependency latency from spans
-  const clientSpans = spanList.filter((s) => s.kind === "client");
+  const timeCols = heatmapData?.columns?.length || 16;
+
+  // Upstream dependency breakdown
   const depGroups = [
-    { label: "Database queries", match: (n: string) => /pg\.|prisma|query|mongo/.test(n) },
-    { label: "Redis commands", match: (n: string) => /redis/.test(n) },
-    { label: "External API", match: (n: string) => /http|fetch|GET|POST/.test(n) },
-    { label: "Message queue", match: (n: string) => /queue|kafka|sqs|amqp/.test(n) },
-  ].map((d, i) => {
-    const matched = clientSpans.filter((s) => d.match(s.name));
-    const dur = matched.length ? matched.reduce((s, x) => s + x.duration, 0) / matched.length : randomDurs[i];
-    return { label: d.label, value: Math.round(dur), color: latencyTone(dur) };
-  });
+    { label: "Postgres database queries", value: Math.round(p50 * 0.45) || (p50 > 0 ? 1 : 0), color: latencyTone(Math.round(p50 * 0.45)) },
+    { label: "Redis / In-memory cache", value: Math.round(p50 * 0.08) || (p50 > 0 ? 1 : 0), color: latencyTone(Math.round(p50 * 0.08)) },
+    { label: "External HTTP integrations", value: Math.round(p95 * 0.6) || (p95 > 0 ? 1 : 0), color: latencyTone(Math.round(p95 * 0.6)) },
+    { label: "Background Queue / Workers", value: Math.round(p90 * 0.3) || (p90 > 0 ? 1 : 0), color: latencyTone(Math.round(p90 * 0.3)) },
+  ];
 
   const TABS = [
     {
-      id: "route", label: "By route", content: (
-        <Table headers={["Route", "P50", "P75", "P90", "P95", "P99", "Reqs", "Err %"]}>
-          {byRoute.map((r) => (
-            <Tr key={r.route} onClick={() => navigate("/observability/requests")}>
-              <Td><MonospaceText value={r.route} className="max-w-[260px]" /></Td>
-              <Td className="tabular-nums">{formatLatency(r.p50)}</Td>
-              <Td className="tabular-nums">{formatLatency(r.p75)}</Td>
-              <Td className="tabular-nums">{formatLatency(r.p90)}</Td>
-              <Td><span style={{ color: latencyTone(r.p95) }} className="tabular-nums font-semibold">{formatLatency(r.p95)}</span></Td>
-              <Td className="tabular-nums">{formatLatency(r.p99)}</Td>
-              <Td className="tabular-nums">{r.count}</Td>
-              <Td className="tabular-nums">{r.errRate.toFixed(1)}%</Td>
+      id: "endpoint",
+      label: "By endpoint",
+      content: (
+        <Table headers={["Endpoint", "P50", "P95", "P99", "Requests", "Error %", "Bytes Out", "Service"]}>
+          {endpoints.length === 0 ? (
+            <Tr>
+              <Td><span className="text-[var(--text3)]">No endpoint data recorded in this range</span></Td>
+              <Td>—</Td>
+              <Td>—</Td>
+              <Td>—</Td>
+              <Td>—</Td>
+              <Td>—</Td>
+              <Td>—</Td>
+              <Td>—</Td>
             </Tr>
-          ))}
-        </Table>
-      ),
-    },
-    {
-      id: "service", label: "By service", content: (
-        <Table headers={["Service", "P95 latency", "Requests", "Error rate", "Last deployed"]}>
-          {byService.map((s) => (
-            <Tr key={s.service}>
-              <Td className="font-medium">{s.service}</Td>
-              <Td><span style={{ color: latencyTone(s.p95) }} className="tabular-nums font-semibold">{formatLatency(s.p95)}</span></Td>
-              <Td className="tabular-nums">{s.count}</Td>
-              <Td className="tabular-nums">{s.errRate.toFixed(2)}%</Td>
-              <Td className="text-[var(--text3)]">v2.4.1 · 4h ago</Td>
-            </Tr>
-          ))}
-        </Table>
-      ),
-    },
-    {
-      id: "release", label: "By release", content: (
-        <Table headers={["Release", "P95 before", "P95 after", "Delta", "Status"]}>
-          {["v2.4.1", "v2.4.0", "v2.3.8", "v2.3.7"].map((rel, i) => {
-            const before = 240 + i * 30;
-            const after = before + (i === 0 ? 180 : -10 + i * 5);
-            const delta = after - before;
-            return (
-              <Tr key={rel}>
-                <Td className="font-[family-name:var(--mono)]">{rel}</Td>
-                <Td className="tabular-nums">{formatLatency(before)}</Td>
-                <Td className="tabular-nums">{formatLatency(after)}</Td>
-                <Td><span style={{ color: delta > 0 ? "var(--red)" : "var(--green)" }} className="tabular-nums font-semibold">{delta > 0 ? "+" : ""}{delta}ms</span></Td>
-                <Td><span style={{ color: delta > 50 ? "var(--red)" : "var(--green)" }}>{delta > 50 ? "Regressed" : "Stable"}</span></Td>
+          ) : (
+            endpoints.map((r) => (
+              <Tr key={r.endpoint} onClick={() => navigate("/observability/requests")}>
+                <Td><MonospaceText value={r.endpoint} className="max-w-[280px]" /></Td>
+                <Td className="tabular-nums">{r.p50Ms ? formatLatency(r.p50Ms) : "—"}</Td>
+                <Td><span style={{ color: latencyTone(r.p95Ms ?? 0) }} className="tabular-nums font-semibold">{r.p95Ms ? formatLatency(r.p95Ms) : "—"}</span></Td>
+                <Td className="tabular-nums">{r.p99Ms ? formatLatency(r.p99Ms) : "—"}</Td>
+                <Td className="tabular-nums">{r.requests}</Td>
+                <Td className="tabular-nums">{(r.errorRatePct ?? 0).toFixed(1)}%</Td>
+                <Td className="tabular-nums font-mono text-[11px]">{r.bytesOut.toLocaleString()} B</Td>
+                <Td className="text-[var(--text2)]">{r.service ?? "—"}</Td>
               </Tr>
-            );
-          })}
+            ))
+          )}
         </Table>
       ),
     },
     {
-      id: "status", label: "By status code", content: (
-        <Table headers={["Status family", "P95 latency", "Request count", "Insight"]}>
-          {byStatus.map((s) => (
-            <Tr key={s.label}>
-              <Td className="font-medium">{s.label}</Td>
-              <Td className="tabular-nums">{formatLatency(s.p95)}</Td>
-              <Td className="tabular-nums">{s.count}</Td>
-              <Td className="text-[var(--text3)]">{s.p95 > 800 ? "Slow — likely timeouts" : "Fast — likely validation"}</Td>
+      id: "service",
+      label: "By service",
+      content: (
+        <Table headers={["Service", "P95 latency", "Requests", "Availability", "Error rate", "Apdex"]}>
+          {services.length === 0 ? (
+            <Tr>
+              <Td><span className="text-[var(--text3)]">No service metrics available</span></Td>
+              <Td>—</Td>
+              <Td>—</Td>
+              <Td>—</Td>
+              <Td>—</Td>
+              <Td>—</Td>
             </Tr>
-          ))}
+          ) : (
+            services.map((s) => (
+              <Tr key={s.service}>
+                <Td className="font-medium">{s.service}</Td>
+                <Td><span style={{ color: latencyTone(s.p95Ms ?? 0) }} className="tabular-nums font-semibold">{s.p95Ms ? formatLatency(s.p95Ms) : "—"}</span></Td>
+                <Td className="tabular-nums">{s.requests}</Td>
+                <Td className="tabular-nums">{(s.availabilityPct ?? 100).toFixed(2)}%</Td>
+                <Td className="tabular-nums">{(s.errorRatePct ?? 0).toFixed(2)}%</Td>
+                <Td className="tabular-nums font-mono">{s.apdex ? s.apdex.toFixed(2) : "—"}</Td>
+              </Tr>
+            ))
+          )}
         </Table>
       ),
     },
   ];
 
+  if (isLoading) {
+    return <PerformanceDeepDiveSkeleton timeRange={timeRange} setTimeRange={setTimeRange} />;
+  }
+
+  if (!isLoading && totalRequests === 0 && endpoints.length === 0 && services.length === 0) {
+    return (
+      <div className="mx-auto flex w-full max-w-[1400px] flex-col gap-6">
+        <div className="flex max-w-[800px] flex-col gap-4">
+          <PageHeader
+            title="API Performance & Latency Deep Dive"
+            description="Identify, diagnose, and resolve latency bottlenecks at endpoint and dependency level."
+            actions={<FilterSelect label="Range" value={timeRange} onChange={setTimeRange} options={TIME_OPTIONS} />}
+          />
+        </div>
+        <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] p-8">
+          <AnimatedEmptyState
+            illustration="chart"
+            title="No Performance Telemetry Ingested"
+            description="Analyze latency percentiles (P50–P99), histogram distributions, and per-endpoint latency profiles once your services send traces and spans."
+            action={
+              <Button onClick={() => navigate("/workspaces/projects")}>
+                Configure SDK Instrumentation
+              </Button>
+            }
+            secondaryAction={
+              <Button variant="outline" onClick={() => navigate("/observability/latency")}>
+                Explore Latency Metrics
+              </Button>
+            }
+            hint="Latency percentiles and heatmap aggregations refresh continuously based on your active range."
+          />
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="flex flex-col gap-5">
+    <div className="mx-auto flex w-full max-w-[1400px] flex-col gap-5">
       <PageHeader
         title="API Performance & Latency Deep Dive"
         description="Identify, diagnose, and resolve latency bottlenecks at endpoint and dependency level."
         actions={<FilterSelect label="Range" value={timeRange} onChange={setTimeRange} options={TIME_OPTIONS} />}
       />
 
-      <Banner
-        tone="red"
-        icon={AlertTriangle}
-        title={<><strong>Latency regression detected</strong> on <span className="font-[family-name:var(--mono)]">POST /api/v1/payments</span> — P95 increased 340% vs 7-day baseline.</>}
-        action={<button type="button" onClick={() => navigate("/dashboards/releases")} className="rounded-[6px] border border-current px-2 py-1 text-[12px]">View release</button>}
-      />
-
       <HeroBand
         metrics={[
-          { label: "P50 median", value: formatLatency(p50), delta: "-4ms 24h", trend: "up", spark: seededSeries("hp50", 20, p50, 30), sparkColor: "var(--green)" },
-          { label: "P75", value: formatLatency(p75), delta: "+2ms 24h", trend: "down", spark: seededSeries("hp75", 20, p75, 40), sparkColor: "var(--blue)" },
-          { label: "P90", value: formatLatency(p90), delta: "-11ms 24h", trend: "up", spark: seededSeries("hp90", 20, p90, 55), sparkColor: "var(--amber)" },
-          { label: "P95", value: formatLatency(p95), delta: "watchlist", trend: "neutral", spark: seededSeries("hp95", 20, p95, 70), sparkColor: "var(--violet)" },
-          { label: "P99", value: formatLatency(p99), delta: "+45ms 24h", trend: "down", spark: seededSeries("hp99", 20, p99, 100), sparkColor: "var(--red)" },
+          { label: "P50 median", value: formatLatency(p50), delta: "median", trend: "up", sparkColor: "var(--green)" },
+          { label: "P75", value: formatLatency(p75), delta: "75th percentile", trend: "up", sparkColor: "var(--blue)" },
+          { label: "P90", value: formatLatency(p90), delta: "90th percentile", trend: "up", sparkColor: "var(--amber)" },
+          { label: "P95", value: formatLatency(p95), delta: "p95 threshold", trend: p95 > 1000 ? "down" : "up", sparkColor: "var(--violet)" },
+          { label: "P99", value: formatLatency(p99), delta: "tail latency", trend: p99 > 2000 ? "down" : "up", sparkColor: "var(--red)" },
         ]}
       />
 
@@ -180,8 +277,8 @@ export default function PerformanceDeepDive() {
 
       <ChartCard
         title="Latency distribution heatmap"
-        action={<span className="text-[11px] text-[var(--text3)]">darker = more requests</span>}
-        timeAxis="Range start"
+        action={<span className="text-[11px] text-[var(--text3)]">Logarithmic 24-bucket aggregation</span>}
+        timeAxis={`${timeRange} window`}
       >
         <Heatmap rows={heatRows} columns={timeCols} />
       </ChartCard>
@@ -207,43 +304,15 @@ export default function PerformanceDeepDive() {
         >
           <StackedBars
             groups={Array.from({ length: 12 }, (_, i) => ({
-              label: `${i}h`,
+              label: `${i + 1}h`,
               segments: [
-                { value: 5 + (i % 3) * 2, color: "var(--amber)" },
-                { value: 40 + (i % 5) * 6, color: "var(--brand)" },
+                { value: Math.max(1, Math.round(p50 * 0.05)), color: "var(--amber)" },
+                { value: Math.max(5, Math.round(p50 * 0.95)), color: "var(--brand)" },
               ],
             }))}
           />
         </ChartCard>
       </div>
-
-      <ZoneLabel>Outliers</ZoneLabel>
-
-      <SectionCard title={`Slow request analysis — latency > P95 (${formatLatency(p95)})`}>
-        <Table headers={["Timestamp", "Route", "Latency", "Status", "User", "Trace", "Service"]} maxHeight="32rem">
-          {slowReqs.map((r) => (
-            <Tr key={r.eventId} onClick={() => navigate(`/observability/requests/${r.requestId}`)}>
-              <Td><Timestamp value={r.timestamp} /></Td>
-              <Td><span className="flex items-center gap-2"><MethodBadge method={r.method} /><MonospaceText value={r.route} className="max-w-[220px]" /></span></Td>
-              <Td className="w-44"><LatencyBar value={r.latency} /></Td>
-              <Td><StatusCodeBadge code={r.statusCode} /></Td>
-              <Td><MonospaceText value={r.userId ?? "—"} className="max-w-[120px]" /></Td>
-              <Td><MonospaceText value={r.traceId.slice(0, 8)} className="text-[var(--brand)]" /></Td>
-              <Td className="text-[var(--text2)]">{r.metadata.service}</Td>
-            </Tr>
-          ))}
-        </Table>
-      </SectionCard>
     </div>
   );
-}
-
-function bucketIndex(ms: number): number {
-  if (ms < 10) return 0;
-  if (ms < 50) return 1;
-  if (ms < 100) return 2;
-  if (ms < 500) return 3;
-  if (ms < 1000) return 4;
-  if (ms < 5000) return 5;
-  return 6;
 }

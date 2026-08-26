@@ -36,7 +36,7 @@ export default function BusinessMetrics() {
   const c4xx = reqList.filter((r) => r.statusCode >= 400 && r.statusCode < 500).length;
   const c5xx = reqList.filter((r) => r.statusCode >= 500).length;
 
-  const tenants = Object.entries(groupBy(reqList, (r) => r.tenantId))
+  const tenants = Object.entries(groupBy(reqList, (r) => r.tenantId ?? "unknown"))
     .map(([id, rs]) => ({
       id, count: rs.length,
       users: uniqueBy(rs.filter((r) => r.userId), (r) => r.userId!),

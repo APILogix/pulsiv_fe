@@ -20,6 +20,8 @@ import {
   useAlertChannels,
   useMyChannelPreferences,
 } from "@/modules/projects/hooks/useProjectAlerting";
+import { useNotificationEntitlement } from "@/modules/alerting/hooks/useAlerting";
+import { EntitlementRestrictedBanner } from "@/modules/alerting/components/EntitlementRestrictedBanner";
 import {
   CHANNEL_DIGEST_MODES,
   CHANNEL_SEVERITIES,
@@ -214,6 +216,7 @@ export default function ProjectAlertChannelsPage() {
   const preferenceFor = (channelId: string) =>
     preferences.find((preference) => preference.projectAlertChannelId === channelId);
 
+  const { isRestricted, decision } = useNotificationEntitlement();
   const enabledCount = channels.filter((channel) => channel.enabled).length;
   const defaultChannel = channels.find((channel) => channel.isDefault);
 
@@ -228,6 +231,8 @@ export default function ProjectAlertChannelsPage() {
           </UiButton>
         }
       />
+
+      {isRestricted && <EntitlementRestrictedBanner projectId={projectId} />}
 
       <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
         <StatCard label="Channels" value={data?.total ?? channels.length} icon={Bell} tone="brand" />
@@ -293,6 +298,11 @@ export default function ProjectAlertChannelsPage() {
                           <Pill tone="brand">
                             <Star className="size-3" aria-hidden="true" /> Default
                           </Pill>
+                        )}
+                        {channel.channelType !== "email" && !decision.isProviderAllowed(channel.channelType) && (
+                          <span className="rounded bg-amber-500/10 px-2 py-0.5 text-[10.5px] font-medium text-amber-400 border border-amber-500/20">
+                            Configured · Unavailable on current plan
+                          </span>
                         )}
                       </div>
                       <p className="truncate font-[family-name:var(--mono)] text-[11.5px] text-[var(--text3)]">

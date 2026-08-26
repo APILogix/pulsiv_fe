@@ -24,7 +24,7 @@ function DiscoveryPanel({ discovery }: { discovery: SsoDiscoveryResult }) {
   return (
     <div className="rounded-[12px] border border-[var(--border)] bg-[var(--bg2)] p-3.5">
       <p className="text-[10.5px] font-semibold uppercase tracking-[0.14em] text-[var(--text3)]">Detected domain</p>
-      <p className="mt-1 font-[family-name:var(--mono)] text-[13px] text-[var(--text)]">{discovery.domain}</p>
+      <p className="mt-1 font-mono text-[13px] text-[var(--text)]">{discovery.domain}</p>
 
       {discovery.providers.length > 0 && (
         <div className="mt-3 flex flex-col gap-2">
@@ -103,7 +103,7 @@ export default function SsoLoginPage() {
               autoFocus
               {...register('email')}
               disabled={loading}
-              className={cn(fieldInputClass, 'h-11 font-[family-name:var(--mono)] text-[13px]')}
+              className={cn(fieldInputClass, 'h-10 font-mono text-[13px]')}
             />
           </AuthField>
 
@@ -121,7 +121,7 @@ export default function SsoLoginPage() {
         </form>
 
         <Notice tone="blue" icon={Info} className="mt-4">
-          You&apos;ll be redirected to your identity provider to authenticate, then returned to Pulsiv. Session policy is
+          You&apos;ll be redirected to your identity provider to authenticate, then returned to Sentinel. Session policy is
           set by your organization.
         </Notice>
       </AuthCard>

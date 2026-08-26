@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { Navigate } from "react-router";
 import {
   Activity,
   AlertTriangle,
@@ -30,7 +31,7 @@ import {
   EnvironmentType,
   type ProjectApiKey,
 } from "@/modules/projects/api/types";
-import { useCurrentProject } from "./ProjectShellPage";
+import { useOptionalCurrentProject } from "./ProjectShellPage";
 import {
   IconChip,
   KeyValueGrid,
@@ -38,7 +39,6 @@ import {
   Panel,
   Pill,
   Ring,
-  SecretField,
   SectionHeading,
   SegmentedControl,
   StatCard,
@@ -59,9 +59,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import {
+  ApiKeyRevealModal,
   ConfirmDialog,
   DialogField,
   FormDialog,
+  type RevealedSecret,
   apiErrorMessage,
   optionalText,
 } from "@/modules/projects/components/project-ui";
@@ -284,7 +286,16 @@ function KeyUsageSheet({
 // ── page ─────────────────────────────────────────────────────
 
 export default function ProjectApiKeysPage() {
-  const { projectId } = useCurrentProject();
+  const currentProject = useOptionalCurrentProject();
+
+  if (!currentProject) {
+    return <Navigate to="/projects" replace />;
+  }
+
+  return <ProjectApiKeysContent projectId={currentProject.projectId} />;
+}
+
+function ProjectApiKeysContent({ projectId }: { projectId: string }) {
   const { data: environments = [] } = useEnvironments(projectId);
   const activeEnvironments = environments.filter((environment) => environment.isActive);
 
@@ -318,7 +329,7 @@ export default function ProjectApiKeysPage() {
   const [regenerating, setRegenerating] = useState<ProjectApiKey | null>(null);
   const [bulkMode, setBulkMode] = useState<"rotate" | "revoke" | null>(null);
   const [inspecting, setInspecting] = useState<ProjectApiKey | null>(null);
-  const [revealed, setRevealed] = useState<{ value: string; label: string } | null>(null);
+  const [revealed, setRevealed] = useState<RevealedSecret | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [createEnvironmentId, setCreateEnvironmentId] = useState("");
 
@@ -365,7 +376,14 @@ export default function ProjectApiKeysPage() {
       onSuccess: (result) => {
         keyWorkflow.reset();
         setCreating(false);
-        setRevealed({ value: result.fullKey, label: result.apiKey.name || result.apiKey.publicKey });
+        setRevealed({
+          value: result.fullKey,
+          label: result.apiKey.name || result.apiKey.publicKey,
+          keyName: result.apiKey.name ?? undefined,
+          publicKey: result.apiKey.publicKey,
+          environmentName: createEnvironment?.name,
+          environmentType: createEnvironment?.type,
+        });
       },
       onError: (mutationError) => setFormError(asMessage(mutationError)),
     });
@@ -656,8 +674,15 @@ export default function ProjectApiKeysPage() {
           if (!rotating) return;
           rotateKey.mutate(rotating.id, {
             onSuccess: (result) => {
+              const env = rotating.environment ?? environments.find((e) => e.id === rotating.environmentId);
               setRotating(null);
-              setRevealed({ value: result.fullKey, label: result.apiKey.name || result.apiKey.publicKey });
+              setRevealed({
+                value: result.fullKey,
+                label: result.apiKey.name || result.apiKey.publicKey,
+                keyName: result.apiKey.name ?? undefined,
+                publicKey: result.apiKey.publicKey,
+                environmentName: env?.name,
+              });
             },
             onError: (mutationError) => setFormError(asMessage(mutationError)),
           });
@@ -676,9 +701,17 @@ export default function ProjectApiKeysPage() {
           if (!regenerating) return;
           regenerateKey.mutate(regenerating.id, {
             onSuccess: (result) => {
+              const env = regenerating.environment ?? environments.find((e) => e.id === regenerating.environmentId);
               setRegenerating(null);
-              setRevealed({ value: result.fullKey, label: result.apiKey.name || result.apiKey.publicKey });
+              setRevealed({
+                value: result.fullKey,
+                label: result.apiKey.name || result.apiKey.publicKey,
+                keyName: result.apiKey.name ?? undefined,
+                publicKey: result.apiKey.publicKey,
+                environmentName: env?.name,
+              });
             },
+            onError: (mutationError) => setFormError(asMessage(mutationError)),
           });
         }}
       />
@@ -760,20 +793,11 @@ export default function ProjectApiKeysPage() {
         )}
       </FormDialog>
 
-      {/* ── one-time secret ── */}
-      <FormDialog
-        open={!!revealed}
-        onOpenChange={(open) => !open && setRevealed(null)}
-        title="Copy your key now"
-        description="This secret is shown once and cannot be retrieved later."
-        submitLabel="I've stored it"
-        onSubmit={() => setRevealed(null)}
-      >
-        <Notice tone="amber" icon={ShieldAlert} title="Shown once">
-          Store this in your secret manager before closing the dialog.
-        </Notice>
-        {revealed && <SecretField label={revealed.label} value={revealed.value} />}
-      </FormDialog>
+      {/* ── modern mono one-time secret modal ── */}
+      <ApiKeyRevealModal
+        revealed={revealed}
+        onClose={() => setRevealed(null)}
+      />
 
       <KeyUsageSheet projectId={projectId} apiKey={inspecting} onOpenChange={(open) => !open && setInspecting(null)} />
     </div>

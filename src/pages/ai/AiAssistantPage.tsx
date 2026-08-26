@@ -4,11 +4,13 @@ import {
   ArrowUp,
   BookMarked,
   Bot,
+  Loader2,
   MessagesSquare,
   Plus,
   Sparkles,
   Trash2,
   User,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PageHero, Pill, IconChip } from "@/shared/ui/pulse";
@@ -20,16 +22,49 @@ import { useAssistantStore } from "@/modules/ai/store/assistant.store";
 import type { ChatCitation, ChatMessage } from "@/modules/ai/types";
 
 const SUGGESTED_PROMPTS = [
-  "Which endpoints have the highest error rate in the last 24 hours?",
-  "Summarize errors after the most recent deployment.",
-  "What is driving p95 latency on the payments service?",
-  "Are there any anomalies in traffic over the last hour?",
+  "Why did latency increase today?",
+  "What caused the latest error spike?",
+  "What changed after the latest deployment?",
+  "Show me the slowest endpoints.",
+  "What services are currently unhealthy?",
 ];
 
 function uid(): string {
   return typeof crypto !== "undefined" && "randomUUID" in crypto
     ? crypto.randomUUID()
     : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+function ExecutionProgress() {
+  const [stepIndex, setStepIndex] = useState(0);
+  const steps = [
+    "Checking error patterns...",
+    "Analyzing traces...",
+    "Correlating deployments...",
+    "Generating conclusion...",
+  ];
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setStepIndex((prev) => (prev + 1) % steps.length);
+    }, 1800);
+    return () => clearInterval(timer);
+  }, [steps.length]);
+
+  return (
+    <div className="flex flex-col gap-1.5 py-1 font-[family-name:var(--mono)] text-[12px] text-[var(--text2)]">
+      <div className="flex items-center gap-2">
+        <Loader2 className="size-3.5 animate-spin text-[var(--brand)]" />
+        <span>{steps[stepIndex]}</span>
+      </div>
+      <div className="flex items-center gap-2 text-[10.5px] text-[var(--text3)] pl-5">
+        <span className={stepIndex >= 0 ? "text-[var(--green)] font-medium" : ""}>✓ Errors</span>
+        <span className={stepIndex >= 1 ? "text-[var(--green)] font-medium" : ""}>✓ Traces</span>
+        <span className={stepIndex >= 2 ? "text-[var(--green)] font-medium" : ""}>● Deployments</span>
+        <span className={stepIndex >= 3 ? "text-[var(--brand)] font-semibold" : ""}>○ Conclusion</span>
+      </div>
+    </div>
+  );
 }
 
 function Citations({ citations }: { citations: ChatCitation[] }) {
@@ -99,7 +134,7 @@ function MessageBubble({ message }: { message: ChatMessage }) {
         )}
       >
         {message.pending ? (
-          <TypingDots />
+          <ExecutionProgress />
         ) : isUser ? (
           <p className="whitespace-pre-wrap text-[13.5px] leading-relaxed text-[var(--text)]">{message.content}</p>
         ) : (
@@ -134,6 +169,13 @@ export default function AiAssistantPage() {
     [conversations, activeId],
   );
   const [draft, setDraft] = useState("");
+  const [activeContext, setActiveContext] = useState<{ type: string; id: string } | null>(() => {
+    const state = location.state as { contextType?: string; contextId?: string } | null;
+    if (state?.contextType && state?.contextId) {
+      return { type: state.contextType, id: state.contextId };
+    }
+    return null;
+  });
   const threadRef = useRef<HTMLDivElement>(null);
   const messages = active?.messages ?? [];
   const lastAssistant = [...messages].reverse().find((m) => m.role === "assistant" && !m.pending);
@@ -331,14 +373,35 @@ export default function AiAssistantPage() {
           )}
 
           {/* Composer */}
-          <form onSubmit={handleSubmit} className="border-t border-[var(--border)] p-3">
+          <form onSubmit={handleSubmit} className="border-t border-[var(--border)] p-3 space-y-2">
+            {activeContext && (
+              <div className="flex items-center justify-between gap-2 rounded-lg border border-[var(--brand)]/30 bg-[var(--brand-bg)] px-3 py-1.5 text-[12px]">
+                <div className="flex items-center gap-2 text-[var(--brand)]">
+                  <span className="font-mono text-[10px] font-semibold uppercase tracking-wider">Context</span>
+                  <span className="font-semibold">{activeContext.type}:</span>
+                  <span className="font-mono font-medium">{activeContext.id}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setActiveContext(null)}
+                  className="rounded p-0.5 text-[var(--brand)]/70 hover:bg-[var(--brand)]/10 hover:text-[var(--brand)] transition-colors cursor-pointer"
+                  aria-label="Remove context"
+                >
+                  <X className="size-3.5" />
+                </button>
+              </div>
+            )}
             <div className="flex items-end gap-2 rounded-[12px] border border-[var(--border)] bg-[var(--bg1)] p-2 focus-within:border-[var(--ai)]">
               <textarea
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
                 onKeyDown={handleKeyDown}
                 rows={1}
-                placeholder="Ask about errors, latency, deployments, incidents…"
+                placeholder={
+                  activeContext
+                    ? `Ask about ${activeContext.type} ${activeContext.id}…`
+                    : "Ask about your telemetry..."
+                }
                 className="max-h-40 min-h-[38px] w-full resize-none bg-transparent px-2 py-1.5 text-[13.5px] text-[var(--text)] outline-none placeholder:text-[var(--text3)]"
               />
               <button

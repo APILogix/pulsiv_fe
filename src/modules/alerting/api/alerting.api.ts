@@ -37,6 +37,13 @@ import type {
   IncidentOccurrence,
   IncidentState,
   IncidentStateHistory,
+  Incident,
+  IncidentListQuery,
+  IncidentNotification,
+  IncidentSummary,
+  IncidentTimelineEntry,
+  ResolveIncidentBody,
+  AssignIncidentBody,
   IngestEventBody,
   Json,
   MetricsQuery,
@@ -509,11 +516,106 @@ export const projectAlertsApi = {
 };
 
 
+// ── Incidents ────────────────────────────────────────────────
+/**
+ * Incident API client, backed by the real
+ * `/organizations/:orgId/alerting/incidents` routes.
+ *
+ * Previously this object proxied `/events` and the UI derived pseudo-incidents
+ * client-side. Incidents are now a durable primary-database entity, so every
+ * method below maps 1:1 onto a backend endpoint.
+ *
+ * All list/timeline/notification reads are SERVER-paginated: filtering, sorting
+ * and pagination happen in SQL, and the response is bounded by `limit`. The
+ * client must never assume it received the whole dataset.
+ */
 export const incidentsApi = {
   list: async (
     orgId: string,
-    params?: EventListQuery,
-  ): Promise<Paged<AlertEvent>> => {
+    params: IncidentListQuery = {},
+  ): Promise<Paged<Incident>> => {
+    const { data } = await apiClient.get(`${alertingBase(orgId)}/incidents`, { params });
+    return paged<Incident>(data);
+  },
+
+  getById: async (orgId: string, incidentId: string): Promise<Incident> => {
+    const { data } = await apiClient.get(`${alertingBase(orgId)}/incidents/${incidentId}`);
+    return camelizeDeep(data.data);
+  },
+
+  /** Operational counters for the Alerts overview page (single grouped query server-side). */
+  summary: async (orgId: string): Promise<IncidentSummary> => {
+    const { data } = await apiClient.get(`${alertingBase(orgId)}/incidents/summary`);
+    return camelizeDeep(data.data);
+  },
+
+  timeline: async (
+    orgId: string,
+    incidentId: string,
+    params: { limit?: number; offset?: number } = {},
+  ): Promise<Paged<IncidentTimelineEntry>> => {
+    const { data } = await apiClient.get(
+      `${alertingBase(orgId)}/incidents/${incidentId}/timeline`,
+      { params },
+    );
+    return paged<IncidentTimelineEntry>(data, 100);
+  },
+
+  /** Delivery attempts. Returns status/category/latency only - never provider secrets. */
+  notifications: async (
+    orgId: string,
+    incidentId: string,
+    params: { limit?: number; offset?: number } = {},
+  ): Promise<Paged<IncidentNotification>> => {
+    const { data } = await apiClient.get(
+      `${alertingBase(orgId)}/incidents/${incidentId}/notifications`,
+      { params },
+    );
+    return paged<IncidentNotification>(data, 100);
+  },
+
+  /** 409 when the incident is not in a state that allows acknowledgement. */
+  acknowledge: async (orgId: string, incidentId: string): Promise<Incident> => {
+    const { data } = await apiClient.post(
+      `${alertingBase(orgId)}/incidents/${incidentId}/acknowledge`,
+    );
+    return camelizeDeep(data.data);
+  },
+
+  resolve: async (
+    orgId: string,
+    incidentId: string,
+    body: ResolveIncidentBody = {},
+  ): Promise<Incident> => {
+    const { data } = await apiClient.post(
+      `${alertingBase(orgId)}/incidents/${incidentId}/resolve`,
+      body,
+    );
+    return camelizeDeep(data.data);
+  },
+
+  assign: async (
+    orgId: string,
+    incidentId: string,
+    body: AssignIncidentBody,
+  ): Promise<Incident> => {
+    const { data } = await apiClient.post(
+      `${alertingBase(orgId)}/incidents/${incidentId}/assign`,
+      body,
+    );
+    return camelizeDeep(data.data);
+  },
+};
+
+/**
+ * Alert-event API, kept separate from incidents.
+ *
+ * Events are the raw per-evaluation facts; incidents are the deduplicated
+ * operational occurrences built from them. The UI uses incidents for triage and
+ * events only for low-level forensics, so these must not be conflated again.
+ */
+export const alertEventsApi = {
+  list: async (orgId: string, params?: EventListQuery): Promise<Paged<AlertEvent>> => {
     const { data } = await apiClient.get(`${alertingBase(orgId)}/events`, { params });
     return paged<AlertEvent>(data);
   },

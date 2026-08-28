@@ -1,11 +1,17 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { toast } from 'sonner';
-import { Building2 } from 'lucide-react';
+import { Building2, KeyRound, Loader2 } from 'lucide-react';
 import { LoginForm } from '../components/LoginForm';
 import { LoginMfaForm } from '../components/LoginMfaForm';
 import { LoginBackupCodeForm } from '../components/LoginBackupCodeForm';
+import {
+  SOCIAL_PROVIDERS,
+  SocialProviderButtons,
+  type SocialProvider,
+} from '../components/SocialProviders';
 import { useLogin } from '../hooks/useLogin';
 import { authApi } from '../api/auth.api';
+import type { SsoDiscoveryResult } from '../types/auth.types';
 import { getErrorMessage } from '@/infrastructure/api-client/error.interceptor';
 import {
   AuthCard,
@@ -13,33 +19,24 @@ import {
   AuthFooter,
   AuthHeading,
   AuthLink,
-  OAuthButton,
 } from '@/shared/ui/pulse';
-
-// Google's mark keeps its own brand palette — these are third-party asset
-// colours, not theme tokens.
-function GoogleIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true" className="h-[18px] w-[18px]">
-      <path fill="#EA4335" d="M12 10.2v3.9h5.5c-.24 1.25-.95 2.3-2 3.01l3.23 2.5c1.88-1.73 2.97-4.27 2.97-7.3 0-.71-.06-1.39-.18-2.04H12z" />
-      <path fill="#34A853" d="M12 22c2.7 0 4.96-.9 6.61-2.44l-3.23-2.5c-.9.6-2.05.95-3.38.95-2.6 0-4.81-1.75-5.6-4.1l-3.34 2.58A9.99 9.99 0 0 0 12 22z" />
-      <path fill="#4A90E2" d="M6.4 13.9A6 6 0 0 1 6.09 12c0-.66.11-1.3.31-1.9L3.06 7.52A10 10 0 0 0 2 12c0 1.61.38 3.14 1.06 4.48l3.34-2.58z" />
-      <path fill="#FBBC05" d="M12 5.98c1.47 0 2.79.5 3.83 1.48l2.87-2.87C16.95 2.96 14.7 2 12 2 8.08 2 4.7 4.24 3.06 7.52l3.34 2.58c.79-2.35 3-4.12 5.6-4.12z" />
-    </svg>
-  );
-}
 
 export default function LoginPage() {
   const { loginState, challengeData, login, loginMfa, loginBackup, isPending, resetState } = useLogin();
   const [showBackupCodes, setShowBackupCodes] = useState(false);
-  const [socialProvider, setSocialProvider] = useState<string | null>(null);
+  const [socialProvider, setSocialProvider] = useState<SocialProvider | null>(null);
+
+  // Workspace lookup. The email step promises "we use this to find your
+  // workspace" — this is what makes that true.
+  const [discovery, setDiscovery] = useState<SsoDiscoveryResult | null>(null);
+  const [isResolving, setIsResolving] = useState(false);
 
   const handleCancelMfa = () => {
     resetState();
     setShowBackupCodes(false);
   };
 
-  async function startSocialLogin(provider: 'github' | 'google' | 'microsoft') {
+  const startSocialLogin = useCallback(async (provider: SocialProvider) => {
     setSocialProvider(provider);
     try {
       const result = await authApi.socialLogin(provider);
@@ -48,37 +45,91 @@ export default function LoginPage() {
       toast.error(getErrorMessage(error));
       setSocialProvider(null);
     }
-  }
+  }, []);
+
+  /**
+   * Resolve the address to its workspace. Deliberately fail-soft: discovery only
+   * *enriches* the password step, so a failed lookup must never block a user who
+   * already knows their password. It is also rate limited server-side (30 per
+   * 15 min), which is another reason not to treat a miss as an error.
+   */
+  const resolveWorkspace = useCallback(async (email: string) => {
+    setIsResolving(true);
+    try {
+      setDiscovery(await authApi.discoverSSO(email));
+    } catch {
+      setDiscovery(null);
+    } finally {
+      setIsResolving(false);
+    }
+  }, []);
 
   if (loginState === 'mfa_required' && challengeData) {
     if (showBackupCodes) {
-      return <LoginBackupCodeForm challengeId={challengeData.challengeId} loginBackupCode={loginBackup} isPending={isPending} onCancel={() => setShowBackupCodes(false)} />;
+      return (
+        <LoginBackupCodeForm
+          challengeId={challengeData.challengeId}
+          loginBackupCode={loginBackup}
+          isPending={isPending}
+          onCancel={() => setShowBackupCodes(false)}
+        />
+      );
     }
 
-    return <LoginMfaForm challengeData={challengeData} loginMfa={loginMfa} isPending={isPending} onSelectBackupCodes={() => setShowBackupCodes(true)} onCancel={handleCancelMfa} />;
+    return (
+      <LoginMfaForm
+        challengeData={challengeData}
+        loginMfa={loginMfa}
+        isPending={isPending}
+        onSelectBackupCodes={() => setShowBackupCodes(true)}
+        onCancel={handleCancelMfa}
+      />
+    );
   }
+
+  // Before discovery runs we cannot know which providers the deployment has
+  // credentials for, so offer every supported provider and narrow afterwards.
+  const availableProviders = discovery?.configured_link_providers?.length
+    ? (discovery.configured_link_providers as readonly SocialProvider[])
+    : SOCIAL_PROVIDERS;
+  const linkedProviders = (discovery?.linked_social_providers ?? []) as readonly SocialProvider[];
+
+  const ssoReady = Boolean(discovery && (discovery.saml_login_ready || discovery.oidc_login_ready));
+  const ssoOrgName = discovery?.providers?.[0]?.org_name;
 
   return (
     <div className="w-full">
       <AuthHeading
         eyebrow="Welcome back"
         title="Sign in"
-        description="Continue with Google or sign in with your work email."
+        description="Continue with a linked provider, or sign in with your work email."
       />
 
       <AuthCard>
-        <OAuthButton
-          icon={<GoogleIcon />}
-          onClick={() => startSocialLogin('google')}
-          disabled={socialProvider !== null}
-          pending={socialProvider === 'google'}
-        >
-          Continue with Google
-        </OAuthButton>
+        <SocialProviderButtons
+          onSelect={startSocialLogin}
+          pendingProvider={socialProvider}
+          disabled={isPending}
+          available={availableProviders}
+          linked={linkedProviders}
+        />
 
         <AuthDivider>or continue with email</AuthDivider>
 
-        <LoginForm login={login} isPending={isPending} />
+        <LoginForm
+          login={login}
+          isPending={isPending}
+          onEmailResolved={resolveWorkspace}
+          isResolving={isResolving}
+          passwordStepSlot={
+            <WorkspaceHint
+              isResolving={isResolving}
+              domain={discovery?.domain}
+              ssoReady={ssoReady}
+              ssoOrgName={ssoOrgName}
+            />
+          }
+        />
 
         <div className="mt-5 flex items-center justify-between gap-3 border-t border-[var(--border)] pt-4">
           <span className="flex items-center gap-2 text-[12px] text-[var(--text3)]">
@@ -92,6 +143,61 @@ export default function LoginPage() {
       <AuthFooter>
         Don&apos;t have an account? <AuthLink to="/auth/register">Create one</AuthLink>
       </AuthFooter>
+    </div>
+  );
+}
+
+/**
+ * Result of the workspace lookup, shown above the password field.
+ *
+ * When the domain is governed by an identity provider this is the most important
+ * thing on the screen: the user's password will not work, and saying so before
+ * they try beats a failed attempt followed by a lockout counter.
+ */
+function WorkspaceHint({
+  isResolving,
+  domain,
+  ssoReady,
+  ssoOrgName,
+}: {
+  isResolving: boolean;
+  domain?: string;
+  ssoReady: boolean;
+  ssoOrgName?: string;
+}) {
+  if (isResolving) {
+    return (
+      <p className="flex items-center gap-2 font-mono text-[10px] font-medium uppercase tracking-[0.09em] text-[var(--text3)]">
+        <Loader2 className="size-3 animate-spin" aria-hidden="true" />
+        Finding your workspace
+      </p>
+    );
+  }
+
+  if (!ssoReady) {
+    // Nothing useful was learned. Stay silent rather than adding noise.
+    return null;
+  }
+
+  return (
+    <div className="flex items-start gap-2.5 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--brand-bg)] px-3 py-2.5">
+      <KeyRound className="mt-0.5 size-3.5 shrink-0 text-[var(--brand)]" aria-hidden="true" />
+      <div className="min-w-0 flex-1">
+        <p className="text-[12px] font-medium leading-[1.5] text-[var(--text)]">
+          {ssoOrgName ? `${ssoOrgName} uses single sign-on` : 'This domain uses single sign-on'}
+        </p>
+        <p className="mt-0.5 text-[12px] leading-[1.5] text-[var(--text2)]">
+          {domain ? (
+            <>
+              Accounts on <span className="font-mono text-[var(--text)]">{domain}</span> sign in through
+              your identity provider.
+            </>
+          ) : (
+            'Accounts on this domain sign in through your identity provider.'
+          )}{' '}
+          <AuthLink to="/auth/login/sso">Continue with SSO</AuthLink>
+        </p>
+      </div>
     </div>
   );
 }

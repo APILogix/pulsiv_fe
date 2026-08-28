@@ -23,7 +23,7 @@ export function LimitsTab({ limits, onChange, onChangeTenant, errors }: LimitsTa
         Hard boundaries preventing memory exhaustion or ingestion overflow. Values outside documented client limits will be rejected during server compilation.
       </SectionBanner>
 
-      <div className="rounded-[16px] border border-[var(--border)] bg-[var(--bg1)] shadow-md p-5 flex flex-col gap-4">
+      <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] p-5 flex flex-col gap-4">
         <h3 className="font-bold text-[14px] text-[var(--text)] flex items-center gap-2 border-b border-[var(--border)] pb-3">
           <Sliders className="size-4 text-[var(--brand)]" /> Telemetry Resource Caps
         </h3>
@@ -95,16 +95,16 @@ export function LimitsTab({ limits, onChange, onChangeTenant, errors }: LimitsTa
               <span className="text-[12px] font-mono text-[var(--text3)]">MB</span>
             </div>
             {errorFor('limits.maxMemoryMb') && (
-              <p className="text-[11px] text-red-400 font-semibold">{errorFor('limits.maxMemoryMb')}</p>
+              <p className="text-[11px] text-[var(--red)] font-semibold">{errorFor('limits.maxMemoryMb')}</p>
             )}
           </div>
         </div>
       </div>
 
-      <div className="rounded-[16px] border border-[var(--border)] bg-[var(--bg1)] shadow-md p-5 flex flex-col gap-4">
+      <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] p-5 flex flex-col gap-4">
         <div className="flex items-center justify-between border-b border-[var(--border)] pb-3">
           <h3 className="font-bold text-[14px] text-[var(--text)] flex items-center gap-2">
-            <Building2 className="size-4 text-sky-400" /> Multi-Tenant Fairness Governance
+            <Building2 className="size-4 text-[var(--blue)]" /> Multi-Tenant Fairness Governance
           </h3>
           <Switch checked={limits.tenantGovernance.enabled} onCheckedChange={(val) => onChangeTenant('enabled', val)} />
         </div>

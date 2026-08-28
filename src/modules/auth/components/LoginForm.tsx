@@ -9,9 +9,29 @@ import { AuthButton, AuthField, PasswordInput, fieldInputClass } from '@/shared/
 interface LoginFormProps {
   login: (data: LoginFormData) => void;
   isPending: boolean;
+  /**
+   * Called with the validated address when the user advances to the password
+   * step. This is the hook the workspace lookup hangs off — the email step tells
+   * the user "we use this to find your workspace", so something has to actually
+   * perform that lookup.
+   */
+  onEmailResolved?: (email: string) => void;
+  /** True while the workspace lookup is in flight, to keep Continue honest. */
+  isResolving?: boolean;
+  /**
+   * Rendered above the password field. Owned by the page so this component stays
+   * presentational and does not need to know about SSO or social providers.
+   */
+  passwordStepSlot?: React.ReactNode;
 }
 
-export function LoginForm({ login, isPending }: LoginFormProps) {
+export function LoginForm({
+  login,
+  isPending,
+  onEmailResolved,
+  isResolving = false,
+  passwordStepSlot,
+}: LoginFormProps) {
   const [step, setStep] = useState<'email' | 'password'>('email');
   const { register, handleSubmit, trigger, getValues, formState: { errors } } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
@@ -19,7 +39,9 @@ export function LoginForm({ login, isPending }: LoginFormProps) {
   });
 
   const continueToPassword = async () => {
-    if (await trigger('email')) setStep('password');
+    if (!(await trigger('email'))) return;
+    setStep('password');
+    onEmailResolved?.(getValues('email'));
   };
 
   return (
@@ -49,7 +71,7 @@ export function LoginForm({ login, isPending }: LoginFormProps) {
             By continuing, you agree to Sentinel&apos;s Terms and Conditions and Privacy Policy.
           </p>
 
-          <AuthButton type="button" onClick={continueToPassword} disabled={isPending}>
+          <AuthButton type="button" onClick={continueToPassword} disabled={isPending} pending={isResolving}>
             Continue
           </AuthButton>
         </div>
@@ -71,6 +93,8 @@ export function LoginForm({ login, isPending }: LoginFormProps) {
               Change
             </button>
           </div>
+
+          {passwordStepSlot}
 
           <AuthField
             label="Password"

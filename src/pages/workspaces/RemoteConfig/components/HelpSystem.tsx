@@ -22,9 +22,9 @@ export function SectionBanner({
     <div
       className={cn(
         'relative mb-6 rounded-lg border p-4 text-[14px]',
-        type === 'info' && 'border-cyan-500/30 bg-cyan-500/10 text-cyan-100',
-        type === 'warning' && 'border-amber-500/30 bg-amber-500/10 text-amber-100',
-        type === 'danger' && 'border-red-500/30 bg-red-500/10 text-red-100',
+        type === 'info' && 'border-[var(--ai)]/30 bg-[var(--ai)]/10 text-[var(--ai)]',
+        type === 'warning' && 'border-[var(--amber)]/30 bg-[var(--amber)]/10 text-[var(--amber)]',
+        type === 'danger' && 'border-[var(--red)]/30 bg-[var(--red)]/10 text-[var(--red)]',
       )}
     >
       <button
@@ -101,7 +101,7 @@ export function FieldTooltip({
       {isOpen && (
         <div
           ref={tooltipRef}
-          className="absolute bottom-full left-1/2 z-[100] mb-2 w-64 -translate-x-1/2 rounded-md border border-[var(--border)] bg-[var(--bg2)] p-3 text-left shadow-lg"
+          className="absolute bottom-full left-1/2 z-[100] mb-2 w-64 -translate-x-1/2 rounded-[var(--radius)] border border-[var(--border2)] bg-[var(--bg2)] p-3 text-left shadow-[var(--shadow-toast)]"
           onMouseEnter={() => setIsOpen(true)}
           onMouseLeave={() => setIsOpen(false)}
         >
@@ -180,7 +180,7 @@ export function AbstractIcon({ name }: { name: string }) {
       </svg>
     ),
     killswitches: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-red-500">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[var(--red)]">
         <path d="M18.36 6.64a9 9 0 1 1-12.73 0" />
         <line x1="12" y1="2" x2="12" y2="12" />
       </svg>

@@ -39,12 +39,14 @@ export function PublishDrawer({
 
   if (!open) return null;
 
+  // Scrim uses the --overlay token; the drawer keeps real elevation via
+  // --shadow-modal (§6) rather than Tailwind's shadow scale.
   return (
-    <div className="fixed inset-0 z-[100] flex justify-end bg-black/50 backdrop-blur-sm animate-in fade-in duration-150">
-      <div className="flex h-full w-full max-w-[560px] flex-col border-l border-[var(--border)] bg-[var(--bg1)] shadow-2xl animate-in slide-in-from-right duration-200">
+    <div className="fixed inset-0 z-[100] flex justify-end bg-[var(--overlay)] animate-in fade-in duration-150">
+      <div className="flex h-full w-full max-w-[560px] flex-col border-l border-[var(--border)] bg-[var(--bg1)] shadow-[var(--shadow-modal)] animate-in slide-in-from-right duration-200">
         <div className="flex items-center justify-between border-b border-[var(--border)] px-6 py-5">
           <div className="flex items-center gap-3">
-            <span className="flex size-9 items-center justify-center rounded-[10px] bg-[var(--brand)]/15 text-[var(--brand)]">
+            <span className="flex size-9 items-center justify-center rounded-[var(--radius-lg)] bg-[var(--brand)]/15 text-[var(--brand)]">
               <Rocket className="size-4.5" />
             </span>
             <div>
@@ -66,26 +68,26 @@ export function PublishDrawer({
 
         <div className="sidebar-scroll flex-1 overflow-y-auto px-6 py-5">
           {hasErrors ? (
-            <div className="mb-5 flex items-start gap-3 rounded-[10px] border border-red-500/30 bg-red-500/10 p-4">
-              <ShieldAlert className="mt-0.5 size-4 shrink-0 text-red-500" />
+            <div className="mb-5 flex items-start gap-3 rounded-[var(--radius-lg)] border border-[var(--red)]/30 bg-[var(--red)]/10 p-4">
+              <ShieldAlert className="mt-0.5 size-4 shrink-0 text-[var(--red)]" />
               <div>
-                <p className="text-[13px] font-medium text-red-500">
+                <p className="text-[13px] font-medium text-[var(--red)]">
                   {errors.length} field{errors.length === 1 ? '' : 's'} out of range
                 </p>
-                <p className="mt-1 text-[12px] text-red-400">
+                <p className="mt-1 text-[12px] text-[var(--red)]">
                   Fix the highlighted fields in the editor before this can be published. The backend will reject an
                   out-of-bounds value regardless.
                 </p>
               </div>
             </div>
           ) : diff.length === 0 ? (
-            <div className="rounded-[10px] border border-dashed border-[var(--border)] bg-[var(--bg2)] p-6 text-center text-[13px] text-[var(--text3)]">
+            <div className="rounded-[var(--radius-lg)] border border-dashed border-[var(--border)] bg-[var(--bg2)] p-6 text-center text-[13px] text-[var(--text3)]">
               No changes to publish.
             </div>
           ) : (
-            <div className="flex items-start gap-3 rounded-[10px] border border-amber-500/30 bg-amber-500/10 p-4">
-              <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-500" />
-              <p className="text-[12.5px] leading-relaxed text-amber-100">
+            <div className="flex items-start gap-3 rounded-[var(--radius-lg)] border border-[var(--amber)]/30 bg-[var(--amber)]/10 p-4">
+              <AlertTriangle className="mt-0.5 size-4 shrink-0 text-[var(--amber)]" />
+              <p className="text-[12.5px] leading-relaxed text-[var(--amber)]">
                 This publishes immediately to every connected SDK for <strong>{environmentName}</strong>. Clients pick
                 up the change on their next config TTL refresh — there is no staged rollout for this environment scope.
               </p>
@@ -95,7 +97,7 @@ export function PublishDrawer({
           {diff.length > 0 && (
             <div className="mt-5 flex flex-col gap-4">
               {Object.entries(grouped).map(([section, entries]) => (
-                <div key={section} className="rounded-[10px] border border-[var(--border)] bg-[var(--bg2)]">
+                <div key={section} className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg2)]">
                   <div className="border-b border-[var(--border)] px-4 py-2.5 text-[12px] font-semibold uppercase tracking-wide text-[var(--text3)]">
                     {SECTION_LABELS[section] ?? section} · {entries.length}
                   </div>
@@ -131,7 +133,7 @@ export function PublishDrawer({
             placeholder={`e.g. "Lowered trace sampling to 20% to cut ingestion cost"`}
             rows={2}
             maxLength={2000}
-            className="w-full resize-none rounded-[8px] border border-[var(--border)] bg-[var(--bg2)] px-3 py-2 text-[13px] text-[var(--text)] outline-none transition-colors placeholder:text-[var(--text3)] focus:border-[var(--brand)] focus:ring-1 focus:ring-[var(--brand)]"
+            className="w-full resize-none rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg2)] px-3 py-2 text-[13px] text-[var(--text)] outline-none transition-colors placeholder:text-[var(--text3)] focus:border-[var(--brand)] focus:ring-1 focus:ring-[var(--brand)]"
           />
           <div className="mt-4 flex items-center justify-end gap-3">
             <Button variant="ghost" onClick={onClose} disabled={isSaving}>
@@ -140,7 +142,7 @@ export function PublishDrawer({
             <Button
               onClick={() => onConfirm(summary.trim())}
               disabled={hasErrors || diff.length === 0 || isSaving}
-              className={cn('bg-emerald-600 text-white shadow-sm hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600')}
+              className={cn('bg-[var(--green-d)] text-white hover:bg-[var(--green-d)] dark:bg-[var(--green)] dark:hover:bg-[var(--green-d)]')}
             >
               <Rocket className="mr-2 size-4" />
               {isSaving ? 'Publishing…' : `Publish revision ${currentRevision + 1}`}

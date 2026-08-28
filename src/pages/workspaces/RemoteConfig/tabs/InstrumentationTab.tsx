@@ -36,7 +36,7 @@ export function InstrumentationTab({ instrumentation, onChange }: Instrumentatio
         Manage auto-patching for Node.js modules, web frameworks, and database drivers.
       </SectionBanner>
 
-      <div className="rounded-[16px] border border-[var(--border)] bg-[var(--bg1)] shadow-md p-5 flex flex-col gap-4">
+      <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] p-5 flex flex-col gap-4">
         <div className="flex items-center justify-between border-b border-[var(--border)] pb-3">
           <h3 className="font-bold text-[14px] text-[var(--text)] flex items-center gap-2">
             <Radio className="size-4 text-[var(--brand)]" /> Supported Frameworks & Drivers
@@ -51,7 +51,7 @@ export function InstrumentationTab({ instrumentation, onChange }: Instrumentatio
               <div
                 key={key}
                 className={cn(
-                  "flex items-start justify-between gap-3 rounded-xl border p-3.5 transition-all",
+                  "flex items-start justify-between gap-3 rounded-[var(--radius-lg)] border p-3.5 transition-all",
                   isActive
                     ? "border-[var(--brand)]/40 bg-[var(--bg2)]/80 shadow-xs"
                     : "border-[var(--border)] bg-[var(--bg2)]/30 opacity-70"

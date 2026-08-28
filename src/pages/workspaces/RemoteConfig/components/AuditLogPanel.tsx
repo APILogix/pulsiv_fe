@@ -63,7 +63,7 @@ export function AuditLogPanel() {
       description="Immutable log of all published revisions, rollbacks, automated governance actions, and operator details."
     >
       <div className="flex flex-col gap-3 py-2">
-        <div className="overflow-x-auto rounded-xl border border-[var(--border)] bg-[var(--bg2)]/40">
+        <div className="overflow-x-auto rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg2)]/40">
           <table className="w-full text-left text-xs text-[var(--text2)]">
             <thead className="border-b border-[var(--border)] bg-[var(--bg2)] text-[10px] uppercase font-bold text-[var(--text3)]">
               <tr>
@@ -81,13 +81,13 @@ export function AuditLogPanel() {
                 <tr key={log.id} className="hover:bg-[var(--bg1)] transition-colors">
                   <td className="p-3 font-mono text-[11px] text-[var(--text3)] whitespace-nowrap">
                     <span className="flex items-center gap-1.5">
-                      <Clock className="size-3 text-sky-400" />
+                      <Clock className="size-3 text-[var(--blue)]" />
                       {log.timestamp}
                     </span>
                   </td>
                   <td className="p-3 font-semibold text-[var(--text)] whitespace-nowrap">
                     <span className="flex items-center gap-1.5">
-                      <User className="size-3 text-indigo-400" />
+                      <User className="size-3 text-[var(--brand)]" />
                       {log.actor}
                     </span>
                   </td>

@@ -17,8 +17,8 @@ import {
 import { Activity, Radio, RefreshCw } from 'lucide-react';
 
 const inputClass =
-  'w-full rounded-[8px] border border-[var(--border)] bg-[var(--bg2)] px-3 py-1.5 text-[13px] text-[var(--text)] outline-none transition-colors focus:border-[var(--brand)] focus:ring-1 focus:ring-[var(--brand)] disabled:opacity-50 font-mono';
-const selectClass = 'w-full rounded-[8px] border border-[var(--border)] bg-[var(--bg2)] px-3 py-1.5 text-[13px] text-[var(--text)] outline-none transition-colors focus:border-[var(--brand)] focus:ring-1 focus:ring-[var(--brand)] disabled:opacity-50 cursor-pointer';
+  'w-full rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg2)] px-3 py-1.5 text-[13px] text-[var(--text)] outline-none transition-colors focus:border-[var(--brand)] focus:ring-1 focus:ring-[var(--brand)] disabled:opacity-50 font-mono';
+const selectClass = 'w-full rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg2)] px-3 py-1.5 text-[13px] text-[var(--text)] outline-none transition-colors focus:border-[var(--brand)] focus:ring-1 focus:ring-[var(--brand)] disabled:opacity-50 cursor-pointer';
 
 interface TransportTabProps {
   transport: SdkConfigState['transport'];
@@ -33,9 +33,9 @@ interface TransportTabProps {
 }
 
 const PRIORITY_BADGE: Record<TransportPriority, string> = {
-  critical: 'bg-red-500/15 text-red-400 border-red-500/30 font-bold',
-  high: 'bg-amber-500/15 text-amber-400 border-amber-500/30 font-bold',
-  normal: 'bg-cyan-500/15 text-cyan-400 border-cyan-500/30 font-semibold',
+  critical: 'bg-[var(--red)]/15 text-[var(--red)] border-[var(--red)]/30 font-bold',
+  high: 'bg-[var(--amber)]/15 text-[var(--amber)] border-[var(--amber)]/30 font-bold',
+  normal: 'bg-[var(--ai)]/15 text-[var(--ai)] border-[var(--ai)]/30 font-semibold',
   low: 'bg-[var(--bg3)] text-[var(--text2)] border-[var(--border)] font-medium',
 };
 
@@ -63,7 +63,7 @@ export function TransportTab({
       </SectionBanner>
 
       {/* Route Matrix */}
-      <div className="rounded-[16px] border border-[var(--border)] bg-[var(--bg1)] shadow-md overflow-hidden">
+      <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] overflow-hidden">
         <div className="border-b border-[var(--border)] px-5 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Activity className="size-4 text-[var(--brand)]" />
@@ -110,7 +110,7 @@ export function TransportTab({
                         onChange={(e) => onChangeRoute(routeKey, 'batchSize', Number(e.target.value))}
                         min={BOUNDS['route.batchSize'].min}
                         max={BOUNDS['route.batchSize'].max}
-                        className={`${inputClass} w-24 text-right ${errorFor(`${prefix}.batchSize`) ? 'border-red-500/60' : ''}`}
+                        className={`${inputClass} w-24 text-right ${errorFor(`${prefix}.batchSize`) ? 'border-[var(--red)]/60' : ''}`}
                       />
                     </td>
                     <td className="px-5 py-3.5">
@@ -120,7 +120,7 @@ export function TransportTab({
                         onChange={(e) => onChangeRoute(routeKey, 'flushIntervalMs', Number(e.target.value))}
                         min={BOUNDS['route.flushIntervalMs'].min}
                         max={BOUNDS['route.flushIntervalMs'].max}
-                        className={`${inputClass} w-28 text-right ${errorFor(`${prefix}.flushIntervalMs`) ? 'border-red-500/60' : ''}`}
+                        className={`${inputClass} w-28 text-right ${errorFor(`${prefix}.flushIntervalMs`) ? 'border-[var(--red)]/60' : ''}`}
                       />
                     </td>
                     <td className="px-5 py-3.5">
@@ -130,14 +130,14 @@ export function TransportTab({
                         onChange={(e) => onChangeRoute(routeKey, 'timeoutMs', Number(e.target.value))}
                         min={BOUNDS['route.timeoutMs'].min}
                         max={BOUNDS['route.timeoutMs'].max}
-                        className={`${inputClass} w-28 text-right ${errorFor(`${prefix}.timeoutMs`) ? 'border-red-500/60' : ''}`}
+                        className={`${inputClass} w-28 text-right ${errorFor(`${prefix}.timeoutMs`) ? 'border-[var(--red)]/60' : ''}`}
                       />
                     </td>
                     <td className="px-5 py-3.5">
                       <select
                         value={route.compression}
                         onChange={(e) => onChangeRoute(routeKey, 'compression', e.target.value as CompressionMode)}
-                        className="rounded-[6px] border border-[var(--border)] bg-[var(--bg2)] px-2 py-1 font-mono text-[12px] text-[var(--text)] outline-none cursor-pointer"
+                        className="rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg2)] px-2 py-1 font-mono text-[12px] text-[var(--text)] outline-none cursor-pointer"
                       >
                         {COMPRESSION_MODES.map((mode) => (
                           <option key={mode} value={mode}>
@@ -156,12 +156,12 @@ export function TransportTab({
 
       {/* Retry & Queue Control Split */}
       <div className="grid gap-6 lg:grid-cols-2">
-        <div className="rounded-[16px] border border-[var(--border)] bg-[var(--bg1)] shadow-md p-5 flex flex-col gap-4">
+        <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] p-5 flex flex-col gap-4">
           <h3 className="font-bold text-[14px] text-[var(--text)] flex items-center gap-2">
-            <RefreshCw className="size-4 text-sky-400" /> Retry & Backoff Policy
+            <RefreshCw className="size-4 text-[var(--blue)]" /> Retry & Backoff Policy
           </h3>
 
-          <div className="flex items-center justify-between rounded-xl bg-[var(--bg2)] p-4 border border-[var(--border)]">
+          <div className="flex items-center justify-between rounded-[var(--radius-lg)] bg-[var(--bg2)] p-4 border border-[var(--border)]">
             <div>
               <div className="font-bold text-[13px] text-[var(--text)] flex items-center gap-1.5">
                 Retry Engine Enabled
@@ -211,9 +211,9 @@ export function TransportTab({
           </div>
         </div>
 
-        <div className="rounded-[16px] border border-[var(--border)] bg-[var(--bg1)] shadow-md p-5 flex flex-col gap-4">
+        <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] p-5 flex flex-col gap-4">
           <h3 className="font-bold text-[14px] text-[var(--text)] flex items-center gap-2">
-            <Radio className="size-4 text-amber-400" /> Memory Queue & Overflow
+            <Radio className="size-4 text-[var(--amber)]" /> Memory Queue & Overflow
           </h3>
 
           <div className="flex flex-col gap-1.5">
@@ -254,7 +254,7 @@ export function TransportTab({
 
       {/* Connection Pool & TTL Delivery */}
       <div className="grid gap-6 sm:grid-cols-2">
-        <div className="rounded-[16px] border border-[var(--border)] bg-[var(--bg1)] shadow-md p-5 flex flex-col gap-4">
+        <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] p-5 flex flex-col gap-4">
           <h3 className="font-bold text-[14px] text-[var(--text)]">HTTP Connection Pool</h3>
           <div className="grid gap-4 sm:grid-cols-2">
             <NumberField
@@ -273,7 +273,7 @@ export function TransportTab({
               error={errorFor('transport.connections.acquireTimeoutMs')}
             />
           </div>
-          <div className="flex items-center justify-between rounded-xl bg-[var(--bg2)] p-4 border border-[var(--border)]">
+          <div className="flex items-center justify-between rounded-[var(--radius-lg)] bg-[var(--bg2)] p-4 border border-[var(--border)]">
             <div>
               <div className="font-bold text-[13px] text-[var(--text)]">HTTP Keep-Alive</div>
               <MicroCopy active={transport.keepAlive}>
@@ -284,7 +284,7 @@ export function TransportTab({
           </div>
         </div>
 
-        <div className="rounded-[16px] border border-[var(--border)] bg-[var(--bg1)] shadow-md p-5 flex flex-col gap-4">
+        <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] p-5 flex flex-col gap-4">
           <h3 className="font-bold text-[14px] text-[var(--text)]">Config Refresh TTL</h3>
           <NumberField
             label="Config Cache TTL"
@@ -294,7 +294,7 @@ export function TransportTab({
             suffix="seconds"
             error={errorFor('runtime.configTtlSeconds')}
           />
-          <div className="flex items-center justify-between rounded-xl bg-[var(--bg2)] p-4 border border-[var(--border)]">
+          <div className="flex items-center justify-between rounded-[var(--radius-lg)] bg-[var(--bg2)] p-4 border border-[var(--border)]">
             <div>
               <div className="font-bold text-[13px] text-[var(--text)]">Stale-While-Revalidate</div>
               <MicroCopy active={runtime.staleWhileRevalidate}>

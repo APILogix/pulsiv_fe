@@ -13,7 +13,8 @@ export function InheritanceVisualizer({ environmentName }: InheritanceVisualizer
       description: "Default fallback values embedded in standard SDK distribution.",
       icon: Cpu,
       status: "Inherited",
-      color: "text-slate-400 border-slate-500/30 bg-slate-500/10",
+      // Base layer is inherited, not overridden — a neutral, not a channel.
+      color: "text-[var(--text2)] border-[var(--border)] bg-[var(--bg2)]",
       overrides: "100% Base",
     },
     {
@@ -22,7 +23,7 @@ export function InheritanceVisualizer({ environmentName }: InheritanceVisualizer
       description: "Org-wide compliance rules (e.g. mandatory PII masking, max payload bounds).",
       icon: Building2,
       status: "Active",
-      color: "text-indigo-400 border-indigo-500/30 bg-indigo-500/10",
+      color: "text-[var(--brand)] border-[var(--brand)]/30 bg-[var(--brand)]/10",
       overrides: "Enforced",
     },
     {
@@ -31,7 +32,7 @@ export function InheritanceVisualizer({ environmentName }: InheritanceVisualizer
       description: "Shared baseline for all environments within this project.",
       icon: Folder,
       status: "Active",
-      color: "text-sky-400 border-sky-500/30 bg-sky-500/10",
+      color: "text-[var(--blue)] border-[var(--blue)]/30 bg-[var(--blue)]/10",
       overrides: "4 Active Rules",
     },
     {
@@ -40,7 +41,7 @@ export function InheritanceVisualizer({ environmentName }: InheritanceVisualizer
       description: "Environment-specific overrides (Sampling, retry policies, route routing).",
       icon: Globe,
       status: "Active Scope",
-      color: "text-emerald-400 border-emerald-500/30 bg-emerald-500/10",
+      color: "text-[var(--green)] border-[var(--green)]/30 bg-[var(--green)]/10",
       overrides: "Primary Override",
     },
     {
@@ -49,7 +50,7 @@ export function InheritanceVisualizer({ environmentName }: InheritanceVisualizer
       description: "Platform specific behavior adaptations (Web vs Node vs Mobile).",
       icon: Sparkles,
       status: "Evaluated at Runtime",
-      color: "text-amber-400 border-amber-500/30 bg-amber-500/10",
+      color: "text-[var(--amber)] border-[var(--amber)]/30 bg-[var(--amber)]/10",
       overrides: "Conditional",
     },
   ];
@@ -64,7 +65,7 @@ export function InheritanceVisualizer({ environmentName }: InheritanceVisualizer
           {layers.map((layer) => {
             const Icon = layer.icon;
             return (
-              <div key={layer.level} className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-[var(--border)] bg-[var(--bg2)]/60 p-4 transition-all hover:bg-[var(--bg2)]">
+              <div key={layer.level} className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg2)]/60 p-4 transition-all hover:bg-[var(--bg2)]">
                 <div className="flex items-center gap-3.5 min-w-0">
                   <div className={`flex size-10 items-center justify-center rounded-lg border font-bold text-xs shrink-0 ${layer.color}`}>
                     <Icon className="size-5" />
@@ -82,7 +83,7 @@ export function InheritanceVisualizer({ environmentName }: InheritanceVisualizer
                   <span className="rounded-full bg-[var(--bg1)] px-2.5 py-1 text-[11px] font-semibold text-[var(--text2)] border border-[var(--border)]">
                     {layer.overrides}
                   </span>
-                  <span className="flex items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold text-emerald-400 border border-emerald-500/30">
+                  <span className="flex items-center gap-1 rounded-full bg-[var(--green)]/10 px-2.5 py-1 text-[11px] font-semibold text-[var(--green)] border border-[var(--green)]/30">
                     <Check className="size-3" /> {layer.status}
                   </span>
                 </div>
@@ -91,9 +92,9 @@ export function InheritanceVisualizer({ environmentName }: InheritanceVisualizer
           })}
         </div>
 
-        <div className="mt-2 rounded-xl border border-indigo-500/30 bg-indigo-500/10 p-4 flex items-center justify-between text-xs text-indigo-300">
+        <div className="mt-2 rounded-[var(--radius-lg)] border border-[var(--brand)]/30 bg-[var(--brand)]/10 p-4 flex items-center justify-between text-xs text-[var(--brand)]">
           <div className="flex items-center gap-2.5">
-            <ShieldCheck className="size-5 text-indigo-400 shrink-0" />
+            <ShieldCheck className="size-5 text-[var(--brand)] shrink-0" />
             <div>
               <span className="font-bold text-white">Compiler Resolution Status:</span> All layer rules merged cleanly with 0 conflicts.
             </div>

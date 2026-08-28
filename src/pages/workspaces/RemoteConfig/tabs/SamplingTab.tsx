@@ -6,7 +6,7 @@ import { Button } from '@/shared/observe';
 import { Plus, Trash2, Gauge, Route } from 'lucide-react';
 
 const inputClass =
-  'w-full rounded-[8px] border border-[var(--border)] bg-[var(--bg2)] px-3 py-1.5 text-[13px] text-[var(--text)] outline-none transition-colors focus:border-[var(--brand)] focus:ring-1 focus:ring-[var(--brand)] font-mono';
+  'w-full rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg2)] px-3 py-1.5 text-[13px] text-[var(--text)] outline-none transition-colors focus:border-[var(--brand)] focus:ring-1 focus:ring-[var(--brand)] font-mono';
 
 interface SamplingTabProps {
   sampling: SdkConfigState['sampling'];
@@ -59,7 +59,7 @@ export function SamplingTab({ sampling, onChange, errors }: SamplingTabProps) {
 
   const Slider = ({ value, onChangeVal, label, tooltip, error }: any) => {
     return (
-      <div className="flex flex-col gap-1 rounded-xl border border-[var(--border)] bg-[var(--bg2)]/40 p-3.5">
+      <div className="flex flex-col gap-1 rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg2)]/40 p-3.5">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1.5">
             <label className="font-bold text-[13px] text-[var(--text)]">{label}</label>
@@ -82,7 +82,7 @@ export function SamplingTab({ sampling, onChange, errors }: SamplingTabProps) {
             className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
           />
         </div>
-        {error && <p className="text-[11px] text-red-400 font-semibold">{error}</p>}
+        {error && <p className="text-[11px] text-[var(--red)] font-semibold">{error}</p>}
       </div>
     );
   };
@@ -96,7 +96,7 @@ export function SamplingTab({ sampling, onChange, errors }: SamplingTabProps) {
         Edge sampling controls for all telemetry types.
       </SectionBanner>
 
-      <div className="rounded-[16px] border border-[var(--border)] bg-[var(--bg1)] p-5 shadow-md flex flex-col gap-4">
+      <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] p-5 flex flex-col gap-4">
         <div className="flex items-center justify-between">
           <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text3)] flex items-center gap-2">
             <Gauge className="size-3.5 text-[var(--brand)]" /> Global Ingestion Rates
@@ -117,17 +117,17 @@ export function SamplingTab({ sampling, onChange, errors }: SamplingTabProps) {
         </div>
       </div>
 
-      <div className="rounded-[16px] border border-[var(--border)] bg-[var(--bg1)] p-5 shadow-md flex flex-col gap-4">
+      <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] p-5 flex flex-col gap-4">
         <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text3)] flex items-center gap-2">
-          <Route className="size-3.5 text-sky-400" /> Route Path Overrides
+          <Route className="size-3.5 text-[var(--blue)]" /> Route Path Overrides
         </h3>
 
         <div className="flex flex-col gap-4">
           {Object.entries(sampling.routes || {}).map(([routePath, signals]) => (
-            <div key={routePath} className="rounded-xl border border-[var(--border)] bg-[var(--bg2)]/60 p-4 flex flex-col gap-3">
+            <div key={routePath} className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg2)]/60 p-4 flex flex-col gap-3">
               <div className="flex items-center justify-between border-b border-[var(--border)] pb-3">
                 <div className="font-mono text-xs font-bold text-[var(--brand)]">{routePath}</div>
-                <Button variant="ghost" className="h-7 px-2 text-xs text-red-400 hover:text-red-300" onClick={() => removeRouteOverride(routePath)}>
+                <Button variant="ghost" className="h-7 px-2 text-xs text-[var(--red)] hover:text-[var(--red)]" onClick={() => removeRouteOverride(routePath)}>
                   <Trash2 className="size-3.5 mr-1" /> Remove
                 </Button>
               </div>

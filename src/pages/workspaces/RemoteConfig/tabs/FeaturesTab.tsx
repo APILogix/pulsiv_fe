@@ -135,16 +135,24 @@ export function FeaturesTab({ features, onChange }: FeaturesTabProps) {
       <div
         key={key}
         className={cn(
-          "flex flex-col justify-between gap-3 rounded-xl border p-4 transition-all duration-200",
+          "flex flex-col justify-between gap-3 rounded-[var(--radius-lg)] border p-4 transition-all duration-200",
           isActive
-            ? "border-[var(--brand)]/40 bg-[var(--bg1)] shadow-sm ring-1 ring-[var(--brand)]/20"
+            ? "border-[var(--brand)]/40 bg-[var(--bg1)] ring-1 ring-[var(--brand)]/20"
             : "border-[var(--border)] bg-[var(--bg2)]/60 hover:border-[var(--border)] hover:bg-[var(--bg1)]"
         )}
       >
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <span className={cn('h-2.5 w-2.5 rounded-full shrink-0', isActive ? 'bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.5)]' : 'bg-slate-500/50')} />
+              {/* On = truth channel; off = a neutral, not a dimmed colour. The
+                  green glow was a hardcoded rgba of --green; §6 defines three
+                  shadows and none of them are tinted. */}
+              <span
+                className={cn(
+                  'h-2.5 w-2.5 shrink-0 rounded-full',
+                  isActive ? 'bg-[var(--green)]' : 'bg-[var(--text3)]/50',
+                )}
+              />
               <h4 className="font-bold text-[14px] text-[var(--text)]">{label}</h4>
               <FieldTooltip definition={tooltip} />
             </div>
@@ -161,7 +169,7 @@ export function FeaturesTab({ features, onChange }: FeaturesTabProps) {
         <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-[var(--border)]/60 text-[11px]">
           <div className="flex items-center gap-2">
             <span className="rounded-md bg-[var(--bg2)] px-2 py-0.5 font-mono text-[var(--text3)] border border-[var(--border)]">
-              Overhead: <strong className={cn(cost.includes('1.') || cost.includes('2.') ? 'text-amber-400' : 'text-emerald-400')}>{cost}</strong>
+              Overhead: <strong className={cn(cost.includes('1.') || cost.includes('2.') ? 'text-[var(--amber)]' : 'text-[var(--green)]')}>{cost}</strong>
             </span>
             <span className="rounded-md bg-[var(--bg2)] px-2 py-0.5 text-[var(--text3)] border border-[var(--border)]">
               {sdkReq}
@@ -169,7 +177,7 @@ export function FeaturesTab({ features, onChange }: FeaturesTabProps) {
           </div>
 
           {dependency && (
-            <span className="flex items-center gap-1 text-sky-400 text-[10.5px] font-medium">
+            <span className="flex items-center gap-1 text-[var(--blue)] text-[10.5px] font-medium">
               <Layers className="size-3" /> {dependency}
             </span>
           )}
@@ -198,7 +206,7 @@ export function FeaturesTab({ features, onChange }: FeaturesTabProps) {
 
       <div className="flex flex-col gap-4 mt-2">
         <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text3)] flex items-center gap-2">
-          <Cpu className="size-3.5 text-sky-400" /> Advanced Diagnostics & Profiling
+          <Cpu className="size-3.5 text-[var(--blue)]" /> Advanced Diagnostics & Profiling
         </h3>
         <div className="grid gap-4 sm:grid-cols-2">
           {ADVANCED_FEATURES.map(renderToggleCard)}

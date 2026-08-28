@@ -25,7 +25,7 @@ export function RolloutStrategyPanel({ environmentName }: RolloutStrategyPanelPr
               setStrategy("full");
               setPercentage(100);
             }}
-            className={`flex flex-col items-start gap-2 rounded-xl border p-4 text-left transition-all ${
+            className={`flex flex-col items-start gap-2 rounded-[var(--radius-lg)] border p-4 text-left transition-all ${
               strategy === "full"
                 ? "border-[var(--brand)] bg-[var(--brand)]/10 ring-1 ring-[var(--brand)]"
                 : "border-[var(--border)] bg-[var(--bg2)] hover:border-[var(--brand)]/50"
@@ -33,7 +33,7 @@ export function RolloutStrategyPanel({ environmentName }: RolloutStrategyPanelPr
           >
             <div className="flex items-center justify-between w-full">
               <span className="text-xs font-bold uppercase tracking-wider text-[var(--text3)]">Mode A</span>
-              <Zap className="size-4 text-amber-400" />
+              <Zap className="size-4 text-[var(--amber)]" />
             </div>
             <div className="text-sm font-bold text-[var(--text)]">100% Immediate</div>
             <div className="text-xs text-[var(--text3)]">All SDK instances receive updates on next TTL refresh cycle.</div>
@@ -45,7 +45,7 @@ export function RolloutStrategyPanel({ environmentName }: RolloutStrategyPanelPr
               setStrategy("percentage");
               setPercentage(25);
             }}
-            className={`flex flex-col items-start gap-2 rounded-xl border p-4 text-left transition-all ${
+            className={`flex flex-col items-start gap-2 rounded-[var(--radius-lg)] border p-4 text-left transition-all ${
               strategy === "percentage"
                 ? "border-[var(--brand)] bg-[var(--brand)]/10 ring-1 ring-[var(--brand)]"
                 : "border-[var(--border)] bg-[var(--bg2)] hover:border-[var(--brand)]/50"
@@ -53,7 +53,7 @@ export function RolloutStrategyPanel({ environmentName }: RolloutStrategyPanelPr
           >
             <div className="flex items-center justify-between w-full">
               <span className="text-xs font-bold uppercase tracking-wider text-[var(--text3)]">Mode B</span>
-              <Percent className="size-4 text-sky-400" />
+              <Percent className="size-4 text-[var(--blue)]" />
             </div>
             <div className="text-sm font-bold text-[var(--text)]">Gradual Percentage</div>
             <div className="text-xs text-[var(--text3)]">Hash-ring based sticky distribution to a percentage of SDKs.</div>
@@ -65,7 +65,7 @@ export function RolloutStrategyPanel({ environmentName }: RolloutStrategyPanelPr
               setStrategy("canary");
               setPercentage(10);
             }}
-            className={`flex flex-col items-start gap-2 rounded-xl border p-4 text-left transition-all ${
+            className={`flex flex-col items-start gap-2 rounded-[var(--radius-lg)] border p-4 text-left transition-all ${
               strategy === "canary"
                 ? "border-[var(--brand)] bg-[var(--brand)]/10 ring-1 ring-[var(--brand)]"
                 : "border-[var(--border)] bg-[var(--bg2)] hover:border-[var(--brand)]/50"
@@ -73,7 +73,7 @@ export function RolloutStrategyPanel({ environmentName }: RolloutStrategyPanelPr
           >
             <div className="flex items-center justify-between w-full">
               <span className="text-xs font-bold uppercase tracking-wider text-[var(--text3)]">Mode C</span>
-              <ShieldCheck className="size-4 text-emerald-400" />
+              <ShieldCheck className="size-4 text-[var(--green)]" />
             </div>
             <div className="text-sm font-bold text-[var(--text)]">Canary Preview</div>
             <div className="text-xs text-[var(--text3)]">Restrict deployment to explicitly tagged preview/staging instances.</div>
@@ -82,7 +82,7 @@ export function RolloutStrategyPanel({ environmentName }: RolloutStrategyPanelPr
 
         {/* Percentage Slider (If Percentage or Canary) */}
         {strategy !== "full" && (
-          <div className="flex flex-col gap-3 rounded-xl border border-[var(--border)] bg-[var(--bg2)] p-4">
+          <div className="flex flex-col gap-3 rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg2)] p-4">
             <div className="flex items-center justify-between text-xs">
               <span className="font-semibold text-[var(--text)]">Rollout Target Percentage:</span>
               <span className="font-mono font-bold text-[var(--brand)] text-sm">{percentage}%</span>
@@ -106,9 +106,9 @@ export function RolloutStrategyPanel({ environmentName }: RolloutStrategyPanelPr
         )}
 
         {/* Status and Pause controls */}
-        <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-[var(--border)] bg-[var(--bg1)] p-4">
+        <div className="flex flex-wrap items-center justify-between gap-4 rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] p-4">
           <div className="flex items-center gap-3">
-            <div className={`flex size-9 items-center justify-center rounded-lg ${isPaused ? "bg-amber-500/10 text-amber-400" : "bg-emerald-500/10 text-emerald-400"}`}>
+            <div className={`flex size-9 items-center justify-center rounded-lg ${isPaused ? "bg-[var(--amber)]/10 text-[var(--amber)]" : "bg-[var(--green)]/10 text-[var(--green)]"}`}>
               {isPaused ? <Pause className="size-4" /> : <Play className="size-4" />}
             </div>
             <div>
@@ -125,7 +125,7 @@ export function RolloutStrategyPanel({ environmentName }: RolloutStrategyPanelPr
             type="button"
             variant="ghost"
             onClick={() => setIsPaused(!isPaused)}
-            className={`h-8 text-xs font-semibold ${isPaused ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" : "bg-amber-500/20 text-amber-400 border border-amber-500/30"}`}
+            className={`h-8 text-xs font-semibold ${isPaused ? "bg-[var(--green)]/20 text-[var(--green)] border border-[var(--green)]/30" : "bg-[var(--amber)]/20 text-[var(--amber)] border border-[var(--amber)]/30"}`}
           >
             {isPaused ? "Resume Rollout" : "Pause Rollout Engine"}
           </Button>

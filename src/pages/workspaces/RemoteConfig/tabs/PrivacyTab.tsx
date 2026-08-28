@@ -7,7 +7,7 @@ import { X, Plus, Shield, Lock, EyeOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const inputClass =
-  'w-full rounded-[8px] border border-[var(--border)] bg-[var(--bg2)] px-3 py-1.5 text-[13px] text-[var(--text)] outline-none transition-colors focus:border-[var(--brand)] focus:ring-1 focus:ring-[var(--brand)] font-mono';
+  'w-full rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg2)] px-3 py-1.5 text-[13px] text-[var(--text)] outline-none transition-colors focus:border-[var(--brand)] focus:ring-1 focus:ring-[var(--brand)] font-mono';
 
 interface PrivacyTabProps {
   privacy: SdkConfigState['privacy'];
@@ -65,10 +65,10 @@ export function PrivacyTab({ privacy, onChangeCapture, onChangePii, onChangeScru
 
       <div className="grid gap-6 md:grid-cols-2">
         {/* PII Detection Engine */}
-        <div className="rounded-[16px] border border-[var(--border)] bg-[var(--bg1)] shadow-md p-5 flex flex-col gap-4">
+        <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] p-5 flex flex-col gap-4">
           <div className="flex items-center justify-between border-b border-[var(--border)] pb-3">
             <h3 className="font-bold text-[14px] text-[var(--text)] flex items-center gap-2">
-              <Shield className="size-4 text-emerald-400" /> PII Masking Engine
+              <Shield className="size-4 text-[var(--green)]" /> PII Masking Engine
             </h3>
             <Switch checked={privacy.piiDetection.enabled} onCheckedChange={(val) => onChangePii('enabled', val)} />
           </div>
@@ -91,9 +91,9 @@ export function PrivacyTab({ privacy, onChangeCapture, onChangePii, onChangeScru
         </div>
 
         {/* Payload Field Capture */}
-        <div className="rounded-[16px] border border-[var(--border)] bg-[var(--bg1)] shadow-md p-5 flex flex-col gap-4">
+        <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] p-5 flex flex-col gap-4">
           <h3 className="font-bold text-[14px] text-[var(--text)] flex items-center gap-2 border-b border-[var(--border)] pb-3">
-            <EyeOff className="size-4 text-amber-400" /> Payload Data Capture
+            <EyeOff className="size-4 text-[var(--amber)]" /> Payload Data Capture
           </h3>
           <div className="divide-y divide-[var(--border)]">
             {captureControls.map(({ key, label, tooltip }) => {
@@ -117,10 +117,10 @@ export function PrivacyTab({ privacy, onChangeCapture, onChangePii, onChangeScru
         </div>
 
         {/* Scrubbing - JSON Fields */}
-        <div className="rounded-[16px] border border-[var(--border)] bg-[var(--bg1)] shadow-md p-5 flex flex-col gap-4">
+        <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] p-5 flex flex-col gap-4">
           <div className="flex items-center justify-between border-b border-[var(--border)] pb-3">
             <h3 className="font-bold text-[14px] text-[var(--text)] flex items-center gap-2">
-              <Lock className="size-4 text-indigo-400" /> Redacted JSON Fields
+              <Lock className="size-4 text-[var(--brand)]" /> Redacted JSON Fields
             </h3>
             <Switch checked={privacy.scrubbing.enabled} onCheckedChange={(val) => onChangeScrubbing('enabled', val)} />
           </div>
@@ -129,7 +129,7 @@ export function PrivacyTab({ privacy, onChangeCapture, onChangePii, onChangeScru
               {privacy.scrubbing.fields.map((field) => (
                 <span key={field} className="flex items-center gap-1.5 rounded-lg bg-[var(--bg2)] px-2.5 py-1 text-[11px] font-mono font-bold text-[var(--brand)] border border-[var(--border)]">
                   {field}
-                  <button type="button" onClick={() => removeField(field)} className="text-[var(--text3)] hover:text-red-400">
+                  <button type="button" onClick={() => removeField(field)} className="text-[var(--text3)] hover:text-[var(--red)]">
                     <X className="size-3" />
                   </button>
                 </span>
@@ -141,21 +141,21 @@ export function PrivacyTab({ privacy, onChangeCapture, onChangePii, onChangeScru
                 <Plus className="mr-1 size-3.5" /> Add Key
               </button>
             </form>
-            {fieldsError && <p className="text-[11px] text-red-400 font-semibold">{fieldsError}</p>}
+            {fieldsError && <p className="text-[11px] text-[var(--red)] font-semibold">{fieldsError}</p>}
           </div>
         </div>
 
         {/* Scrubbing - Headers */}
-        <div className="rounded-[16px] border border-[var(--border)] bg-[var(--bg1)] shadow-md p-5 flex flex-col gap-4">
+        <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] p-5 flex flex-col gap-4">
           <h3 className="font-bold text-[14px] text-[var(--text)] flex items-center gap-2 border-b border-[var(--border)] pb-3">
-            <Lock className="size-4 text-sky-400" /> Redacted HTTP Headers
+            <Lock className="size-4 text-[var(--blue)]" /> Redacted HTTP Headers
           </h3>
           <div className="flex flex-col gap-3">
             <div className="flex flex-wrap gap-2">
               {privacy.scrubbing.headers.map((header) => (
-                <span key={header} className="flex items-center gap-1.5 rounded-lg bg-[var(--bg2)] px-2.5 py-1 text-[11px] font-mono font-bold text-sky-400 border border-[var(--border)]">
+                <span key={header} className="flex items-center gap-1.5 rounded-lg bg-[var(--bg2)] px-2.5 py-1 text-[11px] font-mono font-bold text-[var(--blue)] border border-[var(--border)]">
                   {header}
-                  <button type="button" onClick={() => removeHeader(header)} className="text-[var(--text3)] hover:text-red-400">
+                  <button type="button" onClick={() => removeHeader(header)} className="text-[var(--text3)] hover:text-[var(--red)]">
                     <X className="size-3" />
                   </button>
                 </span>
@@ -167,7 +167,7 @@ export function PrivacyTab({ privacy, onChangeCapture, onChangePii, onChangeScru
                 <Plus className="mr-1 size-3.5" /> Add Header
               </button>
             </form>
-            {headersError && <p className="text-[11px] text-red-400 font-semibold">{headersError}</p>}
+            {headersError && <p className="text-[11px] text-[var(--red)] font-semibold">{headersError}</p>}
           </div>
         </div>
       </div>

@@ -3,8 +3,8 @@ import type { NumericBound } from '../bounds';
 import { cn } from '@/lib/utils';
 
 const inputClass =
-  'w-full rounded-[8px] border border-[var(--border)] bg-[var(--bg2)] px-3 py-1.5 text-[13px] text-[var(--text)] outline-none transition-colors focus:border-[var(--brand)] focus:ring-1 focus:ring-[var(--brand)] disabled:opacity-50';
-const errorInputClass = 'border-red-500/60 focus:border-red-500 focus:ring-red-500/40';
+  'w-full rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg2)] px-3 py-1.5 text-[13px] text-[var(--text)] outline-none transition-colors focus:border-[var(--brand)] focus:ring-1 focus:ring-[var(--brand)] disabled:opacity-50';
+const errorInputClass = 'border-[var(--red)]/60 focus:border-[var(--red)] focus:ring-[var(--red)]/40';
 
 interface NumberFieldProps {
   label: string;
@@ -42,7 +42,7 @@ export function NumberField({ label, value, onChange, bound, tooltip, error, suf
         )}
       </div>
       {error ? (
-        <p className="mt-1 text-[11px] text-red-500">{error}</p>
+        <p className="mt-1 text-[11px] text-[var(--red)]">{error}</p>
       ) : (
         <p className="mt-1 text-[11px] text-[var(--text3)]">
           {bound.min.toLocaleString()}–{bound.max.toLocaleString()}

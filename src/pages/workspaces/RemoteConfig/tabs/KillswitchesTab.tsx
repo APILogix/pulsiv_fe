@@ -48,26 +48,26 @@ export function KillswitchesTab({ killswitches, onChange }: KillswitchesTabProps
         Emergency override switches for immediate incident mitigation. Arming a killswitch immediately halts telemetry across connected SDK fleets.
       </SectionBanner>
 
-      <div className="rounded-[16px] border border-red-500/40 bg-red-500/5 shadow-xl overflow-hidden">
-        <div className="border-b border-red-500/30 px-5 py-4 flex items-center justify-between bg-red-500/10">
-          <h3 className="font-bold text-[14px] text-red-400 flex items-center gap-2">
-            <ShieldAlert className="size-4 text-red-500 animate-pulse" /> Emergency Killswitch Panel
+      <div className="rounded-[var(--radius-lg)] border border-[var(--red)]/40 bg-[var(--red)]/5 overflow-hidden">
+        <div className="border-b border-[var(--red)]/30 px-5 py-4 flex items-center justify-between bg-[var(--red)]/10">
+          <h3 className="font-bold text-[14px] text-[var(--red)] flex items-center gap-2">
+            <ShieldAlert className="size-4 text-[var(--red)] animate-pulse" /> Emergency Killswitch Panel
           </h3>
-          <span className="text-[11px] font-mono font-bold text-red-400">7 Emergency Triggers</span>
+          <span className="text-[11px] font-mono font-bold text-[var(--red)]">7 Emergency Triggers</span>
         </div>
 
-        <div className="divide-y divide-red-500/20">
+        <div className="divide-y divide-[var(--red)]/20">
           {SWITCHES.map(({ key, label, desc }) => {
             const isArmed = killswitches[key];
             return (
-              <div key={key} className={cn('flex items-center justify-between p-5 transition-colors', isArmed ? 'bg-red-500/20' : 'hover:bg-red-500/10')}>
+              <div key={key} className={cn('flex items-center justify-between p-5 transition-colors', isArmed ? 'bg-[var(--red)]/20' : 'hover:bg-[var(--red)]/10')}>
                 <div className="flex items-start gap-4">
-                  <div className={cn("flex size-10 shrink-0 items-center justify-center rounded-xl font-bold text-sm border", isArmed ? "bg-red-500 text-white border-red-600 shadow-md shadow-red-500/30" : "bg-red-500/20 text-red-400 border-red-500/30")}>
+                  <div className={cn("flex size-10 shrink-0 items-center justify-center rounded-[var(--radius-lg)] font-bold text-sm border", isArmed ? "bg-[var(--red)] text-white border-[var(--red-d)]" : "bg-[var(--red)]/20 text-[var(--red)] border-[var(--red)]/30")}>
                     <Flame className="size-5" />
                   </div>
                   <div>
-                    <h4 className={cn('font-bold text-[14px]', isArmed ? 'text-red-400' : 'text-[var(--text)]')}>{label}</h4>
-                    <p className={cn('mt-0.5 text-[12px]', isArmed ? 'text-red-300 font-semibold' : 'text-[var(--text3)]')}>{desc}</p>
+                    <h4 className={cn('font-bold text-[14px]', isArmed ? 'text-[var(--red)]' : 'text-[var(--text)]')}>{label}</h4>
+                    <p className={cn('mt-0.5 text-[12px]', isArmed ? 'text-[var(--red)] font-semibold' : 'text-[var(--text3)]')}>{desc}</p>
                   </div>
                 </div>
                 <div className="pl-4">
@@ -80,15 +80,15 @@ export function KillswitchesTab({ killswitches, onChange }: KillswitchesTabProps
       </div>
 
       {confirmKey && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
-          <div className="w-full max-w-md rounded-2xl border border-red-500/40 bg-[var(--bg1)] p-6 shadow-2xl animate-in zoom-in-95 duration-200">
-            <div className="flex items-center gap-3 text-red-400">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--overlay)] p-4">
+          <div className="w-full max-w-md rounded-[var(--radius-lg)] border border-[var(--red)]/40 bg-[var(--bg1)] p-6 shadow-[var(--shadow-modal)] animate-in zoom-in-95 duration-200">
+            <div className="flex items-center gap-3 text-[var(--red)]">
               <AlertTriangle className="size-6 shrink-0" />
               <h2 className="text-[17px] font-bold">Arm Emergency Killswitch?</h2>
             </div>
 
-            <div className="mt-4 rounded-xl border border-red-500/40 bg-red-500/10 p-4">
-              <p className="font-bold text-sm text-red-300">{SWITCHES.find((s) => s.key === confirmKey)?.label}</p>
+            <div className="mt-4 rounded-[var(--radius-lg)] border border-[var(--red)]/40 bg-[var(--red)]/10 p-4">
+              <p className="font-bold text-sm text-[var(--red)]">{SWITCHES.find((s) => s.key === confirmKey)?.label}</p>
               <p className="mt-1 text-xs text-[var(--text2)]">{SWITCHES.find((s) => s.key === confirmKey)?.desc}</p>
             </div>
 
@@ -100,7 +100,7 @@ export function KillswitchesTab({ killswitches, onChange }: KillswitchesTabProps
               <Button type="button" variant="ghost" onClick={() => setConfirmKey(null)} className="h-9 px-4 text-xs">
                 Cancel
               </Button>
-              <Button type="button" className="h-9 px-4 text-xs font-bold bg-red-600 hover:bg-red-500 text-white shadow-lg shadow-red-600/30" onClick={confirmToggle}>
+              <Button type="button" className="h-9 px-4 text-xs font-bold bg-[var(--red-d)] hover:bg-[var(--red)] text-white" onClick={confirmToggle}>
                 Arm Killswitch Immediately
               </Button>
             </div>

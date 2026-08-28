@@ -146,9 +146,18 @@ export interface SsoDiscoveryResult {
   }>;
   oidc_login_ready: boolean;
   saml_login_ready: boolean;
-  configured_link_providers: Array<'google' | 'github' | 'microsoft'>;
+  /**
+   * Providers this deployment has OAuth credentials for.
+   *
+   * Only Google and GitHub exist. The backend's `LinkableProvider` union is
+   * `'google' | 'github'` and no Microsoft passport strategy is registered, so
+   * `microsoft` was removed here — including it let callers believe a provider
+   * was available that the API rejects with a 400.
+   */
+  configured_link_providers: Array<'google' | 'github'>;
   social_login_ready: boolean;
-  linked_social_providers: Array<'google' | 'github' | 'microsoft'>;
+  /** Providers this account has already linked (a subset of the configured set). */
+  linked_social_providers: Array<'google' | 'github'>;
 }
 
 export interface LinkedIdentity {

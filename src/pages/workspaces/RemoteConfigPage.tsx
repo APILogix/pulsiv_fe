@@ -98,7 +98,7 @@ function VersionsTab({
           const previous = sorted[index + 1];
           const changedCount = previous ? countChangedKeys(previous.compiledSnapshot, version.compiledSnapshot) : null;
           return (
-            <div key={version.id} className="rounded-xl border border-[var(--border)] bg-[var(--bg2)]/60 p-4 transition-all hover:bg-[var(--bg2)] flex flex-wrap items-center justify-between gap-3">
+            <div key={version.id} className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg2)]/60 p-4 transition-all hover:bg-[var(--bg2)] flex flex-wrap items-center justify-between gap-3">
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
                   <span className="font-bold text-sm text-[var(--text)]">Revision #{version.revision}</span>
@@ -125,7 +125,7 @@ function VersionsTab({
                 }
                 className="h-8 px-3 text-xs gap-1.5 border border-[var(--border)] text-[var(--text2)] hover:text-[var(--text)]"
               >
-                <RotateCcw className="size-3.5 text-amber-400" />
+                <RotateCcw className="size-3.5 text-[var(--amber)]" />
                 Rollback
               </Button>
             </div>
@@ -157,12 +157,12 @@ function ResolveSummaryTile({
   tone?: "default" | "danger";
 }) {
   return (
-    <div className="rounded-xl border border-[var(--border)] bg-[var(--bg2)]/60 p-4">
+    <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg2)]/60 p-4">
       <div className="flex items-center justify-between gap-3">
         <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--text3)]">{label}</span>
-        <Icon className={`size-4 ${tone === "danger" ? "text-red-400" : "text-[var(--brand)]"}`} />
+        <Icon className={`size-4 ${tone === "danger" ? "text-[var(--red)]" : "text-[var(--brand)]"}`} />
       </div>
-      <div className={`mt-2 text-[16px] font-extrabold ${tone === "danger" && on > 0 ? "text-red-400" : "text-[var(--text)]"}`}>
+      <div className={`mt-2 text-[16px] font-extrabold ${tone === "danger" && on > 0 ? "text-[var(--red)]" : "text-[var(--text)]"}`}>
         {on} / {total} Active
       </div>
     </div>
@@ -235,7 +235,7 @@ function ResolveTab({
             </select>
           </label>
 
-          <SubmitButton className="h-9 font-semibold text-xs bg-[var(--brand)] text-white hover:bg-[var(--brand)]/90 shadow-md">
+          <SubmitButton className="h-9 font-semibold text-xs bg-[var(--brand)] text-white hover:bg-[var(--brand)]/90">
             {isResolving ? "Resolving Payload..." : "Simulate SDK Resolution"}
           </SubmitButton>
         </form>
@@ -267,17 +267,17 @@ function ResolveTab({
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-[var(--text3)]">Delivered JSON Payload</span>
                 <Button type="button" variant="ghost" className="h-7 text-xs gap-1" onClick={handleCopyJson}>
-                  {copied ? <Check className="size-3 text-emerald-400" /> : <Copy className="size-3" />}
+                  {copied ? <Check className="size-3 text-[var(--green)]" /> : <Copy className="size-3" />}
                   {copied ? "Copied!" : "Copy JSON"}
                 </Button>
               </div>
-              <pre className="max-h-[380px] overflow-auto rounded-xl border border-[var(--border)] bg-[var(--bg2)] p-4 font-mono text-[11px] leading-relaxed text-[var(--text)]">
+              <pre className="max-h-[380px] overflow-auto rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg2)] p-4 font-mono text-[11px] leading-relaxed text-[var(--text)]">
                 {JSON.stringify(result, null, 2)}
               </pre>
             </div>
           </div>
         ) : (
-          <div className="rounded-xl border border-dashed border-[var(--border)] p-10 text-center text-xs text-[var(--text3)]">
+          <div className="rounded-[var(--radius-lg)] border border-dashed border-[var(--border)] p-10 text-center text-xs text-[var(--text3)]">
             Select an environment and SDK platform above, then click <strong>Simulate SDK Resolution</strong> to inspect the live JSON payload delivered to SDK instances.
           </div>
         )}
@@ -396,7 +396,9 @@ export default function RemoteConfigPage() {
 
   return (
     <FillPage>
-      <div className="flex flex-col gap-5 p-2 sm:p-4 max-w-[1400px] mx-auto w-full pb-28">
+      {/* `data-rail` is the system's wide/data width (§5.1, --data-rail 1400px).
+          Using the utility keeps this page in step if that metric ever changes. */}
+      <div className="data-rail mx-auto flex w-full flex-col gap-5 p-2 pb-28 sm:p-4">
         {/* Enterprise Control Center Header */}
         <RemoteConfigHeader
           environments={environments}
@@ -419,9 +421,17 @@ export default function RemoteConfigPage() {
         />
 
         {updateConfig.isSuccess && !updateConfig.isPending && (
-          <div className="flex items-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-2.5 text-xs font-medium text-emerald-400 animate-in fade-in">
-            <CheckCircle2 className="size-4 shrink-0" />
-            Revision published successfully! Connected SDK instances pick up changes on their next 300s TTL cache refresh.
+          <div
+            role="status"
+            className="flex items-start gap-2.5 rounded-[var(--radius-lg)] border border-[var(--green)]/30 bg-[var(--green-bg)] px-4 py-2.5 text-[12px] text-[var(--green)] animate-in fade-in"
+          >
+            <CheckCircle2 className="mt-px size-4 shrink-0" aria-hidden="true" />
+            <span>
+              <span className="font-medium">Revision published.</span>{" "}
+              <span className="text-[var(--text2)]">
+                Connected SDKs pick up the change on their next config refresh, within 300s.
+              </span>
+            </span>
           </div>
         )}
 

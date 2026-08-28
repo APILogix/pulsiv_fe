@@ -109,6 +109,8 @@ const DeadLetterQueuePage = lazy(() => import("@/pages/workspaces/DeadLetterQueu
 const AlertOverviewPage = lazy(() => import("@/pages/act/AlertOverviewPage"));
 const AlertEventsPage = lazy(() => import("@/pages/act/AlertEventsPage"));
 const AlertEventDetailPage = lazy(() => import("@/pages/act/AlertEventDetailPage"));
+const IncidentsPage = lazy(() => import("@/pages/act/IncidentsPage"));
+const IncidentDetailPage = lazy(() => import("@/pages/act/IncidentDetailPage"));
 const AlertRulesPage = lazy(() => import("@/pages/act/AlertRulesPage"));
 const OrgPolicyDetailPage = lazy(() => import("@/pages/act/OrgPolicyDetailPage"));
 const AlertRuleDetailPage = lazy(() => import("@/pages/act/AlertRuleDetailPage"));
@@ -383,11 +385,15 @@ export const protectedRoutes: RouteObject[] = [
             path: "alerts",
             element: <ModuleLayout />,
             children: [
-              { index: true, element: <AlertEventsPage /> },
+              { index: true, element: <IncidentsPage /> },
               { path: "overview", element: <AlertOverviewPage /> },
-              { path: "incidents", element: <AlertEventsPage /> },
-              { path: "incidents/:incidentId", element: <AlertEventDetailPage /> },
-              { path: ":incidentId", element: <AlertEventDetailPage /> },
+              // Real incident entity (durable, primary-db backed).
+              { path: "incidents", element: <IncidentsPage /> },
+              { path: "incidents/:incidentId", element: <IncidentDetailPage /> },
+              // Raw alert events kept as a separate low-level forensics surface;
+              // incidents are the triage surface.
+              { path: "events", element: <AlertEventsPage /> },
+              { path: "events/:eventId", element: <AlertEventDetailPage /> },
               { path: "rules", element: <AlertRulesPage /> },
               { path: "policies/:policyId", element: <OrgPolicyDetailPage /> },
               { path: "rules/:ruleId", element: <AlertRuleDetailPage /> },

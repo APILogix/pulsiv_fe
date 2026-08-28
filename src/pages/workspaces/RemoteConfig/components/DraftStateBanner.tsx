@@ -23,15 +23,18 @@ export function DraftStateBanner({
 
   return (
     <div className="fixed inset-x-0 bottom-6 z-50 flex justify-center px-4 pointer-events-none">
-      <div className="pointer-events-auto flex w-full max-w-2xl items-center justify-between gap-4 rounded-[16px] border border-[var(--border)] bg-[var(--bg1)]/90 px-5 py-3.5 shadow-2xl backdrop-blur-xl ring-1 ring-black/10 dark:ring-white/10 animate-in fade-in slide-in-from-bottom-5 duration-200">
+      {/* A floating action bar is a toast-class surface: --shadow-toast, opaque
+          --bg1 (a translucent bar over dense config text is unreadable), and a
+          plain hairline instead of the ad-hoc black/white ring. */}
+      <div className="pointer-events-auto flex w-full max-w-2xl items-center justify-between gap-4 rounded-[var(--radius-lg)] border border-[var(--border2)] bg-[var(--bg1)] px-5 py-3.5 shadow-[var(--shadow-toast)] animate-in fade-in slide-in-from-bottom-5 duration-200">
         <div className="flex min-w-0 items-center gap-3">
           {hasErrors ? (
             <div className="flex items-center gap-2.5">
-              <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-red-500/20 text-red-400 border border-red-500/30">
+              <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-[var(--red)]/20 text-[var(--red)] border border-[var(--red)]/30">
                 <AlertTriangle className="size-4" />
               </span>
               <div>
-                <div className="text-[13px] font-bold text-red-400">
+                <div className="text-[13px] font-bold text-[var(--red)]">
                   {errorCount} Validation Error{errorCount === 1 ? "" : "s"} Detected
                 </div>
                 <div className="text-[11px] text-[var(--text3)]">
@@ -72,10 +75,10 @@ export function DraftStateBanner({
             onClick={onReviewPublish}
             disabled={hasErrors}
             className={cn(
-              "h-9 px-4 text-xs font-semibold gap-1.5 shadow-lg transition-all duration-200",
+              "h-9 px-4 text-xs font-semibold gap-1.5 transition-all duration-200",
               hasErrors
-                ? "bg-red-500/20 text-red-400 border border-red-500/30 cursor-not-allowed"
-                : "bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-600/30"
+                ? "bg-[var(--red)]/20 text-[var(--red)] border border-[var(--red)]/30 cursor-not-allowed"
+                : "bg-[var(--green-d)] hover:bg-[var(--green)] text-white"
             )}
           >
             <Rocket className="size-3.5" />

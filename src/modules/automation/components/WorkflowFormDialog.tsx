@@ -27,6 +27,7 @@ import {
   AUTOMATION_LIMITS,
   CONDITION_OPERATORS,
   DANGEROUS_ACTIONS,
+  INTEGRATION_DEPENDENT_ACTIONS,
   TRIGGER_KINDS,
   TRIGGER_TYPES,
   UNARY_OPERATORS,
@@ -688,7 +689,7 @@ export function WorkflowFormDialog({
                         >
                           {ACTION_TYPES.map((type) => (
                             <option key={type} value={type}>
-                              {type}
+                              {INTEGRATION_DEPENDENT_ACTIONS.includes(type) ? `${type} (needs integration)` : type}
                             </option>
                           ))}
                         </select>
@@ -774,6 +775,23 @@ export function WorkflowFormDialog({
                           </span>
                         )}
                       </label>
+
+                      {INTEGRATION_DEPENDENT_ACTIONS.includes(action.actionType) && (
+                        <p className="mt-1.5 text-[11.5px] text-[var(--amber)]">
+                          No integration is configured for this action on this deployment. The
+                          workflow will save, but runs will fail with{" "}
+                          <CodeChip>INTEGRATION_NOT_CONFIGURED</CodeChip> rather than silently
+                          reporting success.
+                        </p>
+                      )}
+
+                      {action.actionType === "webhook.call" && (
+                        <p className="mt-1.5 text-[11.5px] text-[var(--text-muted)]">
+                          Set <CodeChip>connectorId</CodeChip> in the config below to an existing
+                          webhook connector. Inline URLs are rejected so the destination stays
+                          SSRF-validated and its credentials stay encrypted.
+                        </p>
+                      )}
 
                       <div className="mt-2">
                         <textarea

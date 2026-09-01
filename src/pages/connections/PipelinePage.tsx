@@ -15,7 +15,7 @@ export default function PipelinePage() {
   })));
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-6">
       <PageHeader
         title="Replay & Pipeline"
         description="Replay, dead-letter recovery, and pipeline controls."

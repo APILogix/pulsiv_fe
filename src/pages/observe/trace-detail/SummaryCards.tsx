@@ -26,7 +26,7 @@ export function SummaryCards({
   const bottleneckPercent = bottleneck && durationMs > 0 ? (bottleneck.durationMs / durationMs) * 100 : 0;
 
   return (
-    <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+    <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
       <KpiCard
         label="Total duration"
         value={formatDurationMs(durationMs)}

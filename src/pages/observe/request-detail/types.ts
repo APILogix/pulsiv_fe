@@ -113,5 +113,4 @@ export type RequestSectionId =
   | "metadata"
   | "ai"
   | "related"
-  | "tags"
-  | "developer-tools";
+  | "tags";

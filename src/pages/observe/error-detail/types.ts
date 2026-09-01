@@ -155,5 +155,4 @@ export type ErrorSectionId =
   | "metadata"
   | "ai"
   | "related"
-  | "tags"
-  | "developer-tools";
+  | "tags";

@@ -165,24 +165,24 @@ export function PageHero({
         className
       )}
     >
-      <div className="relative z-10 flex flex-col gap-5 p-6">
+      <div className="relative z-10 flex flex-col gap-6 p-7">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex min-w-0 items-start gap-4">
             {icon && <IconChip icon={icon} size="lg" tone="brand" className="mt-0.5" />}
             <div className="min-w-0">
               {breadcrumbs && breadcrumbs.length > 0 && (
-                <div className="mb-2">
+                <div className="mb-2.5">
                   <Breadcrumbs items={breadcrumbs} />
                 </div>
               )}
               {eyebrow && (
-                <p className="mb-1.5 font-mono text-[10px] font-medium uppercase tracking-[0.09em] text-[var(--text3)]">{eyebrow}</p>
+                <p className="mb-2 font-mono text-[10px] font-medium uppercase tracking-[0.09em] text-[var(--text3)]">{eyebrow}</p>
               )}
               <h1 className="font-[family-name:var(--display)] text-[24px] font-semibold leading-tight tracking-[-0.02em] text-[var(--text)]">
                 {title}
               </h1>
               {description && (
-                <p className="mt-2 max-w-[68ch] text-[13px] leading-[1.5] text-[var(--text2)]">{description}</p>
+                <p className="mt-2.5 max-w-[68ch] text-[13px] leading-[1.6] text-[var(--text2)]">{description}</p>
               )}
             </div>
           </div>
@@ -209,7 +209,7 @@ export function HeroFacts({ facts }: { facts: HeroFact[] }) {
   return (
     <dl className="grid gap-px overflow-hidden rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--border)] sm:grid-cols-2 lg:grid-cols-4">
       {facts.map((fact) => (
-        <div key={fact.label} className="flex flex-col gap-1.5 bg-[var(--bg1)] px-4 py-3">
+        <div key={fact.label} className="flex flex-col gap-2 bg-[var(--bg1)] px-5 py-4">
           <dt className="flex items-center gap-1.5 font-mono text-[10px] font-medium uppercase tracking-[0.09em] text-[var(--text3)]">
             {fact.icon && <fact.icon className="size-3.5" aria-hidden="true" />}
             {fact.label}
@@ -265,7 +265,7 @@ export function Panel({
       {(title || actions) && (
         <div
           className={cn(
-            "flex flex-col gap-3 border-b px-5 py-4 sm:flex-row sm:items-center sm:justify-between",
+            "flex flex-col gap-3 border-b px-6 py-5 sm:flex-row sm:items-center sm:justify-between",
             danger ? "border-[var(--red)]/20" : "border-[var(--border)]"
           )}
         >
@@ -273,17 +273,17 @@ export function Panel({
             {icon && <IconChip icon={icon} tone={danger ? "red" : tone} size="sm" className="mt-0.5" />}
             <div className="min-w-0">
               {title && <h2 className="text-[14px] font-semibold tracking-[-0.01em] text-[var(--text)]">{title}</h2>}
-              {description && <p className="mt-1 max-w-[76ch] text-[12px] leading-[1.5] text-[var(--text2)]">{description}</p>}
+              {description && <p className="mt-1.5 max-w-[76ch] text-[12px] leading-[1.6] text-[var(--text2)]">{description}</p>}
             </div>
           </div>
           {actions && <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>}
         </div>
       )}
-      {children && <div className={cn("p-5", bodyClassName)}>{children}</div>}
+      {children && <div className={cn("p-6", bodyClassName)}>{children}</div>}
       {footer && (
         <div
           className={cn(
-            "flex flex-wrap items-center justify-end gap-2 border-t bg-[var(--bg2)]/60 px-5 py-3",
+            "flex flex-wrap items-center justify-end gap-2 border-t bg-[var(--bg2)]/60 px-6 py-4",
             danger ? "border-[var(--red)]/20" : "border-[var(--border)]"
           )}
         >
@@ -309,7 +309,7 @@ export function Toolbar({
   return (
     <div
       className={cn(
-        "flex flex-wrap items-center gap-2 rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] p-2.5",
+        "flex flex-wrap items-center gap-2.5 rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] p-3",
         className
       )}
     >
@@ -359,16 +359,16 @@ export function EmptyPanel({
   return (
     <div
       className={cn(
-        "flex flex-col items-center justify-center rounded-[var(--radius-lg)] border border-dashed border-[var(--border)] bg-[var(--bg1)] px-6 py-14 text-center",
+        "flex flex-col items-center justify-center rounded-[var(--radius-lg)] border border-dashed border-[var(--border)] bg-[var(--bg1)] px-8 py-16 text-center",
         className
       )}
     >
-      <span className="mb-4 inline-flex size-12 items-center justify-center rounded-full bg-[var(--bg2)] text-[var(--text3)] ring-1 ring-inset ring-[var(--border)]">
+      <span className="mb-5 inline-flex size-12 items-center justify-center rounded-full bg-[var(--bg2)] text-[var(--text3)] ring-1 ring-inset ring-[var(--border)]">
         <Icon className="size-5" aria-hidden="true" />
       </span>
       <h3 className="font-[family-name:var(--display)] text-[16px] font-semibold text-[var(--text)]">{title}</h3>
-      {description && <p className="mt-1.5 max-w-[42ch] text-[13px] leading-[1.5] text-[var(--text2)]">{description}</p>}
-      {action && <div className="mt-5">{action}</div>}
+      {description && <p className="mt-2 max-w-[42ch] text-[13px] leading-[1.6] text-[var(--text2)]">{description}</p>}
+      {action && <div className="mt-6">{action}</div>}
     </div>
   );
 }
@@ -402,11 +402,11 @@ export function Notice({
   className?: string;
 }) {
   return (
-    <div className={cn("flex items-start gap-3 rounded-[var(--radius-lg)] border px-4 py-3", NOTICE_TONE[tone], className)}>
+    <div className={cn("flex items-start gap-3.5 rounded-[var(--radius-lg)] border px-5 py-4", NOTICE_TONE[tone], className)}>
       {Icon && <Icon className="mt-0.5 size-4 shrink-0" aria-hidden="true" />}
       <div className="min-w-0 flex-1">
         {title && <p className="text-[13px] font-semibold">{title}</p>}
-        {children && <div className={cn("text-[12px] leading-[1.5] text-[var(--text2)]", title && "mt-1")}>{children}</div>}
+        {children && <div className={cn("text-[12px] leading-[1.6] text-[var(--text2)]", title && "mt-1.5")}>{children}</div>}
       </div>
       {action && <div className="shrink-0">{action}</div>}
     </div>
@@ -436,7 +436,7 @@ export function SettingRow({
         <label htmlFor={htmlFor} className="block text-[13px] font-medium text-[var(--text)]">
           {label}
         </label>
-        {description && <p className="mt-1 max-w-[68ch] text-[12px] leading-[1.5] text-[var(--text2)]">{description}</p>}
+        {description && <p className="mt-1.5 max-w-[68ch] text-[12px] leading-[1.6] text-[var(--text2)]">{description}</p>}
       </div>
       {children && <div className="flex shrink-0 items-center gap-2">{children}</div>}
     </div>
@@ -452,7 +452,7 @@ export function RowStack({ children, className }: { children: React.ReactNode; c
 }
 
 export function Row({ children, className }: { children: React.ReactNode; className?: string }) {
-  return <div className={cn("px-5 py-4", className)}>{children}</div>;
+  return <div className={cn("px-6 py-5", className)}>{children}</div>;
 }
 
 // ── Toggle ───────────────────────────────────────────────────
@@ -493,7 +493,7 @@ export interface SetupStepItem {
 
 export function SetupSteps({ steps }: { steps: SetupStepItem[] }) {
   return (
-    <ol className="flex flex-col gap-4">
+    <ol className="flex flex-col gap-5">
       {steps.map((step, index) => (
         <li key={step.title} className="flex gap-3">
           <span
@@ -532,9 +532,9 @@ export function SplitShell({
   className?: string;
 }) {
   return (
-    <div className={cn("grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_324px]", className)}>
-      <div className="flex min-w-0 flex-col gap-6">{children}</div>
-      <div className="flex flex-col gap-6">{rail}</div>
+    <div className={cn("grid grid-cols-1 items-start gap-7 lg:grid-cols-[minmax(0,1fr)_324px]", className)}>
+      <div className="flex min-w-0 flex-col gap-7">{children}</div>
+      <div className="flex flex-col gap-7">{rail}</div>
     </div>
   );
 }

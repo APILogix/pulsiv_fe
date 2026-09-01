@@ -16,7 +16,7 @@ export default function ReleaseImpactPage() {
   const latDelta = rel.latencyAfter - rel.latencyBefore;
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-6">
       <PageHeader title="Release Impact" description="Release-aware regression insights with before/after comparison." />
 
       <div className="flex"><FilterSelect value={selected} onChange={setSelected} options={options} label="Release" /></div>

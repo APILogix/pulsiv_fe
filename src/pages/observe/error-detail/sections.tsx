@@ -9,9 +9,8 @@ import {
   formatAbsoluteTime,
 } from "@/shared/observe";
 import { cn } from "@/lib/utils";
-import { InteractiveJsonViewer } from "../request-detail/InteractiveJsonViewer";
 import { hasJsonValue, normalizeAiResponse, sectionDomId } from "./helpers";
-import { CollapsibleBlock, EmptyInline, KeyValueGrid, SectionShell } from "./ui";
+import { EmptyInline, KeyValueGrid, SectionShell } from "./ui";
 import { StackTraceViewer } from "./StackTraceViewer";
 import { BreadcrumbsTimeline } from "./BreadcrumbsTimeline";
 import type { ErrorDetailResponse } from "./types";
@@ -123,12 +122,13 @@ export function HttpSection({ detail }: { detail: ErrorDetailResponse }) {
   }
 
   const extraQuery = (detail.extra as Record<string, unknown> | undefined)?.query;
+  const queryCount = hasJsonValue(extraQuery) ? Object.keys(extraQuery as Record<string, unknown>).length : 0;
 
   return (
     <SectionShell
       id={sectionDomId("http")}
       title="HTTP & Route"
-      description="HTTP request parameters, URL, route pattern, and headers."
+      description="HTTP request parameters, URL, and route pattern."
       action={
         <div className="flex items-center gap-2">
           {http.method && <MethodBadge method={http.method} />}
@@ -136,23 +136,16 @@ export function HttpSection({ detail }: { detail: ErrorDetailResponse }) {
         </div>
       }
     >
-      <div className="flex flex-col gap-3">
-        <KeyValueGrid
-          columns={3}
-          items={[
-            { label: "HTTP Method", value: http.method, mono: true },
-            { label: "Route Pattern", value: http.route, mono: true, copyable: true },
-            { label: "Status Code", value: http.statusCode != null ? `${http.statusCode} ${http.statusText ?? ""}` : null, mono: true },
-            { label: "Full URL", value: http.url, mono: true, copyable: true },
-          ]}
-        />
-
-        {hasJsonValue(extraQuery) && (
-          <CollapsibleBlock title="Query Parameters" defaultOpen>
-            <InteractiveJsonViewer data={extraQuery} />
-          </CollapsibleBlock>
-        )}
-      </div>
+      <KeyValueGrid
+        columns={3}
+        items={[
+          { label: "HTTP Method", value: http.method, mono: true },
+          { label: "Route Pattern", value: http.route, mono: true, copyable: true },
+          { label: "Status Code", value: http.statusCode != null ? `${http.statusCode} ${http.statusText ?? ""}` : null, mono: true },
+          { label: "Full URL", value: http.url, mono: true, copyable: true },
+          { label: "Query parameters", value: queryCount === 0 ? "None" : `${queryCount} field${queryCount === 1 ? "" : "s"}` },
+        ]}
+      />
     </SectionShell>
   );
 }
@@ -171,25 +164,17 @@ export function ContextSection({ detail }: { detail: ErrorDetailResponse }) {
       title="Context & Environment"
       description="User, session, server node, runtime, and platform context."
     >
-      <div className="flex flex-col gap-4">
-        <KeyValueGrid
-          columns={3}
-          items={[
-            { label: "User ID / Email", value: userStr, mono: true, copyable: true },
-            { label: "Session ID", value: session, mono: true, copyable: true },
-            { label: "Runtime", value: runtime, mono: true },
-            { label: "Operating System", value: os },
-            { label: "Server Node", value: typeof detail.server === "object" ? detail.server?.name : detail.server, mono: true },
-            { label: "SDK Client", value: detail.sdk ? `${detail.sdk.name}@${detail.sdk.version}` : null, mono: true },
-          ]}
-        />
-
-        {hasJsonValue(ctx) && (
-          <CollapsibleBlock title="Full Context Object" defaultOpen>
-            <InteractiveJsonViewer data={ctx} />
-          </CollapsibleBlock>
-        )}
-      </div>
+      <KeyValueGrid
+        columns={3}
+        items={[
+          { label: "User ID / Email", value: userStr, mono: true, copyable: true },
+          { label: "Session ID", value: session, mono: true, copyable: true },
+          { label: "Runtime", value: runtime, mono: true },
+          { label: "Operating System", value: os },
+          { label: "Server Node", value: typeof detail.server === "object" ? detail.server?.name : detail.server, mono: true },
+          { label: "SDK Client", value: detail.sdk ? `${detail.sdk.name}@${detail.sdk.version}` : null, mono: true },
+        ]}
+      />
     </SectionShell>
   );
 }
@@ -197,8 +182,8 @@ export function ContextSection({ detail }: { detail: ErrorDetailResponse }) {
 export function MetadataSection({ detail }: { detail: ErrorDetailResponse }) {
   const meta = detail.metadata;
   const extra = detail.extra;
-  const hasMeta = hasJsonValue(meta);
-  const hasExtra = hasJsonValue(extra);
+  const metaCount = hasJsonValue(meta) ? Object.keys(meta as Record<string, unknown>).length : 0;
+  const extraCount = hasJsonValue(extra) ? Object.keys(extra as Record<string, unknown>).length : 0;
 
   return (
     <SectionShell
@@ -206,13 +191,16 @@ export function MetadataSection({ detail }: { detail: ErrorDetailResponse }) {
       title="Metadata & Extra Payloads"
       description="Custom attributes, SDK metadata, and extra debug parameters."
     >
-      {!hasMeta && !hasExtra ? (
+      {metaCount === 0 && extraCount === 0 ? (
         <EmptyInline message="No metadata or extra debugging payloads were captured for this error." />
       ) : (
-        <div className="flex flex-col gap-4">
-          {hasExtra && <InteractiveJsonViewer data={extra} title="Extra Parameters" defaultExpanded />}
-          {hasMeta && <InteractiveJsonViewer data={meta} title="Metadata" defaultExpanded />}
-        </div>
+        <KeyValueGrid
+          columns={2}
+          items={[
+            { label: "Extra parameters", value: extraCount === 0 ? "None" : `${extraCount} field${extraCount === 1 ? "" : "s"}` },
+            { label: "Metadata", value: metaCount === 0 ? "None" : `${metaCount} field${metaCount === 1 ? "" : "s"}` },
+          ]}
+        />
       )}
     </SectionShell>
   );

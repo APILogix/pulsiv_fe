@@ -65,8 +65,8 @@ export function PrivacyTab({ privacy, onChangeCapture, onChangePii, onChangeScru
 
       <div className="grid gap-6 md:grid-cols-2">
         {/* PII Detection Engine */}
-        <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] p-5 flex flex-col gap-4">
-          <div className="flex items-center justify-between border-b border-[var(--border)] pb-3">
+        <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] p-6 flex flex-col gap-5">
+          <div className="flex items-center justify-between border-b border-[var(--border)] pb-4">
             <h3 className="font-bold text-[14px] text-[var(--text)] flex items-center gap-2">
               <Shield className="size-4 text-[var(--green)]" /> PII Masking Engine
             </h3>
@@ -91,8 +91,8 @@ export function PrivacyTab({ privacy, onChangeCapture, onChangePii, onChangeScru
         </div>
 
         {/* Payload Field Capture */}
-        <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] p-5 flex flex-col gap-4">
-          <h3 className="font-bold text-[14px] text-[var(--text)] flex items-center gap-2 border-b border-[var(--border)] pb-3">
+        <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] p-6 flex flex-col gap-5">
+          <h3 className="font-bold text-[14px] text-[var(--text)] flex items-center gap-2 border-b border-[var(--border)] pb-4">
             <EyeOff className="size-4 text-[var(--amber)]" /> Payload Data Capture
           </h3>
           <div className="divide-y divide-[var(--border)]">
@@ -117,8 +117,8 @@ export function PrivacyTab({ privacy, onChangeCapture, onChangePii, onChangeScru
         </div>
 
         {/* Scrubbing - JSON Fields */}
-        <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] p-5 flex flex-col gap-4">
-          <div className="flex items-center justify-between border-b border-[var(--border)] pb-3">
+        <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] p-6 flex flex-col gap-5">
+          <div className="flex items-center justify-between border-b border-[var(--border)] pb-4">
             <h3 className="font-bold text-[14px] text-[var(--text)] flex items-center gap-2">
               <Lock className="size-4 text-[var(--brand)]" /> Redacted JSON Fields
             </h3>
@@ -146,8 +146,8 @@ export function PrivacyTab({ privacy, onChangeCapture, onChangePii, onChangeScru
         </div>
 
         {/* Scrubbing - Headers */}
-        <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] p-5 flex flex-col gap-4">
-          <h3 className="font-bold text-[14px] text-[var(--text)] flex items-center gap-2 border-b border-[var(--border)] pb-3">
+        <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] p-6 flex flex-col gap-5">
+          <h3 className="font-bold text-[14px] text-[var(--text)] flex items-center gap-2 border-b border-[var(--border)] pb-4">
             <Lock className="size-4 text-[var(--blue)]" /> Redacted HTTP Headers
           </h3>
           <div className="flex flex-col gap-3">

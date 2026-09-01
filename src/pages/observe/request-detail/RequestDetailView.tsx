@@ -20,9 +20,7 @@ import {
   RelatedSection,
   TagsSection,
 } from "./sections";
-import { DeveloperToolsSection } from "./DeveloperToolsSection";
 import { useSectionNavigation } from "./useSectionNavigation";
-import { toCopyableJson } from "./helpers";
 import type { RequestDetailResponse } from "./types";
 
 export function RequestDetailView({ requestId }: { requestId: string }) {
@@ -70,18 +68,14 @@ export function RequestDetailView({ requestId }: { requestId: string }) {
   const aiResponse = aiOverride !== undefined ? aiOverride : data.ai?.aiResponse;
 
   return (
-    <div className="flex flex-col gap-5 pb-16">
-      <StickyRequestHeader
-        header={data.header}
-        onAnalyze={runAnalyze}
-        onCopyJson={() => navigator.clipboard?.writeText(toCopyableJson(data))}
-      />
+    <div className="flex flex-col gap-6 pb-20">
+      <StickyRequestHeader header={data.header} onAnalyze={runAnalyze} />
 
       <SummaryCards cards={data.summaryCards} />
 
       <SectionNavigation activeId={activeId} onSelect={scrollTo} />
 
-      <div className="flex flex-col gap-5">
+      <div className="flex flex-col gap-6">
         <OverviewSection header={data.header} http={data.http} />
         <HttpSection http={data.http} />
         <PerformanceSection
@@ -94,7 +88,6 @@ export function RequestDetailView({ requestId }: { requestId: string }) {
         <AISection aiResponse={aiResponse} analyzing={analyzing} onAnalyze={runAnalyze} />
         <RelatedSection related={data.related} />
         <TagsSection tags={data.tags ?? []} />
-        <DeveloperToolsSection publicId={data.header.publicId} />
       </div>
     </div>
   );

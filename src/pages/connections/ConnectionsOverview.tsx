@@ -16,7 +16,7 @@ export default function ConnectionsOverview() {
   const [sparklineData] = useState(() => Array.from({ length: 30 }, () => Math.random() * 50 + 20));
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-6">
       <PageHeader title="Connections Overview" description="Platform ingestion summary and pipeline health." />
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">

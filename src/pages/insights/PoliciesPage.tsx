@@ -19,7 +19,7 @@ export default function PoliciesPage() {
   const logs = (audit ?? []).slice(0, 12);
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-6">
       <PageHeader
         title="Prompt & Policy Controls"
         description="Prompt governance and approval controls."

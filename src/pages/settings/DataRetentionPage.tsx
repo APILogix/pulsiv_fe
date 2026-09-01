@@ -14,7 +14,7 @@ export default function DataRetentionPage() {
   const monthlyCost = TIERS.reduce((s, t) => s + retention[t.name] * t.costPerDay, 0);
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-6">
       <PageHeader
         title="Data Retention"
         description="Configure how long each event type is retained."

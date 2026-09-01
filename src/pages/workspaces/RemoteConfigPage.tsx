@@ -93,12 +93,12 @@ function VersionsTab({
       title="Published Revision Log & Rollbacks"
       description="Immutable historical snapshot tree. Instantly compare or restore previous revisions."
     >
-      <div className="space-y-3 py-2">
+      <div className="space-y-4">
         {sorted.map((version, index) => {
           const previous = sorted[index + 1];
           const changedCount = previous ? countChangedKeys(previous.compiledSnapshot, version.compiledSnapshot) : null;
           return (
-            <div key={version.id} className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg2)]/60 p-4 transition-all hover:bg-[var(--bg2)] flex flex-wrap items-center justify-between gap-3">
+            <div key={version.id} className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg2)]/60 p-5 transition-all hover:bg-[var(--bg2)] flex flex-wrap items-center justify-between gap-4">
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
                   <span className="font-bold text-sm text-[var(--text)]">Revision #{version.revision}</span>
@@ -157,12 +157,12 @@ function ResolveSummaryTile({
   tone?: "default" | "danger";
 }) {
   return (
-    <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg2)]/60 p-4">
+    <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg2)]/60 p-5">
       <div className="flex items-center justify-between gap-3">
         <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--text3)]">{label}</span>
         <Icon className={`size-4 ${tone === "danger" ? "text-[var(--red)]" : "text-[var(--brand)]"}`} />
       </div>
-      <div className={`mt-2 text-[16px] font-extrabold ${tone === "danger" && on > 0 ? "text-[var(--red)]" : "text-[var(--text)]"}`}>
+      <div className={`mt-2.5 text-[16px] font-extrabold ${tone === "danger" && on > 0 ? "text-[var(--red)]" : "text-[var(--text)]"}`}>
         {on} / {total} Active
       </div>
     </div>
@@ -212,8 +212,8 @@ function ResolveTab({
   return (
     <div className="grid gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
       <SectionCard title="SDK Delivery Sandbox" description="Simulate live payload resolution for any environment and SDK target platform.">
-        <form onSubmit={handleResolve} className="flex flex-col gap-4">
-          <label className="flex flex-col gap-1.5">
+        <form onSubmit={handleResolve} className="flex flex-col gap-5">
+          <label className="flex flex-col gap-2">
             <span className="text-[12px] font-bold uppercase tracking-wider text-[var(--text3)]">Target Environment</span>
             <select className={inputClass} value={resolveEnv} onChange={(e) => setResolveEnv(e.target.value)}>
               {environments.map((environment) => (
@@ -224,7 +224,7 @@ function ResolveTab({
             </select>
           </label>
 
-          <label className="flex flex-col gap-1.5">
+          <label className="flex flex-col gap-2">
             <span className="text-[12px] font-bold uppercase tracking-wider text-[var(--text3)]">SDK Target Platform</span>
             <select className={inputClass} value={resolvePlatform} onChange={(e) => setResolvePlatform(e.target.value)}>
               <option value="web">Web Browser (JS / TS SDK)</option>
@@ -243,8 +243,8 @@ function ResolveTab({
 
       <SectionCard title={selectedEnvironment ? `Live Payload: ${selectedEnvironment.name}` : "Live Telemetry Payload"}>
         {result ? (
-          <div className="flex flex-col gap-4">
-            <div className="grid gap-3 sm:grid-cols-3">
+          <div className="flex flex-col gap-5">
+            <div className="grid gap-4 sm:grid-cols-3">
               <ResolveSummaryTile label="Active Features" icon={ShieldCheck} on={features.on} total={features.total} />
               <ResolveSummaryTile label="Instrumentation" icon={ServerCog} on={instrumentation.on} total={instrumentation.total} />
               <ResolveSummaryTile label="Killswitches Armed" icon={ShieldOff} on={killswitches.on} total={killswitches.total} tone="danger" />
@@ -252,7 +252,7 @@ function ResolveTab({
 
             {samplingEntries.length > 0 && (
               <div>
-                <div className="mb-2 text-[11px] font-bold uppercase tracking-wider text-[var(--text3)]">Compiled Sampling Rates</div>
+                <div className="mb-2.5 text-[11px] font-bold uppercase tracking-wider text-[var(--text3)]">Compiled Sampling Rates</div>
                 <div className="flex flex-wrap gap-2">
                   {samplingEntries.map(([key, value]) => (
                     <span key={key} className="rounded-lg border border-[var(--border)] bg-[var(--bg2)] px-2.5 py-1 font-mono text-[11px] text-[var(--text2)]">
@@ -263,7 +263,7 @@ function ResolveTab({
               </div>
             )}
 
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-2.5">
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-[var(--text3)]">Delivered JSON Payload</span>
                 <Button type="button" variant="ghost" className="h-7 text-xs gap-1" onClick={handleCopyJson}>
@@ -271,13 +271,13 @@ function ResolveTab({
                   {copied ? "Copied!" : "Copy JSON"}
                 </Button>
               </div>
-              <pre className="max-h-[380px] overflow-auto rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg2)] p-4 font-mono text-[11px] leading-relaxed text-[var(--text)]">
+              <pre className="max-h-[380px] overflow-auto rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg2)] p-5 font-mono text-[11px] leading-relaxed text-[var(--text)]">
                 {JSON.stringify(result, null, 2)}
               </pre>
             </div>
           </div>
         ) : (
-          <div className="rounded-[var(--radius-lg)] border border-dashed border-[var(--border)] p-10 text-center text-xs text-[var(--text3)]">
+          <div className="rounded-[var(--radius-lg)] border border-dashed border-[var(--border)] p-12 text-center text-xs text-[var(--text3)]">
             Select an environment and SDK platform above, then click <strong>Simulate SDK Resolution</strong> to inspect the live JSON payload delivered to SDK instances.
           </div>
         )}
@@ -398,7 +398,7 @@ export default function RemoteConfigPage() {
     <FillPage>
       {/* `data-rail` is the system's wide/data width (§5.1, --data-rail 1400px).
           Using the utility keeps this page in step if that metric ever changes. */}
-      <div className="data-rail mx-auto flex w-full flex-col gap-5 p-2 pb-28 sm:p-4">
+      <div className="data-rail mx-auto flex w-full flex-col gap-6 p-3 pb-28 sm:p-5">
         {/* Enterprise Control Center Header */}
         <RemoteConfigHeader
           environments={environments}
@@ -436,7 +436,7 @@ export default function RemoteConfigPage() {
         )}
 
         {/* Core Layout Grid: Search Navigation + Tab Workspace */}
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
+        <div className="flex flex-col gap-7 lg:flex-row lg:items-start">
           <RemoteConfigNav
             activeSection={activeSection}
             onSelectSection={setActiveSection}

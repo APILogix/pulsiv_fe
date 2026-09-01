@@ -1,14 +1,13 @@
 import { useState, useEffect, useCallback } from "react";
 import { sectionDomId } from "./helpers";
 
-export type TraceSectionId = "overview" | "waterfall" | "ai" | "correlations" | "devtools";
+export type TraceSectionId = "overview" | "waterfall" | "ai" | "correlations";
 
 export const TRACE_SECTIONS: { id: TraceSectionId; label: string }[] = [
   { id: "overview", label: "Overview" },
   { id: "waterfall", label: "Span Waterfall" },
   { id: "ai", label: "AI Investigation" },
   { id: "correlations", label: "Correlated Signals" },
-  { id: "devtools", label: "Developer Tools" },
 ];
 
 export function useSectionNavigation(isReady: boolean) {

@@ -26,7 +26,7 @@ export function DraftStateBanner({
       {/* A floating action bar is a toast-class surface: --shadow-toast, opaque
           --bg1 (a translucent bar over dense config text is unreadable), and a
           plain hairline instead of the ad-hoc black/white ring. */}
-      <div className="pointer-events-auto flex w-full max-w-2xl items-center justify-between gap-4 rounded-[var(--radius-lg)] border border-[var(--border2)] bg-[var(--bg1)] px-5 py-3.5 shadow-[var(--shadow-toast)] animate-in fade-in slide-in-from-bottom-5 duration-200">
+      <div className="pointer-events-auto flex w-full max-w-2xl items-center justify-between gap-4 rounded-[var(--radius-lg)] border border-[var(--border2)] bg-[var(--bg1)] px-6 py-4 shadow-[var(--shadow-toast)] animate-in fade-in slide-in-from-bottom-5 duration-200">
         <div className="flex min-w-0 items-center gap-3">
           {hasErrors ? (
             <div className="flex items-center gap-2.5">

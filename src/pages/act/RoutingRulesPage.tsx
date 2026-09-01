@@ -94,7 +94,7 @@ export default function RoutingRulesPage() {
   };
 
   return (
-    <FillPage>
+    <FillPage className="gap-5">
       <PageHeader
         title="Routing rules"
         description="Match alerts by severity, source, or labels and fan them out to connector or route targets."

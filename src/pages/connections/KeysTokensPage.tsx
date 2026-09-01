@@ -44,7 +44,7 @@ export default function KeysTokensPage() {
   ];
 
   return (
-    <FillPage>
+    <FillPage className="gap-5">
       <PageHeader
         title="Keys & Tokens"
         description="Key management routed through current org and project APIs."

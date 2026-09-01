@@ -23,12 +23,12 @@ export function LimitsTab({ limits, onChange, onChangeTenant, errors }: LimitsTa
         Hard boundaries preventing memory exhaustion or ingestion overflow. Values outside documented client limits will be rejected during server compilation.
       </SectionBanner>
 
-      <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] p-5 flex flex-col gap-4">
-        <h3 className="font-bold text-[14px] text-[var(--text)] flex items-center gap-2 border-b border-[var(--border)] pb-3">
+      <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] p-6 flex flex-col gap-5">
+        <h3 className="font-bold text-[14px] text-[var(--text)] flex items-center gap-2 border-b border-[var(--border)] pb-4">
           <Sliders className="size-4 text-[var(--brand)]" /> Telemetry Resource Caps
         </h3>
 
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           <NumberField
             label="Max Spans / Trace"
             value={limits.maxSpansPerTrace}
@@ -101,15 +101,15 @@ export function LimitsTab({ limits, onChange, onChangeTenant, errors }: LimitsTa
         </div>
       </div>
 
-      <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] p-5 flex flex-col gap-4">
-        <div className="flex items-center justify-between border-b border-[var(--border)] pb-3">
+      <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] p-6 flex flex-col gap-5">
+        <div className="flex items-center justify-between border-b border-[var(--border)] pb-4">
           <h3 className="font-bold text-[14px] text-[var(--text)] flex items-center gap-2">
             <Building2 className="size-4 text-[var(--blue)]" /> Multi-Tenant Fairness Governance
           </h3>
           <Switch checked={limits.tenantGovernance.enabled} onCheckedChange={(val) => onChangeTenant('enabled', val)} />
         </div>
 
-        <div className={cn('grid gap-4 sm:grid-cols-2 lg:grid-cols-4 transition-opacity', !limits.tenantGovernance.enabled && 'opacity-50 pointer-events-none')}>
+        <div className={cn('grid gap-5 sm:grid-cols-2 lg:grid-cols-4 transition-opacity', !limits.tenantGovernance.enabled && 'opacity-50 pointer-events-none')}>
           <NumberField
             label="Max Tenants Tracked"
             value={limits.tenantGovernance.maxTenantsTracked}

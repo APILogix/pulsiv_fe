@@ -71,7 +71,7 @@ export default function TracingDependencyMap() {
   });
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-6">
       <PageHeader
         title="Distributed Tracing & Dependency Map"
         description="Visualize request flow across services and identify bottleneck dependencies."

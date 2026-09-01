@@ -14,7 +14,7 @@ const FEATURES = [
 export default function AiOverviewPage() {
   const navigate = useNavigate();
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-6">
       <PageHeader title="AI overview" description="AI-assisted triage, anomaly detection, and root cause analysis." />
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">

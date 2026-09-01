@@ -34,7 +34,7 @@ export default function ReleaseQuality() {
   const resolvedCount = 8;
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-6">
       <PageHeader
         title="Release Quality & CI/CD Health"
         description="Ensure every deploy improves the system, not breaks it · last 30 days."

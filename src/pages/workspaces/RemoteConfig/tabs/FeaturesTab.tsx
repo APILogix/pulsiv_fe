@@ -195,20 +195,20 @@ export function FeaturesTab({ features, onChange }: FeaturesTabProps) {
         Enterprise control of observability features, continuous profiling, and session replays.
       </SectionBanner>
 
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-5">
         <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text3)] flex items-center gap-2">
           <Zap className="size-3.5 text-[var(--brand)]" /> Core Observability Pillars
         </h3>
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-5 sm:grid-cols-2">
           {CORE_FEATURES.map(renderToggleCard)}
         </div>
       </div>
 
-      <div className="flex flex-col gap-4 mt-2">
+      <div className="flex flex-col gap-5 mt-2">
         <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text3)] flex items-center gap-2">
           <Cpu className="size-3.5 text-[var(--blue)]" /> Advanced Diagnostics & Profiling
         </h3>
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-5 sm:grid-cols-2">
           {ADVANCED_FEATURES.map(renderToggleCard)}
         </div>
       </div>

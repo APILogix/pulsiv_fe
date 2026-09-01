@@ -48,7 +48,7 @@ export default function BusinessMetrics() {
     .slice(0, 10);
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-6">
       <PageHeader
         title="API Business Metrics"
         description="Treat the API as a product — measure adoption, friction, and value."

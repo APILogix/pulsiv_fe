@@ -120,7 +120,7 @@ export function RemoteConfigNav({
   return (
     <nav
       aria-label="Configuration sections"
-      className="flex w-full shrink-0 flex-col gap-3 rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] p-3 lg:w-[260px]"
+      className="flex w-full shrink-0 flex-col gap-4 rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] p-4 lg:w-[264px]"
     >
       <div className="relative">
         <Search

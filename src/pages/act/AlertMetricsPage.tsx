@@ -40,7 +40,7 @@ export default function AlertMetricsPage() {
   const totalValue = metrics.reduce((sum, m) => sum + Number(m.value || 0), 0);
 
   return (
-    <FillPage>
+    <FillPage className="gap-5">
       <PageHeader
         title="Metrics"
         description="Rolled-up counters for rule firings, notifications, and delivery outcomes."

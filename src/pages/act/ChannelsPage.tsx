@@ -122,7 +122,7 @@ export default function AlertTemplatesPage() {
   ];
 
   return (
-    <FillPage>
+    <FillPage className="gap-5">
       <PageHeader
         title="Templates"
         description="Message templates rendered into notifications by rule actions, escalation steps, and routing rules."

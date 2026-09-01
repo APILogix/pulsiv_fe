@@ -14,7 +14,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { RequestDetailHeader } from "./types";
@@ -23,11 +22,9 @@ import { displayValue } from "./helpers";
 export function StickyRequestHeader({
   header,
   onAnalyze,
-  onCopyJson,
 }: {
   header: RequestDetailHeader;
   onAnalyze: () => void;
-  onCopyJson: () => void;
 }) {
   const navigate = useNavigate();
   const endpoint = header.endpoint ?? "—";
@@ -136,8 +133,6 @@ export function StickyRequestHeader({
                     Copy endpoint
                   </DropdownMenuItem>
                 )}
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={onCopyJson}>Copy detail JSON</DropdownMenuItem>
                 {tracePath && (
                   <DropdownMenuItem onClick={() => navigate(tracePath)}>Open trace</DropdownMenuItem>
                 )}

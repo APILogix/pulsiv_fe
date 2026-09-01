@@ -9,7 +9,6 @@ export const REQUEST_SECTIONS: { id: RequestSectionId; label: string }[] = [
   { id: "ai", label: "AI" },
   { id: "related", label: "Related" },
   { id: "tags", label: "Tags" },
-  { id: "developer-tools", label: "Developer Tools" },
 ];
 
 export function sectionDomId(id: RequestSectionId): string {

@@ -89,7 +89,7 @@ export function Table({
         <thead className="sticky top-0 z-10 bg-[var(--bg2)]">
           <tr className="border-b border-[var(--border)] text-left">
             {headers.map((h) => (
-              <th key={h} className="truncate bg-[var(--bg2)] px-4 py-2.5 font-[family-name:var(--mono)] text-[10px] font-medium uppercase tracking-[0.09em] text-[var(--text3)]">{h}</th>
+              <th key={h} className="truncate bg-[var(--bg2)] px-5 py-3 font-[family-name:var(--mono)] text-[10px] font-medium uppercase tracking-[0.09em] text-[var(--text3)]">{h}</th>
             ))}
           </tr>
         </thead>
@@ -115,7 +115,7 @@ export function Tr({ children, onClick, className }: { children: React.ReactNode
 }
 
 export function Td({ children, className }: { children: React.ReactNode; className?: string }) {
-  return <td className={cn("truncate px-4 py-2.5 align-middle text-[var(--text)]", className)}>{children}</td>;
+  return <td className={cn("truncate px-5 py-3 align-middle text-[var(--text)]", className)}>{children}</td>;
 }
 
 export function Button({ children, variant = "secondary", onClick, type = "button", disabled, className }: {

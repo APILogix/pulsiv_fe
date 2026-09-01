@@ -47,7 +47,7 @@ export default function DeadLettersPage() {
   };
 
   return (
-    <FillPage>
+    <FillPage className="gap-5">
       <PageHeader
         title="Dead-letter queue"
         description="Batch jobs that exhausted retries. Inspect, requeue, or discard once recovered another way."

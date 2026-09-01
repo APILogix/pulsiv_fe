@@ -39,7 +39,7 @@ export default function InfrastructureCost() {
   const cacheMiss = 760;
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-6">
       <PageHeader
         title="Infrastructure & Cost Optimization"
         description="Optimize spend and infrastructure utilization · auto-refresh 5m."

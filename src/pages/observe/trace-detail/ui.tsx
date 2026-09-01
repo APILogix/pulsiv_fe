@@ -22,14 +22,14 @@ export function SectionShell({
       id={id}
       className={cn("scroll-mt-36 rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)]", className)}
     >
-      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[var(--border)] px-5 py-3.5">
+      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[var(--border)] px-6 py-4">
         <div>
           <h2 className="text-[14px] font-semibold tracking-[-0.01em] text-[var(--text)]">{title}</h2>
-          {description && <p className="mt-0.5 text-[12px] text-[var(--text3)]">{description}</p>}
+          {description && <p className="mt-1 text-[12px] text-[var(--text3)]">{description}</p>}
         </div>
         {action}
       </div>
-      <div className="p-5">{children}</div>
+      <div className="p-6">{children}</div>
     </section>
   );
 }
@@ -42,7 +42,7 @@ export function KeyValueGrid({
   columns?: 2 | 3;
 }) {
   return (
-    <dl className={cn("grid gap-x-6 gap-y-4", columns === 3 ? "sm:grid-cols-2 lg:grid-cols-3" : "sm:grid-cols-2")}>
+    <dl className={cn("grid gap-x-8 gap-y-5", columns === 3 ? "sm:grid-cols-2 lg:grid-cols-3" : "sm:grid-cols-2")}>
       {items.map((item) => {
         const text = item.value !== null && item.value !== undefined && item.value !== "" ? String(item.value) : "—";
         return (

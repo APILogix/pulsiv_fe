@@ -35,7 +35,7 @@ export default function EscalationDetailPage() {
   if (isLoading) return <DetailSkeleton />;
   if (!policy) return <div className="p-8 text-sm text-muted-foreground">Escalation policy not found.</div>;
 
-  return <div className="flex flex-col gap-5 p-6">
+  return <div className="flex flex-col gap-6 p-6">
     <button onClick={() => navigate("/alerts/escalations")} className="flex items-center gap-1.5 self-start text-xs text-muted-foreground"><ArrowLeft className="h-4 w-4" />Back to escalations</button>
     <PageHeader title={policy.name} description={policy.description} breadcrumbs={[{ label: "Act", to: "/alerts" }, { label: "Escalations", to: "/alerts/escalations" }, { label: policy.name }]} />
     <div className="grid grid-cols-2 gap-4 text-xs md:grid-cols-4"><div><span className="text-muted-foreground">System key</span><p className="font-mono">{policy.systemKey}</p></div><div><span className="text-muted-foreground">Acknowledgement timeout</span><p>{Math.round(policy.acknowledgementTimeoutSeconds / 60)}m</p></div><div><span className="text-muted-foreground">Repeat interval</span><p>{Math.round(policy.repeatIntervalSeconds / 60)}m</p></div><div><span className="text-muted-foreground">Max repeats</span><p>{policy.maxRepeats}</p></div></div>

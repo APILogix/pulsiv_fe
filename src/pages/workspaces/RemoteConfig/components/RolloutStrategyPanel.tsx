@@ -16,9 +16,9 @@ export function RolloutStrategyPanel({ environmentName }: RolloutStrategyPanelPr
       title="SDK Rollout Strategy & Canary Control"
       description="Configure safe deployment rules, gradual percentage rollouts, or canary previews for SDK instances connected to this environment."
     >
-      <div className="flex flex-col gap-6 py-2">
+      <div className="flex flex-col gap-6">
         {/* Strategy Selection */}
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-3">
           <button
             type="button"
             onClick={() => {
@@ -82,7 +82,7 @@ export function RolloutStrategyPanel({ environmentName }: RolloutStrategyPanelPr
 
         {/* Percentage Slider (If Percentage or Canary) */}
         {strategy !== "full" && (
-          <div className="flex flex-col gap-3 rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg2)] p-4">
+          <div className="flex flex-col gap-3.5 rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg2)] p-5">
             <div className="flex items-center justify-between text-xs">
               <span className="font-semibold text-[var(--text)]">Rollout Target Percentage:</span>
               <span className="font-mono font-bold text-[var(--brand)] text-sm">{percentage}%</span>
@@ -106,7 +106,7 @@ export function RolloutStrategyPanel({ environmentName }: RolloutStrategyPanelPr
         )}
 
         {/* Status and Pause controls */}
-        <div className="flex flex-wrap items-center justify-between gap-4 rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] p-4">
+        <div className="flex flex-wrap items-center justify-between gap-4 rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] p-5">
           <div className="flex items-center gap-3">
             <div className={`flex size-9 items-center justify-center rounded-lg ${isPaused ? "bg-[var(--amber)]/10 text-[var(--amber)]" : "bg-[var(--green)]/10 text-[var(--green)]"}`}>
               {isPaused ? <Pause className="size-4" /> : <Play className="size-4" />}

@@ -6,10 +6,10 @@ export default function ApiEndpointsPage() {
   const endpoints = data ?? [];
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-6">
       <PageHeader title="API Endpoints" description="Public ingestion endpoint references with usage examples." />
 
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-4">
         {endpoints.map((e) => (
           <SectionCard key={e.id}>
             <div className="flex items-center justify-between">

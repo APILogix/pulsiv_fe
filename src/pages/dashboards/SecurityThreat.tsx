@@ -61,7 +61,7 @@ export default function SecurityThreat() {
   const jwtAnomalies = errList.filter((e) => /jwt|token|signature|expired/i.test(e.message + e.name)).slice(0, 10);
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-6">
       <PageHeader
         title="Security & Threat Detection"
         description="Detect, investigate, and respond to API security threats · auto-refresh 30s."

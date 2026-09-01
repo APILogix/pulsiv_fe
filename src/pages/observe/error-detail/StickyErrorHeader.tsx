@@ -13,7 +13,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { ErrorDetailResponse } from "./types";
@@ -22,11 +21,9 @@ import { displayValue } from "./helpers";
 export function StickyErrorHeader({
   detail,
   onAnalyze,
-  onCopyJson,
 }: {
   detail: ErrorDetailResponse;
   onAnalyze: () => void;
-  onCopyJson: () => void;
 }) {
   const navigate = useNavigate();
   const errorName = detail.error?.name ?? "Error";
@@ -184,8 +181,6 @@ export function StickyErrorHeader({
                   <Copy className="size-3.5" />
                   Copy Exception Message
                 </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={onCopyJson}>Copy Detail JSON</DropdownMenuItem>
                 {issuePath && (
                   <DropdownMenuItem onClick={() => navigate(issuePath)}>Open Issue Group</DropdownMenuItem>
                 )}

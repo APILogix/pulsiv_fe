@@ -49,7 +49,7 @@ export function KillswitchesTab({ killswitches, onChange }: KillswitchesTabProps
       </SectionBanner>
 
       <div className="rounded-[var(--radius-lg)] border border-[var(--red)]/40 bg-[var(--red)]/5 overflow-hidden">
-        <div className="border-b border-[var(--red)]/30 px-5 py-4 flex items-center justify-between bg-[var(--red)]/10">
+        <div className="border-b border-[var(--red)]/30 px-6 py-5 flex items-center justify-between bg-[var(--red)]/10">
           <h3 className="font-bold text-[14px] text-[var(--red)] flex items-center gap-2">
             <ShieldAlert className="size-4 text-[var(--red)] animate-pulse" /> Emergency Killswitch Panel
           </h3>

@@ -98,7 +98,7 @@ export default function MembersPage() {
   ];
 
   return (
-    <FillPage>
+    <FillPage className="gap-5">
       <PageHeader
         title="Members"
         description="Membership, role, suspend, and reactivate flows."

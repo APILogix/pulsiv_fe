@@ -14,9 +14,8 @@ import { SectionNavigation } from "./SectionNavigation";
 import { SpanTreeWaterfall } from "./SpanTreeWaterfall";
 import { AIInvestigationSection } from "./AIInvestigationSection";
 import { CorrelatedSignalsSection } from "./CorrelatedSignalsSection";
-import { DeveloperToolsSection } from "./DeveloperToolsSection";
 import { useSectionNavigation } from "./useSectionNavigation";
-import { buildSpanTree, toCopyableJson, sectionDomId } from "./helpers";
+import { buildSpanTree, sectionDomId } from "./helpers";
 import { SectionShell, KeyValueGrid } from "./ui";
 import type { TraceDetailData } from "./types";
 
@@ -92,12 +91,11 @@ export function TraceDetailView({ traceId }: { traceId: string }) {
   const totalDurationMs = data.entity?.totalDurationMs ?? data.entity?.durationMs ?? 0;
 
   return (
-    <div className="mx-auto flex w-full max-w-[1400px] flex-col gap-5 pb-20">
+    <div className="mx-auto flex w-full max-w-[1400px] flex-col gap-6 pb-24">
       {/* Sticky Header */}
       <StickyTraceHeader
         detail={data}
         onAnalyze={() => void handleRunAnalysis("performance")}
-        onCopyJson={() => navigator.clipboard?.writeText(toCopyableJson(data))}
         analyzing={analyzing}
       />
 
@@ -113,7 +111,7 @@ export function TraceDetailView({ traceId }: { traceId: string }) {
       <SectionNavigation activeId={activeId} onSelect={scrollTo} />
 
       {/* Section Content */}
-      <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-7">
         {/* Overview Section */}
         <SectionShell
           id={sectionDomId("overview")}
@@ -156,9 +154,6 @@ export function TraceDetailView({ traceId }: { traceId: string }) {
 
         {/* Correlated Signals Section */}
         <CorrelatedSignalsSection detail={data} />
-
-        {/* Developer Tools Section */}
-        <DeveloperToolsSection detail={data} />
       </div>
     </div>
   );

@@ -23,7 +23,7 @@ export default function ChannelDetailPage() {
 
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-6">
       <Button variant="ghost" onClick={() => navigate(-1)}><ArrowLeft className="size-4" /> Back to channels</Button>
       <PageHeader
         title={c.name}

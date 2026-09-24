@@ -21,9 +21,8 @@ import {
   StackTraceSection,
   TagsSection,
 } from "./sections";
-import { DeveloperToolsSection } from "./DeveloperToolsSection";
 import { useSectionNavigation } from "./useSectionNavigation";
-import { normalizeErrorDetail, toCopyableJson } from "./helpers";
+import { normalizeErrorDetail } from "./helpers";
 
 export function ErrorDetailView({ errorId }: { errorId: string }) {
   const navigate = useNavigate();
@@ -72,18 +71,14 @@ export function ErrorDetailView({ errorId }: { errorId: string }) {
   const aiResponse = aiOverride !== undefined ? aiOverride : data.aiResponse;
 
   return (
-    <div className="flex flex-col gap-5 pb-16">
-      <StickyErrorHeader
-        detail={data}
-        onAnalyze={runAnalyze}
-        onCopyJson={() => navigator.clipboard?.writeText(toCopyableJson(data))}
-      />
+    <div className="flex flex-col gap-6 pb-20">
+      <StickyErrorHeader detail={data} onAnalyze={runAnalyze} />
 
       <SummaryCards detail={data} />
 
       <SectionNavigation activeId={activeId} onSelect={scrollTo} />
 
-      <div className="flex flex-col gap-5">
+      <div className="flex flex-col gap-6">
         <OverviewSection detail={data} />
         <StackTraceSection detail={data} />
         <BreadcrumbsSection detail={data} />
@@ -93,7 +88,6 @@ export function ErrorDetailView({ errorId }: { errorId: string }) {
         <AISection aiResponse={aiResponse} analyzing={analyzing} onAnalyze={runAnalyze} />
         <RelatedSection detail={data} />
         <TagsSection detail={data} />
-        <DeveloperToolsSection publicId={data.publicId} />
       </div>
     </div>
   );

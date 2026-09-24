@@ -12,7 +12,7 @@ export default function RateLimitsPage() {
   const [sparklineData] = useState(() => Array.from({ length: 30 }, (_, i) => 300 + i * 18 + Math.random() * 30));
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-6">
       <PageHeader title="Rate Limits" description="Operational rate-limit visibility for ingest traffic." />
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">

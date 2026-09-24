@@ -36,15 +36,15 @@ export function InstrumentationTab({ instrumentation, onChange }: Instrumentatio
         Manage auto-patching for Node.js modules, web frameworks, and database drivers.
       </SectionBanner>
 
-      <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] p-5 flex flex-col gap-4">
-        <div className="flex items-center justify-between border-b border-[var(--border)] pb-3">
+      <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] p-6 flex flex-col gap-5">
+        <div className="flex items-center justify-between border-b border-[var(--border)] pb-4">
           <h3 className="font-bold text-[14px] text-[var(--text)] flex items-center gap-2">
             <Radio className="size-4 text-[var(--brand)]" /> Supported Frameworks & Drivers
           </h3>
           <span className="text-[11px] font-mono text-[var(--text3)]">14 Auto-Patches</span>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {INSTRUMENTS.map(({ key, label, desc, tooltip }) => {
             const isActive = instrumentation[key];
             return (

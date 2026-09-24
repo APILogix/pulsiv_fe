@@ -114,7 +114,7 @@ export default function InvitationsPage() {
   ];
 
   return (
-    <FillPage>
+    <FillPage className="gap-5">
       <PageHeader title="Invitations" description="Invite, resend, validate, decline, and revoke." />
 
       <SectionCard title="Invite a member">

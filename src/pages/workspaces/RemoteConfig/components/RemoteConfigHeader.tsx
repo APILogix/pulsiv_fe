@@ -127,7 +127,7 @@ export function RemoteConfigHeader({
   const envName = currentEnv ? `${currentEnv.name} (${currentEnv.slug})` : "All environments";
 
   return (
-    <header className="flex flex-col gap-4 rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] p-4 sm:p-5">
+    <header className="flex flex-col gap-5 rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] p-5 sm:p-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         {/* Identity + scope */}
         <div className="flex min-w-0 items-start gap-3">
@@ -210,7 +210,7 @@ export function RemoteConfigHeader({
       </div>
 
       {/* Revision strip */}
-      <div className="grid grid-cols-1 gap-y-1 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg2)]/50 p-1 sm:grid-cols-2 md:grid-cols-4">
+      <div className="grid grid-cols-1 gap-y-1.5 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg2)]/50 p-1.5 sm:grid-cols-2 md:grid-cols-4">
         <MetaCell icon={Globe2} label="Active target">
           {envName}
         </MetaCell>

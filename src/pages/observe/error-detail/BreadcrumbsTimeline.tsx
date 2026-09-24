@@ -1,8 +1,6 @@
-import { useState } from "react";
 import { CopyButton, Timestamp } from "@/shared/observe";
-import { ChevronDown, ChevronRight, Globe, Database, MousePointer, Terminal, AlertTriangle, Layers } from "lucide-react";
+import { Globe, Database, MousePointer, Terminal, AlertTriangle, Layers } from "lucide-react";
 import type { Breadcrumb } from "./types";
-import { InteractiveJsonViewer } from "../request-detail/InteractiveJsonViewer";
 
 
 const CATEGORY_ICONS: Record<string, typeof Globe> = {
@@ -31,8 +29,6 @@ const LEVEL_TONES: Record<string, string> = {
 };
 
 export function BreadcrumbsTimeline({ breadcrumbs }: { breadcrumbs: Breadcrumb[] }) {
-  const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
-
   if (!breadcrumbs || breadcrumbs.length === 0) {
     return (
       <div className="rounded-[var(--radius)] border border-dashed border-[var(--border)] p-6 text-center text-[13px] text-[var(--text3)]">
@@ -49,8 +45,6 @@ export function BreadcrumbsTimeline({ breadcrumbs }: { breadcrumbs: Breadcrumb[]
         const level = (item.level ?? "info").toLowerCase();
         const tone = LEVEL_TONES[level] ?? LEVEL_TONES.info;
         const msg = item.message ?? item.category ?? "Breadcrumb event";
-        const hasData = item.data && Object.keys(item.data).length > 0;
-        const isExpanded = expandedIndex === index;
         const timeVal = item.timestamp ?? item.occurredAt;
 
         return (
@@ -77,26 +71,9 @@ export function BreadcrumbsTimeline({ breadcrumbs }: { breadcrumbs: Breadcrumb[]
 
                 <div className="flex shrink-0 items-center gap-2">
                   {timeVal && <Timestamp value={timeVal} />}
-                  {hasData && (
-                    <button
-                      type="button"
-                      onClick={() => setExpandedIndex(isExpanded ? null : index)}
-                      className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-[11px] text-[var(--text3)] hover:text-[var(--text)] font-[family-name:var(--mono)]"
-                    >
-                      {isExpanded ? <ChevronDown className="size-3" /> : <ChevronRight className="size-3" />}
-                      Data
-                    </button>
-                  )}
                   <CopyButton value={msg} label="" className="h-6 border-0 px-1 text-[var(--text3)]" />
                 </div>
               </div>
-
-              {/* Expandable JSON Data */}
-              {isExpanded && hasData && (
-                <div className="mt-3 border-t border-[var(--border)] pt-3">
-                  <InteractiveJsonViewer data={item.data} maxHeight={220} />
-                </div>
-              )}
             </div>
           </div>
         );

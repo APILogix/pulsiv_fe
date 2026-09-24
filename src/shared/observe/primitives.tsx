@@ -240,7 +240,7 @@ export function PageHeader({ title, description, breadcrumbs, actions }: {
     <div className="flex items-start justify-between gap-4">
       <div>
         {breadcrumbs && breadcrumbs.length > 0 && (
-          <div className="mb-1.5 flex items-center gap-1 text-[12px] text-[var(--text3)]">
+          <div className="mb-2 flex items-center gap-1 text-[12px] text-[var(--text3)]">
             {breadcrumbs.map((b, i) => {
               const isLast = i === breadcrumbs.length - 1;
               return (
@@ -259,7 +259,7 @@ export function PageHeader({ title, description, breadcrumbs, actions }: {
           </div>
         )}
         <h1 className="font-[family-name:var(--display)] text-[22px] font-semibold tracking-[-0.02em] text-[var(--text)]">{title}</h1>
-        {description && <p className="mt-1 text-[13px] leading-[1.5] text-[var(--text2)]">{description}</p>}
+        {description && <p className="mt-1.5 text-[13px] leading-[1.6] text-[var(--text2)]">{description}</p>}
       </div>
       {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
     </div>
@@ -276,15 +276,15 @@ export function SectionCard({ title, description, action, children, className }:
   return (
     <div className={cn("rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)]", className)}>
       {(title || description || action) && (
-        <div className="flex items-center justify-between border-b border-[var(--border)] px-5 py-3">
+        <div className="flex items-center justify-between border-b border-[var(--border)] px-6 py-4">
           <div>
             {title && <h3 className="text-[14px] font-semibold text-[var(--text)]">{title}</h3>}
-            {description && <p className="mt-0.5 text-[12px] text-[var(--text2)]">{description}</p>}
+            {description && <p className="mt-1 text-[12px] text-[var(--text2)]">{description}</p>}
           </div>
           {action}
         </div>
       )}
-      <div className="p-5">{children}</div>
+      <div className="p-6">{children}</div>
     </div>
   );
 }
@@ -312,13 +312,13 @@ export function KpiCard({ label, value, delta, trend = "neutral", icon: Icon }: 
   icon?: LucideIcon;
 }) {
   return (
-    <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] p-4">
+    <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] p-5">
       <div className="flex items-center justify-between">
         <span className="font-[family-name:var(--mono)] text-[10px] font-medium uppercase tracking-[0.09em] text-[var(--text3)]">{label}</span>
         {Icon && <Icon className="size-4 text-[var(--text3)]" />}
       </div>
-      <div className="mt-2 font-[family-name:var(--mono)] text-[26px] font-medium leading-[1.1] tracking-[-0.02em] tabular-nums text-[var(--text)]">{value}</div>
-      {delta && <div className={cn("mt-1 font-[family-name:var(--mono)] text-[11px] font-medium tabular-nums", TREND_TONE[trend])}>{delta}</div>}
+      <div className="mt-2.5 font-[family-name:var(--mono)] text-[26px] font-medium leading-[1.1] tracking-[-0.02em] tabular-nums text-[var(--text)]">{value}</div>
+      {delta && <div className={cn("mt-1.5 font-[family-name:var(--mono)] text-[11px] font-medium tabular-nums", TREND_TONE[trend])}>{delta}</div>}
     </div>
   );
 }

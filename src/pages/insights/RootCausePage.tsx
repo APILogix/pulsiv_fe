@@ -12,7 +12,7 @@ export default function RootCausePage() {
   const options = [{ value: "", label: "Select incident…" }, ...incidents.slice(0, 12).map((i) => ({ value: i.id, label: `${i.id} · ${i.title}` }))];
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-6">
       <PageHeader title="Root cause analysis" description="Automated incident explanation with confidence scoring." />
 
       <div className="flex"><FilterSelect value={selected} onChange={setSelected} options={options} label="Incident" /></div>

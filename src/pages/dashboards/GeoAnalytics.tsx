@@ -152,7 +152,7 @@ export default function GeoAnalytics() {
   }
 
   return (
-    <div className="flex flex-col gap-5 max-w-[1400px] w-full">
+    <div className="flex flex-col gap-6 max-w-[1400px] w-full">
       <PageHeader
         title="User Distribution & Geo-Analytics"
         description="Who uses the API, from where, on what devices, and how usage patterns vary."

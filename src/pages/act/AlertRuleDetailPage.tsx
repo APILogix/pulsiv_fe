@@ -101,7 +101,7 @@ export default function AlertRuleDetailPage() {
   };
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-6">
       <UiButton variant="ghost" onClick={() => navigate(-1)}><ArrowLeft className="size-4" /> Back to rules</UiButton>
 
       <PageHeader

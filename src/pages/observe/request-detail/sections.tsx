@@ -9,9 +9,8 @@ import {
   formatLatency,
 } from "@/shared/observe";
 import { cn } from "@/lib/utils";
-import { InteractiveJsonViewer } from "./InteractiveJsonViewer";
 import { hasJsonValue, normalizeAiResponse, sectionDomId } from "./helpers";
-import { CollapsibleBlock, EmptyInline, KeyValueGrid, SectionShell } from "./ui";
+import { EmptyInline, KeyValueGrid, SectionShell } from "./ui";
 import type {
   RequestContextDetail,
   RequestDetailHeader,
@@ -66,43 +65,36 @@ export function HttpSection({ http }: { http: RequestHttpDetail }) {
         </div>
       }
     >
-      <div className="flex flex-col gap-3">
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div className="rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg)] px-4 py-3">
+      <div className="flex flex-col gap-4">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg)] px-4 py-3.5">
             <div className="font-[family-name:var(--mono)] text-[10px] uppercase tracking-[0.08em] text-[var(--text3)]">Request</div>
-            <div className="mt-2 flex flex-wrap items-center gap-2">
+            <div className="mt-2.5 flex flex-wrap items-center gap-2">
               <MethodBadge method={http.method} />
               <span className="min-w-0 break-all font-[family-name:var(--mono)] text-[12px] text-[var(--text)]">
                 {http.url ?? http.endpoint ?? "—"}
               </span>
             </div>
           </div>
-          <div className="rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg)] px-4 py-3">
+          <div className="rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg)] px-4 py-3.5">
             <div className="font-[family-name:var(--mono)] text-[10px] uppercase tracking-[0.08em] text-[var(--text3)]">Response</div>
-            <div className="mt-2 text-[13px] text-[var(--text2)]">
-              Body and headers are below. Status lives in the summary strip.
+            <div className="mt-2.5 text-[13px] text-[var(--text2)]">
+              Status and timing are shown in the summary strip above.
             </div>
           </div>
         </div>
 
-        <CollapsibleBlock title="Request headers" empty={!hasJsonValue(http.requestHeaders)}>
-          <InteractiveJsonViewer data={http.requestHeaders} />
-        </CollapsibleBlock>
-        <CollapsibleBlock title="Response headers" empty={!hasJsonValue(http.responseHeaders)}>
-          <InteractiveJsonViewer data={http.responseHeaders} />
-        </CollapsibleBlock>
-        <CollapsibleBlock title="Query parameters" empty={!hasJsonValue(http.queryParameters)} defaultOpen={hasJsonValue(http.queryParameters)}>
-          <InteractiveJsonViewer data={http.queryParameters} />
-        </CollapsibleBlock>
-        <CollapsibleBlock title="Route parameters" empty={!hasJsonValue(http.routeParameters)}>
-          <InteractiveJsonViewer data={http.routeParameters} />
-        </CollapsibleBlock>
-        <CollapsibleBlock title="Request body" empty={!hasJsonValue(http.requestBody)} defaultOpen>
-          <InteractiveJsonViewer data={http.requestBody} />
-        </CollapsibleBlock>
-        <CollapsibleBlock title="Response body" empty={!hasJsonValue(http.responseBody)} defaultOpen>
-          <InteractiveJsonViewer data={http.responseBody} />
-        </CollapsibleBlock>
+        <KeyValueGrid
+          columns={3}
+          items={[
+            { label: "Query parameters", value: hasJsonValue(http.queryParameters) ? "Present" : "None" },
+            { label: "Route parameters", value: hasJsonValue(http.routeParameters) ? "Present" : "None" },
+            { label: "Request body", value: hasJsonValue(http.requestBody) ? "Present" : "None" },
+            { label: "Response body", value: hasJsonValue(http.responseBody) ? "Present" : "None" },
+            { label: "Request headers", value: hasJsonValue(http.requestHeaders) ? "Present" : "None" },
+            { label: "Response headers", value: hasJsonValue(http.responseHeaders) ? "Present" : "None" },
+          ]}
+        />
       </div>
     </SectionShell>
   );
@@ -199,18 +191,21 @@ export function ContextSection({ context }: { context: RequestContextDetail }) {
 }
 
 export function MetadataSection({ metadata }: { metadata: RequestMetadataDetail }) {
-  const hasAttrs = hasJsonValue(metadata.attributes);
-  const hasMeta = hasJsonValue(metadata.metadata);
+  const attrCount = hasJsonValue(metadata.attributes) ? Object.keys(metadata.attributes).length : 0;
+  const metaCount = hasJsonValue(metadata.metadata) ? Object.keys(metadata.metadata).length : 0;
 
   return (
-    <SectionShell id={sectionDomId("metadata")} title="Metadata" description="Custom attributes and SDK metadata.">
-      {!hasAttrs && !hasMeta ? (
+    <SectionShell id={sectionDomId("metadata")} title="Metadata" description="Custom attributes and SDK metadata captured for this request.">
+      {attrCount === 0 && metaCount === 0 ? (
         <EmptyInline message="No attributes or metadata were returned for this request." />
       ) : (
-        <div className="flex flex-col gap-4">
-          {hasAttrs && <InteractiveJsonViewer data={metadata.attributes} title="Attributes" defaultExpanded />}
-          {hasMeta && <InteractiveJsonViewer data={metadata.metadata} title="Metadata" defaultExpanded />}
-        </div>
+        <KeyValueGrid
+          columns={2}
+          items={[
+            { label: "Attributes", value: attrCount === 0 ? "None" : `${attrCount} field${attrCount === 1 ? "" : "s"}` },
+            { label: "SDK metadata", value: metaCount === 0 ? "None" : `${metaCount} field${metaCount === 1 ? "" : "s"}` },
+          ]}
+        />
       )}
     </SectionShell>
   );

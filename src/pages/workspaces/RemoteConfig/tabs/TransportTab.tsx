@@ -64,7 +64,7 @@ export function TransportTab({
 
       {/* Route Matrix */}
       <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] overflow-hidden">
-        <div className="border-b border-[var(--border)] px-5 py-4 flex items-center justify-between">
+        <div className="border-b border-[var(--border)] px-6 py-5 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Activity className="size-4 text-[var(--brand)]" />
             <h3 className="font-bold text-[14px] text-[var(--text)]">Route Ingestion Matrix</h3>
@@ -156,7 +156,7 @@ export function TransportTab({
 
       {/* Retry & Queue Control Split */}
       <div className="grid gap-6 lg:grid-cols-2">
-        <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] p-5 flex flex-col gap-4">
+        <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] p-6 flex flex-col gap-5">
           <h3 className="font-bold text-[14px] text-[var(--text)] flex items-center gap-2">
             <RefreshCw className="size-4 text-[var(--blue)]" /> Retry & Backoff Policy
           </h3>
@@ -211,7 +211,7 @@ export function TransportTab({
           </div>
         </div>
 
-        <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] p-5 flex flex-col gap-4">
+        <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] p-6 flex flex-col gap-5">
           <h3 className="font-bold text-[14px] text-[var(--text)] flex items-center gap-2">
             <Radio className="size-4 text-[var(--amber)]" /> Memory Queue & Overflow
           </h3>
@@ -254,7 +254,7 @@ export function TransportTab({
 
       {/* Connection Pool & TTL Delivery */}
       <div className="grid gap-6 sm:grid-cols-2">
-        <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] p-5 flex flex-col gap-4">
+        <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] p-6 flex flex-col gap-5">
           <h3 className="font-bold text-[14px] text-[var(--text)]">HTTP Connection Pool</h3>
           <div className="grid gap-4 sm:grid-cols-2">
             <NumberField
@@ -284,7 +284,7 @@ export function TransportTab({
           </div>
         </div>
 
-        <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] p-5 flex flex-col gap-4">
+        <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] p-6 flex flex-col gap-5">
           <h3 className="font-bold text-[14px] text-[var(--text)]">Config Refresh TTL</h3>
           <NumberField
             label="Config Cache TTL"

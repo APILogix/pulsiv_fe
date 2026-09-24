@@ -60,12 +60,12 @@ export function InheritanceVisualizer({ environmentName }: InheritanceVisualizer
       title="Configuration Inheritance Stack"
       description="Visual representation of how effective SDK settings are compiled across organization, project, environment, and SDK layers."
     >
-      <div className="flex flex-col gap-4 py-2">
-        <div className="grid gap-3">
+      <div className="flex flex-col gap-5">
+        <div className="grid gap-4">
           {layers.map((layer) => {
             const Icon = layer.icon;
             return (
-              <div key={layer.level} className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg2)]/60 p-4 transition-all hover:bg-[var(--bg2)]">
+              <div key={layer.level} className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg2)]/60 p-5 transition-all hover:bg-[var(--bg2)]">
                 <div className="flex items-center gap-3.5 min-w-0">
                   <div className={`flex size-10 items-center justify-center rounded-lg border font-bold text-xs shrink-0 ${layer.color}`}>
                     <Icon className="size-5" />
@@ -92,7 +92,7 @@ export function InheritanceVisualizer({ environmentName }: InheritanceVisualizer
           })}
         </div>
 
-        <div className="mt-2 rounded-[var(--radius-lg)] border border-[var(--brand)]/30 bg-[var(--brand)]/10 p-4 flex items-center justify-between text-xs text-[var(--brand)]">
+        <div className="mt-2.5 rounded-[var(--radius-lg)] border border-[var(--brand)]/30 bg-[var(--brand)]/10 p-5 flex items-center justify-between text-xs text-[var(--brand)]">
           <div className="flex items-center gap-2.5">
             <ShieldCheck className="size-5 text-[var(--brand)] shrink-0" />
             <div>

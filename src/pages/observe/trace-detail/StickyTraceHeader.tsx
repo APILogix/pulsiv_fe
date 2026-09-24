@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "react-router";
-import { ArrowLeft, Brain, Copy, ExternalLink, GitBranch, Sparkles } from "lucide-react";
+import { ArrowLeft, ExternalLink, GitBranch, Sparkles } from "lucide-react";
 import {
   Button,
   CopyButton,
@@ -13,12 +13,10 @@ import type { TraceDetailData } from "./types";
 export function StickyTraceHeader({
   detail,
   onAnalyze,
-  onCopyJson,
   analyzing,
 }: {
   detail: TraceDetailData;
   onAnalyze: () => void;
-  onCopyJson: () => void;
   analyzing: boolean;
 }) {
   const navigate = useNavigate();
@@ -97,14 +95,6 @@ export function StickyTraceHeader({
 
           {/* Action buttons */}
           <div className="flex shrink-0 flex-wrap items-center gap-2">
-            <Button
-              variant="outline"
-              className="h-9 gap-1.5"
-              onClick={onCopyJson}
-            >
-              <Copy className="size-3.5" />
-              Copy JSON
-            </Button>
             <Button
               variant="primary"
               className="h-9 gap-1.5 bg-[var(--ai)] text-[var(--ai-fg)] hover:opacity-90"

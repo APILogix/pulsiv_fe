@@ -22,7 +22,7 @@ const GATES = [
 
 export default function ConnectionHealthPage() {
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-6">
       <PageHeader title="Health" description="Ingestion health, readiness, and queue state." />
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">

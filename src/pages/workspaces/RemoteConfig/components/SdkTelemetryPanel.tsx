@@ -19,9 +19,9 @@ export function SdkTelemetryPanel({ environmentName }: SdkTelemetryPanelProps) {
       title="SDK Telemetry & Sync Network"
       description={`Real-time connectivity, active versions, and configuration refresh health across all SDK instances bound to ${environmentName}.`}
     >
-      <div className="flex flex-col gap-5 py-2">
+      <div className="flex flex-col gap-6">
         {/* Top Metric Strip */}
-        <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4">
           <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg2)]/60 p-4">
             <div className="flex items-center justify-between text-xs text-[var(--text3)]">
               <span>Connected SDKs</span>

@@ -1,5 +1,5 @@
 import { Link as RouterLink, useNavigate } from "react-router";
-import { ArrowLeft, Brain, Sparkles, Copy, MoreHorizontal, GitBranch, AlertTriangle, ExternalLink } from "lucide-react";
+import { ArrowLeft, Sparkles, Copy, MoreHorizontal, GitBranch, AlertTriangle, ExternalLink, ShieldAlert } from "lucide-react";
 import { useAiDrawerStore } from "@/modules/ai/store/ai-drawer.store";
 
 import {
@@ -43,31 +43,32 @@ export function StickyErrorHeader({
   const serverName = typeof detail.server === "object" ? detail.server?.name : detail.server;
 
   return (
-    <header className="sticky top-0 z-30 -mx-6 border-b border-[var(--border)] bg-[var(--bg)]/90 px-6 py-3.5 backdrop-blur-md">
-      <div className="flex flex-col gap-3">
-        <div className="flex flex-wrap items-start justify-between gap-3">
+    <header className="sticky top-0 z-30 -mx-6 border-b border-[var(--border)] bg-[var(--bg)]/90 px-6 py-4 backdrop-blur-md">
+      <div className="flex flex-col gap-3.5">
+        <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0 flex-1">
             {/* Breadcrumb & Public ID */}
-            <div className="mb-2 flex flex-wrap items-center gap-2">
-              <Button
-                variant="ghost"
-                className="h-8 px-2 text-[var(--text3)]"
+            <div className="mb-2.5 flex flex-wrap items-center gap-2 text-[12px]">
+              <button
+                type="button"
                 onClick={() => navigate("/observability/errors")}
+                className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-[var(--text3)] hover:bg-[var(--bg2)] hover:text-[var(--text)] transition-colors cursor-pointer"
               >
                 <ArrowLeft className="size-3.5" />
-                Errors
-              </Button>
-              <span className="font-[family-name:var(--mono)] text-[12px] tabular-nums text-[var(--text)]">
+                <span>Errors</span>
+              </button>
+              <span className="text-[var(--text3)]">/</span>
+              <span className="font-[family-name:var(--mono)] font-semibold text-[var(--text)]">
                 {detail.publicId}
               </span>
-              <CopyButton value={detail.publicId} label="Copy ID" className="h-7" />
+              <CopyButton value={detail.publicId} label="Copy ID" className="h-6 px-1.5 text-[11px]" />
               {issuePublicId && (
                 <RouterLink
                   to={issuePath!}
-                  className="inline-flex items-center gap-1 font-[family-name:var(--mono)] text-[11px] text-[var(--brand)] hover:underline"
+                  className="inline-flex items-center gap-1 rounded-md bg-[var(--brand-bg)] px-2 py-0.5 font-[family-name:var(--mono)] text-[11px] font-semibold text-[var(--brand)] hover:underline"
                 >
                   <AlertTriangle className="size-3" />
-                  {issuePublicId}
+                  Group {issuePublicId}
                 </RouterLink>
               )}
             </div>
@@ -76,7 +77,7 @@ export function StickyErrorHeader({
             <div className="flex flex-wrap items-center gap-2.5">
               <SeverityBadge severity={severity} />
               <span
-                className={`inline-flex items-center rounded-full px-2 py-0.5 font-[family-name:var(--mono)] text-[10px] font-medium uppercase tracking-[0.08em] ${
+                className={`inline-flex items-center rounded-full px-2.5 py-0.5 font-[family-name:var(--mono)] text-[11px] font-semibold uppercase tracking-[0.08em] ${
                   isHandled
                     ? "bg-[var(--green-bg)] text-[var(--green)]"
                     : "bg-[var(--red-bg)] text-[var(--red)]"
@@ -84,12 +85,12 @@ export function StickyErrorHeader({
               >
                 {isHandled ? "Handled" : "Unhandled"}
               </span>
-              <span className="font-[family-name:var(--mono)] text-[15px] font-semibold text-[var(--red)]">
+              <span className="font-[family-name:var(--mono)] text-[16px] font-bold text-[var(--red)]">
                 {errorName}
               </span>
-              <span className="text-[14px] text-[var(--text3)]">:</span>
+              <span className="text-[14px] text-[var(--text3)] font-semibold">:</span>
               <h1
-                className="min-w-0 truncate font-[family-name:var(--mono)] text-[14px] font-medium tracking-[-0.01em] text-[var(--text)] max-w-[500px]"
+                className="min-w-0 max-w-2xl truncate font-[family-name:var(--mono)] text-[15px] font-semibold tracking-[-0.01em] text-[var(--text)]"
                 title={errorMessage}
               >
                 {errorMessage}
@@ -98,7 +99,7 @@ export function StickyErrorHeader({
             </div>
 
             {/* Context Chips */}
-            <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-[var(--text3)]">
+            <div className="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[12px] text-[var(--text3)]">
               {detail.environment && <EnvironmentBadge environment={detail.environment} />}
               <MetaChip label="Project" value={projectName} />
               <MetaChip label="Service" value={detail.service} />
@@ -110,48 +111,48 @@ export function StickyErrorHeader({
               {tracePublicId && (
                 <RouterLink
                   to={tracePath!}
-                  className="inline-flex items-center gap-1 font-[family-name:var(--mono)] text-[var(--text2)] transition-colors hover:text-[var(--text)] focus-visible:outline-none focus-visible:underline"
+                  className="inline-flex items-center gap-1 font-[family-name:var(--mono)] text-[var(--violet)] hover:underline"
                 >
                   <GitBranch className="size-3" />
-                  {tracePublicId}
+                  Trace {tracePublicId}
                 </RouterLink>
               )}
               {requestPublicId && (
                 <RouterLink
                   to={requestPath!}
-                  className="inline-flex items-center gap-1 font-[family-name:var(--mono)] text-[var(--text2)] transition-colors hover:text-[var(--text)] focus-visible:outline-none focus-visible:underline"
+                  className="inline-flex items-center gap-1 font-[family-name:var(--mono)] text-[var(--blue)] hover:underline"
                 >
                   <ExternalLink className="size-3" />
-                  {requestPublicId}
+                  Request {requestPublicId.slice(0, 8)}…
                 </RouterLink>
               )}
             </div>
           </div>
 
           {/* Quick Actions */}
-          <div className="flex shrink-0 flex-wrap items-center gap-2">
-            <CopyButton value={errorMessage} label="Copy Message" />
+          <div className="flex shrink-0 flex-wrap items-center gap-2.5">
+            <CopyButton value={errorMessage} label="Copy Message" className="h-9 px-3 text-[12px]" />
             {issuePath && (
-              <Button variant="secondary" className="h-9" onClick={() => navigate(issuePath)}>
+              <Button variant="secondary" className="h-9 gap-1.5" onClick={() => navigate(issuePath)}>
                 <AlertTriangle className="size-3.5 text-[var(--amber)]" />
                 View Issue
               </Button>
             )}
             {requestPath && (
-              <Button variant="secondary" className="h-9" onClick={() => navigate(requestPath)}>
-                <ExternalLink className="size-3.5" />
+              <Button variant="secondary" className="h-9 gap-1.5" onClick={() => navigate(requestPath)}>
+                <ExternalLink className="size-3.5 text-[var(--blue)]" />
                 Open Request
               </Button>
             )}
             {tracePath && (
-              <Button variant="secondary" className="h-9" onClick={() => navigate(tracePath)}>
-                <GitBranch className="size-3.5" />
+              <Button variant="secondary" className="h-9 gap-1.5" onClick={() => navigate(tracePath)}>
+                <GitBranch className="size-3.5 text-[var(--violet)]" />
                 Open Trace
               </Button>
             )}
             <Button
               variant="primary"
-              className="h-9 gap-1.5"
+              className="h-9 gap-1.5 bg-[var(--ai)] text-[var(--ai-fg)] hover:opacity-90"
               onClick={() => {
                 useAiDrawerStore.getState().openInvestigate({
                   resourceType: "error",
@@ -159,7 +160,7 @@ export function StickyErrorHeader({
                 });
               }}
             >
-              <Sparkles className="size-3.5 text-[var(--ai)]" />
+              <Sparkles className="size-3.5" />
               Investigate with AI
             </Button>
             <DropdownMenu>
@@ -167,7 +168,7 @@ export function StickyErrorHeader({
                 <button
                   type="button"
                   aria-label="More actions"
-                  className="inline-flex h-9 w-9 items-center justify-center rounded-[var(--radius)] border border-[var(--border2)] text-[var(--text2)] transition-colors hover:border-[var(--text3)] hover:text-[var(--text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)]"
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--border)] text-[var(--text2)] transition-colors hover:border-[var(--text3)] hover:text-[var(--text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)] cursor-pointer"
                 >
                   <MoreHorizontal className="size-4" />
                 </button>
@@ -182,13 +183,22 @@ export function StickyErrorHeader({
                   Copy Exception Message
                 </DropdownMenuItem>
                 {issuePath && (
-                  <DropdownMenuItem onClick={() => navigate(issuePath)}>Open Issue Group</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate(issuePath)}>
+                    <AlertTriangle className="size-3.5" />
+                    Open Issue Group
+                  </DropdownMenuItem>
                 )}
                 {requestPath && (
-                  <DropdownMenuItem onClick={() => navigate(requestPath)}>Open Request Detail</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate(requestPath)}>
+                    <ExternalLink className="size-3.5" />
+                    Open Request Detail
+                  </DropdownMenuItem>
                 )}
                 {tracePath && (
-                  <DropdownMenuItem onClick={() => navigate(tracePath)}>Open Correlated Trace</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate(tracePath)}>
+                    <GitBranch className="size-3.5" />
+                    Open Correlated Trace
+                  </DropdownMenuItem>
                 )}
               </DropdownMenuContent>
             </DropdownMenu>
@@ -203,9 +213,9 @@ function MetaChip({ label, value }: { label: string; value: string | null | unde
   const text = displayValue(value);
   if (text === "—") return null;
   return (
-    <span>
-      <span className="text-[var(--text3)]">{label} </span>
-      <span className="text-[var(--text2)]">{text}</span>
+    <span className="inline-flex items-center gap-1">
+      <span className="text-[var(--text3)]">{label}:</span>
+      <span className="font-medium text-[var(--text2)]">{text}</span>
     </span>
   );
 }

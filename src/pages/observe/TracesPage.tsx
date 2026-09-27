@@ -12,6 +12,8 @@ import type { TraceEvent } from "@/types/events";
 import { useOrgStore } from "@/modules/organizations/store/org.store";
 import { GitBranch, ChevronLeft, ChevronRight } from "lucide-react";
 
+import { useCursorPagination } from "./hooks/useCursorPagination";
+
 const STATUS_OPTS = [
   { value: "", label: "All statuses" },
   { value: "ok", label: "ok" },
@@ -71,18 +73,22 @@ function TracesPageContent() {
   const [env, setEnv] = useState("");
   const [duration, setDuration] = useState("");
   const [query, setQuery] = useState("");
-  const [cursor, setCursor] = useState<string | undefined>(undefined);
-  const [cursorHistory, setCursorHistory] = useState<string[]>([]);
   const [isAiModalOpen, setIsAiModalOpen] = useState(false);
 
   const { timeRangeState } = useTimeRangeParams();
   const { selectedKeys, toggleSelect, selectAll, clearSelection, selectedCount } = useSelection();
 
-  // Reset cursor when filter params change
-  useEffect(() => {
-    setCursor(undefined);
-    setCursorHistory([]);
-  }, [activeProjectSlug, status, env, duration, timeRangeState, query]);
+  // Unified cursor pagination with query identity invalidation
+  const [activePagination, setActivePagination] = useState<any>(undefined);
+
+  const {
+    cursor: currentCursor,
+    paginationProps,
+    onNextPage,
+    onPreviousPage,
+  } = useCursorPagination(activePagination, {
+    dependencies: [activeProjectSlug, status, env, duration, timeRangeState, query],
+  });
 
   const { data, isLoading } = useObservabilityList<TraceEvent>("traces", {
     project: activeProjectSlug ?? undefined,
@@ -93,20 +99,14 @@ function TracesPageContent() {
     from: timeRangeState.from,
     to: timeRangeState.to,
     search: query,
-    cursor,
+    cursor: currentCursor,
   });
 
-  const handleNextPage = (nextCursor: string) => {
-    setCursorHistory((prev) => [...prev, cursor ?? ""]);
-    setCursor(nextCursor);
-  };
-
-  const handlePreviousPage = () => {
-    if (cursorHistory.length === 0) return;
-    const prevCursor = cursorHistory[cursorHistory.length - 1];
-    setCursorHistory((prev) => prev.slice(0, -1));
-    setCursor(prevCursor || undefined);
-  };
+  useEffect(() => {
+    if (data?.pagination) {
+      setActivePagination(data.pagination);
+    }
+  }, [data?.pagination]);
 
   const traces = data?.items ?? [];
   const summary = data?.summary ?? {};
@@ -256,7 +256,7 @@ function TracesPageContent() {
         className="flex-1"
         loading={isLoading}
         items={traces}
-        queryKey={["traces", activeProjectSlug, status, env, duration, timeRangeState, query, cursor]}
+        queryKey={["traces", activeProjectSlug, status, env, duration, timeRangeState, query, currentCursor]}
         columns={columns}
         getKey={(t) => t.publicId ?? t.id ?? t.eventId ?? t.traceId}
         onRowClick={(t) => navigate(`/observability/traces/${t.publicId ?? t.id}`)}
@@ -264,15 +264,9 @@ function TracesPageContent() {
         selectedKeys={selectedKeys}
         onSelectToggle={toggleSelect}
         onSelectAllToggle={selectAll}
-        pagination={{
-          nextCursor: data?.pagination?.nextCursor,
-          previousCursor: data?.pagination?.previousCursor,
-          hasNext: data?.pagination?.hasNext,
-          hasPrevious: cursorHistory.length > 0 || !!data?.pagination?.hasPrevious,
-          limit: data?.pagination?.limit,
-        }}
-        onNextPage={handleNextPage}
-        onPreviousPage={cursorHistory.length > 0 ? handlePreviousPage : undefined}
+        pagination={paginationProps}
+        onNextPage={onNextPage}
+        onPreviousPage={onPreviousPage}
       />
 
       <AskAiModal

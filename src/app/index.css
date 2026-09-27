@@ -1,7 +1,10 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap');
+@import "@fontsource/jetbrains-mono/400.css";
+@import "@fontsource/jetbrains-mono/500.css";
+@import "@fontsource/jetbrains-mono/600.css";
 
 @import "tailwindcss";
 @import "tw-animate-css";
+@import "../styles/toast.css";
 
 /* ══════════════════════════════════════════════════════════════
    SENTINEL DESIGN SYSTEM — sentinel-design.md is the source of truth.

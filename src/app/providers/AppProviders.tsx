@@ -1,5 +1,6 @@
 import { ReactNode } from 'react';
 import { Toaster } from '@/components/ui/sonner';
+import { ToastShowcase } from '@/components/ui/ToastShowcase';
 import { QueryProvider } from './QueryProvider';
 import { ThemeProvider } from '../../theme/ThemeProvider';
 import { TooltipProvider } from '@/components/ui/tooltip';
@@ -26,6 +27,7 @@ export function AppProviders({ children }: { children: ReactNode }) {
             {children}
           </TooltipProvider>
           <Toaster />
+          <ToastShowcase />
         </QueryProvider>
       </MotionProvider>
     </ThemeProvider>

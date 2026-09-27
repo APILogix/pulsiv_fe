@@ -1,0 +1,369 @@
+/* ══════════════════════════════════════════════════════════════
+   SENTINEL OBSIDIAN TOAST SYSTEM
+   Designed to match the Sentinel Three-Channel Law:
+     • Brand = Product / Identity (Indigo / White)
+     • Truth = System Health (Green, Crimson Red, Amber)
+     • AI    = Model Insights (Cyan, Theme-Invariant)
+   ══════════════════════════════════════════════════════════════ */
+
+/* Toast container positioning, font and layout */
+:where([data-sonner-toaster]) {
+  --width: 384px !important;
+  font-family: var(--sans, 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif) !important;
+  z-index: 999999 !important;
+}
+
+@media (max-width: 640px) {
+  :where([data-sonner-toaster]) {
+    --width: calc(100vw - 32px) !important;
+    right: 16px !important;
+    left: 16px !important;
+  }
+}
+
+/* Base Toast item: Sleek Obsidian Glassmorphism */
+:where([data-sonner-toast]),
+[data-sonner-toast] {
+  position: relative !important;
+  display: flex !important;
+  align-items: flex-start !important;
+  gap: 12px !important;
+  width: var(--width, 384px) !important;
+  padding: 13px 15px !important;
+  border-radius: var(--radius-lg, 10px) !important;
+  background: rgba(14, 16, 22, 0.94) !important;
+  backdrop-filter: blur(20px) saturate(190%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(190%) !important;
+  border: 1px solid var(--border, #26262a) !important;
+  color: var(--text, #fafafa) !important;
+  box-shadow: 
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.08),
+    0 14px 40px -6px rgba(0, 0, 0, 0.75),
+    0 4px 14px rgba(0, 0, 0, 0.4) !important;
+  overflow: hidden !important;
+  transition: transform 300ms cubic-bezier(0.16, 1, 0.3, 1), opacity 300ms ease, box-shadow 250ms ease, border-color 250ms ease !important;
+}
+
+/* Hairline specular light reflection on top edge */
+[data-sonner-toast]::before {
+  content: "" !important;
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  height: 1px !important;
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.18) 25%, rgba(255, 255, 255, 0.28) 50%, rgba(255, 255, 255, 0.18) 75%, transparent 100%) !important;
+  pointer-events: none !important;
+  z-index: 2 !important;
+}
+
+/* Icon container badge */
+[data-sonner-toast] [data-icon] {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 28px !important;
+  height: 28px !important;
+  margin-top: 1px !important;
+  margin-right: 0 !important;
+  margin-left: 0 !important;
+  border-radius: 8px !important;
+  flex-shrink: 0 !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  color: var(--text) !important;
+  transition: transform 200ms ease, box-shadow 200ms ease !important;
+}
+
+[data-sonner-toast]:hover [data-icon] {
+  transform: scale(1.04) !important;
+}
+
+/* Toast content container */
+[data-sonner-toast] [data-content] {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 2px !important;
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+  padding-right: 18px !important;
+}
+
+/* Title */
+[data-sonner-toast] [data-title] {
+  font-family: var(--sans, 'Inter', sans-serif) !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  line-height: 1.35 !important;
+  color: #ffffff !important;
+  letter-spacing: -0.012em !important;
+}
+
+/* Description */
+[data-sonner-toast] [data-description] {
+  font-family: var(--sans, 'Inter', sans-serif) !important;
+  font-size: 12px !important;
+  font-weight: 400 !important;
+  line-height: 1.45 !important;
+  color: var(--text2, #a1a1aa) !important;
+  word-break: break-word !important;
+}
+
+/* Monospace inside toast */
+[data-sonner-toast] code,
+[data-sonner-toast] [data-description] code {
+  font-family: var(--mono, 'JetBrains Mono', monospace) !important;
+  font-size: 11px !important;
+  padding: 1.5px 5px !important;
+  border-radius: 4px !important;
+  background: rgba(255, 255, 255, 0.08) !important;
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+  color: #f4f4f5 !important;
+  font-variant-numeric: tabular-nums !important;
+}
+
+/* Close button: sleek, neatly aligned inside the top-right corner */
+[data-sonner-toast] [data-close-button] {
+  position: absolute !important;
+  top: 10px !important;
+  right: 10px !important;
+  left: auto !important;
+  transform: none !important;
+  width: 22px !important;
+  height: 22px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 6px !important;
+  background: rgba(255, 255, 255, 0.06) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  color: var(--text3, #8a8a94) !important;
+  opacity: 0 !important;
+  transition: opacity 160ms ease, background 160ms ease, color 160ms ease, transform 160ms ease, border-color 160ms ease !important;
+  cursor: pointer !important;
+  z-index: 10 !important;
+  padding: 0 !important;
+}
+
+[data-sonner-toast]:hover [data-close-button],
+[data-sonner-toast]:focus-within [data-close-button] {
+  opacity: 1 !important;
+}
+
+[data-sonner-toast] [data-close-button]:hover {
+  background: rgba(255, 255, 255, 0.16) !important;
+  border-color: rgba(255, 255, 255, 0.25) !important;
+  color: #ffffff !important;
+  transform: scale(1.06) !important;
+}
+
+[data-sonner-toast] [data-close-button]:active {
+  transform: scale(0.96) !important;
+}
+
+/* Action button */
+[data-sonner-toast] [data-button] {
+  height: 26px !important;
+  padding: 0 11px !important;
+  font-size: 11.5px !important;
+  font-weight: 600 !important;
+  border-radius: 6px !important;
+  background: #ffffff !important;
+  color: #09090b !important;
+  border: none !important;
+  cursor: pointer !important;
+  transition: background 150ms ease, transform 150ms ease, box-shadow 150ms ease !important;
+  margin-top: 6px !important;
+  align-self: flex-start !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3) !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+[data-sonner-toast] [data-button]:hover {
+  background: #e4e4e7 !important;
+  transform: translateY(-0.5px) !important;
+  box-shadow: 0 3px 10px rgba(255, 255, 255, 0.22) !important;
+}
+
+[data-sonner-toast] [data-button]:active {
+  transform: scale(0.97) !important;
+}
+
+/* Cancel button */
+[data-sonner-toast] [data-cancel] {
+  height: 26px !important;
+  padding: 0 10px !important;
+  font-size: 11.5px !important;
+  font-weight: 500 !important;
+  border-radius: 6px !important;
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: var(--text2, #a1a1aa) !important;
+  border: 1px solid var(--border, #26262a) !important;
+  cursor: pointer !important;
+  transition: background 150ms ease, color 150ms ease, border-color 150ms ease !important;
+  margin-top: 6px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+[data-sonner-toast] [data-cancel]:hover {
+  background: rgba(255, 255, 255, 0.14) !important;
+  border-color: rgba(255, 255, 255, 0.18) !important;
+  color: #ffffff !important;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   CHANNEL ACCENT VARIANTS (SUCCESS, ERROR, WARNING, INFO, AI, LOADING)
+   ══════════════════════════════════════════════════════════════ */
+
+/* ── SUCCESS: Truth Channel (Emerald Green) ─────────────────── */
+:where([data-sonner-toast][data-type="success"]),
+[data-sonner-toast][data-type="success"] {
+  border-color: rgba(52, 211, 153, 0.32) !important;
+  background: linear-gradient(135deg, rgba(14, 24, 20, 0.96) 0%, rgba(14, 16, 22, 0.95) 100%) !important;
+  box-shadow:
+    inset 0 1px 0 0 rgba(52, 211, 153, 0.22),
+    0 0 26px -6px rgba(52, 211, 153, 0.16),
+    0 14px 40px -6px rgba(0, 0, 0, 0.75) !important;
+}
+
+[data-sonner-toast][data-type="success"] [data-icon] {
+  background: rgba(52, 211, 153, 0.12) !important;
+  border-color: rgba(52, 211, 153, 0.3) !important;
+  color: var(--green, #34d399) !important;
+  box-shadow: 0 0 14px -2px rgba(52, 211, 153, 0.3) !important;
+}
+
+/* ── ERROR: Truth Channel (Crimson Red) ──────────────────────── */
+:where([data-sonner-toast][data-type="error"]),
+[data-sonner-toast][data-type="error"] {
+  border-color: rgba(239, 68, 68, 0.36) !important;
+  background: linear-gradient(135deg, rgba(26, 14, 17, 0.96) 0%, rgba(14, 16, 22, 0.95) 100%) !important;
+  box-shadow:
+    inset 0 1px 0 0 rgba(239, 68, 68, 0.25),
+    0 0 26px -6px rgba(239, 68, 68, 0.2),
+    0 14px 40px -6px rgba(0, 0, 0, 0.75) !important;
+}
+
+[data-sonner-toast][data-type="error"] [data-icon] {
+  background: rgba(239, 68, 68, 0.14) !important;
+  border-color: rgba(239, 68, 68, 0.32) !important;
+  color: var(--red, #ef4444) !important;
+  box-shadow: 0 0 14px -2px rgba(239, 68, 68, 0.3) !important;
+}
+
+/* ── WARNING: Truth Channel (Amber Gold) ─────────────────────── */
+:where([data-sonner-toast][data-type="warning"]),
+[data-sonner-toast][data-type="warning"] {
+  border-color: rgba(245, 158, 11, 0.36) !important;
+  background: linear-gradient(135deg, rgba(26, 20, 12, 0.96) 0%, rgba(14, 16, 22, 0.95) 100%) !important;
+  box-shadow:
+    inset 0 1px 0 0 rgba(245, 158, 11, 0.22),
+    0 0 26px -6px rgba(245, 158, 11, 0.16),
+    0 14px 40px -6px rgba(0, 0, 0, 0.75) !important;
+}
+
+[data-sonner-toast][data-type="warning"] [data-icon] {
+  background: rgba(245, 158, 11, 0.12) !important;
+  border-color: rgba(245, 158, 11, 0.3) !important;
+  color: var(--amber, #f59e0b) !important;
+  box-shadow: 0 0 14px -2px rgba(245, 158, 11, 0.3) !important;
+}
+
+/* ── INFO: Telemetry / System (Electric Blue) ────────────────── */
+:where([data-sonner-toast][data-type="info"]),
+[data-sonner-toast][data-type="info"] {
+  border-color: rgba(96, 165, 250, 0.32) !important;
+  background: linear-gradient(135deg, rgba(14, 20, 30, 0.96) 0%, rgba(14, 16, 22, 0.95) 100%) !important;
+  box-shadow:
+    inset 0 1px 0 0 rgba(96, 165, 250, 0.22),
+    0 0 26px -6px rgba(96, 165, 250, 0.15),
+    0 14px 40px -6px rgba(0, 0, 0, 0.75) !important;
+}
+
+[data-sonner-toast][data-type="info"] [data-icon] {
+  background: rgba(96, 165, 250, 0.12) !important;
+  border-color: rgba(96, 165, 250, 0.3) !important;
+  color: var(--blue, #60a5fa) !important;
+  box-shadow: 0 0 14px -2px rgba(96, 165, 250, 0.3) !important;
+}
+
+/* ── LOADING: Brand Async (Violet / Brand) ───────────────────── */
+:where([data-sonner-toast][data-type="loading"]),
+[data-sonner-toast][data-type="loading"] {
+  border-color: rgba(124, 108, 245, 0.35) !important;
+  background: linear-gradient(135deg, rgba(18, 16, 28, 0.96) 0%, rgba(14, 16, 22, 0.95) 100%) !important;
+  box-shadow:
+    inset 0 1px 0 0 rgba(124, 108, 245, 0.22),
+    0 0 26px -6px rgba(124, 108, 245, 0.2),
+    0 14px 40px -6px rgba(0, 0, 0, 0.75) !important;
+}
+
+[data-sonner-toast][data-type="loading"] [data-icon] {
+  background: rgba(124, 108, 245, 0.14) !important;
+  border-color: rgba(124, 108, 245, 0.32) !important;
+  color: var(--brand, #7c6cf5) !important;
+  box-shadow: 0 0 14px -2px rgba(124, 108, 245, 0.3) !important;
+}
+
+/* ── AI INSIGHT (Custom AI-Channel Toast): Cyan Glow ────────── */
+[data-sonner-toast].toast-ai,
+[data-sonner-toast][data-toast-variant="ai"] {
+  border-color: rgba(34, 211, 238, 0.4) !important;
+  background: linear-gradient(135deg, rgba(10, 24, 30, 0.96) 0%, rgba(14, 16, 22, 0.95) 100%) !important;
+  box-shadow:
+    inset 0 1px 0 0 rgba(34, 211, 238, 0.26),
+    0 0 30px -4px rgba(34, 211, 238, 0.24),
+    0 14px 40px -6px rgba(0, 0, 0, 0.75) !important;
+}
+
+[data-sonner-toast].toast-ai [data-icon],
+[data-sonner-toast][data-toast-variant="ai"] [data-icon] {
+  background: rgba(34, 211, 238, 0.14) !important;
+  border-color: rgba(34, 211, 238, 0.36) !important;
+  color: var(--ai, #22d3ee) !important;
+  box-shadow: 0 0 16px -1px rgba(34, 211, 238, 0.35) !important;
+}
+
+/* ── QUOTA / BILLING (Custom Credit Alert Toast): Amber-Violet Glow ─── */
+[data-sonner-toast].toast-quota {
+  border-color: rgba(245, 158, 11, 0.36) !important;
+  background: linear-gradient(135deg, rgba(26, 18, 14, 0.96) 0%, rgba(14, 16, 22, 0.95) 100%) !important;
+  box-shadow:
+    inset 0 1px 0 0 rgba(245, 158, 11, 0.22),
+    0 0 28px -6px rgba(245, 158, 11, 0.18),
+    0 14px 40px -6px rgba(0, 0, 0, 0.75) !important;
+}
+
+[data-sonner-toast].toast-quota [data-icon] {
+  background: rgba(245, 158, 11, 0.14) !important;
+  border-color: rgba(245, 158, 11, 0.32) !important;
+  color: var(--amber, #f59e0b) !important;
+  box-shadow: 0 0 14px -2px rgba(245, 158, 11, 0.3) !important;
+}
+
+/* ── Motion & Stack Refinements ──────────────────────────────── */
+[data-sonner-toast][data-mounted='true'] {
+  animation: toast-in 240ms cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+}
+
+@keyframes toast-in {
+  0% {
+    transform: translateY(12px) scale(0.96);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-sonner-toast] {
+    animation: none !important;
+    transition: opacity 150ms ease !important;
+  }
+}

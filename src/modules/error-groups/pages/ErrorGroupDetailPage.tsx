@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router";
-import { FillPage } from "@/shared/observe";
 import { useErrorGroupDetail, useErrorGroupsList, useErrorGroupMutations } from "../hooks/useErrorGroups";
 import { ErrorGroupHeader } from "../components/ErrorGroupHeader";
 import { ErrorOverviewCards } from "../components/ErrorOverviewCards";
@@ -12,7 +11,9 @@ import { RelatedEventsTable } from "../components/RelatedEventsTable";
 import { AskAICard } from "../components/AskAICard";
 import { MergeDialog } from "../components/MergeDialog";
 import { ResolveDialog } from "../components/ResolveDialog";
-import { AlertCircle, RefreshCw } from "lucide-react";
+import { AlertCircle, ArrowLeft } from "lucide-react";
+import { Button } from "@/shared/observe";
+import { DetailSkeleton } from "@/shared/skeletons";
 
 export default function ErrorGroupDetailPage() {
   const { groupId } = useParams<{ groupId: string }>();
@@ -35,39 +36,45 @@ export default function ErrorGroupDetailPage() {
   });
   const { updateStatus, mergeGroups } = useErrorGroupMutations();
 
-  if (isLoading) {
+  if (isLoading && !group) {
     return (
-      <FillPage className="items-center justify-center">
-        <div className="flex items-center gap-2 text-[14px] text-[var(--text2)]">
-          <RefreshCw className="size-5 animate-spin text-[var(--brand)]" />
-          Loading Error Group details...
-        </div>
-      </FillPage>
+      <div className="mx-auto w-full max-w-[1360px] px-6 py-6">
+        <DetailSkeleton />
+      </div>
     );
   }
 
   if (!group) {
     return (
-      <FillPage className="items-center justify-center">
-        <div className="flex flex-col items-center gap-3 text-center">
-          <AlertCircle className="size-10 text-[var(--red)]" />
-          <h2 className="text-[18px] font-semibold text-[var(--text)]">Error Group Not Found</h2>
-          <p className="text-[13px] text-[var(--text2)]">The requested error group does not exist or has been removed.</p>
-          <button
-            type="button"
-            onClick={() => navigate("/observability/error-groups")}
-            className="inline-flex items-center gap-2 rounded-lg bg-[var(--brand)] px-4 py-2 text-[13px] font-medium text-[var(--bg)]"
-          >
-            <RefreshCw className="size-4" />
-            Back to Error Groups
-          </button>
+      <div className="mx-auto flex w-full max-w-[1360px] flex-col gap-6 px-6 py-8">
+        <Button variant="ghost" className="w-fit gap-2" onClick={() => navigate("/observability/error-groups")}>
+          <ArrowLeft className="size-4" />
+          Back to Error Groups
+        </Button>
+        <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg1)] px-8 py-16 text-center shadow-xs">
+          <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-[var(--red-bg)] text-[var(--red)]">
+            <AlertCircle className="size-6" />
+          </div>
+          <h2 className="mt-4 text-[18px] font-semibold text-[var(--text)]">Error Group Not Found</h2>
+          <p className="mt-2 text-[13.5px] text-[var(--text3)]">The requested error group does not exist or has been removed.</p>
+          <div className="mt-6">
+            <Button variant="primary" onClick={() => navigate("/observability/error-groups")}>
+              Back to Error Groups
+            </Button>
+          </div>
         </div>
-      </FillPage>
+      </div>
     );
   }
 
   return (
-    <FillPage className="space-y-6 sidebar-scroll overflow-y-auto pb-12">
+    <div className="mx-auto flex w-full max-w-[1360px] flex-col gap-8 px-6 py-6 pb-28">
+      {/* Back navigation */}
+      <Button variant="ghost" className="w-fit gap-2" onClick={() => navigate("/observability/error-groups")}>
+        <ArrowLeft className="size-4" />
+        Back to Error Groups
+      </Button>
+
       {/* Header */}
       <ErrorGroupHeader
         group={group}
@@ -118,6 +125,7 @@ export default function ErrorGroupDetailPage() {
           refetch();
         }}
       />
-    </FillPage>
+    </div>
   );
 }
+

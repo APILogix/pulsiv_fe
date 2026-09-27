@@ -9,6 +9,7 @@ import { Loader2 } from 'lucide-react';
 import { SentinelLogo } from '@/shared/components/PulsivLogo';
 import type { InvitationValidation } from '../types/org.types';
 import { useAuthStore } from '@/modules/auth/store/auth.store';
+import { AuthCardSkeleton } from '@/shared/skeletons';
 
 function AcceptButton() {
   const { pending } = useFormStatus();
@@ -77,8 +78,8 @@ export default function AcceptInviteLandingPage() {
 
   if (isValidating) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[var(--bg)]">
-        <Loader2 className="h-8 w-8 animate-spin text-[var(--brand)]" />
+      <div className="flex min-h-screen flex-col items-center justify-center bg-[var(--bg)] p-4">
+        <AuthCardSkeleton />
       </div>
     );
   }

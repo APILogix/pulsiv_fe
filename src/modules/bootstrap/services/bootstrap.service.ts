@@ -50,11 +50,34 @@ export class BootstrapService {
       try {
         let response: any;
         try {
-          response = await apiClient.get('/api/v1/me/bootstrap', { headers });
+          response = await apiClient.get('/me/bootstrap', { headers });
         } catch (err: any) {
-          // Fallback route if /api/v1/me/bootstrap isn't reachable
+          // If /me/bootstrap is not deployed, synthesize bootstrap state from organizations
           if (err.response?.status === 404) {
-            response = await apiClient.get('/me/bootstrap', { headers });
+            const orgsRes = await orgApi.listOrganizations({ limit: 100 }).catch(() => ({ data: [] }));
+            const orgs = Array.isArray(orgsRes.data) ? orgsRes.data : [];
+            const activeOrg = orgs.find((o) => o.id === targetOrgId) ?? orgs[0] ?? null;
+
+            const synthesized: BootstrapData = {
+              currentOrganizationId: activeOrg?.id ?? null,
+              organizations: orgs.map((o) => ({
+                id: o.id,
+                name: o.name,
+                slug: o.slug,
+                role: (o as any).role ?? 'member',
+                isCurrent: o.id === (activeOrg?.id ?? null),
+              })),
+              projects: [],
+              billing: null,
+              features: {},
+              integrations: {},
+              quotas: {},
+              usage: {
+                monthlyEvents: { limit: 1000000, used: 0, remaining: 1000000, percentage: 0 },
+                aiCredits: { limit: 500, used: 0, remaining: 500, percentage: 0 },
+              },
+            };
+            response = { data: { success: true, data: synthesized } };
           } else {
             throw err;
           }

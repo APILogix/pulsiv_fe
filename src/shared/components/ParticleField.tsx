@@ -14,11 +14,15 @@ export function ParticleField() {
     let w = canvas.width = window.innerWidth;
     let h = canvas.height = window.innerHeight;
 
+    let resizeTimeout: number | undefined;
     const handleResize = () => {
-      w = canvas.width = window.innerWidth;
-      h = canvas.height = window.innerHeight;
+      if (resizeTimeout) cancelAnimationFrame(resizeTimeout);
+      resizeTimeout = requestAnimationFrame(() => {
+        w = canvas.width = window.innerWidth;
+        h = canvas.height = window.innerHeight;
+      });
     };
-    window.addEventListener('resize', handleResize);
+    window.addEventListener('resize', handleResize, { passive: true });
 
     const particles: {x: number, y: number, r: number, vx: number, vy: number}[] = [];
     // Canvas cannot read var(), so resolve the live token value (§2.1).
@@ -44,6 +48,7 @@ export function ParticleField() {
     let animationFrameId: number;
 
     const draw = () => {
+      if (document.hidden) return;
       ctx.clearRect(0, 0, w, h);
       ctx.fillStyle = config.color;
       
@@ -64,11 +69,21 @@ export function ParticleField() {
       animationFrameId = requestAnimationFrame(draw);
     };
 
+    const handleVisibility = () => {
+      if (!document.hidden) {
+        cancelAnimationFrame(animationFrameId);
+        animationFrameId = requestAnimationFrame(draw);
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+
     draw();
 
     return () => {
       window.removeEventListener('resize', handleResize);
+      document.removeEventListener('visibilitychange', handleVisibility);
       cancelAnimationFrame(animationFrameId);
+      if (resizeTimeout) cancelAnimationFrame(resizeTimeout);
     };
   }, []);
 

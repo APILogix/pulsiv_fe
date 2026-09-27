@@ -329,12 +329,12 @@ export default function OrgProfilePage() {
           footnote={memberLimit && memberLimit > 0 ? `of ${formatNumber(memberLimit)} seats in plan` : "Unlimited seats"}
         />
         <StatCard
-          label="Events this period"
+          label="Credits this period"
           value={formatCompact(eventsUsed)}
           icon={Activity}
           tone="ai"
           series={eventSeries.length > 1 ? eventSeries : undefined}
-          footnote={eventLimit && eventLimit > 0 ? `${eventsPercent}% of monthly quota` : "No monthly cap"}
+          footnote={eventLimit && eventLimit > 0 ? `${eventsPercent}% of monthly credit quota` : "No monthly cap"}
         />
         <StatCard
           label="Security posture"
@@ -356,7 +356,7 @@ export default function OrgProfilePage() {
         <Panel title="Quota consumption" description="Plan entitlements for the current billing period." icon={Gauge} tone="brand">
           <div className="flex flex-col gap-6 sm:flex-row sm:items-center">
             <div className="flex flex-col items-center gap-2">
-              <Ring value={eventsPercent} label={`${eventsPercent}%`} sublabel="Events" size={112} />
+              <Ring value={eventsPercent} label={`${eventsPercent}%`} sublabel="Credits" size={112} />
               <p className="text-[11.5px] tabular-nums text-[var(--text3)]">
                 {formatCompact(eventsUsed)}
                 {eventLimit && eventLimit > 0 ? ` / ${formatCompact(eventLimit)}` : ""}

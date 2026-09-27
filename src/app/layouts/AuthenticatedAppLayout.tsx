@@ -17,13 +17,6 @@ export function AuthenticatedAppLayout() {
     return <Navigate to="/auth/login" replace />;
   }
 
-  if (isLoading && !activeOrgId) {
-    return (
-      <div className="flex h-screen w-screen items-center justify-center bg-[var(--bg)]">
-        <div className="h-6 w-6 animate-spin rounded-full border-2 border-[var(--brand)] border-t-transparent" />
-      </div>
-    );
-  }
 
   if (!activeOrgId && !organizations.length) {
     return <Navigate to="/onboarding/organization" replace />;

@@ -11,10 +11,10 @@ export function SectionNavigation({
 }) {
   return (
     <nav
-      aria-label="Request sections"
-      className="sticky top-[4.75rem] z-20 -mx-6 border-b border-[var(--border)] bg-[var(--bg)]/90 px-6 backdrop-blur-md"
+      aria-label="Request sections navigation"
+      className="sticky top-[5.25rem] z-20 -mx-6 border-b border-[var(--border)] bg-[var(--bg)]/90 px-6 py-2.5 backdrop-blur-md"
     >
-      <div className="sidebar-scroll flex gap-1 overflow-x-auto py-2">
+      <div className="sidebar-scroll flex items-center gap-1.5 overflow-x-auto py-0.5">
         {REQUEST_SECTIONS.map((section) => {
           const active = section.id === activeId;
           return (
@@ -23,10 +23,10 @@ export function SectionNavigation({
               type="button"
               onClick={() => onSelect(section.id)}
               className={cn(
-                "shrink-0 rounded-[var(--radius)] px-3 py-1.5 text-[12px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)]",
+                "shrink-0 rounded-full px-4 py-1.5 text-[12px] font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)] cursor-pointer",
                 active
-                  ? "bg-[var(--bg2)] text-[var(--text)]"
-                  : "text-[var(--text3)] hover:bg-[var(--bg2)] hover:text-[var(--text2)]",
+                  ? "bg-[var(--text)] text-[var(--bg)] font-semibold shadow-xs"
+                  : "text-[var(--text3)] hover:bg-[var(--bg2)] hover:text-[var(--text)]",
               )}
               aria-current={active ? "true" : undefined}
             >

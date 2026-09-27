@@ -6,6 +6,7 @@ import {
   AiOverviewSkeleton,
   AlertsSkeleton,
   AuditSkeleton,
+  AuthCardSkeleton,
   BillingSkeleton,
   DashboardGallerySkeleton,
   DashboardSkeleton,
@@ -22,6 +23,7 @@ import {
   MetricsSkeleton,
   ProjectOverviewSkeleton,
   ProjectsSkeleton,
+  RemoteConfigSkeleton,
   RulesSkeleton,
   ServiceHealthSkeleton,
   SettingsSkeleton,
@@ -36,24 +38,42 @@ type Rule = readonly [RegExp, ComponentType];
 const ID = "[^/]+";
 
 const RULES: readonly Rule[] = [
-  /* ── project shell: /:orgSlug/p/:publicId/<tab> ───────────────────────── */
+  /* ── project shell: (matches /p/:publicId and /:orgSlug/p/:publicId) ── */
+  [/^\/p\/[^/]+\/overview$/, ProjectOverviewSkeleton],
   [/^\/[^/]+\/p\/[^/]+\/overview$/, ProjectOverviewSkeleton],
+  [/^\/p\/[^/]+\/analytics$/, MetricsSkeleton],
   [/^\/[^/]+\/p\/[^/]+\/analytics$/, MetricsSkeleton],
+  [/^\/p\/[^/]+\/usage$/, MetricsSkeleton],
   [/^\/[^/]+\/p\/[^/]+\/usage$/, MetricsSkeleton],
+  [/^\/p\/[^/]+\/activity$/, AuditSkeleton],
   [/^\/[^/]+\/p\/[^/]+\/activity$/, AuditSkeleton],
+  [/^\/p\/[^/]+\/environments$/, KeysSkeleton],
   [/^\/[^/]+\/p\/[^/]+\/environments$/, KeysSkeleton],
+  [/^\/p\/[^/]+\/api-keys$/, KeysSkeleton],
   [/^\/[^/]+\/p\/[^/]+\/api-keys$/, KeysSkeleton],
-  [/^\/[^/]+\/p\/[^/]+\/remote-config$/, SettingsSkeleton],
+  [/^\/p\/[^/]+\/remote-config$/, RemoteConfigSkeleton],
+  [/^\/[^/]+\/p\/[^/]+\/remote-config$/, RemoteConfigSkeleton],
+  [/^\/p\/[^/]+\/alert-rules$/, RulesSkeleton],
   [/^\/[^/]+\/p\/[^/]+\/alert-rules$/, RulesSkeleton],
+  [/^\/p\/[^/]+\/alert-channels$/, IntegrationsSkeleton],
   [/^\/[^/]+\/p\/[^/]+\/alert-channels$/, IntegrationsSkeleton],
+  [new RegExp(`^/p/[^/]+/routes/${ID}$`), WizardSkeleton],
   [new RegExp(`^/[^/]+/p/[^/]+/routes/${ID}$`), WizardSkeleton],
+  [/^\/p\/[^/]+\/routes$/, RulesSkeleton],
   [/^\/[^/]+\/p\/[^/]+\/routes$/, RulesSkeleton],
+  [/^\/p\/[^/]+\/connectors$/, IntegrationsSkeleton],
   [/^\/[^/]+\/p\/[^/]+\/connectors$/, IntegrationsSkeleton],
+  [/^\/p\/[^/]+\/deliveries$/, AuditSkeleton],
   [/^\/[^/]+\/p\/[^/]+\/deliveries$/, AuditSkeleton],
+  [/^\/p\/[^/]+\/dlq$/, ListSkeleton],
   [/^\/[^/]+\/p\/[^/]+\/dlq$/, ListSkeleton],
+  [/^\/p\/[^/]+\/preferences$/, SettingsSkeleton],
   [/^\/[^/]+\/p\/[^/]+\/preferences$/, SettingsSkeleton],
+  [/^\/p\/[^/]+\/members$/, MembersSkeleton],
   [/^\/[^/]+\/p\/[^/]+\/members$/, MembersSkeleton],
+  [/^\/p\/[^/]+\/settings(\/.*)?$/, SettingsSkeleton],
   [/^\/[^/]+\/p\/[^/]+\/settings(\/.*)?$/, SettingsSkeleton],
+  [/^\/p\/[^/]+$/, ProjectOverviewSkeleton],
   [/^\/[^/]+\/p\/[^/]+$/, ProjectOverviewSkeleton],
 
   /* ── workspaces & project creation ───────────────────────────────────── */
@@ -88,6 +108,8 @@ const RULES: readonly Rule[] = [
   [/^\/observability\/traces$/, ExplorerTableSkeleton],
   [new RegExp(`^/observability/logs/${ID}$`), DetailSkeleton],
   [/^\/observability\/logs$/, LogsSkeleton],
+  [new RegExp(`^/observability/error-groups/${ID}$`), DetailSkeleton],
+  [/^\/observability\/error-groups$/, ErrorGroupsSkeleton],
   [new RegExp(`^/observability/errors/${ID}`), DetailSkeleton],
   [/^\/observability\/errors$/, ErrorGroupsSkeleton],
   [new RegExp(`^/observability/requests/${ID}$`), DetailSkeleton],
@@ -106,6 +128,11 @@ const RULES: readonly Rule[] = [
   [/^\/services$/, ListSkeleton],
 
   /* ── alerting ────────────────────────────────────────────────────────── */
+  [new RegExp(`^/alerts/incidents/${ID}$`), DetailSkeleton],
+  [/^\/alerts\/incidents$/, AlertsSkeleton],
+  [new RegExp(`^/alerts/events/${ID}$`), DetailSkeleton],
+  [/^\/alerts\/events$/, LogsSkeleton],
+  [new RegExp(`^/alerts/policies/${ID}$`), DetailSkeleton],
   [new RegExp(`^/alerts/rules/${ID}$`), DetailSkeleton],
   [/^\/alerts\/rules$/, RulesSkeleton],
   [new RegExp(`^/alerts/escalations/${ID}$`), DetailSkeleton],
@@ -145,6 +172,7 @@ const RULES: readonly Rule[] = [
   [/^\/admin\/(security-events|audit-logs)$/, AuditSkeleton],
   [/^\/admin\/(domains|roles)$/, ListSkeleton],
   [/^\/admin(\/(settings|sso|scim|sdk-config|compliance))?$/, SettingsSkeleton],
+  [/^\/team$/, MembersSkeleton],
 
   /* ── billing ─────────────────────────────────────────────────────────── */
   [new RegExp(`^/billing/invoices/${ID}$`), DetailSkeleton],
@@ -168,6 +196,7 @@ const RULES: readonly Rule[] = [
   [/^\/settings(\/.*)?$/, SettingsSkeleton],
   [/^\/auth\/sessions$/, MembersSkeleton],
   [/^\/auth\/(security|step-up)$/, SettingsSkeleton],
+  [/^\/auth(\/.*)?$/, AuthCardSkeleton],
   [/^\/onboarding(\/.*)?$/, WizardSkeleton],
 ];
 
@@ -177,12 +206,82 @@ function normalize(pathname: string) {
   return pathname;
 }
 
+const TOP_LEVEL_UNSCOPED = new Set([
+  "auth",
+  "accept-invite",
+  "loading",
+  "onboarding",
+]);
+
+const KNOWN_MODULE_ROOTS = new Set([
+  "dashboard",
+  "dashboards",
+  "observability",
+  "services",
+  "projects",
+  "p",
+  "alerts",
+  "automation",
+  "ingestion",
+  "ai",
+  "admin",
+  "super-admin",
+  "billing",
+  "connectors",
+  "developer",
+  "settings",
+  "account",
+  "team",
+]);
+
+/**
+ * Normalizes an application URL by stripping the `:orgSlug` prefix if present.
+ * For example:
+ *   `/acme/observability/traces` -> `/observability/traces`
+ *   `/acme/p/prj_123/remote-config` -> `/p/prj_123/remote-config`
+ *   `/acme/billing` -> `/billing`
+ *   `/auth/login` -> `/auth/login`
+ *   `/dashboard` -> `/dashboard`
+ */
+export function stripOrgSlug(pathname: string): string {
+  const norm = normalize(pathname);
+  const segments = norm.split("/").filter(Boolean);
+  if (segments.length === 0) return "/";
+
+  // Public/unscoped top-level roots
+  if (TOP_LEVEL_UNSCOPED.has(segments[0])) {
+    return norm;
+  }
+
+  // Already a known root without org slug
+  if (KNOWN_MODULE_ROOTS.has(segments[0])) {
+    return norm;
+  }
+
+  // Legacy root or single org slug e.g. /acme
+  if (segments.length === 1) {
+    return "/dashboard";
+  }
+
+  // Strip orgSlug segment
+  return "/" + segments.slice(1).join("/");
+}
+
 /** Resolve the skeleton component for a pathname. Exported for tests/tools. */
 export function resolveRouteSkeleton(pathname: string): ComponentType {
   const path = normalize(pathname);
+  const stripped = stripOrgSlug(path);
+
+  // 1. Check against the canonical stripped path
+  for (const [pattern, Skeleton] of RULES) {
+    if (pattern.test(stripped)) return Skeleton;
+  }
+
+  // 2. Check against the original unstripped path
   for (const [pattern, Skeleton] of RULES) {
     if (pattern.test(path)) return Skeleton;
   }
+
   return GenericPageSkeleton;
 }
 

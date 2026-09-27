@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { CheckCircle2, XCircle, Loader2 } from "lucide-react";
 import { useObservabilityList } from "./hooks/useObservabilityApi";
@@ -9,6 +9,7 @@ import {
 } from "@/shared/observe";
 import type { Column } from "@/shared/observe";
 import type { CronCheckInEvent, CronStatus } from "@/types/events";
+import { useCursorPagination } from "./hooks/useCursorPagination";
 
 const STATUS_OPTS = [
   { value: "", label: "All statuses" },
@@ -27,24 +28,21 @@ function CronsPageContent() {
   const navigate = useNavigate();
   const [status, setStatus] = useState("");
   const [query, setQuery] = useState("");
-  const [cursor, setCursor] = useState<string | undefined>(undefined);
-  const [cursorHistory, setCursorHistory] = useState<string[]>([]);
   const [isAiModalOpen, setIsAiModalOpen] = useState(false);
 
   const { timeRangeState } = useTimeRangeParams();
   const { selectedKeys, toggleSelect, selectAll, clearSelection, selectedCount } = useSelection();
 
-  const handleNextPage = (nextCursor: string) => {
-    setCursorHistory((prev) => [...prev, cursor ?? ""]);
-    setCursor(nextCursor);
-  };
+  const [activePagination, setActivePagination] = useState<any>(undefined);
 
-  const handlePreviousPage = () => {
-    if (cursorHistory.length === 0) return;
-    const prevCursor = cursorHistory[cursorHistory.length - 1];
-    setCursorHistory((prev) => prev.slice(0, -1));
-    setCursor(prevCursor || undefined);
-  };
+  const {
+    cursor: currentCursor,
+    paginationProps,
+    onNextPage,
+    onPreviousPage,
+  } = useCursorPagination(activePagination, {
+    dependencies: [status, query, timeRangeState],
+  });
 
   const { data, isLoading } = useObservabilityList<any>("crons", {
     status: status || undefined,
@@ -52,8 +50,14 @@ function CronsPageContent() {
     range: timeRangeState.mode === "preset" ? timeRangeState.range : undefined,
     from: timeRangeState.from,
     to: timeRangeState.to,
-    cursor,
+    cursor: currentCursor,
   });
+
+  useEffect(() => {
+    if (data?.pagination) {
+      setActivePagination(data.pagination);
+    }
+  }, [data?.pagination]);
 
   const rows = data?.items ?? [];
   const summary = data?.summary ?? {};
@@ -100,7 +104,7 @@ function CronsPageContent() {
         className="flex-1"
         loading={isLoading}
         items={rows}
-        queryKey={["crons-page", status, query, timeRangeState, cursor]}
+        queryKey={["crons-page", status, query, timeRangeState, currentCursor]}
         columns={columns}
         getKey={(c) => (c as any).publicId ?? (c as any).id ?? c.eventId}
         onRowClick={(c) => navigate(`/observability/crons/${encodeURIComponent((c as any).publicId ?? (c as any).id ?? c.eventId)}`)}
@@ -108,15 +112,9 @@ function CronsPageContent() {
         selectedKeys={selectedKeys}
         onSelectToggle={toggleSelect}
         onSelectAllToggle={selectAll}
-        pagination={{
-          nextCursor: data?.pagination?.nextCursor,
-          previousCursor: data?.pagination?.previousCursor,
-          hasNext: data?.pagination?.hasNext,
-          hasPrevious: cursorHistory.length > 0 || !!data?.pagination?.hasPrevious,
-          limit: data?.pagination?.limit,
-        }}
-        onNextPage={handleNextPage}
-        onPreviousPage={cursorHistory.length > 0 ? handlePreviousPage : undefined}
+        pagination={paginationProps}
+        onNextPage={onNextPage}
+        onPreviousPage={onPreviousPage}
       />
 
       <AskAiModal

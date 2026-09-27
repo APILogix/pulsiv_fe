@@ -108,14 +108,14 @@ export default function OrgOverviewPage() {
           <div className="flex flex-col gap-4">
             <div className="rounded-[8px] border border-[var(--border)] bg-transparent p-4">
               <div className="mb-3 flex items-center justify-between font-[family-name:var(--mono)]">
-                <span className="text-[11px] font-semibold uppercase tracking-widest text-[var(--text3)]">Ingest Quota</span>
+                <span className="text-[11px] font-semibold uppercase tracking-widest text-[var(--text3)]">Credits Quota</span>
                 <span className="text-sm font-bold text-[var(--text)]">{quotaPercent}%</span>
               </div>
               <div className="h-2 w-full overflow-hidden rounded-full bg-[var(--bg3)]">
                 <div className="h-full rounded-full bg-[var(--brand)]" style={{ width: `${quotaPercent}%` }} />
               </div>
               <div className="mt-3 flex items-center justify-between text-[12px] text-[var(--text3)]">
-                <span>{(eventsUsed / 1000).toFixed(1)}k / {(eventLimit / 1000).toFixed(0)}k events</span>
+                <span>{(eventsUsed / 1000).toFixed(1)}k / {(eventLimit / 1000).toFixed(0)}k credits</span>
                 <span>resets in current period</span>
               </div>
             </div>

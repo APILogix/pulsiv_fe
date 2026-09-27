@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useNavigate, Link } from "react-router";
 import {
   PageHeader,
@@ -24,6 +24,7 @@ import { ResolveDialog } from "../components/ResolveDialog";
 import { MoreVertical, Eye, CheckCircle2, EyeOff, GitMerge, AlertTriangle, Layers, Activity, RefreshCw } from "lucide-react";
 import { useErrorGroupsList, useErrorGroupMutations } from "../hooks/useErrorGroups";
 import { useOrgStore } from "@/modules/organizations/store/org.store";
+import { useCursorPagination } from "@/pages/observe/hooks/useCursorPagination";
 
 function ErrorGroupsListPageContent() {
   const navigate = useNavigate();
@@ -49,7 +50,18 @@ function ErrorGroupsListPageContent() {
 
   const { selectedKeys, toggleSelect, selectAll, clearSelection, selectedCount } = useSelection();
 
-  // Combine local filter state with project slug and time range params
+  const [activePagination, setActivePagination] = useState<any>(undefined);
+
+  const {
+    cursor: currentCursor,
+    paginationProps,
+    onNextPage,
+    onPreviousPage,
+  } = useCursorPagination(activePagination, {
+    dependencies: [filters, activeProjectSlug, timeRangeState],
+  });
+
+  // Combine local filter state with project slug, time range, and cursor params
   const apiFilters = useMemo<ErrorGroupFilterState>(
     () => ({
       ...filters,
@@ -57,11 +69,18 @@ function ErrorGroupsListPageContent() {
       range: timeRangeState.mode === "preset" ? timeRangeState.range : undefined,
       from: timeRangeState.from,
       to: timeRangeState.to,
+      cursor: currentCursor,
     }),
-    [filters, activeProjectSlug, timeRangeState],
+    [filters, activeProjectSlug, timeRangeState, currentCursor],
   );
 
-  const { groups: filteredGroups, refetch, isLoading, error } = useErrorGroupsList(apiFilters);
+  const { groups: filteredGroups, pagination, summary, refetch, isLoading, error } = useErrorGroupsList(apiFilters);
+
+  useEffect(() => {
+    if (pagination) {
+      setActivePagination(pagination);
+    }
+  }, [pagination]);
   const { updateStatus, mergeGroups } = useErrorGroupMutations();
   const allGroups = filteredGroups;
 
@@ -303,7 +322,7 @@ function ErrorGroupsListPageContent() {
         className="flex-1"
         loading={isLoading}
         items={filteredGroups}
-        queryKey={["error-groups-list", JSON.stringify(apiFilters)]}
+        queryKey={["error-groups-list", JSON.stringify(apiFilters), currentCursor]}
         columns={columns}
         getKey={(g) => g.publicId ?? g.id}
         onRowClick={(g) => navigate(`/observability/error-groups/${g.publicId ?? g.id}`)}
@@ -311,6 +330,9 @@ function ErrorGroupsListPageContent() {
         selectedKeys={selectedKeys}
         onSelectToggle={toggleSelect}
         onSelectAllToggle={selectAll}
+        pagination={paginationProps}
+        onNextPage={onNextPage}
+        onPreviousPage={onPreviousPage}
       />
 
       <AskAiModal

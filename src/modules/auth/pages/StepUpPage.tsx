@@ -88,8 +88,10 @@ export default function StepUpPage() {
   const isPasskey = challenge?.device_type === 'hardware_key';
 
   const goBack = () => {
-    const from = new URLSearchParams(window.location.search).get('from') || '/dashboard';
-    navigate(from, { replace: true });
+    const rawFrom = new URLSearchParams(window.location.search).get('from') || '/dashboard';
+    const isSafeInternal = rawFrom.startsWith('/') && !rawFrom.startsWith('//') && !rawFrom.includes('\\');
+    const safeFrom = isSafeInternal ? rawFrom : '/dashboard';
+    navigate(safeFrom, { replace: true });
   };
 
   useEffect(() => {

@@ -1,5 +1,6 @@
 import { Link } from "react-router";
-import { Brain, ExternalLink, GitBranch, RefreshCw, AlertTriangle } from "lucide-react";
+import { Brain, ExternalLink, GitBranch, RefreshCw, AlertTriangle, Globe, Shield, Tag, Server, Check, Copy } from "lucide-react";
+import { useState } from "react";
 import {
   Button,
   MethodBadge,
@@ -25,34 +26,34 @@ export function OverviewSection({ detail }: { detail: ErrorDetailResponse }) {
   return (
     <SectionShell
       id={sectionDomId("overview")}
-      title="Overview & Diagnosis"
-      description="Core exception identity, severity classification, and environment metadata."
+      title="Error Overview & Diagnosis"
+      description="Core exception classification, runtime environment, and service routing."
     >
-      <div className="flex flex-col gap-4">
-        {/* Exception Hero Callout */}
-        <div className="rounded-[var(--radius)] border border-[var(--red)]/30 bg-[var(--red-bg)] p-4">
-          <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-col gap-6">
+        {/* Exception Hero Callout Card */}
+        <div className="rounded-2xl border border-[var(--red)]/30 bg-[var(--red-bg)]/40 p-6 shadow-xs">
+          <div className="flex flex-wrap items-center gap-2.5">
             <SeverityBadge severity={detail.error?.severity} />
             <span
-              className={`rounded-full px-2 py-0.5 font-[family-name:var(--mono)] text-[10px] font-medium uppercase tracking-[0.08em] ${
+              className={`rounded-full px-3 py-1 font-[family-name:var(--mono)] text-[10.5px] font-semibold uppercase tracking-[0.08em] ${
                 detail.error?.handled
                   ? "bg-[var(--green-bg)] text-[var(--green)]"
-                  : "bg-[var(--red-bg)] text-[var(--red)] border border-[var(--red)]/40"
+                  : "bg-[var(--red)] text-[var(--red-fg)] shadow-xs"
               }`}
             >
-              {detail.error?.handled ? "Handled" : "Unhandled Exception"}
+              {detail.error?.handled ? "Handled Gracefully" : "Unhandled Exception"}
             </span>
             {detail.error?.mechanism && (
-              <span className="rounded bg-[var(--bg3)] px-2 py-0.5 font-[family-name:var(--mono)] text-[10px] text-[var(--text2)]">
-                {detail.error.mechanism}
+              <span className="rounded-md bg-[var(--bg2)] px-2.5 py-0.5 font-[family-name:var(--mono)] text-[11px] font-medium text-[var(--text2)]">
+                Mechanism: {detail.error.mechanism}
               </span>
             )}
           </div>
 
-          <div className="mt-2.5 font-[family-name:var(--mono)] text-[16px] font-semibold text-[var(--red)]">
+          <div className="mt-3.5 font-[family-name:var(--mono)] text-[18px] font-bold text-[var(--red)] tracking-[-0.01em]">
             {errorName}
           </div>
-          <p className="mt-1 text-[13.5px] leading-relaxed text-[var(--text)] font-[family-name:var(--mono)]">
+          <p className="mt-1.5 text-[14px] leading-relaxed text-[var(--text)] font-[family-name:var(--mono)] font-medium">
             {errorMessage}
           </p>
         </div>
@@ -65,10 +66,10 @@ export function OverviewSection({ detail }: { detail: ErrorDetailResponse }) {
             { label: "Occurred At", value: detail.occurredAt ? formatAbsoluteTime(detail.occurredAt) : null, mono: true },
             { label: "Environment", value: detail.environment },
             { label: "Project", value: projectName },
-            { label: "Service", value: detail.service, copyable: true },
+            { label: "Origin Service", value: detail.service, copyable: true },
             { label: "Server Node", value: serverName, mono: true, copyable: true },
             { label: "Release / Commit", value: detail.release, mono: true, copyable: true },
-            { label: "SDK", value: detail.sdk ? `${detail.sdk.name}@${detail.sdk.version}` : null, mono: true },
+            { label: "SDK Client", value: detail.sdk ? `${detail.sdk.name}@${detail.sdk.version}` : null, mono: true },
             { label: "Correlated Issue", value: issuePublicId, mono: true, copyable: true },
             { label: "Correlated Request", value: detail.request?.publicId, mono: true, copyable: true },
             { label: "Correlated Trace", value: detail.trace?.publicId, mono: true, copyable: true },
@@ -85,8 +86,8 @@ export function StackTraceSection({ detail }: { detail: ErrorDetailResponse }) {
   return (
     <SectionShell
       id={sectionDomId("stack-trace")}
-      title="Stack Trace & Debugging"
-      description="Call stack frames and code context captured when the exception was thrown."
+      title="Call Stack & Source Context"
+      description="Interactive call stack frames and code snippets captured when the exception was thrown."
     >
       <StackTraceViewer frames={frames} />
     </SectionShell>
@@ -99,8 +100,8 @@ export function BreadcrumbsSection({ detail }: { detail: ErrorDetailResponse }) 
   return (
     <SectionShell
       id={sectionDomId("breadcrumbs")}
-      title="Breadcrumbs"
-      description="Chronological event trail leading up to the error."
+      title="Event Breadcrumbs Timeline"
+      description="Chronological telemetry trail recorded leading up to this exception."
     >
       <BreadcrumbsTimeline breadcrumbs={breadcrumbs} />
     </SectionShell>
@@ -113,8 +114,8 @@ export function HttpSection({ detail }: { detail: ErrorDetailResponse }) {
     return (
       <SectionShell
         id={sectionDomId("http")}
-        title="HTTP & Route"
-        description="HTTP request and route parameters captured when the exception occurred."
+        title="HTTP Transaction Context"
+        description="HTTP request parameters, URL, and route pattern captured during error execution."
       >
         <EmptyInline message="No HTTP request details were attached to this error event." />
       </SectionShell>
@@ -122,13 +123,13 @@ export function HttpSection({ detail }: { detail: ErrorDetailResponse }) {
   }
 
   const extraQuery = (detail.extra as Record<string, unknown> | undefined)?.query;
-  const queryCount = hasJsonValue(extraQuery) ? Object.keys(extraQuery as Record<string, unknown>).length : 0;
+  const queryEntries = hasJsonValue(extraQuery) && typeof extraQuery === "object" ? Object.entries(extraQuery as Record<string, unknown>) : [];
 
   return (
     <SectionShell
       id={sectionDomId("http")}
-      title="HTTP & Route"
-      description="HTTP request parameters, URL, and route pattern."
+      title="HTTP Transaction Context"
+      description="HTTP request parameters, URL, and route pattern captured during error execution."
       action={
         <div className="flex items-center gap-2">
           {http.method && <MethodBadge method={http.method} />}
@@ -136,16 +137,40 @@ export function HttpSection({ detail }: { detail: ErrorDetailResponse }) {
         </div>
       }
     >
-      <KeyValueGrid
-        columns={3}
-        items={[
-          { label: "HTTP Method", value: http.method, mono: true },
-          { label: "Route Pattern", value: http.route, mono: true, copyable: true },
-          { label: "Status Code", value: http.statusCode != null ? `${http.statusCode} ${http.statusText ?? ""}` : null, mono: true },
-          { label: "Full URL", value: http.url, mono: true, copyable: true },
-          { label: "Query parameters", value: queryCount === 0 ? "None" : `${queryCount} field${queryCount === 1 ? "" : "s"}` },
-        ]}
-      />
+      <div className="flex flex-col gap-6">
+        <KeyValueGrid
+          columns={3}
+          items={[
+            { label: "HTTP Method", value: http.method, mono: true },
+            { label: "Route Pattern", value: http.route, mono: true, copyable: true },
+            { label: "Status Code", value: http.statusCode != null ? `${http.statusCode} ${http.statusText ?? ""}` : null, mono: true },
+            { label: "Target URL", value: http.url, mono: true, copyable: true },
+          ]}
+        />
+
+        {queryEntries.length > 0 && (
+          <div className="rounded-xl border border-[var(--border)] bg-[var(--bg)] p-5">
+            <div className="font-[family-name:var(--mono)] text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--text2)] border-b border-[var(--border)] pb-3">
+              Captured Query Parameters ({queryEntries.length})
+            </div>
+            <div className="mt-3 grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+              {queryEntries.map(([key, val]) => (
+                <div
+                  key={key}
+                  className="flex items-center justify-between gap-2 rounded-lg border border-[var(--border)] bg-[var(--bg1)] px-3 py-2 text-[12px]"
+                >
+                  <span className="font-[family-name:var(--mono)] font-semibold text-[var(--text2)]">
+                    {key}
+                  </span>
+                  <span className="truncate font-[family-name:var(--mono)] text-[var(--text)]" title={String(val)}>
+                    {String(val)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
     </SectionShell>
   );
 }
@@ -153,7 +178,9 @@ export function HttpSection({ detail }: { detail: ErrorDetailResponse }) {
 export function ContextSection({ detail }: { detail: ErrorDetailResponse }) {
   const ctx = (detail.context ?? {}) as Record<string, unknown>;
   const user = (ctx.user as Record<string, unknown> | string | undefined);
-  const userStr = typeof user === "object" && user !== null ? (user.id as string ?? user.email as string ?? JSON.stringify(user)) : (typeof user === "string" ? user : null);
+  const userStr = typeof user === "object" && user !== null
+    ? ((user.id as string) ?? (user.email as string) ?? (user.username as string) ?? "Identified User")
+    : (typeof user === "string" ? user : null);
   const session = (ctx.session as string | undefined) ?? null;
   const runtime = (ctx.runtime as string | undefined) ?? null;
   const os = (ctx.os as string | undefined) ?? null;
@@ -161,15 +188,15 @@ export function ContextSection({ detail }: { detail: ErrorDetailResponse }) {
   return (
     <SectionShell
       id={sectionDomId("context")}
-      title="Context & Environment"
-      description="User, session, server node, runtime, and platform context."
+      title="Client & Execution Context"
+      description="Authenticated user identity, session ID, server host, and client runtime platform."
     >
       <KeyValueGrid
         columns={3}
         items={[
-          { label: "User ID / Email", value: userStr, mono: true, copyable: true },
+          { label: "User ID / Account", value: userStr, mono: true, copyable: true },
           { label: "Session ID", value: session, mono: true, copyable: true },
-          { label: "Runtime", value: runtime, mono: true },
+          { label: "Execution Runtime", value: runtime, mono: true },
           { label: "Operating System", value: os },
           { label: "Server Node", value: typeof detail.server === "object" ? detail.server?.name : detail.server, mono: true },
           { label: "SDK Client", value: detail.sdk ? `${detail.sdk.name}@${detail.sdk.version}` : null, mono: true },
@@ -182,26 +209,75 @@ export function ContextSection({ detail }: { detail: ErrorDetailResponse }) {
 export function MetadataSection({ detail }: { detail: ErrorDetailResponse }) {
   const meta = detail.metadata;
   const extra = detail.extra;
-  const metaCount = hasJsonValue(meta) ? Object.keys(meta as Record<string, unknown>).length : 0;
-  const extraCount = hasJsonValue(extra) ? Object.keys(extra as Record<string, unknown>).length : 0;
+
+  const metaEntries = hasJsonValue(meta) && typeof meta === "object" ? Object.entries(meta as Record<string, unknown>) : [];
+  const extraEntries = hasJsonValue(extra) && typeof extra === "object" ? Object.entries(extra as Record<string, unknown>) : [];
+
+  if (metaEntries.length === 0 && extraEntries.length === 0) {
+    return (
+      <SectionShell
+        id={sectionDomId("metadata")}
+        title="Custom Attributes & Extra Context"
+        description="Custom attributes and extra telemetry metadata attached to this exception."
+      >
+        <EmptyInline message="No custom metadata or extra attributes were attached to this error." />
+      </SectionShell>
+    );
+  }
 
   return (
     <SectionShell
       id={sectionDomId("metadata")}
-      title="Metadata & Extra Payloads"
-      description="Custom attributes, SDK metadata, and extra debug parameters."
+      title="Custom Attributes & Extra Context"
+      description="Custom attributes and extra telemetry metadata attached to this exception."
     >
-      {metaCount === 0 && extraCount === 0 ? (
-        <EmptyInline message="No metadata or extra debugging payloads were captured for this error." />
-      ) : (
-        <KeyValueGrid
-          columns={2}
-          items={[
-            { label: "Extra parameters", value: extraCount === 0 ? "None" : `${extraCount} field${extraCount === 1 ? "" : "s"}` },
-            { label: "Metadata", value: metaCount === 0 ? "None" : `${metaCount} field${metaCount === 1 ? "" : "s"}` },
-          ]}
-        />
-      )}
+      <div className="grid gap-6 lg:grid-cols-2">
+        {metaEntries.length > 0 && (
+          <div className="rounded-xl border border-[var(--border)] bg-[var(--bg)] p-5">
+            <div className="flex items-center justify-between border-b border-[var(--border)] pb-3">
+              <span className="font-[family-name:var(--mono)] text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--text2)]">
+                Telemetry Metadata ({metaEntries.length})
+              </span>
+              <Server className="size-3.5 text-[var(--text3)]" />
+            </div>
+            <dl className="mt-3 space-y-2.5">
+              {metaEntries.map(([key, val]) => (
+                <div key={key} className="flex items-baseline justify-between gap-3 text-[12.5px]">
+                  <dt className="font-[family-name:var(--mono)] text-[11.5px] font-medium text-[var(--text3)]">
+                    {key}
+                  </dt>
+                  <dd className="font-[family-name:var(--mono)] font-medium text-[var(--text)] truncate" title={String(val)}>
+                    {String(val)}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+        )}
+
+        {extraEntries.length > 0 && (
+          <div className="rounded-xl border border-[var(--border)] bg-[var(--bg)] p-5">
+            <div className="flex items-center justify-between border-b border-[var(--border)] pb-3">
+              <span className="font-[family-name:var(--mono)] text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--text2)]">
+                Extra Parameters ({extraEntries.length})
+              </span>
+              <Tag className="size-3.5 text-[var(--text3)]" />
+            </div>
+            <dl className="mt-3 space-y-2.5">
+              {extraEntries.map(([key, val]) => (
+                <div key={key} className="flex items-baseline justify-between gap-3 text-[12.5px]">
+                  <dt className="font-[family-name:var(--mono)] text-[11.5px] font-medium text-[var(--text3)]">
+                    {key}
+                  </dt>
+                  <dd className="font-[family-name:var(--mono)] font-medium text-[var(--text)] truncate" title={String(val)}>
+                    {String(val)}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+        )}
+      </div>
     </SectionShell>
   );
 }
@@ -216,6 +292,22 @@ export function AISection({
   onAnalyze: () => void;
 }) {
   const parsed = normalizeAiResponse(aiResponse);
+  const [copied, setCopied] = useState(false);
+
+  const handleCopyReport = () => {
+    if (!parsed) return;
+    const lines: string[] = [];
+    if (parsed.summary) lines.push(`Summary: ${parsed.summary}\n`);
+    if (parsed.rootCause) lines.push(`Root Cause: ${parsed.rootCause}\n`);
+    if (parsed.recommendations.length > 0) {
+      lines.push("Recommendations:");
+      parsed.recommendations.forEach((r) => lines.push(`- ${r}`));
+    }
+    navigator.clipboard.writeText(lines.join("\n")).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    });
+  };
 
   return (
     <SectionShell
@@ -224,63 +316,96 @@ export function AISection({
       description="Automated investigation, likely root cause hypothesis, and suggested remediation."
       action={
         parsed ? (
-          <Button variant="secondary" className="h-8" onClick={onAnalyze} disabled={analyzing}>
+          <Button variant="secondary" className="h-8 gap-1.5" onClick={onAnalyze} disabled={analyzing}>
             <RefreshCw className={cn("size-3.5", analyzing && "animate-spin")} />
-            Re-run analysis
+            Re-run Analysis
           </Button>
         ) : undefined
       }
     >
       {!parsed ? (
-        <div className="flex min-h-[180px] flex-col items-center justify-center gap-4 rounded-[var(--radius)] border border-dashed border-[var(--border)] bg-[var(--bg)] px-6 py-10 text-center">
-          <Brain className="size-8 text-[var(--brand)]" />
+        <div className="flex min-h-[200px] flex-col items-center justify-center gap-4 rounded-xl border border-dashed border-[var(--border)] bg-[var(--bg)] p-8 text-center">
+          <div className="flex size-12 items-center justify-center rounded-2xl bg-[var(--ai-bg)] text-[var(--ai)]">
+            <Brain className="size-6" />
+          </div>
           <div>
-            <div className="text-[14px] font-medium text-[var(--text)]">No AI Root Cause Analysis yet</div>
-            <p className="mt-1 max-w-sm text-[13px] text-[var(--text3)]">
+            <div className="text-[15px] font-semibold text-[var(--text)]">No AI Root Cause Analysis Run Yet</div>
+            <p className="mt-1 max-w-md text-[13px] leading-relaxed text-[var(--text3)]">
               Analyze exception stack frames, HTTP context, and breadcrumb patterns to pinpoint root cause.
             </p>
           </div>
-          <Button variant="primary" onClick={onAnalyze} disabled={analyzing}>
-            <Brain className="size-3.5" />
-            {analyzing ? "Analyzing…" : "Analyze Root Cause"}
+          <Button
+            variant="primary"
+            className="gap-2 bg-[var(--ai)] text-[var(--ai-fg)] hover:opacity-90"
+            onClick={onAnalyze}
+            disabled={analyzing}
+          >
+            <Brain className="size-4" />
+            {analyzing ? "Analyzing Stack & Context…" : "Analyze Root Cause with AI"}
           </Button>
         </div>
       ) : (
-        <div className="flex flex-col gap-5">
+        <div className="flex flex-col gap-5 rounded-xl border border-[var(--ai)]/30 bg-[var(--ai-bg)]/20 p-6">
+          <div className="flex items-center justify-between border-b border-[var(--ai)]/20 pb-3">
+            <div className="flex items-center gap-2 font-[family-name:var(--mono)] text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--text3)]">
+              <Brain className="size-3.5 text-[var(--brand)]" />
+              Automated Diagnosis Findings
+            </div>
+            <button
+              type="button"
+              onClick={handleCopyReport}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--bg1)] px-3 py-1.5 text-[12px] font-medium text-[var(--text)] hover:bg-[var(--bg2)] transition-colors cursor-pointer"
+            >
+              {copied ? <Check className="size-3.5 text-[var(--green)]" /> : <Copy className="size-3.5 text-[var(--text3)]" />}
+              {copied ? "Copied" : "Copy Report"}
+            </button>
+          </div>
+
           {parsed.summary && (
             <div>
-              <div className="font-[family-name:var(--mono)] text-[10px] uppercase tracking-[0.08em] text-[var(--text3)]">Summary</div>
-              <p className="mt-2 text-[13px] leading-relaxed text-[var(--text)]">{parsed.summary}</p>
+              <div className="font-[family-name:var(--mono)] text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--text3)]">
+                Executive Summary
+              </div>
+              <p className="mt-2 text-[14px] leading-relaxed text-[var(--text)]">{parsed.summary}</p>
             </div>
           )}
+
           {parsed.rootCause && (
-            <div className="rounded-[var(--radius)] border border-[var(--brand)]/30 bg-[var(--brand-bg)] p-3.5">
-              <div className="font-[family-name:var(--mono)] text-[10px] uppercase tracking-[0.08em] text-[var(--brand)] font-bold">Hypothesized Root Cause</div>
-              <p className="mt-1.5 text-[13px] leading-relaxed text-[var(--text)] font-[family-name:var(--mono)]">{parsed.rootCause}</p>
+            <div className="rounded-xl border border-[var(--amber)]/30 bg-[var(--amber-bg)]/30 p-4">
+              <div className="font-[family-name:var(--mono)] text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--amber)]">
+                Likely Root Cause
+              </div>
+              <p className="mt-1.5 text-[13.5px] leading-relaxed text-[var(--text)] font-[family-name:var(--mono)] font-medium">
+                {parsed.rootCause}
+              </p>
             </div>
           )}
+
           {parsed.recommendations.length > 0 && (
             <div>
-              <div className="font-[family-name:var(--mono)] text-[10px] uppercase tracking-[0.08em] text-[var(--text3)]">Recommended Fixes</div>
-              <ul className="mt-2 list-disc space-y-1.5 pl-5 text-[13px] leading-relaxed text-[var(--text)]">
+              <div className="font-[family-name:var(--mono)] text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--text3)]">
+                Recommended Remediation Steps
+              </div>
+              <ul className="mt-2 space-y-2 pl-5 text-[13.5px] leading-relaxed text-[var(--text)] list-disc">
                 {parsed.recommendations.map((item) => (
                   <li key={item}>{item}</li>
                 ))}
               </ul>
             </div>
           )}
-          <div className="flex flex-wrap gap-4 border-t border-[var(--border)] pt-4 text-[12px] text-[var(--text3)]">
+
+          <div className="flex flex-wrap items-center gap-4 border-t border-[var(--ai)]/20 pt-4 text-[12px] text-[var(--text3)]">
             {parsed.confidence != null && (
               <span>
-                Confidence{" "}
-                <span className="font-[family-name:var(--mono)] text-[var(--brand)] font-bold">
+                Model Confidence:{" "}
+                <span className="font-[family-name:var(--mono)] font-semibold text-[var(--brand)]">
                   {Math.round(parsed.confidence <= 1 ? parsed.confidence * 100 : parsed.confidence)}%
                 </span>
               </span>
             )}
             {parsed.generatedAt && (
               <span>
-                Generated <Timestamp value={parsed.generatedAt} />
+                Analyzed at <Timestamp value={parsed.generatedAt} />
               </span>
             )}
           </div>
@@ -299,75 +424,85 @@ export function RelatedSection({ detail }: { detail: ErrorDetailResponse }) {
   return (
     <SectionShell
       id={sectionDomId("related")}
-      title="Related Telemetry"
-      description="Direct references to correlated issue groups, HTTP requests, distributed traces, and log events."
+      title="Correlated Telemetry Resources"
+      description="Direct linkages to correlated issue groups, HTTP requests, distributed traces, and log events."
     >
-      <div className="flex flex-col gap-3">
-        <RelatedRow
+      <div className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-4">
+        <RelatedCard
           label="Issue Group"
-          href={issueId ? `/observability/error-groups/${encodeURIComponent(issueId)}` : null}
-          primary={issueId ?? "No correlated issue group"}
-          secondary={issueId ? "Grouped occurrences of this exception" : undefined}
           icon={AlertTriangle}
+          href={issueId ? `/observability/error-groups/${encodeURIComponent(issueId)}` : null}
+          primary={issueId ?? "No issue group"}
+          secondary="Grouped occurrences of this exception"
+          accent="text-[var(--amber)]"
         />
-        <RelatedRow
-          label="Request"
+
+        <RelatedCard
+          label="HTTP Request"
+          icon={Globe}
           href={reqId ? `/observability/requests/${encodeURIComponent(reqId)}` : null}
-          primary={reqId ?? "No correlated HTTP request"}
-          secondary={reqId ? "The HTTP request during which this error occurred" : undefined}
-          icon={ExternalLink}
+          primary={reqId ?? "No correlated request"}
+          secondary="Origin HTTP transaction"
+          accent="text-[var(--blue)]"
         />
-        <RelatedRow
-          label="Trace"
+
+        <RelatedCard
+          label="Correlated Trace"
+          icon={GitBranch}
           href={traceId ? `/observability/traces/${encodeURIComponent(traceId)}` : null}
           primary={traceId ?? "No correlated trace"}
-          secondary={traceId ? "Distributed waterfall trace execution" : undefined}
-          icon={GitBranch}
+          secondary="Distributed waterfall execution"
+          accent="text-[var(--violet)]"
         />
-        <RelatedRow
-          label="Logs"
+
+        <RelatedCard
+          label="Correlated Logs"
+          icon={Server}
           href={traceId ? `/observability/logs?trace=${encodeURIComponent(traceId)}` : null}
-          primary={logCount === 1 ? "1 related log" : `${logCount} related logs`}
-          secondary="Logs captured around this event timestamp"
-          icon={ExternalLink}
+          primary={logCount === 1 ? "1 Related Log" : `${logCount} Related Logs`}
+          secondary="Logs captured around this error"
+          accent="text-[var(--cyan)]"
         />
       </div>
     </SectionShell>
   );
 }
 
-function RelatedRow({
+function RelatedCard({
   label,
+  icon: Icon,
   primary,
   secondary,
   href,
-  icon: Icon,
+  accent,
 }: {
   label: string;
+  icon: typeof AlertTriangle;
   primary: string;
   secondary?: string;
   href: string | null;
-  icon: typeof ExternalLink;
+  accent?: string;
 }) {
   const content = (
-    <>
-      <div className="w-24 shrink-0 font-[family-name:var(--mono)] text-[10px] uppercase tracking-[0.08em] text-[var(--text3)]">
-        {label}
+    <div className="flex flex-col justify-between h-full p-4">
+      <div className="flex items-center justify-between gap-2">
+        <span className="font-[family-name:var(--mono)] text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[var(--text3)]">
+          {label}
+        </span>
+        <Icon className={cn("size-4", accent ?? "text-[var(--text3)]")} />
       </div>
-      <div className="min-w-0 flex-1">
-        <div className="truncate font-[family-name:var(--mono)] text-[13px] text-[var(--text)] flex items-center gap-1.5">
-          <Icon className="size-3.5 text-[var(--brand)]" />
+      <div className="mt-3">
+        <div className="truncate font-[family-name:var(--mono)] text-[13.5px] font-semibold text-[var(--text)]">
           {primary}
         </div>
-        {secondary && <div className="mt-0.5 truncate text-[12px] text-[var(--text3)]">{secondary}</div>}
+        {secondary && <div className="mt-1 truncate text-[12px] text-[var(--text3)]">{secondary}</div>}
       </div>
-      {href && <ExternalLink className="size-3.5 shrink-0 text-[var(--text3)]" />}
-    </>
+    </div>
   );
 
   if (!href) {
     return (
-      <div className="flex items-center gap-3 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg)] px-4 py-3 opacity-75">
+      <div className="rounded-xl border border-[var(--border)] bg-[var(--bg)]/70">
         {content}
       </div>
     );
@@ -376,7 +511,7 @@ function RelatedRow({
   return (
     <Link
       to={href}
-      className="flex items-center gap-3 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg)] px-4 py-3 transition-colors hover:border-[var(--border2)] hover:bg-[var(--bg2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)]"
+      className="rounded-xl border border-[var(--border)] bg-[var(--bg1)] transition-all hover:border-[var(--brand)] hover:shadow-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)] cursor-pointer"
     >
       {content}
     </Link>
@@ -394,26 +529,30 @@ export function TagsSection({ detail }: { detail: ErrorDetailResponse }) {
   }
 
   return (
-    <SectionShell id={sectionDomId("tags")} title="Tags & Extra Metadata" description="Categorization tags as filterable chips.">
+    <SectionShell
+      id={sectionDomId("tags")}
+      title="Categorization Tags"
+      description="Telemetry tags and indexing labels attached to this error event."
+    >
       {tagPairs.length === 0 ? (
-        <EmptyInline message="No tags available for this error." />
+        <EmptyInline message="No tags recorded for this error." />
       ) : (
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2.5">
           {tagPairs.map((tag) => (
             <button
               key={`${tag.key}:${tag.value}`}
               type="button"
               title={`Copy ${tag.key}:${tag.value}`}
               onClick={() => navigator.clipboard?.writeText(`${tag.key}:${tag.value}`)}
-              className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--bg)] px-2.5 py-1 text-[12px] transition-colors hover:border-[var(--text3)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)]"
+              className="inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--bg)] px-3.5 py-1.5 text-[12.5px] transition-all hover:border-[var(--brand)] hover:bg-[var(--bg2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)] cursor-pointer"
             >
               <span className="text-[var(--text3)]">{tag.label ?? tag.key}</span>
-              <span className="font-[family-name:var(--mono)] text-[var(--text)]">{tag.value}</span>
+              <span className="font-[family-name:var(--mono)] font-semibold text-[var(--text)]">{tag.value}</span>
             </button>
           ))}
         </div>
       )}
-      <p className="mt-3 text-[11px] text-[var(--text3)]">Click a tag to copy its key:value pair.</p>
+      <p className="mt-4 text-[11.5px] text-[var(--text3)]">Click any tag to copy its key:value pair to clipboard.</p>
     </SectionShell>
   );
 }

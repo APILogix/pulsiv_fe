@@ -17,6 +17,22 @@ export default defineConfig({
     }),
     tailwindcss(),
   ],
+  server: {
+    headers: {
+      "X-Frame-Options": "DENY",
+      "X-Content-Type-Options": "nosniff",
+      "Referrer-Policy": "strict-origin-when-cross-origin",
+      "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+    },
+  },
+  preview: {
+    headers: {
+      "X-Frame-Options": "DENY",
+      "X-Content-Type-Options": "nosniff",
+      "Referrer-Policy": "strict-origin-when-cross-origin",
+      "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+    },
+  },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
@@ -42,7 +58,7 @@ export default defineConfig({
       output: {
         manualChunks: {
           'react-vendor': ['react', 'react-dom', 'react-router'],
-          'ui-vendor': ['lucide-react', 'framer-motion', 'cmdk', 'sonner'],
+          'ui-vendor': ['lucide-react', 'framer-motion', 'cmdk', 'sonner', 'radix-ui'],
           'util-vendor': ['@tanstack/react-query', 'axios', 'zustand', 'zod', '@simplewebauthn/browser']
         }
       }

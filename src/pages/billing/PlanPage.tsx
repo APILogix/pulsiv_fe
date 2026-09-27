@@ -101,6 +101,7 @@ function titleCase(value: string | null | undefined, fallback: string): string {
 }
 
 function entitlementLabel(featureKey: string): string {
+  if (featureKey === "quota.monthly_events") return "Monthly Billable Credits";
   return featureKey
     .replace(/[._-]/g, " ")
     .replace(/\b\w/g, (character) => character.toUpperCase());
@@ -221,7 +222,7 @@ export default function PlanPage() {
       value: `${formatNumber(seats?.used ?? 0)} / ${formatLimit(seats?.limit)}`,
       icon: Users,
     },
-    { label: "Events per month", value: formatLimit(eventCeiling), icon: Gauge },
+    { label: "Credits per month", value: formatLimit(eventCeiling), icon: Gauge },
   ];
 
   const ssoEnabled = Boolean(sso?.enabled);
@@ -266,7 +267,7 @@ export default function PlanPage() {
           actions={<Pill tone="green">Current plan</Pill>}
           footer={
             <span className="text-[12px] text-[var(--text3)]">
-              Hard cap {plan.hardCap ? "enabled" : "disabled"} on monthly events
+              Hard cap {plan.hardCap ? "enabled" : "disabled"} on monthly credits
             </span>
           }
         >
@@ -279,7 +280,7 @@ export default function PlanPage() {
                 enabled={entitlement.enabled}
               />
             )) : (
-              <EntitlementLine label="Monthly events" value={formatLimit(eventCeiling)} enabled />
+              <EntitlementLine label="Monthly billable credits" value={formatLimit(eventCeiling)} enabled />
             )}
           </div>
         </Panel>
@@ -301,7 +302,7 @@ export default function PlanPage() {
           {headroomAvailable ? (
             <div className="divide-y divide-[var(--border)]">
               <EntitlementLine
-                label="Monthly event ceiling"
+                label="Monthly credit ceiling"
                 value={`Now ${formatLimit(eventCeiling)}`}
                 enabled={false}
               />
@@ -339,14 +340,14 @@ export default function PlanPage() {
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
           {events && (
             <Meter
-              label="Monthly events"
+              label="Monthly billable credits"
               used={events.used ?? 0}
               limit={normalizeLimit(events.limit)}
               format={formatCompact}
               hint={
                 events.remaining === null || events.remaining === undefined
                   ? undefined
-                  : `${formatCompact(events.remaining)} remaining this cycle`
+                  : `${formatCompact(events.remaining)} credits remaining this cycle`
               }
             />
           )}

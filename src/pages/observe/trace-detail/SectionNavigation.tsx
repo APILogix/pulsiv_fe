@@ -9,8 +9,11 @@ export function SectionNavigation({
   onSelect: (id: TraceSectionId) => void;
 }) {
   return (
-    <nav aria-label="Trace sections" className="sticky top-[73px] z-20 -mx-6 border-b border-[var(--border)] bg-[var(--bg)]/95 px-6 backdrop-blur-md">
-      <div className="flex items-center gap-1 overflow-x-auto py-2 scrollbar-none">
+    <nav
+      aria-label="Trace sections navigation"
+      className="sticky top-[5.25rem] z-20 -mx-6 border-b border-[var(--border)] bg-[var(--bg)]/90 px-6 py-2.5 backdrop-blur-md"
+    >
+      <div className="sidebar-scroll flex items-center gap-1.5 overflow-x-auto py-0.5">
         {TRACE_SECTIONS.map((section) => {
           const isActive = activeId === section.id;
           return (
@@ -19,10 +22,10 @@ export function SectionNavigation({
               type="button"
               onClick={() => onSelect(section.id)}
               className={cn(
-                "whitespace-nowrap rounded-[var(--radius)] px-3 py-1.5 text-[12.5px] font-medium transition-colors",
+                "shrink-0 rounded-full px-4 py-1.5 text-[12px] font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)] cursor-pointer",
                 isActive
-                  ? "bg-[var(--bg2)] text-[var(--text)] shadow-xs"
-                  : "text-[var(--text3)] hover:bg-[var(--bg1)] hover:text-[var(--text2)]",
+                  ? "bg-[var(--text)] text-[var(--bg)] font-semibold shadow-xs"
+                  : "text-[var(--text3)] hover:bg-[var(--bg2)] hover:text-[var(--text)]",
               )}
             >
               {section.label}

@@ -40,7 +40,7 @@ export function RequestDetailView({ requestId }: { requestId: string }) {
       setAiOverride(result);
       scrollTo("ai");
     } catch {
-      // Keep existing AI panel; surface failure via unchanged state + user can retry.
+      // Keep existing AI panel; surface failure via unchanged state
     } finally {
       setAnalyzing(false);
     }
@@ -50,16 +50,24 @@ export function RequestDetailView({ requestId }: { requestId: string }) {
 
   if (error || !data?.header) {
     return (
-      <div className="flex flex-col gap-4">
-        <Button variant="ghost" className="w-fit" onClick={() => navigate("/observability/requests")}>
+      <div className="mx-auto flex w-full max-w-[1360px] flex-col gap-6 px-6 py-8">
+        <Button variant="ghost" className="w-fit gap-2" onClick={() => navigate("/observability/requests")}>
           <ArrowLeft className="size-4" />
-          Back to requests
+          Back to Requests
         </Button>
-        <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] px-6 py-12 text-center">
-          <h1 className="text-[16px] font-semibold text-[var(--text)]">Request not found</h1>
-          <p className="mt-2 text-[13px] text-[var(--text3)]">
-            Use a request public ID (REQ-…). UUID navigation is no longer supported for request detail.
+        <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg1)] px-8 py-16 text-center shadow-xs">
+          <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-[var(--bg2)] text-[var(--text3)]">
+            <ArrowLeft className="size-6" />
+          </div>
+          <h1 className="mt-4 text-[18px] font-semibold text-[var(--text)]">Request Not Found</h1>
+          <p className="mt-2 max-w-md mx-auto text-[13.5px] leading-relaxed text-[var(--text3)]">
+            Could not find request record for ID: <code className="font-[family-name:var(--mono)] font-semibold text-[var(--text2)]">{id}</code>. Check the ID or return to the requests explorer.
           </p>
+          <div className="mt-6">
+            <Button variant="primary" onClick={() => navigate("/observability/requests")}>
+              View All Requests
+            </Button>
+          </div>
         </div>
       </div>
     );
@@ -68,14 +76,18 @@ export function RequestDetailView({ requestId }: { requestId: string }) {
   const aiResponse = aiOverride !== undefined ? aiOverride : data.ai?.aiResponse;
 
   return (
-    <div className="flex flex-col gap-6 pb-20">
+    <div className="mx-auto flex w-full max-w-[1360px] flex-col gap-8 px-6 py-6 pb-28">
+      {/* Sticky Top Header */}
       <StickyRequestHeader header={data.header} onAnalyze={runAnalyze} />
 
+      {/* Summary KPI Strip */}
       <SummaryCards cards={data.summaryCards} />
 
+      {/* Sticky Segmented Navigation */}
       <SectionNavigation activeId={activeId} onSelect={scrollTo} />
 
-      <div className="flex flex-col gap-6">
+      {/* Structured Investigation Sections */}
+      <div className="flex flex-col gap-8">
         <OverviewSection header={data.header} http={data.http} />
         <HttpSection http={data.http} />
         <PerformanceSection
@@ -95,7 +107,7 @@ export function RequestDetailView({ requestId }: { requestId: string }) {
 
 function RequestDetailSkeleton() {
   return (
-    <div className="flex flex-col gap-5">
+    <div className="mx-auto flex w-full max-w-[1360px] flex-col gap-6 px-6 py-8">
       <DetailSkeleton />
     </div>
   );

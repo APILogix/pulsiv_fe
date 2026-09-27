@@ -23,14 +23,11 @@ export function DraftStateBanner({
 
   return (
     <div className="fixed inset-x-0 bottom-6 z-50 flex justify-center px-4 pointer-events-none">
-      {/* A floating action bar is a toast-class surface: --shadow-toast, opaque
-          --bg1 (a translucent bar over dense config text is unreadable), and a
-          plain hairline instead of the ad-hoc black/white ring. */}
-      <div className="pointer-events-auto flex w-full max-w-2xl items-center justify-between gap-4 rounded-[var(--radius-lg)] border border-[var(--border2)] bg-[var(--bg1)] px-6 py-4 shadow-[var(--shadow-toast)] animate-in fade-in slide-in-from-bottom-5 duration-200">
+      <div className="pointer-events-auto flex w-full max-w-2xl flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4 rounded-[var(--radius-lg)] border border-[var(--border2)] bg-[var(--bg1)] px-5 py-3.5 shadow-[var(--shadow-toast)] animate-in fade-in slide-in-from-bottom-5 duration-200">
         <div className="flex min-w-0 items-center gap-3">
           {hasErrors ? (
             <div className="flex items-center gap-2.5">
-              <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-[var(--red)]/20 text-[var(--red)] border border-[var(--red)]/30">
+              <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-[var(--red-bg)] text-[var(--red)] border border-[var(--red)]/40">
                 <AlertTriangle className="size-4" />
               </span>
               <div>
@@ -38,33 +35,33 @@ export function DraftStateBanner({
                   {errorCount} Validation Error{errorCount === 1 ? "" : "s"} Detected
                 </div>
                 <div className="text-[11px] text-[var(--text3)]">
-                  Fix input range bounds before submitting revision.
+                  Input bounds violation. Correct before publishing.
                 </div>
               </div>
             </div>
           ) : (
             <div className="flex items-center gap-2.5">
-              <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-[var(--brand)]/20 text-[13px] font-bold text-[var(--brand)] border border-[var(--brand)]/30">
+              <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-[var(--brand)] text-[12px] font-bold text-[var(--brand-fg)] shadow-xs">
                 {diffCount}
               </span>
               <div>
                 <div className="text-[13px] font-bold text-[var(--text)]">
-                  {diffCount} Unsaved Change{diffCount === 1 ? "" : "s"} in Local Draft
+                  {diffCount} Unsaved Change{diffCount === 1 ? "" : "s"} in Local Buffer
                 </div>
                 <div className="text-[11px] text-[var(--text3)]">
-                  Changes live in local buffer. Click Review & Publish to stage.
+                  Modifications are staged locally and not yet compiled.
                 </div>
               </div>
             </div>
           )}
         </div>
 
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2 self-stretch sm:self-center justify-end">
           <Button
             type="button"
             variant="ghost"
             onClick={onDiscard}
-            className="h-9 px-3 text-xs gap-1.5 text-[var(--text2)] hover:text-[var(--text)] hover:bg-[var(--bg2)]"
+            className="h-8.5 px-3 text-xs gap-1.5 text-[var(--text2)] hover:text-[var(--text)] hover:bg-[var(--bg2)]"
           >
             <RotateCcw className="size-3.5" />
             Discard
@@ -75,10 +72,10 @@ export function DraftStateBanner({
             onClick={onReviewPublish}
             disabled={hasErrors}
             className={cn(
-              "h-9 px-4 text-xs font-semibold gap-1.5 transition-all duration-200",
+              "h-8.5 px-3.5 text-xs font-semibold gap-1.5 transition-all shadow-xs",
               hasErrors
-                ? "bg-[var(--red)]/20 text-[var(--red)] border border-[var(--red)]/30 cursor-not-allowed"
-                : "bg-[var(--green-d)] hover:bg-[var(--green)] text-white"
+                ? "bg-[var(--red-bg)] text-[var(--red)] border border-[var(--red)]/30 cursor-not-allowed"
+                : "bg-[var(--brand)] hover:bg-[var(--brand-d)] text-[var(--brand-fg)]"
             )}
           >
             <Rocket className="size-3.5" />

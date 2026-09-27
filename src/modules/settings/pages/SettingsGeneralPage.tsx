@@ -5,6 +5,7 @@ import { orgQueryKeys, useOrganizations } from "@/modules/organizations/hooks/us
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Field, SubmitButton, inputClass } from "@/shared/observe";
+import { SettingsSkeleton } from "@/shared/skeletons";
 
 export default function SettingsGeneralPage() {
   const { activeOrgId } = useOrganizations();
@@ -39,9 +40,8 @@ export default function SettingsGeneralPage() {
     if (state.ok) toast.success("Organization settings updated");
     if (state.error) toast.error(state.error);
   }, [state]);
-
   if (isLoading || !settings) {
-    return <div className="flex h-32 items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-[var(--text2)]" /></div>;
+    return <SettingsSkeleton />;
   }
 
   return (

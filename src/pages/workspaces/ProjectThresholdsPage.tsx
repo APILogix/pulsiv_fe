@@ -19,6 +19,7 @@ import {
   Check,
 } from "lucide-react";
 import { toast } from "sonner";
+import { SkeletonTable } from "@/shared/skeletons";
 import {
   useOrganizationAlertPolicies,
   useProjectPolicyMutations,
@@ -536,11 +537,8 @@ export default function ProjectThresholdsPage() {
       )}
 
       {/* Main Table Content */}
-      {policiesLoading || subscriptionsLoading ? (
-        <div className="rounded-2xl border border-border/60 bg-card/40 p-16 text-center text-sm text-muted-foreground space-y-3 font-mono">
-          <div className="size-7 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin mx-auto" />
-          <div className="text-zinc-300 font-semibold">Loading organization alert policy catalog & subscriptions…</div>
-        </div>
+      {(policiesLoading && policies.length === 0) || (subscriptionsLoading && subscriptions.length === 0) ? (
+        <SkeletonTable rows={8} columns={["w-48", "w-28", "w-32", "w-24", "w-20"]} withToolbar={false} delay={30} />
       ) : policies.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-border/80 bg-card/30 p-14 text-center text-sm text-muted-foreground font-mono">
           No organization policies are configured.

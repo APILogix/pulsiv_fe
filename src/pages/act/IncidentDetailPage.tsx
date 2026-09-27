@@ -31,6 +31,7 @@ import { apiErrorMessage } from "@/modules/projects/components/project-ui";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import type { IncidentStatus } from "@/modules/alerting/api/types";
+import { DetailSkeleton } from "@/shared/skeletons";
 
 function formatDuration(seconds: number): string {
   if (seconds < 60) return `${seconds}s`;
@@ -83,14 +84,8 @@ export default function IncidentDetailPage() {
   const { data: notifications } = useIncidentNotifications(incidentId, { limit: 50 });
   const mutations = useIncidentMutations(incidentId);
 
-  if (isLoading) {
-    return (
-      <div className="mx-auto w-full max-w-[1200px] p-6">
-        <div className="rounded-xl border border-border/60 bg-card/60 p-12 text-center text-xs text-muted-foreground">
-          Loading incident…
-        </div>
-      </div>
-    );
+  if (isLoading && !incident) {
+    return <DetailSkeleton />;
   }
 
   if (isError || !incident) {

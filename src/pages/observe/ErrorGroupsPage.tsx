@@ -10,6 +10,7 @@ import {
 } from "@/shared/observe";
 import type { Column } from "@/shared/observe";
 import { useOrgStore } from "@/modules/organizations/store/org.store";
+import { useCursorPagination } from "./hooks/useCursorPagination";
 
 interface ErrorRow {
   id: string;
@@ -102,18 +103,21 @@ function ErrorGroupsPageContent() {
   const [statusClass, setStatusClass] = useState("");
   const [handled, setHandled] = useState("");
   const [query, setQuery] = useState("");
-  const [cursor, setCursor] = useState<string | undefined>(undefined);
-  const [cursorHistory, setCursorHistory] = useState<string[]>([]);
   const [isAiModalOpen, setIsAiModalOpen] = useState(false);
 
   const { timeRangeState } = useTimeRangeParams();
   const { selectedKeys, toggleSelect, selectAll, clearSelection, selectedCount } = useSelection();
 
-  // Reset cursor when any filter changes
-  useEffect(() => {
-    setCursor(undefined);
-    setCursorHistory([]);
-  }, [activeProjectSlug, environment, severity, statusClass, handled, timeRangeState, query]);
+  const [activePagination, setActivePagination] = useState<any>(undefined);
+
+  const {
+    cursor: currentCursor,
+    paginationProps,
+    onNextPage,
+    onPreviousPage,
+  } = useCursorPagination(activePagination, {
+    dependencies: [activeProjectSlug, environment, severity, statusClass, handled, timeRangeState, query],
+  });
 
   const { data, isLoading } = useObservabilityList<ErrorRow>("errors", {
     project: activeProjectSlug ?? undefined,
@@ -125,20 +129,14 @@ function ErrorGroupsPageContent() {
     from: timeRangeState.from,
     to: timeRangeState.to,
     search: query,
-    cursor,
+    cursor: currentCursor,
   });
 
-  const handleNextPage = (nextCursor: string) => {
-    setCursorHistory((prev) => [...prev, cursor ?? ""]);
-    setCursor(nextCursor);
-  };
-
-  const handlePreviousPage = () => {
-    if (cursorHistory.length === 0) return;
-    const prevCursor = cursorHistory[cursorHistory.length - 1];
-    setCursorHistory((prev) => prev.slice(0, -1));
-    setCursor(prevCursor || undefined);
-  };
+  useEffect(() => {
+    if (data?.pagination) {
+      setActivePagination(data.pagination);
+    }
+  }, [data?.pagination]);
 
   const rows = data?.items ?? [];
   const summary = data?.summary ?? {};
@@ -296,7 +294,7 @@ function ErrorGroupsPageContent() {
         className="flex-1"
         loading={isLoading}
         items={rows}
-        queryKey={["errors", activeProjectSlug, environment, severity, statusClass, handled, timeRangeState, query, cursor]}
+        queryKey={["errors", activeProjectSlug, environment, severity, statusClass, handled, timeRangeState, query, currentCursor]}
         columns={columns}
         getKey={(e) => e.publicId ?? e.id}
         onRowClick={(e) => navigate(`/observability/errors/${encodeURIComponent(e.publicId ?? e.id)}`)}
@@ -304,15 +302,9 @@ function ErrorGroupsPageContent() {
         selectedKeys={selectedKeys}
         onSelectToggle={toggleSelect}
         onSelectAllToggle={selectAll}
-        pagination={{
-          nextCursor: data?.pagination?.nextCursor,
-          previousCursor: data?.pagination?.previousCursor,
-          hasNext: data?.pagination?.hasNext,
-          hasPrevious: cursorHistory.length > 0 || !!data?.pagination?.hasPrevious,
-          limit: data?.pagination?.limit,
-        }}
-        onNextPage={handleNextPage}
-        onPreviousPage={cursorHistory.length > 0 ? handlePreviousPage : undefined}
+        pagination={paginationProps}
+        onNextPage={onNextPage}
+        onPreviousPage={onPreviousPage}
       />
 
       <AskAiModal

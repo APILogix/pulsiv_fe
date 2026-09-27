@@ -561,8 +561,15 @@ function ProjectApiKeysContent({ projectId }: { projectId: string }) {
                         <Power className="mr-2 size-4" /> {key.status === "suspended" ? "Activate" : "Suspend"}
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => setRevoking(key)}>
-                        <Trash2 className="mr-2 size-4 text-[var(--red)]" /> Revoke permanently
+                      <DropdownMenuItem
+                        className="text-[var(--red)] focus:text-[var(--red)]"
+                        disabled={key.status === "revoked"}
+                        onClick={() => {
+                          setFormError(null);
+                          setRevoking(key);
+                        }}
+                      >
+                        <Trash2 className="mr-2 size-4" /> Revoke key
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
@@ -577,54 +584,40 @@ function ProjectApiKeysContent({ projectId }: { projectId: string }) {
       <FormDialog
         open={creating}
         onOpenChange={(open) => {
-          setCreating(open);
           if (!open) {
+            setCreating(false);
             setFormError(null);
-            setCreateEnvironmentId("");
-            // Clear the step list so reopening never shows a stale failure.
             keyWorkflow.reset();
           }
         }}
         title="New ingestion key"
-        description="The secret is returned once. Leave expiry empty for a key that never expires."
+        description="Keys are scoped to an environment and never expire. Only one active key is kept per environment — creating a new key will automatically supersede and revoke any currently active key."
         submitLabel="Create key"
-        pending={createKey.isPending}
+        pending={keyWorkflow.isActive}
         error={formError}
         onSubmit={handleCreate}
-        width="sm:max-w-[640px]"
-        workflowSteps={API_KEY_WORKFLOW}
-        workflowState={keyWorkflow}
       >
+        <Notice tone="neutral" icon={ShieldAlert}>
+          This key will have no expiry. Creating a new key will automatically replace and revoke any existing active key for this environment.
+        </Notice>
         <DialogField label="Environment" name="environmentId" required>
           <select
             id="environmentId"
             name="environmentId"
-            required
             className={fieldInputClass}
-            value={createEnvironmentId}
-            onChange={(event) => setCreateEnvironmentId(event.target.value)}
+            value={createEnvironmentId || (activeEnvironments[0]?.id ?? "")}
+            onChange={(e) => setCreateEnvironmentId(e.target.value)}
+            required
           >
-            <option value="">Select an environment…</option>
             {activeEnvironments.map((environment) => (
               <option key={environment.id} value={environment.id}>
-                {environment.name} · {environmentTypeLabel(environment.type)}
-                {environment.isDefault ? " (default)" : ""}
+                {environment.name} ({environmentTypeLabel(environment.type)})
               </option>
             ))}
           </select>
         </DialogField>
-
-        <Notice tone="neutral" icon={KeyRound} title="Public key prefix">
-          {createEnvironment
-            ? `${publicApiKeyPrefix(createEnvironment)} is used for ${createEnvironment.name}. The real environment stays stored internally.`
-            : "Production keys use pv_live_. Every non-production environment uses pv_test_."}
-        </Notice>
-
-        <DialogField label="Name" name="name">
-          <input id="name" name="name" maxLength={255} placeholder="Web SDK" className={fieldInputClass} />
-        </DialogField>
-        <DialogField label="Expires at" name="expiresAt" hint="Leave empty for never expires.">
-          <input id="expiresAt" name="expiresAt" type="datetime-local" className={fieldInputClass} />
+        <DialogField label="Key label (optional)" name="name" hint="e.g. backend-ingest-prod">
+          <input id="name" name="name" maxLength={100} placeholder="backend-ingest" className={fieldInputClass} />
         </DialogField>
       </FormDialog>
 
@@ -637,37 +630,30 @@ function ProjectApiKeysContent({ projectId }: { projectId: string }) {
             setFormError(null);
           }
         }}
-        title="Edit key metadata"
-        description="Name and expiry are the only editable key metadata."
+        title={`Edit ${editing?.name || "key"}`}
+        description="Update key metadata. Key secrets and environments cannot be changed."
         submitLabel="Save changes"
         pending={updateKey.isPending}
         error={formError}
         onSubmit={handleEdit}
       >
-        {editing && (
-          <>
-            <DialogField label="Name" name="name">
-              <input id="name" name="name" defaultValue={editing.name ?? ""} maxLength={255} className={fieldInputClass} />
-            </DialogField>
-            <DialogField label="Expires at" name="expiresAt" hint="Clear to remove the expiry.">
-              <input
-                id="expiresAt"
-                name="expiresAt"
-                type="datetime-local"
-                defaultValue={editing.expiresAt?.slice(0, 16) ?? ""}
-                className={fieldInputClass}
-              />
-            </DialogField>
-          </>
-        )}
+        <DialogField label="Key label" name="name">
+          <input
+            id="name"
+            name="name"
+            defaultValue={editing?.name ?? ""}
+            maxLength={100}
+            className={fieldInputClass}
+          />
+        </DialogField>
       </FormDialog>
 
       {/* ── rotate ── */}
       <ConfirmDialog
         open={!!rotating}
         onOpenChange={(open) => !open && setRotating(null)}
-        title="Rotate key?"
-        description="A new secret will be issued and the current credential will be superseded. Update clients with the new secret immediately."
+        title={`Rotate ${rotating?.name || "key"}?`}
+        description="Rotates the key secret. A new secret will be displayed and the old secret will enter its rotation grace window."
         confirmLabel="Rotate key"
         pending={rotateKey.isPending}
         onConfirm={() => {
@@ -715,6 +701,7 @@ function ProjectApiKeysContent({ projectId }: { projectId: string }) {
           });
         }}
       />
+
 
       {/* ── revoke ── */}
       <FormDialog

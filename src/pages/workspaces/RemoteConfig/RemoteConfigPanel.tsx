@@ -200,7 +200,7 @@ export function RemoteConfigPanel({
 
   return (
     <div className="w-full">
-      <div className="max-w-[780px]">
+      <div className={activeSection === 'transport' ? 'w-full' : 'max-w-[800px]'}>
         {sectionContent[activeSection] || sectionContent.features}
       </div>
 

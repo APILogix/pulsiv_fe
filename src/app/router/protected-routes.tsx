@@ -7,6 +7,7 @@ import { AuthenticatedAppLayout } from "../layouts/AuthenticatedAppLayout";
 import { useOrganizations } from "@/modules/organizations/hooks/useOrganizations";
 import { useOrgStore } from "@/modules/organizations/store/org.store";
 import { orgRoutes } from "./org-routes";
+import { RouteSkeleton } from "@/shared/skeletons";
 
 const DashboardPage = lazy(() => import("@/modules/dashboard/index").then((m) => ({ default: m.DashboardPage ?? (() => null) })));
 const SecurityCenterPage = lazy(() => import("@/modules/auth/pages/SecurityCenterPage").then((m) => ({ default: m.default })));
@@ -208,7 +209,7 @@ function OrgRouteGuard() {
   }, [orgSlug, organizations, activeOrgId, activeOrgSlug, setActiveOrg, isLoading]);
 
   if (isLoading && !organizations.length) {
-    return null;
+    return <RouteSkeleton padded className="w-full px-6 py-6" />;
   }
 
   if (orgSlug && organizations.length > 0) {
@@ -234,7 +235,7 @@ function OrgScopedRedirect({ target = "dashboard", wildcard = false }: { target?
   const { organizations, isLoading } = useOrganizations();
   const location = useLocation();
 
-  if (isLoading && !activeOrgSlug) return null;
+  if (isLoading && !activeOrgSlug) return <RouteSkeleton padded className="w-full px-6 py-6" />;
 
   const orgSlug = activeOrgSlug ?? organizations[0]?.slug ?? null;
   if (!orgSlug) {

@@ -26,6 +26,7 @@ import { toIncidentView } from "@/modules/alerting/components/incident-view";
 import { SeverityBadge } from "@/shared/observe";
 import { EntitlementRestrictedBanner } from "@/modules/alerting/components/EntitlementRestrictedBanner";
 import type { AlertSeverity, IncidentState } from "@/modules/alerting/api/types";
+import { SkeletonTable } from "@/shared/skeletons";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -205,11 +206,8 @@ export default function AlertEventsPage() {
       </div>
 
       {/* Incidents Table / Stream */}
-      {isLoading ? (
-        <div className="rounded-xl border border-border/60 bg-card/60 p-12 text-center text-xs text-muted-foreground">
-          <RefreshCw className="mx-auto mb-2 size-5 animate-spin text-[var(--brand)]" />
-          Loading active incidents…
-        </div>
+      {isLoading && incidents.length === 0 ? (
+        <SkeletonTable rows={8} columns={6} withToolbar={false} className="w-full" />
       ) : filtered.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border/80 bg-card/40 p-12 text-center">
           <CheckCircle2 className="mx-auto size-9 text-emerald-400 opacity-80" />

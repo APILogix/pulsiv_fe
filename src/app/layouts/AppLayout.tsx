@@ -1,14 +1,19 @@
-import { useRef } from 'react';
+import { lazy, Suspense, useRef } from 'react';
 import { Outlet } from 'react-router';
 import { AppErrorBoundary } from '@/shared/components/error-boundary/AppErrorBoundary';
-import { PulseCommandPalette } from '@/modules/search/components/PulseCommandPalette';
 import { useSearchShortcuts } from '@/modules/search/hooks/useSearchShortcuts';
 import { AppHeader } from './AppHeader';
 import { AppDualSidebar } from './AppDualSidebar';
 import { PostLoginSetup } from '@/modules/auth/components/PostLoginSetup';
 import { LoginMetricsTransition } from '@/modules/auth/components/LoginMetricsTransition';
 import { RouteBoundary, ScrollToTop, useScrollRestoration } from '@/shared/motion';
-import { AiDrawer } from '@/modules/ai/components/AiDrawer';
+
+const PulseCommandPalette = lazy(() =>
+  import('@/modules/search/components/PulseCommandPalette').then((m) => ({ default: m.PulseCommandPalette }))
+);
+const AiDrawer = lazy(() =>
+  import('@/modules/ai/components/AiDrawer').then((m) => ({ default: m.AiDrawer }))
+);
 
 const handleMenuClick = () => {
   window.dispatchEvent(new CustomEvent('toggle-mobile-sidebar'));
@@ -57,10 +62,12 @@ export function AppLayout() {
         </div>
         <ScrollToTop targetRef={scrollRef} />
       </main>
-      <PulseCommandPalette />
       <LoginMetricsTransition />
       <PostLoginSetup />
-      <AiDrawer />
+      <Suspense fallback={null}>
+        <PulseCommandPalette />
+        <AiDrawer />
+      </Suspense>
     </div>
   );
 }

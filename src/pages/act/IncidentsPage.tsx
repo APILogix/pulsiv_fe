@@ -31,6 +31,7 @@ import { apiErrorMessage } from "@/modules/projects/components/project-ui";
 import type { Incident, IncidentListQuery, IncidentStatus } from "@/modules/alerting/api/types";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { SkeletonTable } from "@/shared/skeletons";
 
 const PAGE_SIZE = 25;
 
@@ -253,10 +254,8 @@ export default function IncidentsPage() {
             Retry
           </button>
         </div>
-      ) : isLoading ? (
-        <div className="rounded-xl border border-border/60 bg-card/60 p-12 text-center text-xs text-muted-foreground">
-          Loading incidents…
-        </div>
+      ) : isLoading && incidents.length === 0 ? (
+        <SkeletonTable rows={8} columns={10} withToolbar={false} className="w-full" />
       ) : incidents.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border/80 bg-card/40 p-12 text-center">
           <CheckCircle2 className="mx-auto size-9 text-emerald-400 opacity-80" />

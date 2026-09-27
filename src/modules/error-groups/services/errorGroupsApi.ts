@@ -169,8 +169,23 @@ function listPayload(response: any): any[] {
   return items;
 }
 
-export async function fetchErrorGroupsApi(orgId: string | null, filters: ErrorGroupFilterState): Promise<ErrorGroup[]> {
-  if (!orgId) return [];
+export interface FetchErrorGroupsResult {
+  items: ErrorGroup[];
+  pagination: {
+    nextCursor?: string | null;
+    previousCursor?: string | null;
+    hasNext?: boolean;
+    hasPrevious?: boolean;
+    limit?: number;
+  };
+  summary?: Record<string, unknown>;
+}
+
+export async function fetchErrorGroupsApi(
+  orgId: string | null,
+  filters: ErrorGroupFilterState,
+): Promise<FetchErrorGroupsResult> {
+  if (!orgId) return { items: [], pagination: {} };
   const cleanParams: Record<string, string> = {};
   if (filters.status) cleanParams.status = filters.status.toUpperCase();
   if (filters.severity) cleanParams.severity = filters.severity;
@@ -184,8 +199,16 @@ export async function fetchErrorGroupsApi(orgId: string | null, filters: ErrorGr
   if (filters.range) cleanParams.range = filters.range;
   if (filters.from) cleanParams.from = filters.from;
   if (filters.to) cleanParams.to = filters.to;
+  if (filters.cursor) cleanParams.cursor = filters.cursor;
   const response = await apiClient.get(`/organizations/${orgId}/observability/error-groups`, { params: cleanParams });
-  return listPayload(response).map(normalizeErrorGroup);
+  const envelope = response.data?.data ?? response.data ?? {};
+  const pagination = envelope.pagination || response.data?.pagination || {};
+  const summary = envelope.summary || response.data?.summary || {};
+  return {
+    items: listPayload(response).map(normalizeErrorGroup),
+    pagination,
+    summary,
+  };
 }
 
 export async function fetchErrorGroupDetailApi(orgId: string | null, groupId: string): Promise<ErrorGroupDetail | null> {

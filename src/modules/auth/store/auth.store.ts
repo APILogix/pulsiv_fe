@@ -73,7 +73,16 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: 'auth-storage',
-      storage: createJSONStorage(() => localStorage),
+      storage: createJSONStorage(() => {
+        try {
+          if (typeof window !== 'undefined' && window.localStorage?.getItem('auth-storage')) {
+            window.localStorage.removeItem('auth-storage');
+          }
+        } catch {
+          // Ignore storage restrictions
+        }
+        return sessionStorage;
+      }),
       partialize: (state) => ({
         user: state.user,
         isAuthenticated: state.isAuthenticated,

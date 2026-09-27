@@ -1,8 +1,8 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { RefreshCw } from 'lucide-react';
 import { apiClient } from '@/infrastructure/api-client/axios';
 import { useOrgStore } from '@/modules/organizations/store/org.store';
-import { useBootstrapUsage, useBootstrapStore } from '@/modules/bootstrap';
+import { useBootstrapUsage, useBootstrapBilling, useBootstrapStore } from '@/modules/bootstrap';
 import clsx from 'clsx';
 
 export interface QuotaSummaryData {
@@ -13,9 +13,33 @@ export interface QuotaSummaryData {
   aiCreditsLeft: number;
 }
 
+/**
+ * Formats quota credit numbers into human-readable compact units (e.g. 0, 8M, 500k).
+ * Formats each number independently rather than assuming usage and limit share the same scale.
+ */
+export function formatQuotaValue(value: number | null | undefined): string {
+  if (value == null || Number.isNaN(Number(value))) return '0';
+  const num = Number(value);
+  if (num === 0) return '0';
+  if (num >= 1_000_000_000) {
+    const val = num / 1_000_000_000;
+    return `${val % 1 === 0 ? val.toFixed(0) : parseFloat(val.toFixed(1))}B`;
+  }
+  if (num >= 1_000_000) {
+    const val = num / 1_000_000;
+    return `${val % 1 === 0 ? val.toFixed(0) : parseFloat(val.toFixed(1))}M`;
+  }
+  if (num >= 1_000) {
+    const val = num / 1_000;
+    return `${val % 1 === 0 ? val.toFixed(0) : parseFloat(val.toFixed(1))}k`;
+  }
+  return num.toLocaleString();
+}
+
 export function QuotaCardWidget() {
   const activeOrgId = useOrgStore((s) => s.activeOrgId);
   const bootstrapUsage = useBootstrapUsage();
+  const bootstrapBilling = useBootstrapBilling();
   const updateUsage = useBootstrapStore((s) => s.updateUsage);
 
   const [isLoading, setIsLoading] = useState(false);
@@ -33,12 +57,12 @@ export function QuotaCardWidget() {
         setOverrideData(d);
 
         // Sync fresh quota summary directly into Zustand bootstrap usage state
-        const totalEv = d.totalEvents || 1000000;
-        const leftEv = d.eventsLeft ?? 320000;
+        const totalEv = d.totalEvents ?? 1000000;
+        const leftEv = d.eventsLeft ?? totalEv;
         const usedEv = Math.max(0, totalEv - leftEv);
 
-        const totalAi = d.aiCreditsTotal || 500;
-        const leftAi = d.aiCreditsLeft ?? 290;
+        const totalAi = d.aiCreditsTotal ?? 500;
+        const leftAi = d.aiCreditsLeft ?? totalAi;
         const usedAi = Math.max(0, totalAi - leftAi);
 
         updateUsage({
@@ -63,50 +87,62 @@ export function QuotaCardWidget() {
     }
   }, [activeOrgId, updateUsage]);
 
+  useEffect(() => {
+    fetchQuotaSummary();
+  }, [fetchQuotaSummary]);
+
   // Priority: Override -> Bootstrap Zustand Store -> Safe Fallbacks
   const totalEvents = overrideData?.totalEvents ?? bootstrapUsage?.monthlyEvents.limit ?? 1000000;
-  const eventsLeft = overrideData?.eventsLeft ?? bootstrapUsage?.monthlyEvents.remaining ?? 320000;
+  const isUnlimitedEvents = totalEvents < 0;
+  const eventsLeft = overrideData?.eventsLeft ?? bootstrapUsage?.monthlyEvents.remaining ?? (isUnlimitedEvents ? -1 : totalEvents);
   const eventsUsed = overrideData
-    ? Math.max(0, totalEvents - eventsLeft)
-    : (bootstrapUsage?.monthlyEvents.used ?? Math.max(0, totalEvents - eventsLeft));
-  const ingestPercent = bootstrapUsage?.monthlyEvents.percentage ?? (totalEvents > 0 ? Math.min(100, Math.round((eventsUsed / totalEvents) * 100)) : 0);
+    ? (isUnlimitedEvents ? 0 : Math.max(0, totalEvents - (eventsLeft < 0 ? 0 : eventsLeft)))
+    : (bootstrapUsage?.monthlyEvents.used ?? (isUnlimitedEvents ? 0 : Math.max(0, totalEvents - eventsLeft)));
+  const ingestPercent = bootstrapUsage?.monthlyEvents.percentage ?? (isUnlimitedEvents ? 0 : (totalEvents > 0 ? Math.min(100, Math.round((eventsUsed / totalEvents) * 100)) : 0));
 
   const aiCreditsTotal = overrideData?.aiCreditsTotal ?? bootstrapUsage?.aiCredits.limit ?? 500;
-  const aiCreditsLeft = overrideData?.aiCreditsLeft ?? bootstrapUsage?.aiCredits.remaining ?? 290;
+  const isUnlimitedAi = aiCreditsTotal < 0;
+  const aiCreditsLeft = overrideData?.aiCreditsLeft ?? bootstrapUsage?.aiCredits.remaining ?? (isUnlimitedAi ? -1 : aiCreditsTotal);
   const aiCreditsUsed = overrideData
-    ? Math.max(0, aiCreditsTotal - aiCreditsLeft)
-    : (bootstrapUsage?.aiCredits.used ?? Math.max(0, aiCreditsTotal - aiCreditsLeft));
-  const aiPercent = bootstrapUsage?.aiCredits.percentage ?? (aiCreditsTotal > 0 ? Math.min(100, Math.round((aiCreditsUsed / aiCreditsTotal) * 100)) : 0);
+    ? (isUnlimitedAi ? 0 : Math.max(0, aiCreditsTotal - (aiCreditsLeft < 0 ? 0 : aiCreditsLeft)))
+    : (bootstrapUsage?.aiCredits.used ?? (isUnlimitedAi ? 0 : Math.max(0, aiCreditsTotal - aiCreditsLeft)));
+  const aiPercent = bootstrapUsage?.aiCredits.percentage ?? (isUnlimitedAi ? 0 : (aiCreditsTotal > 0 ? Math.min(100, Math.round((aiCreditsUsed / aiCreditsTotal) * 100)) : 0));
 
-  const resetDays = overrideData?.billingCycleEndDate
-    ? Math.max(0, Math.ceil((new Date(overrideData.billingCycleEndDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
-    : 9;
+  const endDateStr = overrideData?.billingCycleEndDate ?? bootstrapBilling?.currentPeriodEnd ?? null;
+  const resetDays = endDateStr
+    ? Math.max(0, Math.ceil((new Date(endDateStr).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+    : (() => {
+        const now = new Date();
+        const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        return Math.max(0, Math.ceil((endOfMonth.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
+      })();
 
   return (
     <div className="shrink-0 p-3 mt-auto border-t border-[var(--border)]">
       <div className="group h-[92px] [perspective:1000px]">
         <div className="relative h-full w-full transition-transform duration-500 [transform-style:preserve-3d] group-hover:[transform:rotateY(180deg)]">
-          {/* Front: Ingest quota */}
-          <div className="absolute inset-0 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg2)]/40 p-3 flex flex-col gap-2.5 overflow-hidden [backface-visibility:hidden]">
+          {/* Front: Credits quota */}
+          <div className="absolute inset-0 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg2)]/40 px-3 py-2.5 flex flex-col justify-between overflow-hidden [backface-visibility:hidden]">
             <div className="flex justify-between items-center font-mono">
-              <span className="text-[10px] tracking-[0.09em] text-[var(--text3)] uppercase">Ingest quota</span>
+              <span className="text-[10px] tracking-[0.09em] text-[var(--text3)] uppercase">Credits quota</span>
               <span className="text-[12px] font-medium tabular-nums text-[var(--text)]">{ingestPercent}%</span>
             </div>
             <div className="h-1.5 w-full bg-[var(--bg3)] rounded-full overflow-hidden">
               <div className="h-full bg-[var(--brand)] rounded-full transition-all duration-300" style={{ width: `${ingestPercent}%` }} />
             </div>
-            <div className="text-[11px] font-mono tabular-nums text-[var(--text3)] flex justify-between items-center gap-1 min-w-0">
-              <span className="truncate">
-                {eventsUsed >= 1000000
-                  ? `${(eventsUsed / 1000000).toFixed(1)}M / ${(totalEvents / 1000000).toFixed(1)}M`
-                  : `${(eventsUsed / 1000).toFixed(0)}k / ${(totalEvents / 1000).toFixed(0)}k`}
+            <div className="text-[11px] font-mono tabular-nums text-[var(--text3)] flex justify-between items-center gap-1.5 min-w-0">
+              <span
+                className="truncate"
+                title={`${eventsUsed.toLocaleString()} / ${isUnlimitedEvents ? 'Unlimited' : totalEvents.toLocaleString()} credits`}
+              >
+                {formatQuotaValue(eventsUsed)} / {isUnlimitedEvents ? '∞' : `${formatQuotaValue(totalEvents)} credits`}
               </span>
-              <span className="shrink-0 whitespace-nowrap">&middot; resets in {resetDays}d</span>
+              <span className="shrink-0 whitespace-nowrap text-[10.5px]">&middot; resets in {resetDays}d</span>
             </div>
           </div>
 
           {/* Back: AI credit usage with Refresh Icon */}
-          <div className="absolute inset-0 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg2)]/40 p-3 flex flex-col gap-2.5 overflow-hidden [backface-visibility:hidden] [transform:rotateY(180deg)]">
+          <div className="absolute inset-0 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg2)]/40 px-3 py-2.5 flex flex-col justify-between overflow-hidden [backface-visibility:hidden] [transform:rotateY(180deg)]">
             <div className="flex justify-between items-center font-mono">
               <span className="text-[10px] tracking-[0.09em] text-[var(--text3)] uppercase">AI credit</span>
               <button
@@ -124,9 +160,14 @@ export function QuotaCardWidget() {
             <div className="h-1.5 w-full bg-[var(--bg3)] rounded-full overflow-hidden">
               <div className="h-full bg-[var(--brand)] rounded-full transition-all duration-300" style={{ width: `${aiPercent}%` }} />
             </div>
-            <div className="text-[11px] font-mono tabular-nums text-[var(--text3)] flex justify-between items-center gap-1 min-w-0">
-              <span className="truncate">{aiCreditsUsed} / {aiCreditsTotal} credits</span>
-              <span className="shrink-0 whitespace-nowrap">&middot; resets in {resetDays}d</span>
+            <div className="text-[11px] font-mono tabular-nums text-[var(--text3)] flex justify-between items-center gap-1.5 min-w-0">
+              <span
+                className="truncate"
+                title={`${aiCreditsUsed.toLocaleString()} / ${isUnlimitedAi ? 'Unlimited' : aiCreditsTotal.toLocaleString()} credits`}
+              >
+                {formatQuotaValue(aiCreditsUsed)} / {isUnlimitedAi ? '∞' : `${formatQuotaValue(aiCreditsTotal)} credits`}
+              </span>
+              <span className="shrink-0 whitespace-nowrap text-[10.5px]">&middot; resets in {resetDays}d</span>
             </div>
           </div>
         </div>

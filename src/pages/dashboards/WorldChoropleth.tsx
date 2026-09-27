@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { ComposableMap, Geographies, Geography, Marker } from "react-simple-maps";
 
-const GEO_URL = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
+const GEO_URL = "/data/countries-110m.json";
 
 // ISO 3166-1 numeric ids used by world-atlas topojson
 const ISO_NUMERIC: Record<string, string> = {

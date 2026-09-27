@@ -11,7 +11,9 @@ function formatValue(val: any): string {
   if (typeof val === "object") {
     if (val.status) return String(val.status).toUpperCase();
     if (val.comment) return `Comment: "${val.comment}"`;
-    return JSON.stringify(val);
+    return Object.entries(val)
+      .map(([k, v]) => `${k}: ${String(v)}`)
+      .join(", ");
   }
   return String(val).toUpperCase();
 }
@@ -39,14 +41,14 @@ function getActionBadge(action: string) {
 export function HistoryTimeline({ history }: HistoryTimelineProps) {
   if (!history || history.length === 0) {
     return (
-      <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] p-6 text-center text-[13px] text-[var(--text3)]">
+      <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg1)] p-6 text-center text-[13px] text-[var(--text3)]">
         No state transition history recorded for this error group yet.
       </div>
     );
   }
 
   return (
-    <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] p-6 space-y-6 shadow-sm">
+    <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg1)] p-6 space-y-6 shadow-xs">
       <div className="flex items-center justify-between border-b border-[var(--border)] pb-4">
         <div>
           <h3 className="text-[15px] font-semibold text-[var(--text)] flex items-center gap-2">
@@ -57,7 +59,7 @@ export function HistoryTimeline({ history }: HistoryTimelineProps) {
             Immutable audit log of state changes, regressions, and manual triage actions
           </p>
         </div>
-        <span className="rounded-full bg-[var(--bg2)] px-2.5 py-0.5 font-[family-name:var(--mono)] text-[11px] font-medium text-[var(--text2)] border border-[var(--border)]">
+        <span className="rounded-full bg-[var(--bg2)] px-3 py-1 font-[family-name:var(--mono)] text-[11px] font-medium text-[var(--text2)] border border-[var(--border)]">
           {history.length} {history.length === 1 ? "event" : "events"}
         </span>
       </div>
@@ -71,17 +73,17 @@ export function HistoryTimeline({ history }: HistoryTimelineProps) {
           const meta = item.metadata;
 
           return (
-            <div key={item.id} className="relative flex flex-col gap-1.5 text-[13px] transition-colors hover:bg-[var(--bg2)]/40 p-2.5 -ml-2.5 rounded-lg">
-              <div className={`absolute -left-6 top-3 flex size-6 items-center justify-center rounded-full border bg-[var(--bg1)] ${badge.color}`}>
+            <div key={item.id} className="relative flex flex-col gap-1.5 text-[13px] transition-colors hover:bg-[var(--bg2)]/40 p-3 -ml-2.5 rounded-xl">
+              <div className={`absolute -left-6 top-3.5 flex size-6 items-center justify-center rounded-full border bg-[var(--bg1)] ${badge.color}`}>
                 <Icon className="size-3.5" />
               </div>
               <div className="flex items-center justify-between gap-2 flex-wrap">
                 <div className="flex items-center gap-2">
-                  <span className="inline-flex items-center gap-1 font-semibold text-[var(--text)]">
-                    <User className="size-3 text-[var(--text3)]" />
+                  <span className="inline-flex items-center gap-1.5 font-semibold text-[var(--text)]">
+                    <User className="size-3.5 text-[var(--text3)]" />
                     {item.actor || "System"}
                   </span>
-                  <span className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 font-[family-name:var(--mono)] text-[11px] font-medium uppercase border ${badge.color}`}>
+                  <span className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 font-[family-name:var(--mono)] text-[10.5px] font-semibold uppercase border ${badge.color}`}>
                     {badge.label}
                   </span>
                 </div>
@@ -93,7 +95,7 @@ export function HistoryTimeline({ history }: HistoryTimelineProps) {
               {(oldVal !== undefined || newVal !== undefined) && (
                 <div className="flex items-center gap-2 font-[family-name:var(--mono)] text-[12px] text-[var(--text2)] mt-0.5">
                   {oldVal !== undefined && (
-                    <span className="line-through text-[var(--text3)] bg-[var(--bg2)] px-1.5 py-0.5 rounded">
+                    <span className="line-through text-[var(--text3)] bg-[var(--bg2)] px-2 py-0.5 rounded-md">
                       {formatValue(oldVal)}
                     </span>
                   )}
@@ -101,19 +103,22 @@ export function HistoryTimeline({ history }: HistoryTimelineProps) {
                     <span className="text-[var(--text3)]">→</span>
                   )}
                   {newVal !== undefined && (
-                    <span className="font-semibold text-[var(--green)] bg-[var(--green-bg)] px-1.5 py-0.5 rounded border border-[var(--green)]/20">
+                    <span className="font-semibold text-[var(--green)] bg-[var(--green-bg)] px-2 py-0.5 rounded-md border border-[var(--green)]/20">
                       {formatValue(newVal)}
                     </span>
                   )}
                 </div>
               )}
 
-              {meta && Object.keys(meta).length > 0 && (
-                <div className="mt-1 flex items-start gap-1.5 rounded-md bg-[var(--bg2)] p-2.5 font-[family-name:var(--mono)] text-[11px] text-[var(--text2)] border border-[var(--border)]/60">
-                  <Info className="size-3.5 shrink-0 text-[var(--brand)] mt-0.5" />
-                  <pre className="whitespace-pre-wrap break-all">
-                    {typeof meta === "string" ? meta : JSON.stringify(meta, null, 2)}
-                  </pre>
+              {meta && typeof meta === "object" && Object.keys(meta).length > 0 && (
+                <div className="mt-1.5 flex flex-wrap items-center gap-2 rounded-lg bg-[var(--bg2)] p-2.5 text-[11.5px] text-[var(--text2)] border border-[var(--border)]">
+                  <Info className="size-3.5 shrink-0 text-[var(--brand)]" />
+                  {Object.entries(meta).map(([k, v]) => (
+                    <span key={k} className="inline-flex items-center gap-1 rounded bg-[var(--bg1)] px-2 py-0.5 font-[family-name:var(--mono)]">
+                      <span className="text-[var(--text3)]">{k}:</span>
+                      <span className="text-[var(--text)] font-semibold">{String(v)}</span>
+                    </span>
+                  ))}
                 </div>
               )}
             </div>
@@ -123,4 +128,5 @@ export function HistoryTimeline({ history }: HistoryTimelineProps) {
     </div>
   );
 }
+
 

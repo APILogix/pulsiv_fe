@@ -1,28 +1,8 @@
 import { Suspense, type ReactNode } from "react";
 import { useLocation } from "react-router";
 
-import { RouteSkeleton } from "@/shared/skeletons";
+import { RouteSkeleton, stripOrgSlug } from "@/shared/skeletons";
 import { PageTransition } from "./PageTransition";
-
-/**
- * LoadingBoundary / RouteBoundary — Phase 3 + Phase 7 glue.
- *
- * Why the Suspense boundary is *keyed*:
- *   React Router v7 wraps navigation in `startTransition`. During a transition
- *   React keeps the previous UI on screen instead of showing a Suspense
- *   fallback — great for tiny waits, but it means clicking a sidebar item to a
- *   not-yet-downloaded route chunk looks like nothing happened. Changing the
- *   Suspense `key` unmounts the old subtree, so the fallback renders on the very
- *   next frame. Combined with `RouteSkeleton` the user sees the *shape* of the
- *   destination immediately.
- *
- * Scope controls how aggressively we remount:
- *   "module" — key on the top-level module (`/alerts`, `/admin`, or a specific
- *              project shell). Used at the app shell level so navigating inside
- *              a module never tears down that module's layout/state.
- *   "page"   — key on the full pathname. Used inside module layouts so every
- *              page swap gets its own skeleton.
- */
 
 export type BoundaryScope = "module" | "page";
 
@@ -32,17 +12,20 @@ function normalize(pathname: string) {
 }
 
 /**
- * Collapse a pathname to its module identity.
+ * Collapse a pathname to its module identity, accounting for organization scopes.
  *
  * `/alerts/rules/abc` → `/alerts`
- * `/acme/p/prj_1/api-keys` → `/acme/p/prj_1`  (project shell keeps its state)
- * `/acme/projects` → `/acme/projects`
+ * `/acme/observability/traces` → `/observability`
+ * `/acme/dashboards/overview` → `/dashboards`
+ * `/acme/p/prj_1/api-keys` → `/p/prj_1`  (project shell keeps its state)
+ * `/acme/projects` → `/projects`
  */
 export function moduleKey(pathname: string): string {
-  const segments = normalize(pathname).split("/").filter(Boolean);
+  const stripped = stripOrgSlug(pathname);
+  const segments = stripped.split("/").filter(Boolean);
   if (segments.length === 0) return "/";
-  if (segments[1] === "p") return `/${segments[0]}/p/${segments[2] ?? ""}`;
-  if (segments[1] === "projects") return `/${segments[0]}/projects`;
+  if (segments[0] === "p") return `/p/${segments[1] ?? ""}`;
+  if (segments[0] === "projects") return `/projects`;
   return `/${segments[0]}`;
 }
 
@@ -65,7 +48,7 @@ export function RouteBoundary({
   transition?: boolean;
 }) {
   const location = useLocation();
-  const key = scope === "module" ? moduleKey(location.pathname) : normalize(location.pathname);
+  const key = scope === "module" ? moduleKey(location.pathname) : stripOrgSlug(location.pathname);
 
   const content = transition ? (
     <PageTransition transitionKey={key} className={className}>
@@ -76,7 +59,7 @@ export function RouteBoundary({
   );
 
   return (
-    <Suspense key={key} fallback={fallback ?? <RouteSkeleton padded={padded} />}>
+    <Suspense key={key} fallback={fallback ?? <RouteSkeleton padded={padded} pathname={location.pathname} />}>
       {content}
     </Suspense>
   );

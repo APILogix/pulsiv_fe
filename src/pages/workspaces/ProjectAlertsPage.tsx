@@ -17,6 +17,7 @@ import { toIncidentView } from "@/modules/alerting/components/incident-view";
 import { SeverityBadge } from "@/shared/observe";
 import { EntitlementRestrictedBanner } from "@/modules/alerting/components/EntitlementRestrictedBanner";
 import { cn } from "@/lib/utils";
+import { SkeletonTable } from "@/shared/skeletons";
 
 import { useProjectAlertingStatus } from "@/modules/alerting/hooks/useAlerting";
 
@@ -138,10 +139,13 @@ export default function ProjectAlertsPage() {
       </div>
 
       {/* Alert Feed Table */}
-      {isLoading ? (
-        <div className="rounded-xl border border-border/60 bg-card/60 p-12 text-center text-xs text-muted-foreground">
-          Loading project alerts…
-        </div>
+      {isLoading && !alertsData ? (
+        <SkeletonTable
+          rows={6}
+          columns={["w-20", "w-16", "w-1/3", "w-16", "w-24", "w-16"]}
+          withToolbar={false}
+          delay={20}
+        />
       ) : filtered.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border/80 bg-card/40 p-12 text-center">
           <CheckCircle2 className="mx-auto size-9 text-emerald-400 opacity-80" />

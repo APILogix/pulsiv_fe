@@ -17,6 +17,8 @@ import {
 export function useErrorGroupsList(filters: ErrorGroupFilterState) {
   const activeOrgId = useOrgStore((state) => state.activeOrgId);
   const [groups, setGroups] = useState<ErrorGroup[]>([]);
+  const [pagination, setPagination] = useState<any>({});
+  const [summary, setSummary] = useState<Record<string, unknown>>({});
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<Error | null>(null);
 
@@ -24,10 +26,13 @@ export function useErrorGroupsList(filters: ErrorGroupFilterState) {
     setIsLoading(true);
     try {
       const data = await fetchErrorGroupsApi(activeOrgId, filters);
-      setGroups(data);
+      setGroups(data.items);
+      setPagination(data.pagination);
+      setSummary(data.summary ?? {});
       setError(null);
     } catch (err) {
       setGroups([]);
+      setPagination({});
       setError(err as Error);
     } finally {
       setIsLoading(false);
@@ -38,7 +43,7 @@ export function useErrorGroupsList(filters: ErrorGroupFilterState) {
     refetch();
   }, [refetch]);
 
-  return { groups, isLoading, error, refetch };
+  return { groups, pagination, summary, isLoading, error, refetch };
 }
 
 export function useErrorGroupDetail(groupId: string) {

@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import { DetailSkeleton, Button } from "@/shared/observe";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, AlertOctagon } from "lucide-react";
 import { useOrgStore } from "@/modules/organizations/store/org.store";
 import {
   askObservabilityEvent,
@@ -53,16 +53,24 @@ export function ErrorDetailView({ errorId }: { errorId: string }) {
 
   if (error || !data) {
     return (
-      <div className="flex flex-col gap-4">
-        <Button variant="ghost" className="w-fit" onClick={() => navigate("/observability/errors")}>
+      <div className="mx-auto flex w-full max-w-[1360px] flex-col gap-6 px-6 py-8">
+        <Button variant="ghost" className="w-fit gap-2" onClick={() => navigate("/observability/errors")}>
           <ArrowLeft className="size-4" />
-          Back to errors
+          Back to Errors
         </Button>
-        <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] px-6 py-12 text-center">
-          <h1 className="text-[16px] font-semibold text-[var(--text)]">Error event not found</h1>
-          <p className="mt-2 text-[13px] text-[var(--text3)]">
-            Could not retrieve error detail for ID: <code className="font-[family-name:var(--mono)]">{id}</code>. Check the ID or return to the error list.
+        <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg1)] px-8 py-16 text-center shadow-xs">
+          <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-[var(--bg2)] text-[var(--text3)]">
+            <AlertOctagon className="size-6" />
+          </div>
+          <h1 className="mt-4 text-[18px] font-semibold text-[var(--text)]">Error Event Not Found</h1>
+          <p className="mt-2 max-w-md mx-auto text-[13.5px] leading-relaxed text-[var(--text3)]">
+            Could not find error record for ID: <code className="font-[family-name:var(--mono)] font-semibold text-[var(--text2)]">{id}</code>. Check the ID or return to the error explorer.
           </p>
+          <div className="mt-6">
+            <Button variant="primary" onClick={() => navigate("/observability/errors")}>
+              View All Errors
+            </Button>
+          </div>
         </div>
       </div>
     );
@@ -71,14 +79,18 @@ export function ErrorDetailView({ errorId }: { errorId: string }) {
   const aiResponse = aiOverride !== undefined ? aiOverride : data.aiResponse;
 
   return (
-    <div className="flex flex-col gap-6 pb-20">
+    <div className="mx-auto flex w-full max-w-[1360px] flex-col gap-8 px-6 py-6 pb-28">
+      {/* Sticky Header */}
       <StickyErrorHeader detail={data} onAnalyze={runAnalyze} />
 
+      {/* Summary KPI Strip */}
       <SummaryCards detail={data} />
 
+      {/* Sticky Section Navigation */}
       <SectionNavigation activeId={activeId} onSelect={scrollTo} />
 
-      <div className="flex flex-col gap-6">
+      {/* Structured Sections */}
+      <div className="flex flex-col gap-8">
         <OverviewSection detail={data} />
         <StackTraceSection detail={data} />
         <BreadcrumbsSection detail={data} />
@@ -95,7 +107,7 @@ export function ErrorDetailView({ errorId }: { errorId: string }) {
 
 function ErrorDetailSkeleton() {
   return (
-    <div className="flex flex-col gap-5">
+    <div className="mx-auto flex w-full max-w-[1360px] flex-col gap-6 px-6 py-8">
       <DetailSkeleton />
     </div>
   );

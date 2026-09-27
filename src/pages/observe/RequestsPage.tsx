@@ -12,6 +12,7 @@ import type { RequestEvent } from "@/types/events";
 import { GitBranch } from "lucide-react";
 
 import { useOrgStore } from "@/modules/organizations/store/org.store";
+import { useCursorPagination } from "./hooks/useCursorPagination";
 
 const METHOD_OPTS = [
   { value: "", label: "All methods" },
@@ -52,18 +53,21 @@ function RequestsPageContent() {
   const [statusClass, setStatusClass] = useState("");
   const [duration, setDuration] = useState("");
   const [query, setQuery] = useState("");
-  const [cursor, setCursor] = useState<string | undefined>(undefined);
-  const [cursorHistory, setCursorHistory] = useState<string[]>([]);
   const [isAiModalOpen, setIsAiModalOpen] = useState(false);
 
   const { timeRangeState } = useTimeRangeParams();
   const { selectedKeys, toggleSelect, selectAll, clearSelection, selectedCount } = useSelection();
 
-  // Reset cursor when filter params change
-  useEffect(() => {
-    setCursor(undefined);
-    setCursorHistory([]);
-  }, [activeProjectSlug, environment, method, statusClass, duration, timeRangeState, query]);
+  const [activePagination, setActivePagination] = useState<any>(undefined);
+
+  const {
+    cursor: currentCursor,
+    paginationProps,
+    onNextPage,
+    onPreviousPage,
+  } = useCursorPagination(activePagination, {
+    dependencies: [activeProjectSlug, environment, method, statusClass, duration, timeRangeState, query],
+  });
 
   const { data, isLoading } = useObservabilityList<RequestEvent>("requests", {
     project: activeProjectSlug ?? undefined,
@@ -75,20 +79,14 @@ function RequestsPageContent() {
     from: timeRangeState.from,
     to: timeRangeState.to,
     search: query,
-    cursor,
+    cursor: currentCursor,
   });
 
-  const handleNextPage = (nextCursor: string) => {
-    setCursorHistory((prev) => [...prev, cursor ?? ""]);
-    setCursor(nextCursor);
-  };
-
-  const handlePreviousPage = () => {
-    if (cursorHistory.length === 0) return;
-    const prevCursor = cursorHistory[cursorHistory.length - 1];
-    setCursorHistory((prev) => prev.slice(0, -1));
-    setCursor(prevCursor || undefined);
-  };
+  useEffect(() => {
+    if (data?.pagination) {
+      setActivePagination(data.pagination);
+    }
+  }, [data?.pagination]);
 
   const rows = data?.items ?? [];
   const summary = data?.summary ?? {};
@@ -211,7 +209,7 @@ function RequestsPageContent() {
         className="flex-1"
         loading={isLoading}
         items={rows}
-        queryKey={["requests", activeProjectSlug, environment, method, statusClass, duration, timeRangeState, query, cursor]}
+        queryKey={["requests", activeProjectSlug, environment, method, statusClass, duration, timeRangeState, query, currentCursor]}
         columns={columns}
         getKey={(r) => r.publicId ?? r.id ?? r.eventId ?? r.requestId ?? String(Math.random())}
         onRowClick={(r) => navigate(`/observability/requests/${encodeURIComponent(r.publicId ?? r.id ?? r.requestId ?? '')}`)}
@@ -219,15 +217,9 @@ function RequestsPageContent() {
         selectedKeys={selectedKeys}
         onSelectToggle={toggleSelect}
         onSelectAllToggle={selectAll}
-        pagination={{
-          nextCursor: data?.pagination?.nextCursor,
-          previousCursor: data?.pagination?.previousCursor,
-          hasNext: data?.pagination?.hasNext,
-          hasPrevious: cursorHistory.length > 0 || !!data?.pagination?.hasPrevious,
-          limit: data?.pagination?.limit,
-        }}
-        onNextPage={handleNextPage}
-        onPreviousPage={cursorHistory.length > 0 ? handlePreviousPage : undefined}
+        pagination={paginationProps}
+        onNextPage={onNextPage}
+        onPreviousPage={onPreviousPage}
       />
 
       <AskAiModal

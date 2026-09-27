@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, GitBranch } from "lucide-react";
 import { Button, DetailSkeleton } from "@/shared/observe";
 import { useOrgStore } from "@/modules/organizations/store/org.store";
 import {
@@ -15,7 +15,7 @@ import { SpanTreeWaterfall } from "./SpanTreeWaterfall";
 import { AIInvestigationSection } from "./AIInvestigationSection";
 import { CorrelatedSignalsSection } from "./CorrelatedSignalsSection";
 import { useSectionNavigation } from "./useSectionNavigation";
-import { buildSpanTree, sectionDomId } from "./helpers";
+import { buildSpanTree, sectionDomId, formatDurationMs, formatPercent } from "./helpers";
 import { SectionShell, KeyValueGrid } from "./ui";
 import type { TraceDetailData } from "./types";
 
@@ -31,17 +31,17 @@ export function TraceDetailView({ traceId }: { traceId: string }) {
   const [aiOverride, setAiOverride] = useState<unknown>(undefined);
 
   // Build hierarchical span tree and calculate metrics
-  const { tree, flatList, bottleneckNode, maxDepth } = useMemo(() => {
-    if (!data) return { tree: [], flatList: [], bottleneckNode: null, maxDepth: 0 };
+  const { tree, flatList, bottleneckNode, maxDepth, hasMissingParents, executionBreakdown, executionGaps } = useMemo(() => {
+    if (!data) return { tree: [], flatList: [], bottleneckNode: null, maxDepth: 0, hasMissingParents: false, executionBreakdown: undefined, executionGaps: [] };
     const rawSpans = data.spans ?? [];
     const totalDuration = data.entity?.totalDurationMs ?? data.entity?.durationMs ?? 0;
-    const { tree, flatList, bottleneckNode } = buildSpanTree(
+    const { tree, flatList, bottleneckNode, hasMissingParents, executionBreakdown, executionGaps } = buildSpanTree(
       rawSpans,
       totalDuration,
       data.entity?.occurredAt,
     );
     const maxDepth = flatList.reduce((max, node) => Math.max(max, node.depth), 0);
-    return { tree, flatList, bottleneckNode, maxDepth };
+    return { tree, flatList, bottleneckNode, maxDepth, hasMissingParents, executionBreakdown, executionGaps };
   }, [data]);
 
   const handleRunAnalysis = useCallback(
@@ -64,7 +64,7 @@ export function TraceDetailView({ traceId }: { traceId: string }) {
 
   if (isLoading) {
     return (
-      <div className="flex flex-col gap-5">
+      <div className="mx-auto flex w-full max-w-[1360px] flex-col gap-6 px-6 py-8">
         <DetailSkeleton />
       </div>
     );
@@ -72,16 +72,24 @@ export function TraceDetailView({ traceId }: { traceId: string }) {
 
   if (error || !data?.entity) {
     return (
-      <div className="flex flex-col gap-4">
-        <Button variant="ghost" className="w-fit" onClick={() => navigate("/observability/traces")}>
+      <div className="mx-auto flex w-full max-w-[1360px] flex-col gap-6 px-6 py-8">
+        <Button variant="ghost" className="w-fit gap-2" onClick={() => navigate("/observability/traces")}>
           <ArrowLeft className="size-4" />
-          Back to traces
+          Back to Traces
         </Button>
-        <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] px-6 py-12 text-center">
-          <h1 className="text-[16px] font-semibold text-[var(--text)]">Trace not found</h1>
-          <p className="mt-2 text-[13px] text-[var(--text3)]">
-            The trace "{id}" was not found or has expired past the retention window.
+        <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg1)] px-8 py-16 text-center shadow-xs">
+          <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-[var(--bg2)] text-[var(--text3)]">
+            <GitBranch className="size-6" />
+          </div>
+          <h1 className="mt-4 text-[18px] font-semibold text-[var(--text)]">Trace Not Found</h1>
+          <p className="mt-2 max-w-md mx-auto text-[13.5px] leading-relaxed text-[var(--text3)]">
+            Could not find trace record for ID: <code className="font-[family-name:var(--mono)] font-semibold text-[var(--text2)]">{id}</code>. Check the ID or return to the trace explorer.
           </p>
+          <div className="mt-6">
+            <Button variant="primary" onClick={() => navigate("/observability/traces")}>
+              View All Traces
+            </Button>
+          </div>
         </div>
       </div>
     );
@@ -91,7 +99,7 @@ export function TraceDetailView({ traceId }: { traceId: string }) {
   const totalDurationMs = data.entity?.totalDurationMs ?? data.entity?.durationMs ?? 0;
 
   return (
-    <div className="mx-auto flex w-full max-w-[1400px] flex-col gap-6 pb-24">
+    <div className="mx-auto flex w-full max-w-[1360px] flex-col gap-8 px-6 py-6 pb-28">
       {/* Sticky Header */}
       <StickyTraceHeader
         detail={data}
@@ -99,37 +107,41 @@ export function TraceDetailView({ traceId }: { traceId: string }) {
         analyzing={analyzing}
       />
 
-      {/* Summary Strip */}
+      {/* Summary KPI Strip */}
       <SummaryCards
         detail={data}
         bottleneck={bottleneckNode}
         treeDepth={maxDepth}
         spanCount={flatList.length}
+        executionBreakdown={executionBreakdown}
       />
 
       {/* Sticky Section Navigation */}
       <SectionNavigation activeId={activeId} onSelect={scrollTo} />
 
       {/* Section Content */}
-      <div className="flex flex-col gap-7">
+      <div className="flex flex-col gap-8">
         {/* Overview Section */}
         <SectionShell
           id={sectionDomId("overview")}
-          title="Trace Overview"
+          title="Trace Overview & Topology"
           description="High-level identity, root execution profile, and telemetry environment."
         >
           <KeyValueGrid
             columns={3}
             items={[
-              { label: "Root Span", value: data.entity?.rootSpanName || data.entity?.name, mono: true },
+              { label: "Root Span Operation", value: data.entity?.rootSpanName || data.entity?.name, mono: true },
               { label: "Trace ID", value: data.entity?.traceId, mono: true, copyable: true },
               { label: "Public ID", value: data.publicId || data.entity?.publicId, mono: true, copyable: true },
+              { label: "Internal Calculation Time", value: executionBreakdown ? `${formatDurationMs(executionBreakdown.internalComputeMs)} (${formatPercent(executionBreakdown.internalComputePercent)})` : "—", mono: true },
+              { label: "Database Calls Duration", value: executionBreakdown ? `${formatDurationMs(executionBreakdown.databaseMs)} (${executionBreakdown.databaseCount} ${executionBreakdown.databaseCount === 1 ? 'call' : 'calls'})` : "—", mono: true },
+              { label: "External HTTP Duration", value: executionBreakdown ? `${formatDurationMs(executionBreakdown.httpMs)} (${executionBreakdown.httpCount} ${executionBreakdown.httpCount === 1 ? 'call' : 'calls'})` : "0 ms", mono: true },
               { label: "Environment", value: data.entity?.environment },
               { label: "Project", value: data.entity?.projectName || data.entity?.project },
-              { label: "Total Spans", value: flatList.length },
-              { label: "Service", value: data.entity?.service || "—" },
-              { label: "Release", value: data.entity?.release || "—" },
-              { label: "Status", value: (data.entity?.rootSpanStatus || data.entity?.status || "ok").toUpperCase(), mono: true },
+              { label: "Total Spans in Tree", value: flatList.length },
+              { label: "Origin Service", value: data.entity?.service || "—", copyable: true },
+              { label: "Release Version", value: data.entity?.release || "—", copyable: true },
+              { label: "Root Execution Status", value: (data.entity?.rootSpanStatus || data.entity?.status || "ok").toUpperCase(), mono: true },
             ]}
           />
         </SectionShell>
@@ -141,6 +153,12 @@ export function TraceDetailView({ traceId }: { traceId: string }) {
             flatList={flatList}
             totalTraceDurationMs={totalDurationMs}
             bottleneck={bottleneckNode}
+            executionBreakdown={executionBreakdown}
+            executionGaps={executionGaps}
+            traceId={data.entity?.traceId || id}
+            tracePublicId={data.publicId || data.entity?.publicId}
+            environment={data.entity?.environment}
+            hasMissingParents={hasMissingParents}
           />
         </div>
 

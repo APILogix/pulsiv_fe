@@ -126,7 +126,7 @@ export default function MemberAlertPreferencesPage() {
 
       {error && <Notice tone="red">{apiErrorMessage(error)}</Notice>}
 
-      {isLoading ? (
+      {isLoading && preferences.length === 0 ? (
         <div className="flex flex-col gap-4">
           {[0, 1].map((row) => (
             <div key={row} className="h-40 animate-pulse rounded-[14px] bg-[var(--bg2)]" />

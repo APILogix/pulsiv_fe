@@ -1,45 +1,48 @@
 import { Link } from "react-router";
 import { GitBranch } from "lucide-react";
-import { SeverityBadge, StatusCodeBadge, Timestamp, Table, Tr, Td } from "@/shared/observe";
+import { EmptyNote, Panel, SeverityBadge, StatusCodeBadge, Timestamp, TRACE_CHIP, MUTED_DASH } from "@/shared/observe";
 import type { RelatedErrorEvent } from "../types/error-group";
 
-interface RelatedEventsTableProps {
-  events: RelatedErrorEvent[];
-}
+const GRID = "grid grid-cols-[96px_84px_minmax(0,1fr)_160px_60px_112px] items-center gap-4";
 
-export function RelatedEventsTable({ events }: RelatedEventsTableProps) {
+export function RelatedEventsTable({ events }: { events: RelatedErrorEvent[] }) {
   return (
-    <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] p-5 space-y-4">
-      <div className="border-b border-[var(--border)] pb-3">
-        <h3 className="text-[14px] font-semibold text-[var(--text)]">Related Error Events</h3>
-        <p className="text-[12px] text-[var(--text3)]">Individual occurrences in this group</p>
-      </div>
-
-      <Table headers={["Occurred At", "Message", "Severity", "Handled", "Route", "Status", "Trace"]}>
-        {events.map((evt) => (
-          <Tr key={evt.id}>
-            <Td><Timestamp value={evt.occurredAt} /></Td>
-            <Td className="font-[family-name:var(--mono)] text-[12px]">{evt.message}</Td>
-            <Td><SeverityBadge severity={evt.severity} /></Td>
-            <Td>{evt.handled ? "Yes" : "No"}</Td>
-            <Td className="font-[family-name:var(--mono)] text-[12px]">{evt.route}</Td>
-            <Td><StatusCodeBadge code={evt.statusCode} /></Td>
-            <Td>
-              {(evt.tracePublicId || evt.traceId) ? (
-                <Link
-                  to={`/observability/traces/${evt.tracePublicId ?? evt.traceId}`}
-                  className="inline-flex items-center gap-1 rounded-full bg-[var(--violet-bg)] px-2 py-0.5 font-[family-name:var(--mono)] text-[10px] text-[var(--violet)] hover:underline"
-                >
-                  <GitBranch className="size-3" />
-                  {evt.tracePublicId ?? evt.traceId.slice(0, 6)}
-                </Link>
-              ) : (
-                <span className="font-[family-name:var(--mono)] text-[11px] text-[var(--text3)]">—</span>
-              )}
-            </Td>
-          </Tr>
-        ))}
-      </Table>
-    </div>
+    <Panel title="Events" description={events.length ? `The latest ${events.length} occurrences in this group` : undefined} flush>
+      {events.length === 0 ? (
+        <div className="p-5"><EmptyNote>No individual events were returned for this group.</EmptyNote></div>
+      ) : (
+        <div className="overflow-x-auto">
+          <div className="min-w-[760px]">
+            <div className={`${GRID} border-b border-[var(--border)] px-5 py-2.5 text-[12px] font-medium text-[var(--text3)]`}>
+              <span>Time</span><span>Severity</span><span>Message</span><span>Route</span><span>HTTP</span><span>Trace</span>
+            </div>
+            <ul className="sidebar-scroll max-h-[440px] divide-y divide-[var(--border)] overflow-y-auto">
+              {events.map((evt) => {
+                const id = evt.publicId ?? evt.id;
+                const trace = evt.tracePublicId ?? evt.traceId;
+                return (
+                  <li key={evt.id} className={`${GRID} px-5 py-2 text-[12px] transition-colors hover:bg-[var(--bg2)]`}>
+                    <Timestamp value={evt.occurredAt} />
+                    <SeverityBadge severity={evt.severity} />
+                    <Link to={`/observability/errors/${encodeURIComponent(id)}`} className="truncate font-[family-name:var(--mono)] text-[var(--text)] underline-offset-2 hover:underline" title={evt.message}>
+                      {evt.message || "—"}
+                      {evt.handled === false && <span className="ml-2 font-[family-name:var(--sans)] text-[11px] text-[var(--amber)]">unhandled</span>}
+                    </Link>
+                    <span className="truncate font-[family-name:var(--mono)] text-[var(--text2)]" title={evt.route}>{evt.route || "—"}</span>
+                    {evt.statusCode ? <StatusCodeBadge code={evt.statusCode} /> : MUTED_DASH}
+                    {trace ? (
+                      <Link to={`/observability/traces/${encodeURIComponent(trace)}`} className={TRACE_CHIP}>
+                        <GitBranch className="size-3" aria-hidden="true" />
+                        <span className="truncate">{evt.tracePublicId ?? trace.slice(0, 8)}</span>
+                      </Link>
+                    ) : MUTED_DASH}
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        </div>
+      )}
+    </Panel>
   );
 }

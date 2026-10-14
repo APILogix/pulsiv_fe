@@ -1,10 +1,12 @@
-import { SectionBanner } from '../components/HelpSystem';
+import { useId } from 'react';
+
+import { Panel, Toggle, fieldMonoClass } from '@/shared/ui/pulse';
+import { cn } from '@/lib/utils';
+
+import { SectionBanner, FieldTooltip } from '../components/HelpSystem';
 import { NumberField } from '../components/NumberField';
 import type { SdkConfigState } from '../schema';
 import { BOUNDS, type FieldError } from '../bounds';
-import { Switch } from '@/components/ui/switch';
-import { Sliders, Building2 } from 'lucide-react';
-import { cn } from '@/lib/utils';
 
 interface LimitsTabProps {
   limits: SdkConfigState['limits'];
@@ -13,38 +15,47 @@ interface LimitsTabProps {
   errors: FieldError[];
 }
 
+/** Fixed ceiling used when switching away from automatic sizing. */
+const DEFAULT_MEMORY_MB = 256;
+
+const ERROR_INPUT = 'border-[var(--red)]/60 hover:border-[var(--red)] focus:border-[var(--red)] focus:ring-[var(--red-bg)]';
+
 export function LimitsTab({ limits, onChange, onChangeTenant, errors }: LimitsTabProps) {
   const errorFor = (path: string) => errors.find((e) => e.path === path)?.message;
   const isAutoMemory = limits.maxMemoryMb === 'auto';
+  const memoryBound = BOUNDS['limits.maxMemoryMb'];
+  const memoryError = errorFor('limits.maxMemoryMb');
+  const memoryId = useId();
+  const autoId = useId();
+  const tenantEnabled = limits.tenantGovernance.enabled;
 
   return (
-    <div className="flex flex-col gap-6 animate-in fade-in duration-300">
-      <SectionBanner title="Resource Limits & Governance Caps" type="warning">
-        Hard boundaries preventing memory exhaustion or ingestion overflow. Values outside documented client limits will be rejected during server compilation.
+    <div className="flex flex-col gap-6">
+      <SectionBanner
+        title="Limits"
+        definition="Hard boundaries that prevent memory exhaustion and buffer overflows. The backend rejects values outside the allowed ranges."
+      >
+        Caps for in-memory queues, payload sizes, and per-tenant quotas.
       </SectionBanner>
 
-      <div className="rounded-[16px] border border-[var(--border)] bg-[var(--bg1)] shadow-md p-5 flex flex-col gap-4">
-        <h3 className="font-bold text-[14px] text-[var(--text)] flex items-center gap-2 border-b border-[var(--border)] pb-3">
-          <Sliders className="size-4 text-[var(--brand)]" /> Telemetry Resource Caps
-        </h3>
-
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <Panel title="In-memory caps" description="Safety buffers the SDK enforces inside each process.">
+        <div className="grid gap-x-5 gap-y-5 sm:grid-cols-2 lg:grid-cols-3">
           <NumberField
-            label="Max Spans / Trace"
+            label="Max spans per trace"
             value={limits.maxSpansPerTrace}
             onChange={(v) => onChange('maxSpansPerTrace', v)}
             bound={BOUNDS['limits.maxSpansPerTrace']}
             error={errorFor('limits.maxSpansPerTrace')}
           />
           <NumberField
-            label="Max Span Attributes"
+            label="Max span attributes"
             value={limits.maxSpanAttributes}
             onChange={(v) => onChange('maxSpanAttributes', v)}
             bound={BOUNDS['limits.maxSpanAttributes']}
             error={errorFor('limits.maxSpanAttributes')}
           />
           <NumberField
-            label="Max Attribute Length"
+            label="Max attribute length"
             value={limits.maxAttributeLength}
             onChange={(v) => onChange('maxAttributeLength', v)}
             bound={BOUNDS['limits.maxAttributeLength']}
@@ -52,7 +63,7 @@ export function LimitsTab({ limits, onChange, onChangeTenant, errors }: LimitsTa
             error={errorFor('limits.maxAttributeLength')}
           />
           <NumberField
-            label="Max Payload Size"
+            label="Max payload size"
             value={limits.maxPayloadSize}
             onChange={(v) => onChange('maxPayloadSize', v)}
             bound={BOUNDS['limits.maxPayloadSize']}
@@ -60,72 +71,112 @@ export function LimitsTab({ limits, onChange, onChangeTenant, errors }: LimitsTa
             error={errorFor('limits.maxPayloadSize')}
           />
           <NumberField
-            label="Max Memory Queue Size"
+            label="Max in-memory queue"
             value={limits.maxQueueSize}
             onChange={(v) => onChange('maxQueueSize', v)}
             bound={BOUNDS['limits.maxQueueSize']}
+            suffix="items"
             error={errorFor('limits.maxQueueSize')}
           />
 
-          <div className="flex flex-col gap-1.5">
-            <label className="text-[12px] font-bold text-[var(--text3)] uppercase tracking-wider">Memory Ceiling</label>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => onChange('maxMemoryMb', isAutoMemory ? 256 : 'auto')}
-                className={cn(
-                  'h-[34px] rounded-lg border px-3 text-[12px] font-bold transition-all',
-                  isAutoMemory
-                    ? 'border-[var(--brand)] bg-[var(--brand)]/15 text-[var(--brand)]'
-                    : 'border-[var(--border)] bg-[var(--bg2)] text-[var(--text3)] hover:text-[var(--text)]'
-                )}
-              >
-                Auto
-              </button>
+          {/* Same geometry as a NumberField; the hint row carries the auto switch. */}
+          <div className="flex min-w-0 flex-col gap-1.5">
+            <div className="flex min-w-0 items-center gap-1.5">
+              <label htmlFor={memoryId} className="min-w-0 text-[13px] font-medium text-[var(--text2)]">
+                Process memory ceiling
+                <span className="sr-only"> (MB)</span>
+              </label>
+              <FieldTooltip
+                label="Process memory ceiling"
+                definition="Maximum heap memory the SDK telemetry buffers may use before dropping non-critical events."
+                recommendation={`Allowed: ${memoryBound.min}–${memoryBound.max} MB, or automatic sizing.`}
+              />
+            </div>
+            <div className="relative">
               <input
+                id={memoryId}
                 type="number"
                 disabled={isAutoMemory}
                 value={isAutoMemory ? '' : limits.maxMemoryMb}
-                placeholder={isAutoMemory ? 'auto' : undefined}
+                placeholder={isAutoMemory ? 'Auto' : undefined}
                 onChange={(e) => onChange('maxMemoryMb', Number(e.target.value))}
-                min={BOUNDS['limits.maxMemoryMb'].min}
-                max={BOUNDS['limits.maxMemoryMb'].max}
-                className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg2)] px-3 py-1.5 font-mono text-[13px] text-[var(--text)] outline-none focus:border-[var(--brand)] disabled:opacity-40"
+                min={memoryBound.min}
+                max={memoryBound.max}
+                step={1}
+                aria-invalid={memoryError ? true : undefined}
+                aria-describedby={memoryError ? `${memoryId}-error` : undefined}
+                className={cn(fieldMonoClass, 'pr-12 tabular-nums', memoryError && ERROR_INPUT)}
               />
-              <span className="text-[12px] font-mono text-[var(--text3)]">MB</span>
+              <span
+                aria-hidden="true"
+                className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 font-[family-name:var(--mono)] text-[12px] text-[var(--text3)]"
+              >
+                MB
+              </span>
             </div>
-            {errorFor('limits.maxMemoryMb') && (
-              <p className="text-[11px] text-red-400 font-semibold">{errorFor('limits.maxMemoryMb')}</p>
+            <div className="flex min-h-[18px] items-center gap-2">
+              <Toggle
+                id={autoId}
+                checked={isAutoMemory}
+                onChange={(next) => onChange('maxMemoryMb', next ? 'auto' : DEFAULT_MEMORY_MB)}
+                label="Auto memory ceiling"
+              />
+              <label htmlFor={autoId} className="cursor-pointer text-[12px] text-[var(--text2)]">
+                Auto
+              </label>
+              {!isAutoMemory && (
+                <span className="ml-auto font-[family-name:var(--mono)] text-[12px] tabular-nums text-[var(--text3)]">
+                  {memoryBound.min.toLocaleString()}–{memoryBound.max.toLocaleString()}
+                </span>
+              )}
+            </div>
+            {memoryError && (
+              <p id={`${memoryId}-error`} role="alert" className="text-[12px] leading-[1.5] text-[var(--red)]">
+                {memoryError}
+              </p>
             )}
           </div>
         </div>
-      </div>
+      </Panel>
 
-      <div className="rounded-[16px] border border-[var(--border)] bg-[var(--bg1)] shadow-md p-5 flex flex-col gap-4">
-        <div className="flex items-center justify-between border-b border-[var(--border)] pb-3">
-          <h3 className="font-bold text-[14px] text-[var(--text)] flex items-center gap-2">
-            <Building2 className="size-4 text-sky-400" /> Multi-Tenant Fairness Governance
-          </h3>
-          <Switch checked={limits.tenantGovernance.enabled} onCheckedChange={(val) => onChangeTenant('enabled', val)} />
-        </div>
-
-        <div className={cn('grid gap-4 sm:grid-cols-2 lg:grid-cols-4 transition-opacity', !limits.tenantGovernance.enabled && 'opacity-50 pointer-events-none')}>
+      <Panel
+        title="Tenant fairness"
+        description={
+          tenantEnabled
+            ? 'Per-tenant quotas so one noisy tenant cannot use up the shared buffers.'
+            : 'Off. Turn it on to enforce per-tenant quotas so one noisy tenant cannot use up the shared buffers.'
+        }
+        actions={
+          <Toggle
+            checked={tenantEnabled}
+            onChange={(next) => onChangeTenant('enabled', next)}
+            label="Enforce tenant quotas"
+          />
+        }
+      >
+        {/* A disabled fieldset disables every input inside it, including for keyboard users. */}
+        <fieldset
+          disabled={!tenantEnabled}
+          className="m-0 grid min-w-0 gap-x-5 gap-y-5 border-0 p-0 transition-opacity duration-150 disabled:opacity-60 sm:grid-cols-2 lg:grid-cols-4"
+        >
+          <legend className="sr-only">Tenant quota limits</legend>
           <NumberField
-            label="Max Tenants Tracked"
+            label="Max tenants tracked"
             value={limits.tenantGovernance.maxTenantsTracked}
             onChange={(v) => onChangeTenant('maxTenantsTracked', v)}
             bound={BOUNDS['tenant.maxTenantsTracked']}
             error={errorFor('limits.tenantGovernance.maxTenantsTracked')}
           />
           <NumberField
-            label="Quota / Window"
+            label="Quota per window"
             value={limits.tenantGovernance.quotaPerWindow}
             onChange={(v) => onChangeTenant('quotaPerWindow', v)}
             bound={BOUNDS['tenant.quotaPerWindow']}
+            suffix="events"
             error={errorFor('limits.tenantGovernance.quotaPerWindow')}
           />
           <NumberField
-            label="Window Duration"
+            label="Window duration"
             value={limits.tenantGovernance.windowDurationMs}
             onChange={(v) => onChangeTenant('windowDurationMs', v)}
             bound={BOUNDS['tenant.windowDurationMs']}
@@ -133,14 +184,15 @@ export function LimitsTab({ limits, onChange, onChangeTenant, errors }: LimitsTa
             error={errorFor('limits.tenantGovernance.windowDurationMs')}
           />
           <NumberField
-            label="Critical Reserve"
+            label="Critical reserve"
             value={limits.tenantGovernance.criticalReserve}
             onChange={(v) => onChangeTenant('criticalReserve', v)}
             bound={BOUNDS['tenant.criticalReserve']}
+            suffix="events"
             error={errorFor('limits.tenantGovernance.criticalReserve')}
           />
-        </div>
-      </div>
+        </fieldset>
+      </Panel>
     </div>
   );
 }

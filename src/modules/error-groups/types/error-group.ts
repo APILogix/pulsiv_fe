@@ -172,5 +172,6 @@ export interface ErrorGroupFilterState {
   range?: string;
   from?: string;
   to?: string;
+  cursor?: string;
 }
 

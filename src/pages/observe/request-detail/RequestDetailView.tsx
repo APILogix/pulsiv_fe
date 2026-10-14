@@ -1,12 +1,7 @@
 import { useCallback, useState } from "react";
-import { useNavigate } from "react-router";
-import { DetailSkeleton, Button } from "@/shared/observe";
-import { ArrowLeft } from "lucide-react";
+import { DetailNotFound, DetailPage, DetailSkeleton, MethodBadge, StatusCodeBadge, formatLatency } from "@/shared/observe";
 import { useOrgStore } from "@/modules/organizations/store/org.store";
-import {
-  askObservabilityEvent,
-  useObservabilityDetail,
-} from "../hooks/useObservabilityApi";
+import { askObservabilityEvent, useObservabilityDetail } from "../hooks/useObservabilityApi";
 import { StickyRequestHeader } from "./StickyRequestHeader";
 import { SummaryCards } from "./SummaryCards";
 import { SectionNavigation } from "./SectionNavigation";
@@ -20,13 +15,10 @@ import {
   RelatedSection,
   TagsSection,
 } from "./sections";
-import { DeveloperToolsSection } from "./DeveloperToolsSection";
 import { useSectionNavigation } from "./useSectionNavigation";
-import { toCopyableJson } from "./helpers";
 import type { RequestDetailResponse } from "./types";
 
 export function RequestDetailView({ requestId }: { requestId: string }) {
-  const navigate = useNavigate();
   const activeOrgId = useOrgStore((state) => state.activeOrgId);
   const id = decodeURIComponent(requestId);
   const { data, isLoading, error } = useObservabilityDetail<RequestDetailResponse>("requests", id);
@@ -42,46 +34,45 @@ export function RequestDetailView({ requestId }: { requestId: string }) {
       setAiOverride(result);
       scrollTo("ai");
     } catch {
-      // Keep existing AI panel; surface failure via unchanged state + user can retry.
+      // Keep the existing AI panel; the section shows its own retry.
     } finally {
       setAnalyzing(false);
     }
   }, [activeOrgId, data, scrollTo]);
 
-  if (isLoading) return <RequestDetailSkeleton />;
-
-  if (error || !data?.header) {
+  if (isLoading) {
     return (
-      <div className="flex flex-col gap-4">
-        <Button variant="ghost" className="w-fit" onClick={() => navigate("/observability/requests")}>
-          <ArrowLeft className="size-4" />
-          Back to requests
-        </Button>
-        <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] px-6 py-12 text-center">
-          <h1 className="text-[16px] font-semibold text-[var(--text)]">Request not found</h1>
-          <p className="mt-2 text-[13px] text-[var(--text3)]">
-            Use a request public ID (REQ-…). UUID navigation is no longer supported for request detail.
-          </p>
-        </div>
-      </div>
+      <DetailPage>
+        <DetailSkeleton />
+      </DetailPage>
     );
   }
 
+  if (error || !data?.header) {
+    return <DetailNotFound kind="Request" id={id} backTo="/observability/requests" backLabel="Requests" />;
+  }
+
   const aiResponse = aiOverride !== undefined ? aiOverride : data.ai?.aiResponse;
+  const header = data.header;
 
   return (
-    <div className="flex flex-col gap-5 pb-16">
-      <StickyRequestHeader
-        header={data.header}
-        onAnalyze={runAnalyze}
-        onCopyJson={() => navigator.clipboard?.writeText(toCopyableJson(data))}
+    <DetailPage>
+      <StickyRequestHeader header={header} onAnalyze={runAnalyze} />
+      <SummaryCards cards={data.summaryCards} />
+      <SectionNavigation
+        activeId={activeId}
+        onSelect={scrollTo}
+        trailing={
+          <span className="flex items-center gap-2 text-[12px]">
+            <MethodBadge method={header.method} />
+            <span className="max-w-[260px] truncate font-[family-name:var(--mono)] text-[var(--text2)]">{header.endpoint}</span>
+            <StatusCodeBadge code={header.statusCode} />
+            {header.duration != null && <span className="font-[family-name:var(--mono)] tabular-nums text-[var(--text3)]">{formatLatency(header.duration)}</span>}
+          </span>
+        }
       />
 
-      <SummaryCards cards={data.summaryCards} />
-
-      <SectionNavigation activeId={activeId} onSelect={scrollTo} />
-
-      <div className="flex flex-col gap-5">
+      <div className="flex flex-col gap-4">
         <OverviewSection header={data.header} http={data.http} />
         <HttpSection http={data.http} />
         <PerformanceSection
@@ -94,16 +85,7 @@ export function RequestDetailView({ requestId }: { requestId: string }) {
         <AISection aiResponse={aiResponse} analyzing={analyzing} onAnalyze={runAnalyze} />
         <RelatedSection related={data.related} />
         <TagsSection tags={data.tags ?? []} />
-        <DeveloperToolsSection publicId={data.header.publicId} />
       </div>
-    </div>
-  );
-}
-
-function RequestDetailSkeleton() {
-  return (
-    <div className="flex flex-col gap-5">
-      <DetailSkeleton />
-    </div>
+    </DetailPage>
   );
 }

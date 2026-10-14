@@ -2,6 +2,7 @@ import { useMutation } from '@tanstack/react-query';
 import { authApi } from '../api/auth.api';
 import { useNavigate, useSearchParams } from 'react-router';
 import { toast } from 'sonner';
+import { apiErrorMessage } from "@/infrastructure/api-client/api-error";
 
 export function useVerifyEmail() {
   const navigate = useNavigate();
@@ -14,7 +15,7 @@ export function useVerifyEmail() {
       toast.success('Email successfully verified!');
     },
     onError: (error: any) => {
-      const message = error.response?.data?.error?.message || 'Failed to verify email';
+      const message = apiErrorMessage(error) || 'Failed to verify email';
       toast.error(message);
       navigate('/auth/login');
     }

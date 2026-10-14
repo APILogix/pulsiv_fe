@@ -8,6 +8,7 @@ export function GlobalSearch() {
   return (
     <Button
       variant="outline"
+      aria-label="Search across Sentinel (⌘K)"
       className="relative h-8 w-8 md:w-full md:max-w-[480px] md:justify-start rounded-[8px] bg-transparent text-sm text-muted-foreground border-border hover:bg-accent hover:text-foreground focus-visible:ring-0 focus-visible:ring-offset-0 px-0 md:px-3"
       onClick={() => setOpen(true)}
     >

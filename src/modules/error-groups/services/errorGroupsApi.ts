@@ -169,8 +169,24 @@ function listPayload(response: any): any[] {
   return items;
 }
 
-export async function fetchErrorGroupsApi(orgId: string | null, filters: ErrorGroupFilterState): Promise<ErrorGroup[]> {
-  if (!orgId) return [];
+export interface FetchErrorGroupsResult {
+  items: ErrorGroup[];
+  pagination: {
+    nextCursor?: string | null;
+    previousCursor?: string | null;
+    hasNext?: boolean;
+    hasPrevious?: boolean;
+    limit?: number;
+  };
+  summary?: Record<string, unknown>;
+}
+
+export async function fetchErrorGroupsApi(
+  orgId: string | null,
+  filters: ErrorGroupFilterState,
+  signal?: AbortSignal,
+): Promise<FetchErrorGroupsResult> {
+  if (!orgId) return { items: [], pagination: {} };
   const cleanParams: Record<string, string> = {};
   if (filters.status) cleanParams.status = filters.status.toUpperCase();
   if (filters.severity) cleanParams.severity = filters.severity;
@@ -184,13 +200,28 @@ export async function fetchErrorGroupsApi(orgId: string | null, filters: ErrorGr
   if (filters.range) cleanParams.range = filters.range;
   if (filters.from) cleanParams.from = filters.from;
   if (filters.to) cleanParams.to = filters.to;
-  const response = await apiClient.get(`/organizations/${orgId}/observability/error-groups`, { params: cleanParams });
-  return listPayload(response).map(normalizeErrorGroup);
+  if (filters.cursor) cleanParams.cursor = filters.cursor;
+  const response = await apiClient.get(`/organizations/${orgId}/observability/error-groups`, { params: cleanParams, signal });
+  const envelope = response.data?.data ?? response.data ?? {};
+  const pagination = envelope.pagination || response.data?.pagination || {};
+  const summary = envelope.summary || response.data?.summary || {};
+  return {
+    items: listPayload(response).map(normalizeErrorGroup),
+    pagination,
+    summary,
+  };
 }
 
-export async function fetchErrorGroupDetailApi(orgId: string | null, groupId: string): Promise<ErrorGroupDetail | null> {
+export async function fetchErrorGroupDetailApi(
+  orgId: string | null,
+  groupId: string,
+  signal?: AbortSignal,
+): Promise<ErrorGroupDetail | null> {
   if (!orgId || !groupId) return null;
-  const response = await apiClient.get(`/organizations/${orgId}/observability/error-groups/${groupId}`);
+  const response = await apiClient.get(
+    `/organizations/${orgId}/observability/error-groups/${encodeURIComponent(groupId)}`,
+    { signal },
+  );
   const data = response.data?.data ?? response.data;
   if (!data || typeof data !== "object" || !data.id) return null;
   return normalizeErrorGroup(data) as ErrorGroupDetail;
@@ -198,13 +229,13 @@ export async function fetchErrorGroupDetailApi(orgId: string | null, groupId: st
 
 export async function fetchErrorGroupHistoryApi(orgId: string | null, groupId: string): Promise<ErrorGroupHistoryItem[]> {
   if (!orgId || !groupId) return [];
-  const response = await apiClient.get(`/organizations/${orgId}/observability/error-groups/${groupId}/history`);
+  const response = await apiClient.get(`/organizations/${orgId}/observability/error-groups/${encodeURIComponent(groupId)}/history`);
   return listPayload(response).map(normalizeHistoryItem);
 }
 
 export async function fetchRelatedErrorEventsApi(orgId: string | null, groupId: string): Promise<RelatedErrorEvent[]> {
   if (!orgId || !groupId) return [];
-  const response = await apiClient.get(`/organizations/${orgId}/observability/error-groups/${groupId}/events`);
+  const response = await apiClient.get(`/organizations/${orgId}/observability/error-groups/${encodeURIComponent(groupId)}/events`);
   const items = listPayload(response);
   return items as RelatedErrorEvent[];
 }
@@ -217,7 +248,7 @@ export async function updateErrorGroupStatusApi(
   expectedVersion?: number,
 ): Promise<boolean> {
   if (!orgId || !groupId) throw new Error("Organization and group are required");
-  await apiClient.patch(`/organizations/${orgId}/observability/error-groups/${groupId}/status`, {
+  await apiClient.patch(`/organizations/${orgId}/observability/error-groups/${encodeURIComponent(groupId)}/status`, {
     status,
     reason,
     comment: reason,
@@ -234,7 +265,7 @@ export async function mergeErrorGroupsApi(
   expectedVersion?: number,
 ): Promise<boolean> {
   if (!orgId || !sourceGroupId || !targetGroupId) throw new Error("Organization and groups are required");
-  await apiClient.post(`/organizations/${orgId}/observability/error-groups/${sourceGroupId}/merge`, {
+  await apiClient.post(`/organizations/${orgId}/observability/error-groups/${encodeURIComponent(sourceGroupId)}/merge`, {
     targetGroupId,
     reason,
     ...(expectedVersion !== undefined ? { expectedVersion } : {}),
@@ -249,7 +280,7 @@ export async function unmergeErrorGroupApi(
   expectedVersion?: number,
 ): Promise<boolean> {
   if (!orgId || !groupId) throw new Error("Organization and group are required");
-  await apiClient.post(`/organizations/${orgId}/observability/error-groups/${groupId}/unmerge`, {
+  await apiClient.post(`/organizations/${orgId}/observability/error-groups/${encodeURIComponent(groupId)}/unmerge`, {
     reason,
     ...(expectedVersion !== undefined ? { expectedVersion } : {}),
   });

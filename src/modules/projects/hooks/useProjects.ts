@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { projectsApi } from "../api/projects.api";
 import type {
   CreateProjectBody,
@@ -18,7 +18,8 @@ export function useProjects(query: ListProjectsQuery = {}) {
     queryKey: projectKeys.list(activeOrgId, query),
     queryFn: () => projectsApi.list(activeOrgId!, query),
     enabled: !!activeOrgId,
-    staleTime: 30_000,
+    staleTime: 5 * 60 * 1000,
+    placeholderData: keepPreviousData,
   });
 }
 
@@ -28,7 +29,7 @@ export function useProject(projectId: string) {
     queryKey: projectKeys.detail(activeOrgId, projectId),
     queryFn: () => projectsApi.get(activeOrgId!, projectId),
     enabled: !!activeOrgId && !!projectId,
-    staleTime: 30_000,
+    staleTime: 5 * 60 * 1000,
   });
 }
 
@@ -38,7 +39,7 @@ export function useProjectByPublicId(publicId: string) {
     queryKey: [...projectKeys.all, "by-public-id", activeOrgId, publicId] as const,
     queryFn: () => projectsApi.getByPublicId(activeOrgId!, publicId),
     enabled: !!activeOrgId && !!publicId && publicId.startsWith("prj_"),
-    staleTime: 30_000,
+    staleTime: 5 * 60 * 1000,
   });
 }
 
@@ -48,7 +49,7 @@ export function useProjectOverview(projectId: string) {
     queryKey: projectKeys.overview(activeOrgId, projectId),
     queryFn: () => projectsApi.getOverview(activeOrgId!, projectId),
     enabled: !!activeOrgId && !!projectId,
-    staleTime: 30_000,
+    staleTime: 5 * 60 * 1000,
   });
 }
 
@@ -58,6 +59,7 @@ export function useProjectStats(projectId: string) {
     queryKey: projectKeys.stats(activeOrgId, projectId),
     queryFn: () => projectsApi.getStats(activeOrgId!, projectId),
     enabled: !!activeOrgId && !!projectId,
+    staleTime: 5 * 60 * 1000,
   });
 }
 
@@ -67,6 +69,7 @@ export function useProjectUsageCounters(projectId: string) {
     queryKey: projectKeys.usageCounters(activeOrgId, projectId),
     queryFn: () => projectsApi.getUsageCounters(activeOrgId!, projectId),
     enabled: !!activeOrgId && !!projectId,
+    staleTime: 5 * 60 * 1000,
   });
 }
 
@@ -76,6 +79,7 @@ export function useProjectSettings(projectId: string) {
     queryKey: projectKeys.settings(activeOrgId, projectId),
     queryFn: () => projectsApi.getSettings(activeOrgId!, projectId),
     enabled: !!activeOrgId && !!projectId,
+    staleTime: 5 * 60 * 1000,
   });
 }
 

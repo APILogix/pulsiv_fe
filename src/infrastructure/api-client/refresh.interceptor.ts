@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 import { useAuthStore } from '@/modules/auth/store/auth.store';
 import { tokenService } from '@/modules/auth/services/token.service';
 import { useBootstrapStore } from '@/modules/bootstrap';
+import { queryClient } from '@/lib/query-client';
 
 /**
  * 401 → refresh → retry interceptor.
@@ -22,7 +23,7 @@ const LOGIN_ENDPOINTS = ['/auth/login', '/auth/login/mfa', '/auth/login/backup-c
 let isRefreshing = false;
 let signedOutToastShown = false;
 let queuedRequests: Array<{
-  resolve: (config: InternalAxiosRequestConfig) => void;
+  resolve: (value: any) => void;
   reject: (error: unknown) => void;
   config: InternalAxiosRequestConfig;
 }> = [];
@@ -35,7 +36,7 @@ function isRefreshableRequest(config: InternalAxiosRequestConfig | undefined): b
   return true;
 }
 
-function flushQueue(error: unknown | null): void {
+function flushQueue(error: unknown | null, client?: AxiosInstance): void {
   queuedRequests.forEach(({ resolve, reject, config }) => {
     if (error) {
       reject(error);
@@ -44,7 +45,11 @@ function flushQueue(error: unknown | null): void {
       if (token && config.headers) {
         config.headers.Authorization = `Bearer ${token}`;
       }
-      resolve(config);
+      if (client) {
+        resolve(client(config));
+      } else {
+        resolve(config);
+      }
     }
   });
   queuedRequests = [];
@@ -54,6 +59,8 @@ function handleRefreshSessionExpired(): void {
   tokenService.clearTokens();
   useAuthStore.getState().clearAuth();
   useBootstrapStore.getState().clearBootstrap();
+  // Drop every cached response: the next session may be a different user.
+  queryClient.clear();
 
   if (!signedOutToastShown) {
     signedOutToastShown = true;
@@ -81,7 +88,7 @@ export function attachRefreshInterceptor(client: AxiosInstance): void {
 
       if (error.response?.status === 401 && originalUrl.includes(REFRESH_ENDPOINT)) {
         isRefreshing = false;
-        flushQueue(error);
+        flushQueue(error, client);
         handleRefreshSessionExpired();
         return Promise.reject(error);
       }
@@ -116,7 +123,7 @@ export function attachRefreshInterceptor(client: AxiosInstance): void {
           tokenService.setCurrentOrgId(data.current_org_id);
         }
         isRefreshing = false;
-        flushQueue(null);
+        flushQueue(null, client);
 
         const token = tokenService.getAccessToken();
         if (token && originalRequest.headers) {
@@ -125,7 +132,7 @@ export function attachRefreshInterceptor(client: AxiosInstance): void {
         return client(originalRequest);
       } catch (refreshError) {
         isRefreshing = false;
-        flushQueue(refreshError);
+        flushQueue(refreshError, client);
         handleRefreshSessionExpired();
         return Promise.reject(refreshError);
       }

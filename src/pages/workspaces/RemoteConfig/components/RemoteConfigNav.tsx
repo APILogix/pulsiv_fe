@@ -1,21 +1,22 @@
-import { useState, type ElementType } from "react";
+import { useMemo, useState, type ElementType } from "react";
 import {
-  SlidersHorizontal,
-  Search,
-  Zap,
   Activity,
+  FileSpreadsheet,
+  FlaskConical,
   Gauge,
+  History,
+  Layers,
   Lock,
   Radio,
-  Sliders,
   ShieldAlert,
-  History,
-  FlaskConical,
-  Layers,
-  FileSpreadsheet,
+  Sliders,
+  SlidersHorizontal,
   Share2,
-  ChevronRight,
+  Zap,
 } from "lucide-react";
+
+import { PROJECT_FILL_HEIGHT, SearchField } from "@/modules/projects/components/project-page";
+import { fieldInputClass } from "@/shared/ui/pulse";
 import { cn } from "@/lib/utils";
 
 export interface NavSectionItem {
@@ -23,28 +24,32 @@ export interface NavSectionItem {
   label: string;
   group: "settings" | "operations" | "control";
   icon: ElementType;
-  changedCount?: number;
-  errorCount?: number;
-  danger?: boolean;
-  badge?: string;
+  /** Sections that show sample data rather than this project's config. */
+  preview?: boolean;
 }
 
 const ALL_SECTIONS: NavSectionItem[] = [
   { id: "features", label: "Features", group: "settings", icon: Zap },
-  { id: "transport", label: "Transport & Routes", group: "settings", icon: Activity },
-  { id: "sampling", label: "Sampling Rates", group: "settings", icon: Gauge },
+  { id: "transport", label: "Transport & routes", group: "settings", icon: Activity },
+  { id: "sampling", label: "Sampling rates", group: "settings", icon: Gauge },
   { id: "privacy", label: "Privacy & PII", group: "settings", icon: Lock },
   { id: "instrumentation", label: "Instrumentation", group: "settings", icon: Radio },
-  { id: "limits", label: "Limits & Governance", group: "settings", icon: Sliders },
-  { id: "killswitches", label: "Killswitches", group: "settings", icon: ShieldAlert, danger: true },
+  { id: "limits", label: "Limits & governance", group: "settings", icon: Sliders },
+  { id: "killswitches", label: "Emergency killswitches", group: "settings", icon: ShieldAlert },
 
-  { id: "inheritance", label: "Inheritance Stack", group: "operations", icon: Layers, badge: "Stack" },
-  { id: "rollout", label: "Rollout Strategy", group: "operations", icon: SlidersHorizontal, badge: "Canary" },
-  { id: "telemetry", label: "SDK Telemetry", group: "operations", icon: Share2, badge: "Live" },
+  { id: "inheritance", label: "Inheritance", group: "operations", icon: Layers, preview: true },
+  { id: "rollout", label: "Rollout strategy", group: "operations", icon: SlidersHorizontal, preview: true },
+  { id: "telemetry", label: "SDK telemetry", group: "operations", icon: Share2, preview: true },
 
-  { id: "history", label: "Revision History", group: "control", icon: History },
-  { id: "resolve", label: "Payload Simulator", group: "control", icon: FlaskConical },
-  { id: "audit", label: "Audit Logs", group: "control", icon: FileSpreadsheet },
+  { id: "history", label: "Revision history", group: "control", icon: History },
+  { id: "resolve", label: "Payload simulator", group: "control", icon: FlaskConical },
+  { id: "audit", label: "Audit trail", group: "control", icon: FileSpreadsheet, preview: true },
+];
+
+const GROUPS: Array<{ id: NavSectionItem["group"]; title: string }> = [
+  { id: "settings", title: "Configuration" },
+  { id: "operations", title: "Operations and overrides" },
+  { id: "control", title: "Revisions and tools" },
 ];
 
 interface RemoteConfigNavProps {
@@ -54,6 +59,18 @@ interface RemoteConfigNavProps {
   errorCounts: Record<string, number>;
 }
 
+function optionSuffix(changed: number, errors: number, preview?: boolean) {
+  if (errors > 0) return ` · ${errors} ${errors === 1 ? "error" : "errors"}`;
+  if (changed > 0) return ` · ${changed} changed`;
+  if (preview) return " · preview";
+  return "";
+}
+
+/**
+ * Section navigation for the editor. A labelled select below lg; a sticky,
+ * searchable list beside the content from lg up. Unpublished changes show as
+ * an amber count, validation errors as a red count.
+ */
 export function RemoteConfigNav({
   activeSection,
   onSelectSection,
@@ -62,117 +79,110 @@ export function RemoteConfigNav({
 }: RemoteConfigNavProps) {
   const [search, setSearch] = useState("");
 
-  const filteredSections = ALL_SECTIONS.filter((section) =>
-    section.label.toLowerCase().includes(search.toLowerCase())
-  );
-
-  const renderGroup = (
-    title: string,
-    items: NavSectionItem[]
-  ) => {
-    if (items.length === 0) return null;
-    return (
-      <div className="flex flex-col gap-1">
-        <div className="px-3 text-[10px] font-bold uppercase tracking-wider text-[var(--text3)] py-1">
-          {title}
-        </div>
-        {items.map((item) => {
-          const isActive = item.id === activeSection;
-          const changed = changedCounts[item.id] || 0;
-          const errors = errorCounts[item.id] || 0;
-          const Icon = item.icon;
-
-          return (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => onSelectSection(item.id)}
-              className={cn(
-                "group relative flex items-center justify-between rounded-[10px] px-3 py-2 text-[13px] font-medium transition-all duration-150 text-left",
-                isActive
-                  ? item.danger
-                    ? "bg-red-500/15 text-red-400 border border-red-500/30 font-semibold shadow-sm"
-                    : "bg-[var(--brand)]/15 text-[var(--brand)] border border-[var(--brand)]/30 font-semibold shadow-sm"
-                  : "text-[var(--text2)] hover:bg-[var(--bg2)] hover:text-[var(--text)]"
-              )}
-            >
-              <div className="flex items-center gap-2.5 min-w-0">
-                <Icon
-                  className={cn(
-                    "size-4 shrink-0 transition-transform group-hover:scale-110",
-                    isActive
-                      ? item.danger
-                        ? "text-red-400"
-                        : "text-[var(--brand)]"
-                      : item.danger
-                      ? "text-red-400/70"
-                      : "text-[var(--text3)] group-hover:text-[var(--text)]"
-                  )}
-                />
-                <span className="truncate">{item.label}</span>
-              </div>
-
-              <div className="flex items-center gap-1.5 shrink-0">
-                {item.badge && (
-                  <span className="rounded-full bg-[var(--bg2)] px-1.5 py-0.2 text-[9px] font-semibold text-[var(--text3)] border border-[var(--border)]">
-                    {item.badge}
-                  </span>
-                )}
-
-                {errors > 0 && (
-                  <span className="flex size-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow-xs">
-                    {errors}
-                  </span>
-                )}
-
-                {changed > 0 && errors === 0 && (
-                  <span className="flex size-4 items-center justify-center rounded-full bg-[var(--brand)] text-[10px] font-bold text-white shadow-xs">
-                    {changed}
-                  </span>
-                )}
-
-                <ChevronRight
-                  className={cn(
-                    "size-3.5 opacity-0 transition-opacity group-hover:opacity-100",
-                    isActive ? "opacity-100 text-[var(--brand)]" : "text-[var(--text3)]"
-                  )}
-                />
-              </div>
-            </button>
-          );
-        })}
-      </div>
-    );
-  };
+  const filteredSections = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    if (!query) return ALL_SECTIONS;
+    return ALL_SECTIONS.filter((section) => section.label.toLowerCase().includes(query));
+  }, [search]);
 
   return (
-    <nav className="flex flex-col gap-3 rounded-[16px] border border-[var(--border)] bg-[var(--bg1)]/80 p-3.5 shadow-md backdrop-blur-md w-full lg:w-[260px] shrink-0">
-      {/* Search Input */}
-      <div className="relative">
-        <Search className="pointer-events-none absolute left-3 top-2.5 size-3.5 text-[var(--text3)]" />
-        <input
-          type="text"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Filter sections..."
-          className="w-full rounded-[10px] border border-[var(--border)] bg-[var(--bg2)]/80 pl-8 pr-3 py-1.5 text-[12px] text-[var(--text)] placeholder-[var(--text3)] outline-none focus:border-[var(--brand)] focus:ring-1 focus:ring-[var(--brand)] transition-all"
-        />
-      </div>
+    <>
+      {/* Below lg: one labelled select. */}
+      <label className="flex flex-col gap-1.5 lg:hidden">
+        <span className="text-[13px] font-medium text-[var(--text2)]">Section</span>
+        <select
+          value={activeSection}
+          onChange={(event) => onSelectSection(event.target.value)}
+          className={fieldInputClass}
+        >
+          {GROUPS.map((group) => (
+            <optgroup key={group.id} label={group.title}>
+              {ALL_SECTIONS.filter((section) => section.group === group.id).map((section) => (
+                <option key={section.id} value={section.id}>
+                  {section.label}
+                  {optionSuffix(changedCounts[section.id] ?? 0, errorCounts[section.id] ?? 0, section.preview)}
+                </option>
+              ))}
+            </optgroup>
+          ))}
+        </select>
+      </label>
 
-      <div className="flex flex-col gap-3 overflow-y-auto max-h-[calc(100vh-280px)] pr-1">
-        {renderGroup(
-          "Config Schema",
-          filteredSections.filter((s) => s.group === "settings")
+      {/* lg and up: sticky list beside the content. */}
+      <nav
+        aria-label="Configuration sections"
+        className="sidebar-scroll hidden flex-col gap-4 overflow-y-auto lg:sticky lg:top-6 lg:flex lg:self-start"
+        style={{ maxHeight: PROJECT_FILL_HEIGHT }}
+      >
+        <SearchField
+          value={search}
+          onChange={setSearch}
+          placeholder="Search sections"
+          label="Filter configuration sections"
+          className="min-w-0 sm:max-w-none"
+        />
+
+        {GROUPS.map(({ id: groupId, title }) => {
+          const items = filteredSections.filter((section) => section.group === groupId);
+          if (items.length === 0) return null;
+
+          return (
+            <div key={groupId} className="flex flex-col gap-px">
+              <p className="px-2.5 pb-1 text-[12px] text-[var(--text3)]">{title}</p>
+
+              {items.map((item) => {
+                const isActive = item.id === activeSection;
+                const changed = changedCounts[item.id] ?? 0;
+                const errors = errorCounts[item.id] ?? 0;
+                const Icon = item.icon;
+
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => onSelectSection(item.id)}
+                    aria-current={isActive ? "page" : undefined}
+                    className={cn(
+                      "group relative flex h-8 w-full items-center gap-2.5 rounded-[var(--radius)] px-2.5 text-left text-[13px] transition-colors duration-150",
+                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border2)]",
+                      isActive
+                        ? "bg-[var(--bg2)] font-medium text-[var(--text)]"
+                        : "text-[var(--text2)] hover:bg-[var(--bg2)]/60 hover:text-[var(--text)]",
+                    )}
+                  >
+                    {isActive && <span className="nav-row-indicator left-0" aria-hidden="true" />}
+                    <Icon
+                      className={cn(
+                        "size-4 shrink-0 stroke-[1.75]",
+                        isActive ? "text-[var(--text)]" : "text-[var(--text3)] group-hover:text-[var(--text2)]",
+                      )}
+                      aria-hidden="true"
+                    />
+                    <span className="min-w-0 flex-1 truncate">{item.label}</span>
+                    {errors > 0 ? (
+                      <span className="font-[family-name:var(--mono)] text-[11px] tabular-nums text-[var(--red)]">
+                        <span aria-hidden="true">{errors}</span>
+                        <span className="sr-only">, {errors} validation {errors === 1 ? "error" : "errors"}</span>
+                      </span>
+                    ) : changed > 0 ? (
+                      <span className="font-[family-name:var(--mono)] text-[11px] tabular-nums text-[var(--amber)]">
+                        <span aria-hidden="true">{changed}</span>
+                        <span className="sr-only">, {changed} unpublished {changed === 1 ? "change" : "changes"}</span>
+                      </span>
+                    ) : item.preview ? (
+                      <span className="text-[11px] text-[var(--text3)]">Preview</span>
+                    ) : null}
+                  </button>
+                );
+              })}
+            </div>
+          );
+        })}
+
+        {filteredSections.length === 0 && (
+          <p className="px-2.5 text-[12px] text-[var(--text3)]">No sections match “{search.trim()}”.</p>
         )}
-        {renderGroup(
-          "Operations & Overrides",
-          filteredSections.filter((s) => s.group === "operations")
-        )}
-        {renderGroup(
-          "Control Plane & Audit",
-          filteredSections.filter((s) => s.group === "control")
-        )}
-      </div>
-    </nav>
+      </nav>
+    </>
   );
 }

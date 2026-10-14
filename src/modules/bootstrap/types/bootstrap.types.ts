@@ -48,8 +48,23 @@ export interface BootstrapUsage {
   aiCredits: BootstrapUsageMetric;
 }
 
+export interface BootstrapOwnedOrganization {
+  id: string;
+  name: string;
+  slug: string;
+  status: string;
+}
+
+/** Mirrors the backend rule: one owned, non-deleted organization per user. */
+export interface BootstrapOrganizationCreation {
+  allowed: boolean;
+  ownedOrganization: BootstrapOwnedOrganization | null;
+}
+
 export interface BootstrapData {
   currentOrganizationId: string | null;
+  /** Absent from older backends and from the synthesized fallback. */
+  organizationCreation?: BootstrapOrganizationCreation;
   organizations: BootstrapOrganization[];
   projects: BootstrapProject[];
   billing: BootstrapBilling | null;

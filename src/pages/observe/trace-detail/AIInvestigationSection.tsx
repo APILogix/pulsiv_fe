@@ -7,12 +7,12 @@ import {
   Search,
   RefreshCw,
   Lightbulb,
-  CheckCircle2,
+  Check,
   Copy,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Button, CopyButton } from "@/shared/observe";
+import { Button } from "@/shared/observe";
 import { SectionShell } from "./ui";
 import { sectionDomId } from "./helpers";
 import type { TraceDetailData } from "./types";
@@ -63,6 +63,7 @@ export function AIInvestigationSection({
 }) {
   const [selectedIntent, setSelectedIntent] = useState<AIIntent>("performance");
   const [customQuestion, setCustomQuestion] = useState("");
+  const [copied, setCopied] = useState(false);
 
   const handleQuickIntent = (intent: AIIntent) => {
     setSelectedIntent(intent);
@@ -74,13 +75,34 @@ export function AIInvestigationSection({
     void onRunAnalysis(selectedIntent, customQuestion || undefined);
   };
 
+  const handleCopyFormatted = () => {
+    if (!aiResult) return;
+    const lines: string[] = [];
+    if (aiResult.summary) lines.push(`Summary: ${aiResult.summary}\n`);
+    if (aiResult.rootCause) lines.push(`Primary Bottleneck: ${aiResult.rootCause}\n`);
+    if (Array.isArray(aiResult.findings) && aiResult.findings.length > 0) {
+      lines.push("Observations:");
+      aiResult.findings.forEach((f: string) => lines.push(`- ${f}`));
+      lines.push("");
+    }
+    if (Array.isArray(aiResult.recommendations) && aiResult.recommendations.length > 0) {
+      lines.push("Recommendations:");
+      aiResult.recommendations.forEach((r: string) => lines.push(`- ${r}`));
+    }
+    const text = lines.join("\n");
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    });
+  };
+
   const facts = detail.aiContext?.facts ?? [];
 
   return (
     <SectionShell
       id={sectionDomId("ai")}
-      title="AI Trace Investigation"
-      description="Automated root-cause, bottleneck detection, and architectural optimization."
+      title="AI analysis"
+      description="Ask where this trace lost time and what to change."
       action={
         aiResult ? (
           <Button
@@ -90,14 +112,14 @@ export function AIInvestigationSection({
             disabled={analyzing}
           >
             <RefreshCw className={cn("size-3.5", analyzing && "animate-spin")} />
-            {analyzing ? "Re-analyzing…" : "Re-run Analysis"}
+            {analyzing ? "Re-analyzing…" : "Run again"}
           </Button>
         ) : undefined
       }
     >
-      <div className="flex flex-col gap-5">
-        {/* Quick action triggers if no result or below */}
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="flex flex-col gap-6">
+        {/* Quick action triggers */}
+        <div className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-4">
           {QUICK_INTENTS.map((item) => {
             const Icon = item.icon;
             const isSelected = selectedIntent === item.id;
@@ -108,16 +130,16 @@ export function AIInvestigationSection({
                 onClick={() => handleQuickIntent(item.id)}
                 disabled={analyzing}
                 className={cn(
-                  "flex flex-col items-start rounded-[var(--radius)] border p-3.5 text-left transition-all",
+                  "flex flex-col items-start rounded-[var(--radius)] border p-4 text-left transition-colors cursor-pointer",
                   isSelected
-                    ? "border-[var(--ai)] bg-[var(--ai-bg)]/40 shadow-xs"
+                    ? "border-[var(--ai)] bg-[var(--ai-bg)]/40  ring-1 ring-[var(--ai)]/30"
                     : "border-[var(--border)] bg-[var(--bg)] hover:border-[var(--ai)]/50 hover:bg-[var(--bg2)]",
                 )}
               >
                 <div className="flex items-center gap-2">
                   <div
                     className={cn(
-                      "flex size-6 items-center justify-center rounded",
+                      "flex size-6 items-center justify-center rounded-[4px]",
                       isSelected ? "bg-[var(--ai)] text-[var(--ai-fg)]" : "bg-[var(--bg2)] text-[var(--text2)]",
                     )}
                   >
@@ -127,7 +149,7 @@ export function AIInvestigationSection({
                     {item.label}
                   </span>
                 </div>
-                <p className="mt-1.5 text-[11.5px] leading-relaxed text-[var(--text3)]">
+                <p className="mt-2 text-[12px] leading-relaxed text-[var(--text3)]">
                   {item.desc}
                 </p>
               </button>
@@ -136,18 +158,18 @@ export function AIInvestigationSection({
         </div>
 
         {/* Custom prompt bar */}
-        <form onSubmit={handleCustomSubmit} className="flex gap-2">
+        <form onSubmit={handleCustomSubmit} className="flex gap-2.5">
           <input
             type="text"
             value={customQuestion}
             onChange={(e) => setCustomQuestion(e.target.value)}
-            placeholder="Ask a specific question about this trace (e.g. 'Why is evaluateRequiredPermissions taking 11ms?')..."
-            className="h-10 min-w-0 flex-1 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg)] px-3.5 text-[13px] text-[var(--text)] placeholder-[var(--text3)] outline-none focus:border-[var(--ai)]"
+            placeholder="Ask a specific question about this trace (e.g. 'Why did database queries take 120ms?')..."
+            className="h-10 min-w-0 flex-1 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg)] px-4 text-[13px] text-[var(--text)] placeholder-[var(--text3)] outline-none focus:border-[var(--ai)] transition-colors"
           />
           <Button
             type="submit"
             variant="primary"
-            className="h-10 gap-1.5 bg-[var(--ai)] text-[var(--ai-fg)] hover:opacity-90"
+            className="h-10 gap-2 bg-[var(--ai)] text-[var(--ai-fg)] hover:opacity-90 px-4"
             disabled={analyzing}
           >
             <Sparkles className={cn("size-4", analyzing && "animate-spin")} />
@@ -157,47 +179,58 @@ export function AIInvestigationSection({
 
         {/* AI Result Card */}
         {aiResult ? (
-          <div className="rounded-[var(--radius-lg)] border border-[var(--ai)]/30 bg-[var(--ai-bg)]/20 p-5">
-            <div className="flex items-start justify-between gap-3 border-b border-[var(--ai)]/20 pb-3">
-              <div className="flex items-center gap-2">
-                <div className="flex size-7 items-center justify-center rounded-full bg-[var(--ai)] text-[var(--ai-fg)]">
-                  <Brain className="size-4" />
+          <div className="rounded-[var(--radius-lg)] border border-[var(--ai)]/30 bg-[var(--ai-bg)]/20 p-6">
+            <div className="flex items-start justify-between gap-4 border-b border-[var(--ai)]/20 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="flex size-9 items-center justify-center rounded-[var(--radius)] bg-[var(--ai)] text-[var(--ai-fg)]">
+                  <Brain className="size-5" />
                 </div>
                 <div>
-                  <h3 className="text-[14px] font-semibold text-[var(--text)]">
-                    Investigation Findings
+                  <h3 className="text-[15px] font-semibold text-[var(--text)]">
+                    Findings
                   </h3>
-                  <div className="text-[11px] text-[var(--text3)]">
-                    Model: {aiResult.model || "pulse-analyzer"} · Source: {aiResult.source || "ai"}
+                  <div className="text-[11.5px] text-[var(--text3)]">
+                    Model: {aiResult.model || "pulse-analyzer"} · Telemetry Analyzed
                   </div>
                 </div>
               </div>
 
-              <CopyButton value={JSON.stringify(aiResult, null, 2)} label="Copy Report" />
+              <button
+                type="button"
+                onClick={handleCopyFormatted}
+                className="inline-flex items-center gap-1.5 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg1)] px-3 py-1.5 text-[12px] font-medium text-[var(--text)] hover:bg-[var(--bg2)] transition-colors cursor-pointer"
+              >
+                {copied ? <Check className="size-3.5 text-[var(--green)]" /> : <Copy className="size-3.5 text-[var(--text3)]" />}
+                {copied ? "Copied" : "Copy report"}
+              </button>
             </div>
 
             {/* Summary */}
             {aiResult.summary && (
-              <div className="mt-4 text-[13.5px] leading-relaxed text-[var(--text)]">
+              <div className="mt-4 text-[14px] leading-relaxed text-[var(--text)]">
                 {aiResult.summary}
               </div>
             )}
 
             {/* Root cause / Bottleneck */}
             {aiResult.rootCause && (
-              <div className="mt-4 rounded-[var(--radius)] border border-[var(--amber)]/30 bg-[var(--amber-bg)]/30 p-3 text-[12.5px] text-[var(--text)]">
-                <strong className="text-[var(--amber)]">Primary Bottleneck / Root Cause:</strong>{" "}
-                {aiResult.rootCause}
+              <div className="mt-4 rounded-[var(--radius)] border border-[var(--amber)]/30 bg-[var(--amber-bg)]/30 p-4 text-[13px] text-[var(--text)]">
+                <div className="text-[12px] font-medium text-[var(--amber)]">
+                  Likely cause
+                </div>
+                <div className="mt-1 font-medium font-[family-name:var(--mono)] leading-relaxed">
+                  {aiResult.rootCause}
+                </div>
               </div>
             )}
 
             {/* Findings list */}
             {Array.isArray(aiResult.findings) && aiResult.findings.length > 0 && (
-              <div className="mt-4">
-                <div className="font-mono text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--text2)]">
-                  Key Observations
+              <div className="mt-5">
+                <div className="text-[12px] font-medium text-[var(--text3)]">
+                  Observations
                 </div>
-                <ul className="mt-2 space-y-1.5 pl-4 text-[12.5px] text-[var(--text2)] list-disc">
+                <ul className="mt-2 space-y-2 pl-5 text-[13px] text-[var(--text2)] list-disc leading-relaxed">
                   {aiResult.findings.map((f: string, i: number) => (
                     <li key={i}>{f}</li>
                   ))}
@@ -207,11 +240,11 @@ export function AIInvestigationSection({
 
             {/* Recommendations */}
             {Array.isArray(aiResult.recommendations) && aiResult.recommendations.length > 0 && (
-              <div className="mt-4 border-t border-[var(--ai)]/20 pt-3.5">
-                <div className="font-mono text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--text2)]">
-                  Recommended Optimizations
+              <div className="mt-5 border-t border-[var(--ai)]/20 pt-4">
+                <div className="text-[12px] font-medium text-[var(--text3)]">
+                  Recommendations
                 </div>
-                <ul className="mt-2 space-y-1.5 pl-4 text-[12.5px] text-[var(--text2)] list-disc">
+                <ul className="mt-2 space-y-2 pl-5 text-[13px] text-[var(--text)] list-disc leading-relaxed">
                   {aiResult.recommendations.map((r: string, i: number) => (
                     <li key={i}>{r}</li>
                   ))}
@@ -222,12 +255,12 @@ export function AIInvestigationSection({
         ) : (
           /* Context facts preview when no AI result has been run yet */
           facts.length > 0 && (
-            <div className="rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg)] p-4">
-              <div className="flex items-center gap-2 font-mono text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--text3)]">
-                <Brain className="size-3.5 text-[var(--text3)]" />
-                Trace Context Facts Assembled
+            <div className="rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg)] p-5">
+              <div className="flex items-center gap-2 text-[12px] font-medium text-[var(--text3)]">
+                <Brain className="size-3.5 text-[var(--ai)]" />
+                Trace Context Facts Assembled ({facts.length})
               </div>
-              <ul className="mt-2 space-y-1 pl-4 text-[12px] text-[var(--text2)] list-disc">
+              <ul className="mt-3 space-y-1.5 pl-5 text-[12.5px] text-[var(--text2)] list-disc">
                 {facts.map((fact: string, idx: number) => (
                   <li key={idx}>{fact}</li>
                 ))}

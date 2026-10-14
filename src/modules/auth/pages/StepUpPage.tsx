@@ -1,82 +1,30 @@
 import { useActionState, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
-import { Info, KeyRound, Mail, ShieldCheck, Smartphone } from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
+import { ShieldAlert } from 'lucide-react';
 import { authApi } from '../api/auth.api';
 import { useAuthStore } from '../store/auth.store';
-import type { MFAChallenge, MFAType } from '../types/auth.types';
+import type { MFAChallenge } from '../types/auth.types';
 import { stepUpWithPasskey, WebAuthnCeremonyError } from '../services/webauthn.client';
 import { getErrorMessage } from '@/infrastructure/api-client/error.interceptor';
 import {
+  AuthButton,
+  AuthCallout,
   AuthField,
+  AuthFooter,
+  AuthHeading,
   AuthLink,
+  AuthPending,
   AuthSubmit,
+  AuthTextButton,
   CodeInput,
-  IconChip,
-  Notice,
-  Panel,
-  Pill,
-  type SurfaceTone,
 } from '@/shared/ui/pulse';
-import { Button, CardSkeleton } from '@/shared/observe';
+import { ActiveMethodFact, methodDescription } from '../components/MfaMethods';
 
-const METHOD_ICON: Record<string, LucideIcon> = {
-  totp: Smartphone,
-  email: Mail,
-  sms: Smartphone,
-  hardware_key: KeyRound,
-  backup_codes: ShieldCheck,
-};
-
-const METHOD_LABEL: Record<string, string> = {
-  totp: 'Authenticator app',
-  email: 'Email code',
-  sms: 'Text message',
-  hardware_key: 'Security key',
-  backup_codes: 'Backup code',
-};
-
-const METHOD_TONE: Record<string, SurfaceTone> = {
-  totp: 'brand',
-  email: 'blue',
-  sms: 'blue',
-  hardware_key: 'ai',
-  backup_codes: 'amber',
-};
-
-const METHOD_DESCRIPTION: Record<string, string> = {
-  totp: 'Enter the 6-digit code from your authenticator app.',
-  email: 'Enter the 6-digit code sent to your email.',
-  sms: 'Enter the 6-digit code sent to your phone.',
-  hardware_key: 'Use your security key or passkey to continue.',
-  backup_codes: 'Enter one of your single-use recovery codes.',
-};
-
-function methodLabel(type: MFAType | undefined) {
-  return type ? METHOD_LABEL[type] ?? 'Verification' : 'Verification';
-}
-
-function methodTone(type: MFAType | undefined): SurfaceTone {
-  return type ? METHOD_TONE[type] ?? 'brand' : 'brand';
-}
-
-// One-off: the active factor banner shown above the challenge form.
-function ActiveFactor({ challenge }: { challenge: MFAChallenge }) {
-  const Icon = METHOD_ICON[challenge.device_type] ?? ShieldCheck;
-  return (
-    <div className="flex items-center gap-3 rounded-[12px] border border-[var(--border)] bg-[var(--bg2)] px-3 py-2.5">
-      <IconChip icon={Icon} tone={methodTone(challenge.device_type)} />
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-[13px] font-medium text-[var(--text)]">{methodLabel(challenge.device_type)}</p>
-        <p className="truncate text-[12px] text-[var(--text3)]">
-          {METHOD_DESCRIPTION[challenge.device_type] ?? 'Confirm your identity to continue.'}
-        </p>
-      </div>
-      <Pill tone={methodTone(challenge.device_type)}>{methodLabel(challenge.device_type)}</Pill>
-    </div>
-  );
-}
-
+/**
+ * Step-up re-authentication. Renders inside the app shell, but speaks the same
+ * visual language as the auth flow (design/auth/DESIGN.md) so a second-factor
+ * prompt looks the same wherever it appears.
+ */
 export default function StepUpPage() {
   const navigate = useNavigate();
   const setStepUpFresh = useAuthStore((s) => s.setStepUpFresh);
@@ -85,11 +33,14 @@ export default function StepUpPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isResending, setIsResending] = useState(false);
   const [resendError, setResendError] = useState('');
+  const [resent, setResent] = useState(false);
   const isPasskey = challenge?.device_type === 'hardware_key';
 
   const goBack = () => {
-    const from = new URLSearchParams(window.location.search).get('from') || '/dashboard';
-    navigate(from, { replace: true });
+    const rawFrom = new URLSearchParams(window.location.search).get('from') || '/dashboard';
+    const isSafeInternal = rawFrom.startsWith('/') && !rawFrom.startsWith('//') && !rawFrom.includes('\\');
+    const safeFrom = isSafeInternal ? rawFrom : '/dashboard';
+    navigate(safeFrom, { replace: true });
   };
 
   useEffect(() => {
@@ -138,6 +89,7 @@ export default function StepUpPage() {
     setResendError('');
     try {
       await authApi.resendEmailMfaOtp(challenge.device_id);
+      setResent(true);
       setIsResending(false);
     } catch (err) {
       setResendError(getErrorMessage(err));
@@ -145,88 +97,63 @@ export default function StepUpPage() {
     }
   };
 
-  const errorMessage = codeError || passkeyError;
-
   return (
-    <div className="mx-auto flex w-full max-w-[440px] flex-col gap-5">
-      <div className="flex flex-col items-center gap-3 text-center">
-        <IconChip icon={ShieldCheck} tone="brand" size="lg" />
-        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--ai)]">Account security</p>
-        <h1 className="font-[family-name:var(--display)] text-[24px] font-semibold leading-tight tracking-[-0.02em] text-[var(--text)]">
-          Verify your identity
-        </h1>
-        <p className="max-w-[40ch] text-[13.5px] leading-relaxed text-[var(--text2)]">
-          {isPasskey
-            ? METHOD_DESCRIPTION.hardware_key
-            : METHOD_DESCRIPTION[challenge?.device_type ?? 'totp'] ?? 'Confirm your identity to continue.'}
-        </p>
-      </div>
+    <div className="mx-auto w-full max-w-[400px] py-10 sm:py-16">
+      <AuthHeading
+        title="Confirm it's you"
+        description="This action changes account security settings, so it needs a fresh second-factor check before it runs."
+      />
 
-      <Notice tone="blue" icon={Info} title="Re-authentication required">
-        The action you requested changes account security settings, so a fresh verification is needed before it runs.
-      </Notice>
+      {isLoading ? (
+        <AuthPending>Starting verification…</AuthPending>
+      ) : !challenge ? (
+        <div className="flex flex-col gap-4">
+          <AuthCallout icon={ShieldAlert} tone="danger" role="alert" title="Verification couldn't start">
+            {loadError || 'The verification challenge could not be started.'}
+          </AuthCallout>
+          <AuthButton type="button" variant="ghost" onClick={goBack}>
+            Go back
+          </AuthButton>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-4">
+          <ActiveMethodFact type={challenge.device_type} />
 
-      <Panel>
-        {isLoading ? (
-          <CardSkeleton />
-        ) : !challenge ? (
-          <div className="flex flex-col gap-4">
-            <Notice tone="red" title="Verification unavailable">
-              {loadError || 'The verification challenge could not be started.'}
-            </Notice>
-            <Button variant="secondary" onClick={goBack}>
-              Go back
-            </Button>
-          </div>
-        ) : (
-          <div className="flex flex-col gap-4">
-            <ActiveFactor challenge={challenge} />
+          {passkeyError && (
+            <AuthCallout icon={ShieldAlert} tone="danger" role="alert" title="Verification failed">
+              {passkeyError}
+            </AuthCallout>
+          )}
 
-            {errorMessage && (
-              <Notice tone="red" title="Verification failed">
-                {errorMessage}
-              </Notice>
-            )}
+          {isPasskey ? (
+            <form action={submitPasskey}>
+              <AuthSubmit pendingLabel="Waiting for your security key…">Use security key</AuthSubmit>
+            </form>
+          ) : (
+            <form action={submitCode} className="flex flex-col gap-4">
+              <AuthField
+                label="Verification code"
+                hint={methodDescription(challenge.device_type)}
+                error={codeError || resendError || undefined}
+                trailing={
+                  challenge.device_type === 'email' ? (
+                    <AuthTextButton onClick={handleResend} disabled={isResending}>
+                      {isResending ? 'Sending…' : resent ? 'Sent. Resend again' : 'Resend code'}
+                    </AuthTextButton>
+                  ) : undefined
+                }
+              >
+                <CodeInput name="code" autoFocus />
+              </AuthField>
+              <AuthSubmit pendingLabel="Verifying…">Verify and continue</AuthSubmit>
+            </form>
+          )}
+        </div>
+      )}
 
-            {isPasskey ? (
-              <form action={submitPasskey}>
-                <AuthSubmit pendingLabel="Waiting for security key…">Use security key</AuthSubmit>
-              </form>
-            ) : (
-              <>
-                {challenge.device_type === 'email' && (
-                  <div className="flex items-center justify-between gap-3 rounded-[12px] border border-[var(--border)] bg-[var(--bg2)] px-3 py-2.5">
-                    <span className="flex items-center gap-2 text-[13px] text-[var(--text2)]">
-                      <Mail className="size-4 text-[var(--blue)]" aria-hidden="true" />
-                      Code sent to your email
-                    </span>
-                    <Button variant="secondary" disabled={isResending} onClick={handleResend}>
-                      {isResending ? 'Sending…' : 'Resend'}
-                    </Button>
-                  </div>
-                )}
-
-                {resendError && (
-                  <Notice tone="red" title="Could not resend the code">
-                    {resendError}
-                  </Notice>
-                )}
-
-                <form action={submitCode} className="flex flex-col gap-4">
-                  <AuthField label="Verification code">
-                    <CodeInput name="code" autoFocus />
-                  </AuthField>
-                  <AuthSubmit pendingLabel="Verifying…">Verify identity</AuthSubmit>
-                </form>
-              </>
-            )}
-          </div>
-        )}
-      </Panel>
-
-      <p className="text-center text-[12.5px] text-[var(--text3)]">
+      <AuthFooter>
         Lost access to your factors? <AuthLink to="/settings/mfa-recovery">Start MFA recovery</AuthLink>
-      </p>
+      </AuthFooter>
     </div>
   );
 }

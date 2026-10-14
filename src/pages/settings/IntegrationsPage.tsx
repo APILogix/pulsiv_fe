@@ -16,6 +16,7 @@ import {
 } from "@/shared/ui/pulse";
 import { Button, CardSkeleton, Field, StatusBadge, SubmitButton, Timestamp, demoSuccess } from "@/shared/observe";
 import { ConnectorIcon } from "@/shared/ui/connector-icon";
+import { apiErrorMessage } from "@/infrastructure/api-client/api-error";
 
 // ── module-level constants (rules.md §1.2 — no inline objects/arrays in JSX) ──
 
@@ -188,7 +189,7 @@ export default function IntegrationsPage() {
       setSelectedType(null);
       return INITIAL_CREATE_STATE;
     } catch (err: any) {
-      return { error: err?.response?.data?.message || err?.message || "Failed to create the integration." };
+      return { error: apiErrorMessage(err) || err?.message || "Failed to create the integration." };
     }
   }, INITIAL_CREATE_STATE);
 

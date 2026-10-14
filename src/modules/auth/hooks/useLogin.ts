@@ -7,6 +7,7 @@ import { completeLogin } from '../services/post-login';
 import { getErrorMessage } from '@/infrastructure/api-client/error.interceptor';
 import { toast } from 'sonner';
 import type { AuthSession } from '../types/auth.types';
+import { apiErrorMessage } from "@/infrastructure/api-client/api-error";
 
 export type LoginState = 'idle' | 'mfa_required' | 'authenticated';
 
@@ -51,7 +52,7 @@ export function useLogin() {
       handleSuccess(session);
     },
     onError: (error: any) => {
-      const message = error.response?.data?.error?.message || 'Invalid MFA code';
+      const message = apiErrorMessage(error) || 'Invalid MFA code';
       toast.error(message);
     }
   });
@@ -63,7 +64,7 @@ export function useLogin() {
       handleSuccess(session);
     },
     onError: (error: any) => {
-      const message = error.response?.data?.error?.message || 'Invalid backup code';
+      const message = apiErrorMessage(error) || 'Invalid backup code';
       toast.error(message);
     }
   });

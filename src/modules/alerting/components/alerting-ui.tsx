@@ -14,9 +14,11 @@ import type {
 
 // ── Tone maps ────────────────────────────────────────────────
 
+// State colour follows design/alerting/DESIGN.md: red needs a human, amber is
+// in flight or held, green is over and healthy, everything else is neutral.
 const EVENT_STATUS_TONE: Record<AlertEventStatus, SurfaceTone> = {
-  pending: "neutral",
-  processing: "blue",
+  pending: "amber",
+  processing: "amber",
   firing: "red",
   resolved: "green",
   acknowledged: "amber",
@@ -25,19 +27,26 @@ const EVENT_STATUS_TONE: Record<AlertEventStatus, SurfaceTone> = {
   error: "red",
 };
 
-const DELIVERY_STATUS_TONE: Record<DeliveryAttemptStatus, SurfaceTone> = {
-  pending: "neutral",
-  queued: "blue",
-  sent: "blue",
+// `sent` is terminal success for incident notifications (the provider accepted
+// it); `delivered` is the stronger confirmation where a channel reports one.
+const DELIVERY_STATUS_TONE: Record<string, SurfaceTone> = {
+  pending: "amber",
+  queued: "amber",
+  retrying: "amber",
+  sent: "green",
   delivered: "green",
   failed: "red",
-  retrying: "amber",
   cancelled: "neutral",
-};
+} satisfies Record<DeliveryAttemptStatus, SurfaceTone>;
+
+/** One delivery tone for every alerting surface, including incident notifications. */
+export function deliveryTone(status: string): SurfaceTone {
+  return DELIVERY_STATUS_TONE[status] ?? "neutral";
+}
 
 const BATCH_STATUS_TONE: Record<BatchStatus, SurfaceTone> = {
-  pending: "neutral",
-  processing: "blue",
+  pending: "amber",
+  processing: "amber",
   completed: "green",
   failed: "red",
   partial: "amber",
@@ -45,7 +54,7 @@ const BATCH_STATUS_TONE: Record<BatchStatus, SurfaceTone> = {
 
 const DEAD_LETTER_STATUS_TONE: Record<DeadLetterStatus, SurfaceTone> = {
   pending_retry: "amber",
-  retried: "blue",
+  retried: "neutral",
   exhausted: "red",
   discarded: "neutral",
 };
@@ -92,7 +101,7 @@ export function EventStatusPill({ status }: { status: AlertEventStatus }) {
 }
 
 export function DeliveryStatusPill({ status }: { status: DeliveryAttemptStatus }) {
-  return <Pill tone={DELIVERY_STATUS_TONE[status] ?? "neutral"} dot>{labelize(status)}</Pill>;
+  return <Pill tone={deliveryTone(status)} dot>{labelize(status)}</Pill>;
 }
 
 export function BatchStatusPill({ status }: { status: BatchStatus }) {
@@ -125,7 +134,7 @@ export function MetaCell({
   return (
     <div className={className}>
       <div className="flex flex-col gap-1">
-        <span className="text-[10.5px] font-semibold uppercase tracking-[0.12em] text-[var(--text3)]">{label}</span>
+        <span className="text-[12px] text-[var(--text3)]">{label}</span>
         <span className="text-[13px] text-[var(--text)]">{children}</span>
       </div>
     </div>

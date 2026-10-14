@@ -1,173 +1,132 @@
-import { useNavigate } from "react-router";
-import type { LucideIcon } from "lucide-react";
-import {
-  LayoutDashboard, LineChart, AlertTriangle, Globe, Radar, ListTree,
-  Database, ShieldAlert, Activity, BadgeDollarSign, ArrowUpRight,
-} from "lucide-react";
-import { useErrorGroups, useRequestEvents, useTraceEvents } from "@/hooks/useDummyData";
-import {
-  PageHeader, SectionCard, KpiCard, MetricSparkline, formatCompact, formatLatency,
-} from "@/shared/observe";
-import { percentile, errorRate, seededSeries, uniqueBy, countryForIp } from "./lib";
+import { Link, useParams } from "react-router";
+import { ArrowUpRight } from "lucide-react";
+import { orgRoutes } from "@/app/router/org-routes";
+import { BoardPage, Ledger, Panel, Readouts, Timeline, type State, type VerdictItem } from "./board/kit";
+import { ACTIVITY, COUNTRIES, ENDPOINTS, ERROR_GROUPS, RELEASES, SERVICES, fleetTotals } from "./board/fixtures";
+import { compact, ms, pct } from "./board/format";
 
-interface MiniStat { label: string; value: string }
-interface DashCard {
-  id: string;
-  title: string;
-  desc: string;
-  icon: LucideIcon;
-  to: string;
-  color: string;
-  stats: MiniStat[];
-  spark: number[];
+/*
+ * Dashboards: the concourse board. One row per dashboard, lit by the state of
+ * the data it watches, so the reader knows which board to open first.
+ * Sample data only; getOverviewBoard() is the seam a live API replaces.
+ */
+
+interface BoardRow {
+  sub: string;
+  name: string;
+  question: string;
+  reading: string;
+  audience: string;
+  state: State;
+  why: string;
+}
+
+function getOverviewBoard() {
+  const totals = fleetTotals();
+  const worstSvc = SERVICES.find((s) => s.state === "bad");
+  const worstEp = [...ENDPOINTS].sort((a, b) => b.p99 - a.p99)[0];
+  const newIssues = ERROR_GROUPS.filter((e) => e.status === "New" || e.status === "Regressed");
+  const slowCountry = [...COUNTRIES].sort((a, b) => b.p95 - a.p95)[0];
+  const badRelease = RELEASES.find((r) => r.state === "bad");
+
+  const rows: BoardRow[] = [
+    { sub: "executive", name: "Executive overview", question: "Are we meeting our reliability promises?", reading: `Availability ${pct(totals.availability)}`, audience: "Leadership", state: "warn", why: "Fleet availability below 99.95% target" },
+    { sub: "performance", name: "Performance overview", question: "Where is request time being spent?", reading: `P99 ${ms(worstEp.p99)}`, audience: "Backend engineers", state: "bad", why: `${worstEp.method} ${worstEp.path} over SLO` },
+    { sub: "errors", name: "Error overview", question: "What should we fix first?", reading: `${newIssues.length} new or regressed`, audience: "On-call", state: "bad", why: `${ERROR_GROUPS[0].name} on ${ERROR_GROUPS[0].service}` },
+    { sub: "geo", name: "Geo analytics", question: "Where are users slow or failing?", reading: `${slowCountry.code} p95 ${ms(slowCountry.p95)}`, audience: "Platform", state: "bad", why: `${slowCountry.name} served from ${slowCountry.pop}` },
+    { sub: "realtime", name: "Traffic overview", question: "What is happening right now?", reading: `${compact(SERVICES.reduce((a, s) => a + s.rps, 0))} req/s`, audience: "On-call", state: "warn", why: "5xx per minute above normal" },
+    { sub: "tracing", name: "Service map", question: "Which dependency is slowing requests?", reading: "dispatcher → kafka 1.9s", audience: "Backend engineers", state: "bad", why: `${worstSvc?.id ?? "a service"} waits on its queue` },
+    { sub: "infrastructure", name: "Infrastructure overview", question: "Is capacity and spend healthy?", reading: "Run rate $45.3K/mo", audience: "Platform", state: "bad", why: "dispatch-worker-pool saturated" },
+    { sub: "security", name: "Security & threats", question: "Is anyone abusing our APIs?", reading: "1,284 failed logins", audience: "Security", state: "warn", why: "Credential stuffing from 3 addresses" },
+    { sub: "releases", name: "Release quality", question: "Did the last deploy make things worse?", reading: `${badRelease?.service ?? ""} ${badRelease?.id ?? ""}`.trim(), audience: "Release owners", state: "bad", why: "Error rate 13× after deploy" },
+    { sub: "business", name: "Business metrics", question: "How are customers using the API?", reading: "2,418 active tenants", audience: "Product", state: "ok", why: "Adoption and retention on track" },
+  ];
+  return { totals, rows };
 }
 
 export default function DashboardsOverview() {
-  const navigate = useNavigate();
-  const requests = useRequestEvents();
-  const errors = useErrorGroups();
-  const traces = useTraceEvents();
+  const { orgSlug } = useParams();
+  const { totals, rows } = getOverviewBoard();
+  const bad = rows.filter((r) => r.state === "bad").length;
+  const warn = rows.filter((r) => r.state === "warn").length;
 
-  const reqList = requests.data ?? [];
-  const groupList = errors.data ?? [];
-  const traceList = traces.data ?? [];
-
-  const total = reqList.length;
-  const latencies = reqList.map((r) => r.latency);
-  const p95 = percentile(latencies, 95);
-  const p99 = percentile(latencies, 99);
-  const rate = errorRate(reqList);
-  const availability = total ? (reqList.filter((r) => r.statusCode < 500).length / total) * 100 : 100;
-  const latencyScore = Math.max(0, 100 - p95 / 10);
-  const healthScore = Math.round(availability * 0.4 + (1 - rate / 100) * 100 * 0.35 + latencyScore * 0.25);
-
-  const totalErrors = groupList.reduce((s, g) => s + g.count, 0);
-  const affectedUsers = new Set(groupList.flatMap((g) => [...g.affectedUsers])).size;
-  const authFails = reqList.filter((r) => r.statusCode === 401 || r.statusCode === 403).length;
-  const rateLimited = reqList.filter((r) => r.statusCode === 429).length;
-  const securityScore = Math.max(0, Math.min(100, 92 - authFails * 2 - rateLimited));
-  const countries = uniqueBy(reqList, (r) => countryForIp(r.clientIp ?? "").code);
-  const avgSpans = traceList.length ? Math.round(traceList.reduce((s, t) => s + t.spanCount, 0) / traceList.length) : 0;
-  const avgTrace = traceList.length ? Math.round(traceList.reduce((s, t) => s + t.totalDuration, 0) / traceList.length) : 0;
-
-  const cards: DashCard[] = [
-    {
-      id: "executive", title: "Executive Command Center", desc: "Single-pane portfolio health.",
-      icon: LayoutDashboard, to: "/dashboards/executive", color: "var(--brand)",
-      stats: [{ label: "Health", value: `${healthScore}` }, { label: "Error rate", value: `${rate.toFixed(2)}%` }, { label: "Availability", value: `${availability.toFixed(2)}%` }],
-      spark: seededSeries("exec", 24, 70, 25),
-    },
-    {
-      id: "performance", title: "Performance Deep Dive", desc: "Latency percentiles & slow paths.",
-      icon: LineChart, to: "/dashboards/performance", color: "var(--blue)",
-      stats: [{ label: "P95", value: formatLatency(p95) }, { label: "P99", value: formatLatency(p99) }, { label: "Requests", value: formatCompact(total) }],
-      spark: seededSeries("perf", 24, 80, 40),
-    },
-    {
-      id: "errors", title: "Error Triage", desc: "Grouped errors & regressions.",
-      icon: AlertTriangle, to: "/dashboards/errors", color: "var(--red)",
-      stats: [{ label: "Errors", value: formatCompact(totalErrors) }, { label: "Groups", value: `${groupList.length}` }, { label: "Users", value: formatCompact(affectedUsers) }],
-      spark: seededSeries("err", 24, 40, 35),
-    },
-    {
-      id: "geo", title: "Geo Analytics", desc: "Distribution, devices, funnel.",
-      icon: Globe, to: "/dashboards/geo", color: "var(--violet)",
-      stats: [{ label: "Countries", value: `${countries}` }, { label: "Sessions", value: formatCompact(total * 2) }, { label: "DAU", value: formatCompact(affectedUsers * 12 || 1240) }],
-      spark: seededSeries("geo", 24, 60, 20),
-    },
-    {
-      id: "realtime", title: "Real-time Traffic", desc: "Live RPS, status, top routes.",
-      icon: Radar, to: "/dashboards/realtime", color: "var(--green)",
-      stats: [{ label: "RPS", value: formatCompact(Math.round(total / 12)) }, { label: "5xx", value: `${reqList.filter((r) => r.statusCode >= 500).length}` }, { label: "Conns", value: formatCompact(total * 4) }],
-      spark: seededSeries("rt", 24, 90, 30),
-    },
-    {
-      id: "tracing", title: "Tracing & Dependency Map", desc: "Traces, service graph, DB calls.",
-      icon: ListTree, to: "/dashboards/tracing", color: "var(--blue)",
-      stats: [{ label: "Traces", value: `${traceList.length}` }, { label: "Avg spans", value: `${avgSpans}` }, { label: "Avg dur", value: formatLatency(avgTrace) }],
-      spark: seededSeries("trace", 24, 50, 25),
-    },
-    {
-      id: "infrastructure", title: "Infrastructure & Cost", desc: "Cost/1M, utilization, pools.",
-      icon: Database, to: "/dashboards/infrastructure", color: "var(--amber)",
-      stats: [{ label: "Cost/1M", value: "$4.12" }, { label: "CPU", value: "62%" }, { label: "Cache hit", value: "94%" }],
-      spark: seededSeries("infra", 24, 55, 18),
-    },
-    {
-      id: "security", title: "Security & Threats", desc: "Auth failures, anomalies, keys.",
-      icon: ShieldAlert, to: "/dashboards/security", color: securityScore < 50 ? "var(--red)" : securityScore < 80 ? "var(--amber)" : "var(--green)",
-      stats: [{ label: "Score", value: `${securityScore}` }, { label: "Failed auth", value: `${authFails}` }, { label: "429s", value: `${rateLimited}` }],
-      spark: seededSeries("sec", 24, 30, 28),
-    },
-    {
-      id: "releases", title: "Release Quality", desc: "Release comparison, DORA, canary.",
-      icon: Activity, to: "/dashboards/releases", color: "var(--green)",
-      stats: [{ label: "Latest", value: "v2.4.1" }, { label: "New errors", value: "7" }, { label: "Status", value: "Stable" }],
-      spark: seededSeries("rel", 24, 75, 22),
-    },
-    {
-      id: "business", title: "Business Metrics", desc: "Adoption, migration, revenue.",
-      icon: BadgeDollarSign, to: "/dashboards/business", color: "var(--brand)",
-      stats: [{ label: "MRR", value: "$48.2k" }, { label: "Adoption", value: "73%" }, { label: "Churn", value: "1.8%" }],
-      spark: seededSeries("biz", 24, 65, 20),
-    },
+  const verdict: VerdictItem[] = [
+    ...(bad ? [{ state: "bad" as const, text: `${bad} dashboards show failures` }] : []),
+    ...(warn ? [{ state: "warn" as const, text: `${warn} show degradation` }] : []),
+    { state: "ok", text: `${rows.length - bad - warn} clear` },
   ];
 
   return (
-    <div className="flex flex-col gap-6">
-      <PageHeader
-        title="Overview"
-        description="A single glance across every Pulse dashboard — jump into any view for the full picture."
+    <BoardPage
+      title="Dashboards"
+      description="Ten boards, one question each. Rows are lit by the data they watch, so open the red ones first."
+      verdict={verdict}
+    >
+      <Readouts
+        items={[
+          { label: "Requests", value: compact(totals.requests), delta: "+12.4%", verdict: "flat", note: "vs previous 24h" },
+          { label: "Error rate", value: pct(totals.errorRate), delta: "+0.09%", verdict: "bad", note: "vs previous 24h" },
+          { label: "Services", value: String(SERVICES.length), note: `${SERVICES.filter((s) => s.state !== "ok").length} need attention` },
+          { label: "Open error groups", value: String(ERROR_GROUPS.length), note: `${ERROR_GROUPS.filter((e) => e.status === "New").length} new today` },
+          { label: "Deploys today", value: String(RELEASES.filter((r) => r.deployedAt.startsWith("Today")).length), note: "1 needs rollback", state: "bad" },
+        ]}
       />
 
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-6">
-        <KpiCard label="Health score" value={healthScore} trend={healthScore > 80 ? "up" : "down"} delta={`${availability.toFixed(1)}% uptime`} icon={LayoutDashboard} />
-        <KpiCard label="Requests (24h)" value={formatCompact(total * 1240)} trend="up" delta="+12.4%" icon={Globe} />
-        <KpiCard label="Error rate" value={`${rate.toFixed(2)}%`} trend="up" delta="-0.08%" icon={AlertTriangle} />
-        <KpiCard label="P95 latency" value={formatLatency(p95)} trend="up" delta="-22ms" icon={LineChart} />
-        <KpiCard label="Security" value={securityScore} trend={securityScore > 80 ? "up" : "down"} delta={`${authFails} auth fails`} icon={ShieldAlert} />
-        <KpiCard label="Traces" value={traceList.length} delta={`${avgSpans} avg spans`} icon={ListTree} />
+      <Ledger
+        id="board"
+        title="All dashboards"
+        rows={rows}
+        rowId={(r) => r.sub}
+        rowState={(r) => r.state}
+        primary={{
+          header: "Dashboard",
+          cell: (r) => (
+            <Link
+              to={orgRoutes.dashboards(orgSlug, r.sub)}
+              className="group/link inline-flex items-center gap-1.5 rounded-[3px] text-[var(--text)] outline-none hover:underline hover:decoration-[var(--border2)] hover:underline-offset-4 focus-visible:ring-2 focus-visible:ring-[var(--text)]"
+            >
+              {r.name}
+              <ArrowUpRight className="size-3.5 text-[var(--text3)] group-hover/link:text-[var(--text)]" aria-hidden="true" />
+            </Link>
+          ),
+          sub: (r) => r.why,
+        }}
+        columns={[
+          { key: "q", header: "Answers", hide: "lg", className: "font-sans text-[13px] text-[var(--text2)]", cell: (r) => r.question },
+          { key: "reading", header: "Reading now", align: "right", cell: (r) => <span className="text-[var(--text)]">{r.reading}</span> },
+          { key: "who", header: "For", hide: "md", align: "right", className: "font-sans text-[12px] text-[var(--text3)]", cell: (r) => r.audience },
+        ]}
+      />
+
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+        <Panel title="Recent activity" meta="Across every board, today" flush>
+          <Timeline items={ACTIVITY} />
+        </Panel>
+        <Panel title="Scheduled reports" meta="Delivered by email and Slack">
+          <ul className="divide-y divide-[var(--border)] text-[13px]">
+            {[
+              { name: "Weekly reliability digest", when: "Mon 09:00", to: "#eng-leads" },
+              { name: "Error budget burn", when: "Daily 08:00", to: "sre@acme.io" },
+              { name: "Release quality summary", when: "After each deploy", to: "#releases" },
+            ].map((r) => (
+              <li key={r.name} className="flex items-baseline justify-between gap-3 py-2.5">
+                <span className="min-w-0">
+                  <span className="block truncate font-medium text-[var(--text)]">{r.name}</span>
+                  <span className="block truncate font-mono text-[12px] text-[var(--text3)]">{r.to}</span>
+                </span>
+                <span className="shrink-0 font-mono text-[12px] text-[var(--text2)]">{r.when}</span>
+              </li>
+            ))}
+          </ul>
+          <Link
+            to={orgRoutes.dashboards(orgSlug, "reports")}
+            className="mt-3 inline-flex items-center gap-1.5 rounded-[3px] text-[12px] font-medium text-[var(--text2)] outline-none hover:text-[var(--text)] focus-visible:ring-2 focus-visible:ring-[var(--text)]"
+          >
+            Manage reports
+            <ArrowUpRight className="size-3.5" aria-hidden="true" />
+          </Link>
+        </Panel>
       </div>
-
-      <SectionCard title="All dashboards">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {cards.map((card) => {
-            const Icon = card.icon;
-            return (
-              <button type="button"
-                key={card.id}
-                onClick={() => navigate(card.to)}
-                className="group flex flex-col gap-3 rounded-[12px] border border-[var(--border)] bg-[var(--bg2)] p-4 text-left transition-colors hover:border-[var(--input)]"
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <span className="flex size-9 items-center justify-center rounded-[9px]" style={{ background: "color-mix(in oklab, " + card.color + " 14%, transparent)" }}>
-                      <Icon className="size-5" style={{ color: card.color }} />
-                    </span>
-                    <div className="min-w-0">
-                      <div className="truncate text-[13px] font-semibold text-[var(--text)]">{card.title}</div>
-                      <div className="truncate text-[11px] text-[var(--text3)]">{card.desc}</div>
-                    </div>
-                  </div>
-                  <ArrowUpRight className="size-4 shrink-0 text-[var(--text3)] transition-colors group-hover:text-[var(--brand)]" />
-                </div>
-
-                <div className="flex items-end justify-between gap-3">
-                  <div className="flex gap-4">
-                    {card.stats.map((s) => (
-                      <div key={s.label}>
-                        <div className="text-[15px] font-semibold tabular-nums text-[var(--text)]">{s.value}</div>
-                        <div className="text-[10px] uppercase tracking-wider text-[var(--text3)]">{s.label}</div>
-                      </div>
-                    ))}
-                  </div>
-                  <MetricSparkline data={card.spark} color={card.color} width={88} height={32} />
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      </SectionCard>
-    </div>
+    </BoardPage>
   );
 }

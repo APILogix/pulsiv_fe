@@ -14,10 +14,22 @@ export interface TraceSpan {
   depth?: number | null;
   service?: string | null;
   durationMs?: number;
+  exclusiveDurationMs?: number;
   dbSystem?: string | null;
+  dbName?: string | null;
+  dbOperation?: string | null;
+  dbCollection?: string | null;
+  dbStatement?: string | null;
+  netPeerIp?: string | null;
+  netPeerPort?: number | null;
   httpMethod?: string | null;
   httpStatusCode?: number | null;
+  httpUrl?: string | null;
+  httpRoute?: string | null;
+  startTime?: string | null;
+  endTime?: string | null;
   attributes?: Record<string, unknown>;
+  events?: Array<Record<string, unknown>>;
   metadata?: Record<string, unknown>;
 }
 
@@ -114,6 +126,27 @@ export interface TraceDetailData {
   };
 }
 
+export interface ExecutionBreakdown {
+  totalDurationMs: number;
+  internalComputeMs: number;
+  internalComputePercent: number;
+  databaseMs: number;
+  databasePercent: number;
+  databaseCount: number;
+  httpMs: number;
+  httpPercent: number;
+  httpCount: number;
+  cacheMs: number;
+  cachePercent: number;
+  cacheCount: number;
+  otherMs: number;
+  otherPercent: number;
+  primaryBottleneckType: "internal_compute" | "database" | "http" | "cache" | "leaf_span";
+  primaryBottleneckLabel: string;
+  primaryBottleneckMs: number;
+  primaryBottleneckPercent: number;
+}
+
 export interface SpanTreeNode {
   span: TraceSpan;
   id: string;
@@ -125,6 +158,7 @@ export interface SpanTreeNode {
   service: string | null;
   durationMs: number;
   selfDurationMs: number;
+  selfPercent: number;
   startOffsetMs: number;
   offsetPercent: number;
   widthPercent: number;
@@ -132,5 +166,11 @@ export interface SpanTreeNode {
   isRoot: boolean;
   isBottleneck: boolean;
   hasError: boolean;
+  isMissingParent?: boolean;
+  isGap?: boolean;
+  gapDurationMs?: number;
+  gapPrecedingSpanName?: string;
+  gapSucceedingSpanName?: string;
   children: SpanTreeNode[];
 }
+

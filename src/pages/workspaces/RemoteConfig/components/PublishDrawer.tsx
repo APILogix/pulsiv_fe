@@ -1,7 +1,18 @@
-import { useState } from 'react';
-import { AlertTriangle, ArrowRight, Rocket, ShieldAlert, X } from 'lucide-react';
+import { useId, useState } from 'react';
+import { AlertTriangle, ArrowRight, Loader2, ShieldAlert } from 'lucide-react';
+
+import {
+  Sheet as Drawer,
+  SheetContent as DrawerContent,
+  SheetDescription as DrawerDescription,
+  SheetHeader as DrawerHeader,
+  SheetTitle as DrawerTitle,
+} from '@/components/ui/sheet';
+import { Button as UiButton } from '@/components/ui/button';
+import { DialogField, dialogTextareaClass } from '@/modules/projects/components/project-ui';
+import { Notice } from '@/shared/ui/pulse';
 import { cn } from '@/lib/utils';
-import { Button } from '@/shared/observe';
+
 import { formatDiffValue, SECTION_LABELS, type DiffEntry } from '../mapping';
 import type { FieldError } from '../bounds';
 
@@ -16,13 +27,6 @@ interface PublishDrawerProps {
   currentRevision: number;
 }
 
-/**
- * Review-before-publish drawer. Replaces the old instant "Save Changes"
- * sticky bar — publishing now requires an explicit review step that shows
- * exactly which fields changed (leaf-level, human-readable, never a raw
- * JSON dump) plus an optional change summary, since this config ships live
- * to every connected SDK the moment it's confirmed.
- */
 export function PublishDrawer({
   open,
   onClose,
@@ -34,121 +38,116 @@ export function PublishDrawer({
   currentRevision,
 }: PublishDrawerProps) {
   const [summary, setSummary] = useState('');
+  const summaryId = useId();
+  const changesId = useId();
   const hasErrors = errors.length > 0;
-  const grouped = groupBySection(diff);
-
-  if (!open) return null;
+  const grouped = Object.entries(groupBySection(diff));
+  const nextRevision = currentRevision + 1;
+  const canPublish = !hasErrors && diff.length > 0 && !isSaving;
 
   return (
-    <div className="fixed inset-0 z-[100] flex justify-end bg-black/50 backdrop-blur-sm animate-in fade-in duration-150">
-      <div className="flex h-full w-full max-w-[560px] flex-col border-l border-[var(--border)] bg-[var(--bg1)] shadow-2xl animate-in slide-in-from-right duration-200">
-        <div className="flex items-center justify-between border-b border-[var(--border)] px-6 py-5">
-          <div className="flex items-center gap-3">
-            <span className="flex size-9 items-center justify-center rounded-[10px] bg-[var(--brand)]/15 text-[var(--brand)]">
-              <Rocket className="size-4.5" />
-            </span>
-            <div>
-              <h2 className="text-[16px] font-semibold text-[var(--text)]">Review & publish</h2>
-              <p className="text-[12px] text-[var(--text3)]">
-                {environmentName} · will become revision {currentRevision + 1}
-              </p>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close publish review"
-            className="text-[var(--text3)] hover:text-[var(--text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)]"
-          >
-            <X className="size-5" />
-          </button>
-        </div>
+    <Drawer
+      open={open}
+      onOpenChange={(next) => {
+        if (!next) onClose();
+      }}
+    >
+      <DrawerContent className="gap-0 p-0 data-[side=right]:w-full data-[side=right]:sm:max-w-[560px]">
+        <DrawerHeader className="gap-1.5 border-b border-[var(--border)] px-5 py-4 pr-12">
+          <DrawerTitle className="text-[16px] font-semibold tracking-[-0.01em] text-[var(--text)]">Review and publish</DrawerTitle>
+          <DrawerDescription className="text-[12px] text-[var(--text2)]">
+            {environmentName} · publishes as revision{' '}
+            <span className="font-[family-name:var(--mono)] tabular-nums text-[var(--text)]">{nextRevision}</span>
+          </DrawerDescription>
+        </DrawerHeader>
 
-        <div className="sidebar-scroll flex-1 overflow-y-auto px-6 py-5">
+        <div className="sidebar-scroll flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto p-5">
           {hasErrors ? (
-            <div className="mb-5 flex items-start gap-3 rounded-[10px] border border-red-500/30 bg-red-500/10 p-4">
-              <ShieldAlert className="mt-0.5 size-4 shrink-0 text-red-500" />
-              <div>
-                <p className="text-[13px] font-medium text-red-500">
-                  {errors.length} field{errors.length === 1 ? '' : 's'} out of range
-                </p>
-                <p className="mt-1 text-[12px] text-red-400">
-                  Fix the highlighted fields in the editor before this can be published. The backend will reject an
-                  out-of-bounds value regardless.
-                </p>
-              </div>
-            </div>
+            <Notice
+              tone="red"
+              icon={ShieldAlert}
+              title={`${errors.length} validation ${errors.length === 1 ? 'error blocks' : 'errors block'} publishing`}
+            >
+              Fix the highlighted fields in the editor. The server rejects values outside their bounds or that fail
+              cross-field rules.
+            </Notice>
           ) : diff.length === 0 ? (
-            <div className="rounded-[10px] border border-dashed border-[var(--border)] bg-[var(--bg2)] p-6 text-center text-[13px] text-[var(--text3)]">
-              No changes to publish.
-            </div>
+            <p className="text-[13px] leading-[1.6] text-[var(--text2)]">
+              No changes to publish. Edit a section, then review it here.
+            </p>
           ) : (
-            <div className="flex items-start gap-3 rounded-[10px] border border-amber-500/30 bg-amber-500/10 p-4">
-              <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-500" />
-              <p className="text-[12.5px] leading-relaxed text-amber-100">
-                This publishes immediately to every connected SDK for <strong>{environmentName}</strong>. Clients pick
-                up the change on their next config TTL refresh — there is no staged rollout for this environment scope.
-              </p>
-            </div>
+            <Notice tone="amber" icon={AlertTriangle}>
+              Publishing deploys to every connected SDK in{' '}
+              <strong className="font-medium text-[var(--text)]">{environmentName}</strong>. Clients pick it up on their
+              next configuration refresh.
+            </Notice>
           )}
 
           {diff.length > 0 && (
-            <div className="mt-5 flex flex-col gap-4">
-              {Object.entries(grouped).map(([section, entries]) => (
-                <div key={section} className="rounded-[10px] border border-[var(--border)] bg-[var(--bg2)]">
-                  <div className="border-b border-[var(--border)] px-4 py-2.5 text-[12px] font-semibold uppercase tracking-wide text-[var(--text3)]">
+            <section aria-labelledby={changesId} className="flex flex-col gap-4">
+              <h3 id={changesId} className="flex items-baseline gap-2 text-[13px] font-medium text-[var(--text)]">
+                Changes
+                <span className="font-[family-name:var(--mono)] text-[11.5px] tabular-nums text-[var(--text3)]">{diff.length}</span>
+              </h3>
+
+              {grouped.map(([section, entries]) => (
+                <div key={section} className="flex flex-col gap-1.5">
+                  <h4 className="text-[12px] text-[var(--text3)]">
                     {SECTION_LABELS[section] ?? section} · {entries.length}
-                  </div>
-                  <div className="divide-y divide-[var(--border)]">
+                  </h4>
+                  <dl className="divide-y divide-[var(--border)] overflow-hidden rounded-[var(--radius-lg)] border border-[var(--border)]">
                     {entries.map((entry) => (
-                      <div key={entry.path} className="flex items-center justify-between gap-3 px-4 py-2.5 text-[13px]">
-                        <span className="min-w-0 truncate text-[var(--text2)]">{entry.label}</span>
-                        <div className="flex shrink-0 items-center gap-2 font-mono text-[12px]">
-                          <span className="rounded-md bg-[var(--bg3)] px-2 py-0.5 text-[var(--text3)] line-through">
+                      <div
+                        key={entry.path}
+                        className="flex flex-col gap-1 px-4 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
+                      >
+                        <dt className="min-w-0 truncate text-[13px] text-[var(--text2)]" title={entry.path}>
+                          {entry.label}
+                        </dt>
+                        <dd className="flex min-w-0 shrink-0 items-center gap-2 font-[family-name:var(--mono)] text-[12px] tabular-nums">
+                          <span className="text-[var(--text3)] line-through decoration-[var(--text3)]">
+                            <span className="sr-only">From </span>
                             {formatDiffValue(entry.path, entry.oldValue)}
                           </span>
-                          <ArrowRight className="size-3 text-[var(--text3)]" />
-                          <span className="rounded-md bg-[var(--brand)]/15 px-2 py-0.5 font-semibold text-[var(--brand)]">
+                          <ArrowRight className="size-3 shrink-0 text-[var(--text3)]" aria-hidden="true" />
+                          <span className="text-[var(--text)]">
+                            <span className="sr-only">to </span>
                             {formatDiffValue(entry.path, entry.newValue)}
                           </span>
-                        </div>
+                        </dd>
                       </div>
                     ))}
-                  </div>
+                  </dl>
                 </div>
               ))}
-            </div>
+            </section>
           )}
         </div>
 
-        <div className="border-t border-[var(--border)] px-6 py-5">
-          <label className="mb-2 block text-[12px] font-medium text-[var(--text3)]">
-            Change summary <span className="text-[var(--text3)]/70">(recommended)</span>
-          </label>
-          <textarea
-            value={summary}
-            onChange={(e) => setSummary(e.target.value)}
-            placeholder={`e.g. "Lowered trace sampling to 20% to cut ingestion cost"`}
-            rows={2}
-            maxLength={2000}
-            className="w-full resize-none rounded-[8px] border border-[var(--border)] bg-[var(--bg2)] px-3 py-2 text-[13px] text-[var(--text)] outline-none transition-colors placeholder:text-[var(--text3)] focus:border-[var(--brand)] focus:ring-1 focus:ring-[var(--brand)]"
-          />
-          <div className="mt-4 flex items-center justify-end gap-3">
-            <Button variant="ghost" onClick={onClose} disabled={isSaving}>
+        <div className="flex flex-col gap-4 border-t border-[var(--border)] px-5 py-4">
+          <DialogField label="Change summary" name={summaryId} hint="Saved with the revision in its history.">
+            <textarea
+              id={summaryId}
+              value={summary}
+              onChange={(e) => setSummary(e.target.value)}
+              placeholder="Lowered trace sampling for checkout endpoints"
+              rows={2}
+              maxLength={2000}
+              className={cn(dialogTextareaClass, 'min-h-[64px] resize-none')}
+            />
+          </DialogField>
+          <div className="flex items-center justify-end gap-2">
+            <UiButton variant="ghost" size="lg" onClick={onClose} disabled={isSaving}>
               Cancel
-            </Button>
-            <Button
-              onClick={() => onConfirm(summary.trim())}
-              disabled={hasErrors || diff.length === 0 || isSaving}
-              className={cn('bg-emerald-600 text-white shadow-sm hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600')}
-            >
-              <Rocket className="mr-2 size-4" />
-              {isSaving ? 'Publishing…' : `Publish revision ${currentRevision + 1}`}
-            </Button>
+            </UiButton>
+            <UiButton size="lg" onClick={() => onConfirm(summary.trim())} disabled={!canPublish}>
+              {isSaving && <Loader2 className="mr-1.5 size-3.5 animate-spin" aria-hidden="true" />}
+              {isSaving ? 'Publishing…' : `Publish revision ${nextRevision}`}
+            </UiButton>
           </div>
         </div>
-      </div>
-    </div>
+      </DrawerContent>
+    </Drawer>
   );
 }
 

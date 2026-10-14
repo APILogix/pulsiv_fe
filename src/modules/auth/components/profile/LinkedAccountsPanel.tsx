@@ -1,18 +1,31 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router';
-import { Github, Loader2, Trash2 } from 'lucide-react';
+import {
+  Github,
+  Loader2,
+  Trash2,
+  CheckCircle2,
+  Building2,
+  ExternalLink,
+  ShieldCheck,
+  AlertTriangle,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
 import { authApi } from '../../api/auth.api';
 import { authQueryKeys } from '../../api/auth.query';
 import { getErrorMessage } from '@/infrastructure/api-client/error.interceptor';
 import type { LinkedIdentity } from '../../types/auth.types';
-
-const PROVIDERS = [
-  { id: 'github' as const, label: 'GitHub', icon: Github },
-  { id: 'google' as const, label: 'Google', icon: GoogleIcon },
-];
 
 function GoogleIcon({ size = 18 }: { size?: number }) {
   return (
@@ -25,88 +38,264 @@ function GoogleIcon({ size = 18 }: { size?: number }) {
   );
 }
 
+const PROVIDERS = [
+  {
+    id: 'google' as const,
+    label: 'Google',
+    description: 'Use your Google account to log into Sentinel without entering a separate password.',
+    icon: GoogleIcon,
+  },
+  {
+    id: 'github' as const,
+    label: 'GitHub',
+    description: 'Connect your developer profile for seamless repository access and developer authentication.',
+    icon: Github,
+  },
+];
+
+function LinkedAccountsSkeleton() {
+  return (
+    <div className="flex w-full flex-col gap-6 animate-pulse text-left">
+      <div className="space-y-2">
+        <Skeleton className="h-8 w-64 bg-[var(--bg2)]" />
+        <Skeleton className="h-4 w-96 bg-[var(--bg2)]" />
+      </div>
+
+      <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] divide-y divide-[var(--border)]">
+        {[1, 2].map((i) => (
+          <div key={i} className="p-5 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Skeleton className="h-10 w-10 rounded-full bg-[var(--bg2)]" />
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-32 bg-[var(--bg2)]" />
+                <Skeleton className="h-3 w-48 bg-[var(--bg2)]" />
+              </div>
+            </div>
+            <Skeleton className="h-8 w-24 bg-[var(--bg2)] rounded-[var(--radius-md)]" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function LinkedAccountsPanel() {
   const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
+  const [unlinkTarget, setUnlinkTarget] = useState<LinkedIdentity | null>(null);
+  const [linkingProvider, setLinkingProvider] = useState<'google' | 'github' | null>(null);
+
   const { data: linked = [], isLoading } = useQuery<LinkedIdentity[]>({
     queryKey: authQueryKeys.linkedIdentities,
     queryFn: authApi.listLinkedIdentities,
   });
 
-  const linkMutation = useMutation({
-    mutationFn: (provider: 'google' | 'github') => authApi.startIdentityLink(provider),
-    onSuccess: ({ authorization_url }) => {
-      // Keep the OAuth flow in the current tab. This preserves the normal
-      // browser navigation/back-button behavior and avoids opening a second
-      // window for account linking.
-      window.location.assign(authorization_url);
-    },
-    onError: (error) => toast.error(getErrorMessage(error)),
-  });
+  const startLinking = (provider: 'google' | 'github') => {
+    setLinkingProvider(provider);
+    authApi
+      .startIdentityLink(provider)
+      .then(({ authorization_url }) => {
+        window.location.assign(authorization_url);
+      })
+      .catch((error) => {
+        setLinkingProvider(null);
+        toast.error(getErrorMessage(error));
+      });
+  };
 
   const unlinkMutation = useMutation({
     mutationFn: (linkId: string) => authApi.unlinkIdentity(linkId),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: authQueryKeys.linkedIdentities });
-      toast.success('Account unlinked');
+      await queryClient.invalidateQueries({ queryKey: authQueryKeys.securitySummary });
+      await queryClient.invalidateQueries({ queryKey: ['account-overview'] });
+      setUnlinkTarget(null);
+      toast.success('Account unlinked successfully');
     },
     onError: (error) => toast.error(getErrorMessage(error)),
   });
 
-  const linkedByProvider = new Map(linked.map((identity) => [identity.provider, identity]));
+  const linkedByProvider = new Map(linked.map((identity) => [identity.provider.toLowerCase(), identity]));
 
   useEffect(() => {
     const error = searchParams.get('error');
-    const linked = searchParams.get('linked');
-    if (error) {
-      const message = searchParams.get('message') || `Account linking failed: ${error}`;
-      toast.error(message);
+    const linkedParam = searchParams.get('linked');
+    if (error || linkedParam) {
+      if (error) {
+        const message = searchParams.get('message') || `Account linking failed: ${error}`;
+        toast.error(message);
+      }
+      if (linkedParam) {
+        void queryClient.invalidateQueries({ queryKey: authQueryKeys.linkedIdentities });
+        void queryClient.invalidateQueries({ queryKey: ['account-overview'] });
+        toast.success('Account linked successfully');
+      }
+      setSearchParams({}, { replace: true });
     }
-    if (linked) {
-      void queryClient.invalidateQueries({ queryKey: authQueryKeys.linkedIdentities });
-      toast.success('Account linked');
-    }
-    if (error || linked) setSearchParams({}, { replace: true });
   }, [queryClient, searchParams, setSearchParams]);
 
+  if (isLoading) {
+    return <LinkedAccountsSkeleton />;
+  }
+
   return (
-    <div className="flex max-w-[800px] flex-col gap-6">
-      <div>
-        <h2 className="mb-1 text-[16px] font-semibold text-[var(--text)]">Linked accounts</h2>
-        <p className="text-[13px] text-[var(--text2)]">
-          Connect a social account for sign-in. Enterprise SSO configuration remains organization-scoped.
-        </p>
+    <div className="flex w-full flex-col gap-6 text-left">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-[var(--border)]">
+        <div>
+          <h1 className="text-[20px] font-semibold text-[var(--text)] tracking-tight">
+            Linked Accounts
+          </h1>
+          <p className="text-[13px] text-[var(--text2)] max-w-2xl leading-relaxed mt-1">
+            Connect third-party social accounts to enable fast, single-click sign-in without a password.
+          </p>
+        </div>
       </div>
 
-      <div className="overflow-hidden rounded-[12px] border border-[var(--border)] bg-[var(--bg1)]">
-        {PROVIDERS.map(({ id, label, icon: Icon }, index) => {
-          const identity = linkedByProvider.get(id);
-          return (
-            <div key={id} className={`flex items-center justify-between p-5 ${index < PROVIDERS.length - 1 ? 'border-b border-[var(--border)]' : ''}`}>
-              <div className="flex items-center gap-3">
-                <div className={`flex h-10 w-10 items-center justify-center rounded-full ${id === 'google' ? 'bg-[#4285F4]/10' : 'bg-[#f0f6fc]/10'} ${id === 'google' ? 'text-[#4285F4]' : 'text-[#f0f6fc]'}`}><Icon size={18} /></div>
-                <div>
-                  <div className="text-[13px] font-medium text-[var(--text)]">{label}</div>
-                  <div className="mt-0.5 text-[12px] text-[var(--text2)]">
-                    {isLoading ? 'Checking…' : identity ? `Connected ${identity.linked_at ? `on ${new Date(identity.linked_at).toLocaleDateString()}` : ''}` : 'Not connected'}
+      {/* Provider List */}
+      <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] overflow-hidden">
+        <div className="px-5 py-4 border-b border-[var(--border)] flex items-center justify-between">
+          <div>
+            <h2 className="text-[14px] font-semibold text-[var(--text)]">
+              OAuth Identity Providers
+            </h2>
+            <p className="text-[12px] text-[var(--text2)] mt-0.5">
+              Personal authentication accounts connected to your Sentinel profile.
+            </p>
+          </div>
+        </div>
+
+        <div className="divide-y divide-[var(--border)]">
+          {PROVIDERS.map(({ id, label, description, icon: Icon }) => {
+            const identity = linkedByProvider.get(id);
+            const isConnected = !!identity;
+
+            return (
+              <div
+                key={id}
+                className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-[var(--bg2)]/30 transition-colors"
+              >
+                <div className="flex items-start sm:items-center gap-3.5 min-w-0">
+                  <div className="w-10 h-10 rounded-[var(--radius-md)] bg-[var(--bg2)] border border-[var(--border)] flex items-center justify-center shrink-0">
+                    <Icon size={20} />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-[14px] font-medium text-[var(--text)]">{label}</span>
+                      {isConnected ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-[var(--green)]/10 text-[var(--green)] border border-[var(--green)]/20">
+                          <CheckCircle2 size={10} /> Connected
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-[var(--bg2)] text-[var(--text3)] border border-[var(--border)]">
+                          Not connected
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[12px] text-[var(--text2)] mt-0.5 max-w-lg leading-relaxed">
+                      {description}
+                    </p>
+                    {identity && (
+                      <div className="flex items-center gap-2 text-[11px] text-[var(--text3)] mt-1 tabular-nums">
+                        <span>Connected on {new Date(identity.linked_at).toLocaleDateString()}</span>
+                        {identity.provider_user_id && (
+                          <>
+                            <span>•</span>
+                            <span className="font-mono">ID: {identity.provider_user_id}</span>
+                          </>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
+
+                <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
+                  {isConnected ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setUnlinkTarget(identity)}
+                      className="h-8 px-3 text-[12px] border-[var(--border)] bg-[var(--bg1)] text-[var(--red)] hover:bg-[var(--red)]/10 hover:border-[var(--red)]/30 font-medium"
+                    >
+                      <Trash2 size={13} className="mr-1.5" /> Disconnect
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => startLinking(id)}
+                      disabled={linkingProvider !== null}
+                      className="h-8 px-3.5 text-[12px] border-[var(--border)] bg-[var(--bg2)] hover:bg-[var(--bg3)] text-[var(--text)] font-medium flex items-center gap-1.5"
+                    >
+                      {linkingProvider === id ? (
+                        <Loader2 size={13} className="animate-spin" />
+                      ) : (
+                        <ExternalLink size={13} />
+                      )}
+                      Connect
+                    </Button>
+                  )}
+                </div>
               </div>
-              {identity ? (
-                <Button variant="outline" size="sm" className="h-8 border-red-500/30 bg-red-500/10 text-red-400 hover:bg-red-500/20 hover:text-red-300 text-[12px]" disabled={unlinkMutation.isPending} onClick={() => unlinkMutation.mutate(identity.id)}>
-                  {unlinkMutation.isPending ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Trash2 className="mr-1 h-3 w-3" />}
-                  Unlink
-                </Button>
-              ) : (
-                <Button variant="outline" size="sm" className={`h-8 text-[12px] ${id === 'google' ? 'border-[#4285F4]/40 bg-[#4285F4]/10 text-[#8ab4f8] hover:bg-[#4285F4]/20' : 'border-[#f0f6fc]/30 bg-[#f0f6fc]/10 text-[#f0f6fc] hover:bg-[#f0f6fc]/20'}`} disabled={linkMutation.isPending} onClick={() => linkMutation.mutate(id)}>
-                  {linkMutation.isPending ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : null}
-                  Connect
-                </Button>
-              )}
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
+
+      {/* Enterprise SSO Callout */}
+      <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] p-5 flex items-start gap-3.5">
+        <Building2 size={18} className="text-[var(--brand)] shrink-0 mt-0.5" />
+        <div className="space-y-1 text-[12px] text-[var(--text2)] leading-relaxed">
+          <p className="font-medium text-[var(--text)] text-[13px]">
+            Looking for Workplace Single Sign-On (SSO)?
+          </p>
+          <p>
+            Enterprise SSO via SAML 2.0 or OIDC (Okta, Microsoft Azure AD, Google Workspace, OneLogin) is configured at the organization level. Organization administrators can configure and enforce domain SSO in <strong>Organization &gt; SSO</strong>.
+          </p>
+        </div>
+      </div>
+
+      {/* Disconnect Confirmation Modal */}
+      <Dialog
+        open={!!unlinkTarget}
+        onOpenChange={(open) => {
+          if (!open) setUnlinkTarget(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-md bg-[var(--bg1)] border-[var(--border)] text-[var(--text)]">
+          <DialogHeader>
+            <DialogTitle className="text-[16px] font-semibold text-[var(--text)] flex items-center gap-2">
+              <AlertTriangle size={18} className="text-[var(--amber)]" />
+              Disconnect {unlinkTarget?.provider ? unlinkTarget.provider.charAt(0).toUpperCase() + unlinkTarget.provider.slice(1) : 'Account'}?
+            </DialogTitle>
+            <DialogDescription className="text-[12px] text-[var(--text2)] leading-relaxed">
+              You will no longer be able to use this social account to log in to Sentinel. Make sure you have a working password or another authentication method enabled before disconnecting.
+            </DialogDescription>
+          </DialogHeader>
+
+          <DialogFooter className="pt-3 gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => setUnlinkTarget(null)}
+              className="border-[var(--border)] bg-transparent text-[var(--text)] hover:bg-[var(--bg2)] text-[12px]"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                if (unlinkTarget) {
+                  unlinkMutation.mutate(unlinkTarget.id);
+                }
+              }}
+              disabled={unlinkMutation.isPending}
+              className="bg-[var(--red)] text-white hover:brightness-110 font-medium text-[12px] flex items-center gap-1.5"
+            >
+              {unlinkMutation.isPending && <Loader2 size={13} className="animate-spin" />}
+              Confirm Disconnect
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

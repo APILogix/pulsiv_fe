@@ -1,59 +1,31 @@
+import { ReadoutBand } from "@/shared/observe";
+import type { ReadoutCell } from "@/shared/observe";
 import type { ErrorDetailResponse } from "./types";
 import { displayValue } from "./helpers";
 
 export function SummaryCards({ detail }: { detail: ErrorDetailResponse }) {
   const issueId = detail.errorGroup?.publicId ?? detail.related?.errorGroup?.publicId;
   const traceId = detail.trace?.publicId ?? detail.related?.trace?.publicId;
+  const handled = detail.error?.handled;
+  const severity = String(detail.error?.severity ?? "error").toLowerCase();
 
-  const items = [
+  const cells: ReadoutCell[] = [
+    { label: "Exception", value: detail.error?.name ?? "Error", sub: "error class", tone: "bad" },
     {
-      label: "Exception Class",
-      value: detail.error?.name ?? "Error",
-      mono: true,
-      highlight: true,
-    },
-    {
-      label: "Handled Status",
-      value: detail.error?.handled == null ? "—" : detail.error.handled ? "Handled" : "Unhandled",
-      tone: detail.error?.handled === false ? "text-[var(--red)]" : "text-[var(--green)]",
+      label: "Handling",
+      value: handled == null ? "Unknown" : handled ? "Handled" : "Unhandled",
+      sub: handled === false ? "reached the global handler" : handled ? "caught by application code" : "not reported by the SDK",
+      tone: handled === false ? "bad" : "neutral",
     },
     {
       label: "Severity",
-      value: (detail.error?.severity ?? "error").toUpperCase(),
-      mono: true,
+      value: severity.charAt(0).toUpperCase() + severity.slice(1),
+      sub: "reported level",
+      tone: severity === "fatal" || severity === "critical" ? "bad" : severity === "warning" ? "warn" : "neutral",
     },
-    {
-      label: "Issue Group",
-      value: displayValue(issueId),
-      mono: true,
-    },
-    {
-      label: "Trace Link",
-      value: displayValue(traceId),
-      mono: true,
-    },
+    { label: "Issue", value: displayValue(issueId), sub: issueId ? "fingerprint group" : "not grouped yet" },
+    { label: "Trace", value: displayValue(traceId), sub: traceId ? "correlated trace" : "no trace linked" },
   ];
 
-  return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-      {items.map((item) => (
-        <div
-          key={item.label}
-          className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] px-4 py-3"
-        >
-          <div className="font-[family-name:var(--mono)] text-[10px] font-medium uppercase tracking-[0.08em] text-[var(--text3)]">
-            {item.label}
-          </div>
-          <div
-            className={`mt-1.5 truncate font-[family-name:var(--mono)] text-[18px] font-medium leading-none tracking-[-0.02em] tabular-nums ${
-              item.tone ? item.tone : item.highlight ? "text-[var(--red)]" : "text-[var(--text)]"
-            }`}
-            title={item.value}
-          >
-            {item.value}
-          </div>
-        </div>
-      ))}
-    </div>
-  );
+  return <ReadoutBand cells={cells} />;
 }

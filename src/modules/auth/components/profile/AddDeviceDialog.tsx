@@ -155,16 +155,16 @@ export function AddDeviceDialog({ open, onOpenChange, onComplete }: Props) {
                     key={m}
                     type="button"
                     onClick={() => pick(m)}
-                    className="w-full flex items-center gap-4 rounded-lg border border-border bg-background px-4 py-3 text-left hover:border-primary/40 hover:bg-[#101010] transition-colors"
+                    className="w-full flex items-center gap-4 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg2)] px-4 py-3.5 text-left hover:border-[var(--brand)]/40 hover:bg-[var(--bg3)] transition-colors"
                   >
-                    <div className="w-10 h-10 rounded-md bg-card border border-border flex items-center justify-center text-primary shrink-0">
+                    <div className="size-10 rounded-[var(--radius)] bg-[var(--bg1)] border border-[var(--border2)] flex items-center justify-center text-[var(--text)] shrink-0">
                       <Icon size={18} className="stroke-[1.5]" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-[14px] font-medium text-foreground">{meta.title}</p>
-                      <p className="text-[12px] text-muted-foreground truncate">{meta.desc}</p>
+                      <p className="text-[14px] font-medium text-[var(--text)]">{meta.title}</p>
+                      <p className="text-[12px] text-[var(--text3)] truncate">{meta.desc}</p>
                     </div>
-                    <ChevronRight size={16} className="text-[#555555] shrink-0" />
+                    <ChevronRight size={16} className="text-[var(--text3)] shrink-0" />
                   </button>
                 );
               })}
@@ -176,23 +176,23 @@ export function AddDeviceDialog({ open, onOpenChange, onComplete }: Props) {
           <>
             <DialogHeader>
               <DialogTitle>{METHOD_META[method].title}</DialogTitle>
-              <DialogDescription className="text-muted-foreground">Name this device so you can recognize it later.</DialogDescription>
+              <DialogDescription className="text-[var(--text3)]">Name this device so you can recognize it later.</DialogDescription>
             </DialogHeader>
             <div className="space-y-2 pt-2">
-              <Label htmlFor="device-name" className="text-muted-foreground">Device name</Label>
+              <Label htmlFor="device-name" className="text-[13px] text-[var(--text2)]">Device name</Label>
               <Input
                 id="device-name"
                 value={deviceName}
                 onChange={(e) => setDeviceName(e.target.value)}
                 maxLength={255}
                 autoFocus
-                className="bg-background border-input text-foreground"
+                className="border-[var(--border2)] bg-[var(--bg2)] text-[var(--text)] focus-visible:ring-1 focus-visible:ring-[var(--brand)]"
               />
             </div>
             <div className="flex justify-end gap-2 pt-4">
-              <Button variant="outline" onClick={() => setStep('choose')} className="border-border bg-transparent text-foreground hover:bg-[#1a1a1a] hover:text-foreground focus-visible:text-foreground">Back</Button>
-              <Button onClick={startEnrollment} disabled={busy} className="bg-primary text-primary-foreground font-semibold hover:bg-primary/90">
-                {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              <Button variant="outline" onClick={() => setStep('choose')} className="border-[var(--border2)] bg-[var(--bg2)] text-[var(--text)] hover:bg-[var(--bg3)]">Back</Button>
+              <Button onClick={startEnrollment} disabled={busy} className="bg-[var(--brand)] text-[var(--brand-fg)] font-semibold hover:opacity-90">
+                {busy && <Loader2 className="mr-2 size-3.5 animate-spin" />}
                 Continue
               </Button>
             </div>
@@ -203,24 +203,24 @@ export function AddDeviceDialog({ open, onOpenChange, onComplete }: Props) {
           <>
             <DialogHeader>
               <DialogTitle>Scan the QR code</DialogTitle>
-              <DialogDescription className="text-muted-foreground">Scan with your authenticator app, then enter the 6-digit code.</DialogDescription>
+              <DialogDescription className="text-[var(--text3)]">Scan with your authenticator app, then enter the 6-digit code.</DialogDescription>
             </DialogHeader>
             <div className="flex flex-col items-center gap-4 pt-2">
               {totpQrCodeUrl ? (
-                <div className="bg-white p-3 rounded-lg">
-                  <img src={totpQrCodeUrl} alt="TOTP QR code" className="w-44 h-44" />
+                <div className="bg-white p-3.5 rounded-[var(--radius-lg)] shadow-sm">
+                  <img src={totpQrCodeUrl} alt="TOTP QR code" className="size-44 object-contain" />
                 </div>
               ) : (
-                <div className="w-full rounded-lg border border-border bg-background px-4 py-6 text-center text-[13px] text-muted-foreground">
+                <div className="w-full rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg2)] px-4 py-6 text-center text-[13px] text-[var(--text3)]">
                   QR code unavailable. Use the manual setup key below in your authenticator app.
                 </div>
               )}
               <div className="w-full text-center">
-                <p className="text-[12px] text-muted-foreground mb-1">Can't scan? Enter this key manually:</p>
-                <code className="text-[12px] font-mono text-foreground break-all bg-background border border-border rounded px-2 py-1 inline-block">{totpSetup.secret}</code>
+                <p className="text-[12px] text-[var(--text3)] mb-1">Can't scan? Enter this key manually:</p>
+                <code className="text-[12px] font-mono text-[var(--text)] break-all bg-[var(--bg2)] border border-[var(--border2)] rounded px-2.5 py-1 inline-block select-all">{totpSetup.secret}</code>
               </div>
               <div className="w-full space-y-2">
-                <Label htmlFor="totp-code" className="text-muted-foreground">Verification code</Label>
+                <Label htmlFor="totp-code" className="text-[13px] text-[var(--text2)]">Verification code</Label>
                 <Input
                   id="totp-code"
                   value={code}
@@ -228,16 +228,16 @@ export function AddDeviceDialog({ open, onOpenChange, onComplete }: Props) {
                   placeholder="000000"
                   inputMode="numeric"
                   autoFocus
-                  className="h-12 font-mono text-center tracking-[0.3em] text-lg bg-background border-input text-foreground"
+                  className="h-12 font-mono text-center tracking-[0.3em] text-lg border-[var(--border2)] bg-[var(--bg2)] text-[var(--text)] focus-visible:ring-1 focus-visible:ring-[var(--brand)]"
                 />
               </div>
             </div>
             <div className="flex justify-end gap-2 pt-4">
-              <Button variant="outline" onClick={() => setStep('configure')} className="border-border bg-transparent text-foreground hover:bg-[#1a1a1a] hover:text-foreground focus-visible:text-foreground">
+              <Button variant="outline" onClick={() => setStep('configure')} className="border-[var(--border2)] bg-[var(--bg2)] text-[var(--text)] hover:bg-[var(--bg3)]">
                 Back
               </Button>
-              <Button onClick={verifyCode} disabled={busy || code.length !== 6} className="bg-primary text-primary-foreground font-semibold hover:bg-primary/90">
-                {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Verify
+              <Button onClick={verifyCode} disabled={busy || code.length !== 6} className="bg-[var(--brand)] text-[var(--brand-fg)] font-semibold hover:opacity-90">
+                {busy && <Loader2 className="mr-2 size-3.5 animate-spin" />} Verify
               </Button>
             </div>
           </>
@@ -247,10 +247,10 @@ export function AddDeviceDialog({ open, onOpenChange, onComplete }: Props) {
           <>
             <DialogHeader>
               <DialogTitle>Check your email</DialogTitle>
-              <DialogDescription className="text-muted-foreground">We sent a 6-digit code to your email. Enter it below.</DialogDescription>
+              <DialogDescription className="text-[var(--text3)]">We sent a 6-digit code to your email. Enter it below.</DialogDescription>
             </DialogHeader>
-            <div className="space-y-2 pt-2">
-              <Label htmlFor="email-code" className="text-muted-foreground">Verification code</Label>
+            <div className="space-y-3 pt-2">
+              <Label htmlFor="email-code" className="text-[13px] text-[var(--text2)]">Verification code</Label>
               <Input
                 id="email-code"
                 value={code}
@@ -258,13 +258,13 @@ export function AddDeviceDialog({ open, onOpenChange, onComplete }: Props) {
                 placeholder="000000"
                 inputMode="numeric"
                 autoFocus
-                className="h-12 font-mono text-center tracking-[0.3em] text-lg bg-background border-input text-foreground"
+                className="h-12 font-mono text-center tracking-[0.3em] text-lg border-[var(--border2)] bg-[var(--bg2)] text-[var(--text)] focus-visible:ring-1 focus-visible:ring-[var(--brand)]"
               />
-              <button type="button" onClick={resendEmail} className="text-[12px] text-primary hover:text-primary/80 transition-colors">Resend code</button>
+              <button type="button" onClick={resendEmail} className="text-[12px] text-[var(--text)] hover:underline transition-colors">Resend code</button>
             </div>
             <div className="flex justify-end gap-2 pt-4">
-              <Button onClick={verifyCode} disabled={busy || code.length !== 6} className="bg-primary text-primary-foreground font-semibold hover:bg-primary/90">
-                {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Verify
+              <Button onClick={verifyCode} disabled={busy || code.length !== 6} className="bg-[var(--brand)] text-[var(--brand-fg)] font-semibold hover:opacity-90">
+                {busy && <Loader2 className="mr-2 size-3.5 animate-spin" />} Verify
               </Button>
             </div>
           </>
@@ -273,22 +273,22 @@ export function AddDeviceDialog({ open, onOpenChange, onComplete }: Props) {
         {step === 'backup' && (
           <>
             <DialogHeader>
-              <DialogTitle className="flex items-center gap-2"><ShieldCheck size={18} className="text-primary" /> Save your backup codes</DialogTitle>
-              <DialogDescription className="text-muted-foreground">
+              <DialogTitle className="flex items-center gap-2"><ShieldCheck size={18} className="text-[var(--green)]" /> Save your backup codes</DialogTitle>
+              <DialogDescription className="text-[var(--text3)]">
                 Store these in a safe place. Each code works once and they won't be shown again.
               </DialogDescription>
             </DialogHeader>
             <div className="grid grid-cols-2 gap-2 pt-2">
               {backupCodes.map((c) => (
-                <code key={c} className="text-[13px] font-mono text-foreground bg-background border border-border rounded px-2 py-1.5 text-center">{c}</code>
+                <code key={c} className="text-[13px] font-mono text-[var(--text)] bg-[var(--bg2)] border border-[var(--border2)] rounded px-2 py-1.5 text-center">{c}</code>
               ))}
             </div>
-            <div className="flex gap-2 pt-2">
-              <Button variant="outline" onClick={copyCodes} className="flex-1 border-border bg-transparent text-foreground hover:bg-[#1a1a1a] hover:text-foreground focus-visible:text-foreground"><Copy size={14} className="mr-1.5" /> Copy</Button>
-              <Button variant="outline" onClick={downloadCodes} className="flex-1 border-border bg-transparent text-foreground hover:bg-[#1a1a1a] hover:text-foreground focus-visible:text-foreground"><Download size={14} className="mr-1.5" /> Download</Button>
+            <div className="flex gap-2 pt-3">
+              <Button variant="outline" onClick={copyCodes} className="flex-1 border-[var(--border2)] bg-[var(--bg2)] text-[var(--text)] hover:bg-[var(--bg3)]"><Copy size={14} className="mr-1.5" /> Copy</Button>
+              <Button variant="outline" onClick={downloadCodes} className="flex-1 border-[var(--border2)] bg-[var(--bg2)] text-[var(--text)] hover:bg-[var(--bg3)]"><Download size={14} className="mr-1.5" /> Download</Button>
             </div>
-            <div className="flex justify-end pt-2">
-              <Button onClick={close} className="bg-primary text-primary-foreground font-semibold hover:bg-primary/90">Done</Button>
+            <div className="flex justify-end pt-3">
+              <Button onClick={close} className="bg-[var(--brand)] text-[var(--brand-fg)] font-semibold hover:opacity-90">Done</Button>
             </div>
           </>
         )}

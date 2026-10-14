@@ -1,6 +1,7 @@
 import { useMutation , useQueryClient} from '@tanstack/react-query';
 import { authApi } from '../api/auth.api';
 import { toast } from 'sonner';
+import { apiErrorMessage } from "@/infrastructure/api-client/api-error";
 
 export function useForgotPassword() {
   const queryClient = useQueryClient();
@@ -11,7 +12,7 @@ export function useForgotPassword() {
       toast.success('Password reset link sent! Check your email.');
     },
     onError: (error: any) => {
-      const message = error.response?.data?.error?.message || 'Failed to send reset link';
+      const message = apiErrorMessage(error) || 'Failed to send reset link';
       toast.error(message);
     }
   });

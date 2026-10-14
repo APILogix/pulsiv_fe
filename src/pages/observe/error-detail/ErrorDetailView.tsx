@@ -1,12 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
-import { useNavigate } from "react-router";
-import { DetailSkeleton, Button } from "@/shared/observe";
-import { ArrowLeft } from "lucide-react";
+import { DetailNotFound, DetailPage, DetailSkeleton, SeverityBadge } from "@/shared/observe";
 import { useOrgStore } from "@/modules/organizations/store/org.store";
-import {
-  askObservabilityEvent,
-  useObservabilityDetail,
-} from "../hooks/useObservabilityApi";
+import { askObservabilityEvent, useObservabilityDetail } from "../hooks/useObservabilityApi";
 import { StickyErrorHeader } from "./StickyErrorHeader";
 import { SummaryCards } from "./SummaryCards";
 import { SectionNavigation } from "./SectionNavigation";
@@ -21,16 +16,14 @@ import {
   StackTraceSection,
   TagsSection,
 } from "./sections";
-import { DeveloperToolsSection } from "./DeveloperToolsSection";
 import { useSectionNavigation } from "./useSectionNavigation";
-import { normalizeErrorDetail, toCopyableJson } from "./helpers";
+import { normalizeErrorDetail } from "./helpers";
 
 export function ErrorDetailView({ errorId }: { errorId: string }) {
-  const navigate = useNavigate();
   const activeOrgId = useOrgStore((state) => state.activeOrgId);
   const id = decodeURIComponent(errorId);
   const { data: rawData, isLoading, error } = useObservabilityDetail("errors", id);
-  
+
   const data = useMemo(() => normalizeErrorDetail(rawData), [rawData]);
   const { activeId, scrollTo } = useSectionNavigation(Boolean(data));
   const [analyzing, setAnalyzing] = useState(false);
@@ -44,46 +37,41 @@ export function ErrorDetailView({ errorId }: { errorId: string }) {
       setAiOverride(result);
       scrollTo("ai");
     } catch {
-      // Keep existing AI panel; surface failure via unchanged state
+      // Keep the existing AI panel; it offers its own retry.
     } finally {
       setAnalyzing(false);
     }
   }, [activeOrgId, data, scrollTo]);
 
-  if (isLoading) return <ErrorDetailSkeleton />;
+  if (isLoading) {
+    return (
+      <DetailPage>
+        <DetailSkeleton />
+      </DetailPage>
+    );
+  }
 
   if (error || !data) {
-    return (
-      <div className="flex flex-col gap-4">
-        <Button variant="ghost" className="w-fit" onClick={() => navigate("/observability/errors")}>
-          <ArrowLeft className="size-4" />
-          Back to errors
-        </Button>
-        <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] px-6 py-12 text-center">
-          <h1 className="text-[16px] font-semibold text-[var(--text)]">Error event not found</h1>
-          <p className="mt-2 text-[13px] text-[var(--text3)]">
-            Could not retrieve error detail for ID: <code className="font-[family-name:var(--mono)]">{id}</code>. Check the ID or return to the error list.
-          </p>
-        </div>
-      </div>
-    );
+    return <DetailNotFound kind="Error event" id={id} backTo="/observability/errors" backLabel="Errors" />;
   }
 
   const aiResponse = aiOverride !== undefined ? aiOverride : data.aiResponse;
 
   return (
-    <div className="flex flex-col gap-5 pb-16">
-      <StickyErrorHeader
-        detail={data}
-        onAnalyze={runAnalyze}
-        onCopyJson={() => navigator.clipboard?.writeText(toCopyableJson(data))}
-      />
-
+    <DetailPage>
+      <StickyErrorHeader detail={data} onAnalyze={runAnalyze} />
       <SummaryCards detail={data} />
-
-      <SectionNavigation activeId={activeId} onSelect={scrollTo} />
-
-      <div className="flex flex-col gap-5">
+      <SectionNavigation
+        activeId={activeId}
+        onSelect={scrollTo}
+        trailing={
+          <span className="flex max-w-[360px] items-center gap-2 text-[12px]">
+            <SeverityBadge severity={data.error?.severity ?? "error"} />
+            <span className="truncate font-medium text-[var(--red)]">{data.error?.name ?? "Error"}</span>
+          </span>
+        }
+      />
+      <div className="flex flex-col gap-4">
         <OverviewSection detail={data} />
         <StackTraceSection detail={data} />
         <BreadcrumbsSection detail={data} />
@@ -93,16 +81,7 @@ export function ErrorDetailView({ errorId }: { errorId: string }) {
         <AISection aiResponse={aiResponse} analyzing={analyzing} onAnalyze={runAnalyze} />
         <RelatedSection detail={data} />
         <TagsSection detail={data} />
-        <DeveloperToolsSection publicId={data.publicId} />
       </div>
-    </div>
-  );
-}
-
-function ErrorDetailSkeleton() {
-  return (
-    <div className="flex flex-col gap-5">
-      <DetailSkeleton />
-    </div>
+    </DetailPage>
   );
 }

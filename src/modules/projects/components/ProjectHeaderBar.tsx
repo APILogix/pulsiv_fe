@@ -26,14 +26,15 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button as UiButton } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { Pill, type SurfaceTone } from "@/shared/ui/pulse";
 
 // ── module-level constants (rules.md §1.2) ───────────────────
 
-const STATUS_STYLE: Record<ProjectStatus, string> = {
-  active: "bg-[var(--green-bg)] text-[var(--green)] ring-[var(--green)]/25",
-  paused: "bg-[var(--amber-bg)] text-[var(--amber)] ring-[var(--amber)]/25",
-  archived: "bg-[var(--bg2)] text-[var(--text2)] ring-[var(--border)]",
+// State colour only: active is healthy, paused is degraded, archived is inert.
+const STATUS_TONE: Record<ProjectStatus, SurfaceTone> = {
+  active: "green",
+  paused: "amber",
+  archived: "neutral",
 };
 
 // ── environment selector ─────────────────────────────────────
@@ -44,7 +45,8 @@ function EnvironmentSelector({ projectId, publicId, orgSlug }: { projectId: stri
   const { environments, environment, isLoading, select } = useEnvironmentScope(projectId);
 
   if (isLoading) {
-    return <span className="h-7 w-[104px] animate-pulse rounded-[var(--radius)] bg-[var(--bg2)]" aria-hidden="true" />;
+    // `loading-skeleton` stops animating under prefers-reduced-motion; the bg keeps it visible then.
+    return <span className="loading-skeleton h-7 w-[104px] rounded-[var(--radius)] bg-[var(--bg2)]" aria-hidden="true" />;
   }
 
   if (environments.length === 0) {
@@ -87,13 +89,9 @@ function EnvironmentSelector({ projectId, publicId, orgSlug }: { projectId: stri
               style={{ background: candidate.color }}
             />
             <span className="min-w-0 flex-1 truncate text-[13px]">{candidate.name}</span>
-            {candidate.isDefault && (
-              <span className="font-[family-name:var(--mono)] text-[10px] uppercase text-[var(--text3)]">
-                default
-              </span>
-            )}
+            {candidate.isDefault && <span className="text-[11px] text-[var(--text3)]">Default</span>}
             {candidate.id === environment?.id && (
-              <Check className="size-3.5 shrink-0 text-[var(--brand)]" aria-hidden="true" />
+              <Check className="size-3.5 shrink-0 text-[var(--text)]" aria-hidden="true" />
             )}
           </DropdownMenuItem>
         ))}
@@ -173,7 +171,7 @@ export function ProjectHeaderBar({ project }: { project: Project }) {
         </span>
         <Link
           to={projectPath(activeOrgSlug, project.publicId, "overview")}
-          className="min-w-0 shrink truncate rounded-sm text-[13px] font-semibold text-[var(--text)] transition-colors hover:text-[var(--brand)] focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-[var(--brand-bg)]"
+          className="min-w-0 shrink truncate rounded-sm text-[13px] font-semibold text-[var(--text)] decoration-[var(--border2)] underline-offset-[3px] hover:underline focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-[var(--brand-bg)]"
         >
           {project.name}
         </Link>
@@ -195,17 +193,14 @@ export function ProjectHeaderBar({ project }: { project: Project }) {
 
       {/* scope + state + actions */}
       <div className="flex shrink-0 items-center gap-2">
-        <span
-          className={cn(
-            "hidden items-center gap-1.5 rounded-full px-2 py-[3px] font-[family-name:var(--mono)] text-[10px] font-medium uppercase tracking-[0.08em] ring-1 ring-inset sm:inline-flex",
-            STATUS_STYLE[project.status],
-          )}
-        >
-          <span aria-hidden="true" className="size-1.5 rounded-full bg-current" />
+        <Pill tone={STATUS_TONE[project.status]} dot className="hidden sm:inline-flex">
           {project.status}
-        </span>
+        </Pill>
 
-        <span className="hidden items-center gap-1 font-[family-name:var(--mono)] text-[10px] tabular-nums text-[var(--text3)] xl:inline-flex">
+        <span
+          className="hidden items-center gap-1.5 font-[family-name:var(--mono)] text-[11px] tabular-nums text-[var(--text3)] xl:inline-flex"
+          title="Project timezone"
+        >
           <Clock className="size-3" aria-hidden="true" />
           {project.timezone}
         </span>

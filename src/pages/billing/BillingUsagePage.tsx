@@ -212,23 +212,23 @@ export default function BillingUsagePage() {
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
-          label="Events today"
+          label="Telemetry today"
           value={formatCompact(todayEvents)}
           icon={Activity}
           tone="brand"
           series={recentSeries}
-          footnote="Ingested since midnight UTC"
+          footnote="Raw events since midnight UTC"
         />
         <StatCard
-          label="Events month to date"
+          label="Credits month to date"
           value={formatCompact(monthToDateEvents)}
           icon={Gauge}
           tone="blue"
           series={rangeSeries}
-          footnote={eventCeiling ? `${percentUsed.toFixed(1)}% of the monthly cap` : "No monthly cap applied"}
+          footnote={eventCeiling ? `${percentUsed.toFixed(1)}% of the monthly credit cap` : "No monthly credit cap applied"}
         />
         <StatCard
-          label="Remaining this cycle"
+          label="Credits remaining"
           value={remainingEvents === null ? "∞" : formatCompact(remainingEvents)}
           icon={TrendingUp}
           tone={percentUsed >= 90 ? "red" : percentUsed >= 75 ? "amber" : "green"}
@@ -239,14 +239,14 @@ export default function BillingUsagePage() {
           value={formatCompact(projectedMonthEnd)}
           icon={TrendingUp}
           tone="violet"
-          footnote="Run-rate projection from month-to-date volume"
+          footnote="Credit run-rate projection from current pace"
         />
       </div>
 
       <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1fr)_324px]">
         <Panel
-          title="Events over time"
-          description="Daily ingestion volume for this organization."
+          title="Credits & volume over time"
+          description="Daily credit consumption and telemetry volume for this organization."
           icon={Activity}
           actions={
             <SegmentedControl value={range} onChange={setRange} options={RANGE_OPTIONS} ariaLabel="Chart range" />
@@ -255,30 +255,30 @@ export default function BillingUsagePage() {
           <AreaChart data={rangeSeries} color="var(--brand)" height={220} label="billing-usage-events" />
         </Panel>
 
-        <Panel title="Cycle consumption" description="Monthly event quota burned so far." icon={Gauge}>
+        <Panel title="Cycle consumption" description="Monthly credit quota burned so far." icon={Gauge}>
           <div className="flex flex-col items-center gap-4">
             <Ring
               value={eventCeiling ? Math.min(monthToDateEvents, eventCeiling) : 0}
               max={eventCeiling ?? 100}
               size={132}
               label={eventCeiling ? `${percentUsed.toFixed(0)}%` : "∞"}
-              sublabel={eventCeiling ? "of cap" : "uncapped"}
+              sublabel={eventCeiling ? "of credit cap" : "uncapped"}
             />
             <dl className="w-full">
               <div className="flex items-baseline justify-between gap-3 border-t border-[var(--border)] py-2">
-                <dt className="text-[12.5px] text-[var(--text2)]">Used</dt>
+                <dt className="text-[12.5px] text-[var(--text2)]">Credits used</dt>
                 <dd className="font-[family-name:var(--mono)] text-[12.5px] font-semibold tabular-nums text-[var(--text)]">
                   {formatNumber(monthToDateEvents)}
                 </dd>
               </div>
               <div className="flex items-baseline justify-between gap-3 border-t border-[var(--border)] py-2">
-                <dt className="text-[12.5px] text-[var(--text2)]">Remaining</dt>
+                <dt className="text-[12.5px] text-[var(--text2)]">Credits remaining</dt>
                 <dd className="font-[family-name:var(--mono)] text-[12.5px] font-semibold tabular-nums text-[var(--text)]">
                   {remainingEvents === null ? "∞" : formatNumber(remainingEvents)}
                 </dd>
               </div>
               <div className="flex items-baseline justify-between gap-3 border-t border-[var(--border)] py-2">
-                <dt className="text-[12.5px] text-[var(--text2)]">Cap</dt>
+                <dt className="text-[12.5px] text-[var(--text2)]">Credit cap</dt>
                 <dd className="font-[family-name:var(--mono)] text-[12.5px] font-semibold tabular-nums text-[var(--text)]">
                   {formatLimit(currentUsage.eventLimit)}
                 </dd>
@@ -296,11 +296,11 @@ export default function BillingUsagePage() {
         >
           <div className="flex flex-col gap-5">
             <Meter
-              label="Monthly events"
+              label="Monthly billable credits"
               used={monthToDateEvents}
               limit={eventCeiling}
               format={formatCompact}
-              hint={remainingEvents === null ? "No monthly cap applied" : `${formatCompact(remainingEvents)} remaining`}
+              hint={remainingEvents === null ? "No monthly cap applied" : `${formatCompact(remainingEvents)} credits remaining`}
             />
             <Meter
               label="AI credits"
@@ -344,15 +344,15 @@ export default function BillingUsagePage() {
           <Panel title="Forecast" description="Where this cycle lands at the current run rate." icon={TrendingUp}>
             <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="flex flex-col gap-1">
-                <dt className="text-[11px] font-medium uppercase tracking-[0.1em] text-[var(--text3)]">
-                  Projected total
+                <dt className="text-[12px] text-[var(--text3)]">
+                  Projected total credits
                 </dt>
                 <dd className="font-[family-name:var(--display)] text-[19px] font-semibold tabular-nums text-[var(--text)]">
                   {formatNumber(projectedMonthEnd)}
                 </dd>
               </div>
               <div className="flex flex-col gap-1">
-                <dt className="text-[11px] font-medium uppercase tracking-[0.1em] text-[var(--text3)]">
+                <dt className="text-[12px] text-[var(--text3)]">
                   Daily run rate
                 </dt>
                 <dd className="font-[family-name:var(--display)] text-[19px] font-semibold tabular-nums text-[var(--text)]">
@@ -364,11 +364,11 @@ export default function BillingUsagePage() {
               <Notice
                 tone="amber"
                 icon={TriangleAlert}
-                title="Projected to exceed the monthly cap"
+                title="Projected to exceed the monthly credit cap"
                 className="mt-4"
               >
-                At the current run rate this cycle lands near {formatCompact(projectedMonthEnd)} events, above the{" "}
-                {formatCompact(eventCeiling)} cap.
+                At the current run rate this cycle lands near {formatCompact(projectedMonthEnd)} credits, above the{" "}
+                {formatCompact(eventCeiling)} credit cap.
               </Notice>
             ) : null}
           </Panel>

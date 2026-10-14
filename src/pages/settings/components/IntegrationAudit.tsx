@@ -55,7 +55,7 @@ export function IntegrationAudit({ integrationId }: IntegrationAuditProps) {
   const rangeEnd = Math.min((page + 1) * limit, total);
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-5">
       <Toolbar
         trailing={
           <span className="font-[family-name:var(--mono)] text-[11.5px] tabular-nums text-[var(--text3)]">

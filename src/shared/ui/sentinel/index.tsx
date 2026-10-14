@@ -14,11 +14,12 @@ import { cn } from '@/lib/utils';
 
 /* ── Eyebrow / section label (§4) ─────────────────────────── */
 
+/** Small section label. Sentence case, Inter; never an uppercase tracked kicker. */
 export function Eyebrow({ children, className }: { children: ReactNode; className?: string }) {
   return (
     <span
       className={cn(
-        'font-mono text-[10px] font-medium uppercase tracking-[0.09em] text-[var(--text3)]',
+        'text-[12px] font-medium text-[var(--text3)]',
         className,
       )}
     >
@@ -67,13 +68,13 @@ export function StatusPill({
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 font-mono text-[10px] font-medium uppercase tracking-[0.08em]',
+        'inline-flex items-center gap-1.5 whitespace-nowrap rounded-[4px] px-1.5 py-0.5 text-[11px] font-medium leading-[1.35]',
         STATUS_TONE[tone],
         className,
       )}
     >
       {dot && <span className="pulse-dot size-1.5 rounded-full bg-current" />}
-      {children}
+      <span className="inline-block first-letter:uppercase">{children}</span>
     </span>
   );
 }
@@ -85,7 +86,7 @@ export function ConfidencePill({ value, className }: { value: number; className?
   return (
     <span
       className={cn(
-        'inline-flex items-center rounded-full bg-[var(--ai-bg)] px-2 py-0.5 font-mono text-[10px] font-medium tabular-nums text-[var(--ai)]',
+        'inline-flex items-center rounded-[4px] bg-[var(--ai-bg)] px-1.5 py-0.5 font-mono text-[11px] font-medium tabular-nums text-[var(--ai)]',
         className,
       )}
     >
@@ -102,7 +103,7 @@ export function AiWatchingDot({ label = 'AI watching', className }: { label?: st
         <span className="ai-pulse absolute inset-0 rounded-full border border-[var(--ai)]" />
         <span className="relative size-1.5 rounded-full bg-[var(--ai)]" />
       </span>
-      <span className="font-mono text-[10px] font-medium uppercase tracking-[0.09em] text-[var(--ai)]">
+      <span className="text-[12px] font-medium text-[var(--ai)]">
         {label}
       </span>
     </span>
@@ -120,7 +121,7 @@ export function AiAnalyzing({ lines = 2, label = 'analyzing pattern…', classNa
           style={{ width: index === lines - 1 ? '62%' : '100%' }}
         />
       ))}
-      <span className="font-mono text-[10px] text-[var(--ai)]">{label}</span>
+      <span className="text-[12px] text-[var(--ai)]">{label}</span>
     </div>
   );
 }
@@ -148,9 +149,9 @@ export function AiSpark({ size = 12, className }: { size?: number; className?: s
 
 /**
  * AI insight card — the signature component (§7).
- * bg1 · 10px radius · hairline border with a top-right inner cyan glow ·
- * gradient spark chip · body in --text2 · footer confidence pill + optional
- * model-suggested action. Hover shifts the border to --ai-d.
+ * bg1 · 10px radius · hairline border · cyan spark glyph (the model channel,
+ * no glow, no gradient chip) · body in --text2 · footer confidence pill +
+ * optional model-suggested action (design/dashboards/DESIGN.md).
  */
 export function AiInsightCard({
   title,
@@ -168,19 +169,17 @@ export function AiInsightCard({
   return (
     <article
       className={cn(
-        'ai-glow relative overflow-hidden rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] p-4 transition-colors duration-150 hover:border-[var(--ai-d)]',
+        'relative overflow-hidden rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] px-5 py-4',
         className,
       )}
     >
-      <header className="relative flex items-center gap-2">
-        <span className="logo-gradient flex size-[22px] items-center justify-center rounded-[6px] text-[var(--brand-fg)]">
-          <AiSpark size={12} />
-        </span>
-        <h3 className="text-[12px] font-semibold text-[var(--text)]">{title}</h3>
+      <header className="flex items-start gap-2.5">
+        <AiSpark size={14} className="mt-[3px] shrink-0 text-[var(--ai)]" />
+        <h3 className="text-[14px] font-semibold leading-[1.4] tracking-[-0.01em] text-[var(--text)]">{title}</h3>
       </header>
-      <div className="relative mt-2 text-[13px] leading-[1.5] text-[var(--text2)]">{children}</div>
+      <div className="mt-2 pl-[24px] text-[13px] leading-[1.6] text-[var(--text2)]">{children}</div>
       {(confidence !== undefined || action) && (
-        <footer className="relative mt-3 flex items-center justify-between gap-3">
+        <footer className="mt-4 flex items-center justify-between gap-3 pl-[24px]">
           {confidence !== undefined ? <ConfidencePill value={confidence} /> : <span />}
           {action}
         </footer>
@@ -207,7 +206,7 @@ export function AiActionButton({
       onClick={onClick}
       disabled={disabled}
       className={cn(
-        'inline-flex h-8 items-center gap-1.5 rounded-[var(--radius)] border border-[var(--ai-d)] bg-[var(--ai-bg)] px-2.5 text-[12px] font-medium text-[var(--ai)] transition-colors duration-150 outline-none hover:bg-[var(--ai)] hover:text-[var(--ai-fg)] focus-visible:ring-3 focus-visible:ring-[var(--ai-bg)] disabled:opacity-50',
+        'inline-flex h-8 items-center gap-1.5 rounded-[var(--radius)] border border-[var(--ai-d)] bg-[var(--ai-bg)] px-2.5 text-[12px] font-medium text-[var(--ai)] transition-colors duration-150 outline-none hover:bg-[var(--ai)] hover:text-[var(--ai-fg)] focus-visible:ring-2 focus-visible:ring-[var(--ai)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg)] disabled:opacity-50',
         className,
       )}
     >

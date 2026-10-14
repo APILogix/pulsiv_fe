@@ -6,6 +6,7 @@ import {
   AlertTriangle,
   FileText,
   User,
+  GitBranch,
   Shield,
   Layers,
 } from "lucide-react";
@@ -28,10 +29,10 @@ export function CorrelatedSignalsSection({ detail }: { detail: TraceDetailData }
   return (
     <SectionShell
       id={sectionDomId("correlations")}
-      title="Correlated Signals & Context"
-      description="Linked HTTP requests, error events, logs, user session, and platform attributes."
+      title="Related"
+      description="The request, errors, and logs that share this trace."
     >
-      <div className="flex flex-col gap-5">
+      <div className="flex flex-col gap-6">
         {/* Core identity & context */}
         <KeyValueGrid
           columns={3}
@@ -51,26 +52,26 @@ export function CorrelatedSignalsSection({ detail }: { detail: TraceDetailData }
 
         {/* Linked Request Card */}
         {requestId && (
-          <div className="flex items-center justify-between rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg)] p-4">
-            <div className="flex items-center gap-3">
-              <div className="flex size-8 items-center justify-center rounded bg-[var(--blue-bg)] text-[var(--blue)]">
-                <Globe className="size-4" />
+          <div className="flex flex-wrap items-center justify-between gap-4 rounded-[var(--radius)] border border-[var(--blue)]/30 bg-[var(--blue-bg)]/20 p-5">
+            <div className="flex items-center gap-3.5">
+              <div className="flex size-9 items-center justify-center rounded-[var(--radius)] bg-[var(--blue-bg)] text-[var(--blue)]">
+                <Globe className="size-4.5" />
               </div>
               <div>
-                <div className="text-[13px] font-semibold text-[var(--text)]">
+                <div className="text-[14px] font-semibold text-[var(--text)]">
                   Correlated HTTP Request
                 </div>
-                <div className="font-mono text-[11.5px] text-[var(--text3)]">
+                <div className="mt-0.5 font-[family-name:var(--mono)] text-[12px] text-[var(--text3)]">
                   Request ID: {requestId}
                 </div>
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
-              <CopyButton value={requestId} label="Copy ID" />
+            <div className="flex items-center gap-2.5">
+              <CopyButton value={requestId} label="Copy ID" className="h-9 px-3 text-[12px]" />
               <Link
                 to={`/observability/requests/${encodeURIComponent(requestId)}`}
-                className="inline-flex h-8 items-center gap-1.5 rounded-[var(--radius)] border border-[var(--border2)] px-3 text-[12px] font-medium text-[var(--text)] hover:bg-[var(--bg2)]"
+                className="inline-flex h-9 items-center gap-2 rounded-[var(--radius)] bg-[var(--blue)] px-4 text-[13px] font-semibold text-[var(--bg)] hover:opacity-90 transition-opacity cursor-pointer"
               >
                 View Request
                 <ExternalLink className="size-3.5" />
@@ -79,54 +80,67 @@ export function CorrelatedSignalsSection({ detail }: { detail: TraceDetailData }
           </div>
         )}
 
-        {/* Related Errors */}
-        {relatedErrors.length > 0 && (
-          <div className="rounded-[var(--radius)] border border-[var(--red)]/20 bg-[var(--bg)] p-4">
-            <div className="flex items-center gap-2 text-[13px] font-semibold text-[var(--red)]">
-              <AlertTriangle className="size-4" />
-              Related Errors ({relatedErrors.length})
+        {/* Related Errors & Logs Cards */}
+        <div className="grid gap-6 lg:grid-cols-2">
+          {/* Related Errors */}
+          <div className="rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg)] p-5">
+            <div className="flex items-center justify-between border-b border-[var(--border)] pb-3">
+              <div className="flex items-center gap-2 text-[13px] font-semibold text-[var(--red)]">
+                <AlertTriangle className="size-4" />
+                <span>Correlated Errors ({relatedErrors.length})</span>
+              </div>
+              <span className="text-[11px] text-[var(--text3)]">Exceptions in Trace</span>
             </div>
-            <div className="mt-3 divide-y divide-[var(--border)]">
-              {relatedErrors.map((err: any, idx: number) => (
-                <div key={idx} className="flex items-center justify-between py-2 text-[12px]">
-                  <div className="truncate font-mono text-[var(--text)]">
-                    {err.message || err.name || "Error Event"}
+            {relatedErrors.length === 0 ? (
+              <p className="mt-4 text-[12.5px] text-[var(--text3)]">No error events occurred during this trace.</p>
+            ) : (
+              <div className="mt-3 divide-y divide-[var(--border)]">
+                {relatedErrors.map((err: any, idx: number) => (
+                  <div key={idx} className="flex items-center justify-between py-2.5 text-[12.5px]">
+                    <div className="truncate font-[family-name:var(--mono)] font-medium text-[var(--text)] pr-3" title={err.message || err.name}>
+                      {err.message || err.name || "Error Event"}
+                    </div>
+                    {err.publicId && (
+                      <Link
+                        to={`/observability/errors/${encodeURIComponent(err.publicId)}`}
+                        className="font-[family-name:var(--mono)] text-[12px] text-[var(--text)] underline-offset-2 hover:underline shrink-0"
+                      >
+                        {err.publicId}
+                      </Link>
+                    )}
                   </div>
-                  {err.publicId && (
-                    <Link
-                      to={`/observability/errors/${encodeURIComponent(err.publicId)}`}
-                      className="text-[var(--blue)] hover:underline"
-                    >
-                      {err.publicId}
-                    </Link>
-                  )}
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
-        )}
 
-        {/* Related Logs */}
-        {relatedLogs.length > 0 && (
-          <div className="rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg)] p-4">
-            <div className="flex items-center gap-2 text-[13px] font-semibold text-[var(--text)]">
-              <FileText className="size-4" />
-              Correlated Logs ({relatedLogs.length})
+          {/* Related Logs */}
+          <div className="rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg)] p-5">
+            <div className="flex items-center justify-between border-b border-[var(--border)] pb-3">
+              <div className="flex items-center gap-2 text-[13px] font-semibold text-[var(--text)]">
+                <FileText className="size-4 text-[var(--blue)]" />
+                <span>Correlated Logs ({relatedLogs.length})</span>
+              </div>
+              <span className="text-[11px] text-[var(--text3)]">Telemetry Logs</span>
             </div>
-            <div className="mt-3 divide-y divide-[var(--border)]">
-              {relatedLogs.slice(0, 10).map((log: any, idx: number) => (
-                <div key={idx} className="flex items-center justify-between py-2 text-[12px]">
-                  <span className="truncate font-mono text-[var(--text2)]">
-                    {log.message || log.name}
-                  </span>
-                  <span className="font-mono text-[11px] text-[var(--text3)]">
-                    {log.level || "info"}
-                  </span>
-                </div>
-              ))}
-            </div>
+            {relatedLogs.length === 0 ? (
+              <p className="mt-4 text-[12.5px] text-[var(--text3)]">No log messages attached to this trace.</p>
+            ) : (
+              <div className="mt-3 divide-y divide-[var(--border)] max-h-60 overflow-y-auto">
+                {relatedLogs.slice(0, 15).map((log: any, idx: number) => (
+                  <div key={idx} className="flex items-center justify-between py-2 text-[12px]">
+                    <span className="truncate font-[family-name:var(--mono)] text-[var(--text2)] pr-3" title={log.message || log.name}>
+                      {log.message || log.name}
+                    </span>
+                    <span className="rounded bg-[var(--bg2)] px-1.5 py-0.5 font-[family-name:var(--mono)] text-[10.5px] text-[var(--text3)] shrink-0">
+                      {log.level || "info"}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
-        )}
+        </div>
       </div>
     </SectionShell>
   );

@@ -177,14 +177,21 @@ export function DialogField({
   children: ReactNode;
   className?: string;
 }) {
+  // Sentence-case label in the auth field's voice; mono stays for values.
+  // Required fields carry the native `required` attribute, so the asterisk is
+  // a visual cue only.
   return (
-    <div className={cn("flex flex-col gap-1.5", className)}>
-      <label htmlFor={name} className="font-[family-name:var(--mono)] text-[10px] font-medium uppercase tracking-[0.09em] text-[var(--text3)]">
+    <div className={cn("flex min-w-0 flex-col gap-1.5", className)}>
+      <label htmlFor={name} className="text-[13px] font-medium text-[var(--text2)]">
         {label}
-        {required && <span className="ml-1 text-[var(--red)]">*</span>}
+        {required && (
+          <span aria-hidden="true" className="ml-0.5 text-[var(--text3)]">
+            *
+          </span>
+        )}
       </label>
       {children}
-      {hint && <span className="text-[11px] leading-snug text-[var(--text3)]">{hint}</span>}
+      {hint && <span className="text-[12px] leading-[1.5] text-[var(--text3)]">{hint}</span>}
     </div>
   );
 }
@@ -203,21 +210,16 @@ export function apiErrorMessage(error: unknown, fallback = "Request failed."): s
 
   if (typeof dataError === "string" && dataError.length > 0) return dataError;
   if (dataError && typeof dataError === "object") {
-    if ("message" in dataError && typeof (dataError as any).message === "string" && (dataError as any).message.length > 0) {
-      return (dataError as any).message;
-    }
+    const envelopeMessage = (dataError as { message?: unknown }).message;
+    if (typeof envelopeMessage === "string" && envelopeMessage.length > 0) return envelopeMessage;
   }
 
   if (typeof dataMsg === "string" && dataMsg.length > 0) return dataMsg;
 
-  if (error instanceof Error) {
-    if (typeof error.message === "string" && error.message.length > 0) {
-      return error.message;
-    }
-  }
+  if (error instanceof Error && error.message.length > 0) return error.message;
 
   if (typeof error === "object" && error !== null && "message" in error) {
-    const msg = (error as any).message;
+    const msg = (error as { message?: unknown }).message;
     if (typeof msg === "string" && msg.length > 0) return msg;
   }
 
@@ -309,12 +311,16 @@ export function AsyncPanel({
   // body class (often `p-0` for edge-to-edge tables) must not apply to them.
   let stateBody = false;
 
+  // `emptyIcon` stays in the signature for existing call sites; empty states
+  // teach with words, not an icon chip (design/workspaces/DESIGN.md).
+  void emptyIcon;
+
   if (loading) {
     stateBody = true;
     body = (
-      <div className="flex flex-col gap-2 py-1">
+      <div role="status" aria-label="Loading" className="flex flex-col gap-2 py-1">
         {[0, 1, 2, 3].map((row) => (
-          <div key={row} className="loading-skeleton h-9 rounded-[var(--radius)] bg-[var(--bg2)]" />
+          <div key={row} aria-hidden="true" className="loading-skeleton h-9 rounded-[var(--radius)]" />
         ))}
       </div>
     );
@@ -322,26 +328,18 @@ export function AsyncPanel({
     stateBody = true;
     body = (
       <Notice tone="red" icon={AlertTriangle} title="Could not load this section">
-        {(error as Error)?.message ?? "Unexpected error."}
+        {apiErrorMessage(error, "Unexpected error.")}
       </Notice>
     );
   } else if (isEmpty) {
     stateBody = true;
-    const EmptyIcon = emptyIcon ?? AlertTriangle;
     body = (
-      <div className="flex flex-col items-center justify-center gap-3 py-10 text-center">
-        <span className="inline-flex size-11 items-center justify-center rounded-full bg-[var(--bg2)] text-[var(--text3)] ring-1 ring-inset ring-[var(--border)]">
-          <EmptyIcon className="size-5" aria-hidden="true" />
-        </span>
-        <div>
-          <p className="text-[14px] font-semibold text-[var(--text)]">{emptyTitle ?? "Nothing here yet"}</p>
-          {emptyDescription && (
-            <p className="mt-1 max-w-[46ch] text-[12px] leading-[1.5] text-[var(--text2)]">
-              {emptyDescription}
-            </p>
-          )}
-        </div>
-        {emptyAction}
+      <div className="flex flex-col items-start gap-1.5 py-4">
+        <p className="text-[14px] font-semibold text-[var(--text)]">{emptyTitle ?? "Nothing here yet"}</p>
+        {emptyDescription && (
+          <p className="max-w-[60ch] text-[13px] leading-[1.6] text-[var(--text2)]">{emptyDescription}</p>
+        )}
+        {emptyAction && <div className="mt-3">{emptyAction}</div>}
       </div>
     );
   }

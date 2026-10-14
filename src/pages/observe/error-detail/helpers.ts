@@ -15,7 +15,6 @@ export const ERROR_SECTIONS: { id: ErrorSectionId; label: string }[] = [
   { id: "ai", label: "AI Analysis" },
   { id: "related", label: "Related Telemetry" },
   { id: "tags", label: "Tags & Extra" },
-  { id: "developer-tools", label: "Developer Tools" },
 ];
 
 export function sectionDomId(id: ErrorSectionId): string {

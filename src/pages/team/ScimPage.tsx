@@ -1,56 +1,52 @@
 import { useState } from "react";
-import {
-  Clock,
-  KeyRound,
-  Link2,
-  MoreHorizontal,
-  RefreshCcw,
-  ShieldCheck,
-  Trash2,
-  Users,
-  Workflow,
-} from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { env } from "@/app/config/env";
+import { Button as UiButton } from "@/components/ui/button";
+import { DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+import { cn } from "@/lib/utils";
 import { orgApi } from "@/modules/organizations/api/org.api";
 import { orgQueryKeys, useOrganizations } from "@/modules/organizations/hooks/useOrganizations";
 import type { CreateScimTokenInput, ScimToken } from "@/modules/organizations/types/org.types";
-import { Button as UiButton } from "@/components/ui/button";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+  HIDE_BELOW_LG,
+  HIDE_BELOW_MD,
+  HIDE_BELOW_SM,
+  HIDE_BELOW_XL,
+  ProjectPageHeader,
+  Readouts,
+  RowActions,
+  RowTitle,
+  Sheet,
+  SheetCell,
+  SheetEmpty,
+  SheetError,
+  SheetList,
+  SheetListItem,
+  SheetLoading,
+  SheetRow,
+  SheetTable,
+  WorkspacePage,
+  type Readout,
+  type SheetColumn,
+} from "@/modules/projects/components/project-page";
+import { ConfirmDialog, DialogField, apiErrorMessage } from "@/modules/projects/components/project-ui";
+import { CopyButton, Timestamp, formatNumber } from "@/shared/observe";
 import {
-  CardSkeleton,
-  CopyButton,
-  StatusBadge,
-  Table,
-  Td,
-  Timestamp,
-  Tr,
-} from "@/shared/observe";
-import {
-  EmptyPanel,
-  HeroFacts,
   KeyValueGrid,
   Notice,
-  PageHero,
   Panel,
   Pill,
   SecretField,
-  SectionHeading,
   SetupSteps,
   SplitShell,
   fieldInputClass,
   fieldTextareaClass,
-  type HeroFact,
   type KeyValueItem,
   type SetupStepItem,
+  type SurfaceTone,
 } from "@/shared/ui/pulse";
 
 type ScimProvisioningPageProps = {
@@ -84,9 +80,9 @@ const DEFAULT_SCOPES: ScimScope[] = [
   "groups:delete",
 ];
 
-const TOKEN_HEADERS = ["Token", "Status", "Scopes", "Allowed IPs", "Last used", "Expires", ""];
-
 const DAY_MS = 86_400_000;
+const EXPIRING_WINDOW_MS = 7 * DAY_MS;
+const TOKEN_FORM_ID = "scim-token-form";
 
 interface ScimEndpoint {
   label: string;
@@ -146,28 +142,50 @@ function policyPreview(scopes: ScimScope[], allowedIps: string[], expiresInDays:
   ];
 }
 
-// ── one-off local component: endpoint reference row ──
-function EndpointRow({ endpoint }: { endpoint: ScimEndpoint }) {
-  return (
-    <div className="flex flex-col gap-2 rounded-[12px] border border-[var(--border)] bg-[var(--bg2)] px-4 py-3 transition-colors hover:border-[var(--border2)] sm:flex-row sm:items-center sm:justify-between">
-      <div className="min-w-0">
-        <div className="flex items-center gap-2">
-          <span className="text-[11px] font-medium uppercase tracking-[0.1em] text-[var(--text3)]">{endpoint.label}</span>
-          <span className="rounded-[6px] bg-[var(--ai-bg)] px-1.5 py-px font-[family-name:var(--mono)] text-[10.5px] font-semibold uppercase text-[var(--ai)]">
-            {endpoint.method}
-          </span>
-        </div>
-        <p className="mt-1 truncate font-[family-name:var(--mono)] text-[12.5px] text-[var(--text)]" title={endpoint.url}>
-          {endpoint.url}
-        </p>
-        <p className="mt-1 text-[12px] text-[var(--text3)]">{endpoint.description}</p>
-      </div>
-      <CopyButton value={endpoint.url} label="Copy URL" />
-    </div>
-  );
+// ── Token state ──────────────────────────────────────────────
+
+type TokenState = "active" | "expiring" | "expired" | "revoked";
+
+const TOKEN_STATE: Record<TokenState, { label: string; tone: SurfaceTone }> = {
+  active: { label: "Active", tone: "green" },
+  expiring: { label: "Expiring", tone: "amber" },
+  expired: { label: "Expired", tone: "neutral" },
+  revoked: { label: "Revoked", tone: "red" },
+};
+
+function isExpiredAt(token: ScimToken, now: number) {
+  return token.expiresAt ? new Date(token.expiresAt).getTime() <= now : false;
 }
 
-// ── one-off local component: scope selector tile ──
+/** Same rule as the dashboard ledger: not revoked and not expired. */
+function isLive(token: ScimToken, now: number) {
+  return !token.revokedAt && !isExpiredAt(token, now);
+}
+
+function isExpiringSoon(token: ScimToken, now: number) {
+  if (!isLive(token, now) || !token.expiresAt) return false;
+  return new Date(token.expiresAt).getTime() - now <= EXPIRING_WINDOW_MS;
+}
+
+function tokenState(token: ScimToken, now: number): TokenState {
+  if (token.revokedAt) return "revoked";
+  if (isExpiredAt(token, now)) return "expired";
+  if (isExpiringSoon(token, now)) return "expiring";
+  return "active";
+}
+
+const TOKEN_COLUMNS: SheetColumn[] = [
+  { key: "token", header: "Token" },
+  { key: "scopes", header: "Scopes", className: HIDE_BELOW_LG },
+  { key: "state", header: "State", className: "w-[104px]" },
+  { key: "ips", header: "Allowed IPs", className: `w-[150px] ${HIDE_BELOW_XL}` },
+  { key: "lastUsed", header: "Last used", className: `w-[120px] ${HIDE_BELOW_MD}` },
+  { key: "expires", header: "Expires", className: `w-[104px] ${HIDE_BELOW_SM}` },
+  { key: "actions", header: "Actions", srOnly: true, className: "w-[52px]", align: "right" },
+];
+
+// ── Scope picker row ─────────────────────────────────────────
+
 function ScopeTile({
   option,
   selected,
@@ -177,25 +195,36 @@ function ScopeTile({
   selected: boolean;
   onToggle: () => void;
 }) {
+  const id = `scim-scope-${option.value.replace(":", "-")}`;
   return (
     <label
-      className={`flex cursor-pointer items-start gap-3 rounded-[10px] border p-3 transition-colors ${
-        selected ? "border-[var(--brand)] bg-[var(--brand-bg)]" : "border-[var(--border)] bg-[var(--bg2)] hover:border-[var(--border2)]"
-      }`}
+      htmlFor={id}
+      className={cn(
+        "flex cursor-pointer items-start gap-3 px-3.5 py-2.5 transition-colors duration-150 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-inset has-[:focus-visible]:ring-[var(--brand)]",
+        selected ? "bg-[var(--bg2)]" : "hover:bg-[var(--bg2)]/50",
+      )}
     >
       <input
+        id={id}
         type="checkbox"
+        name="scopes"
+        value={option.value}
         checked={selected}
         onChange={onToggle}
-        className="mt-0.5 size-4 shrink-0 accent-[var(--brand)]"
+        className="mt-0.5 size-4 shrink-0 accent-[var(--text)] focus-visible:outline-none"
       />
-      <span className="min-w-0">
-        <span className="block font-[family-name:var(--mono)] text-[12.5px] font-medium text-[var(--text)]">{option.label}</span>
-        <span className="mt-0.5 block text-[11.5px] leading-relaxed text-[var(--text2)]">{option.description}</span>
+      <span className="min-w-0 flex-1">
+        <span className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
+          <span className="text-[13px] font-medium text-[var(--text)]">{option.label}</span>
+          <code className="font-[family-name:var(--mono)] text-[11.5px] text-[var(--text3)]">{option.value}</code>
+        </span>
+        <span className="mt-0.5 block text-[12px] leading-[1.5] text-[var(--text2)]">{option.description}</span>
       </span>
     </label>
   );
 }
+
+// ── Page ─────────────────────────────────────────────────────
 
 export function ScimProvisioningPage({ mode = "admin" }: ScimProvisioningPageProps) {
   const queryClient = useQueryClient();
@@ -206,8 +235,9 @@ export function ScimProvisioningPage({ mode = "admin" }: ScimProvisioningPagePro
   const [selectedScopes, setSelectedScopes] = useState<ScimScope[]>(DEFAULT_SCOPES);
   const [expiresInDays, setExpiresInDays] = useState("365");
   const [allowedIpsText, setAllowedIpsText] = useState("");
+  const [revokeTarget, setRevokeTarget] = useState<ScimToken | null>(null);
 
-  const { data: tokens, isLoading } = useQuery({
+  const { data: tokens, isLoading, isError, error, refetch } = useQuery({
     queryKey: orgQueryKeys.scimTokens(activeOrgId!),
     queryFn: () => orgApi.listScimTokens(activeOrgId!),
     enabled: !!activeOrgId,
@@ -228,11 +258,12 @@ export function ScimProvisioningPage({ mode = "admin" }: ScimProvisioningPagePro
       });
     },
     onSuccess: (data) => {
-      toast.success("SCIM token generated");
+      toast.success("SCIM token created");
       setNewTokenRaw(data.rawToken);
       invalidateTokens();
     },
-    onError: (err: any) => toast.error(err.response?.data?.message || "Failed to generate token"),
+    onError: (err: unknown) =>
+      toast.error(apiErrorMessage(err, "Could not create the SCIM token. Check the scopes and try again.")),
   });
 
   const rotateMutation = useMutation({
@@ -245,7 +276,7 @@ export function ScimProvisioningPage({ mode = "admin" }: ScimProvisioningPagePro
       setNewTokenRaw(data.rawToken);
       invalidateTokens();
     },
-    onError: (err: any) => toast.error(err.response?.data?.message || "Failed to rotate token"),
+    onError: (err: unknown) => toast.error(apiErrorMessage(err, "Could not rotate the SCIM token. Try again.")),
   });
 
   const revokeMutation = useMutation({
@@ -258,67 +289,92 @@ export function ScimProvisioningPage({ mode = "admin" }: ScimProvisioningPagePro
       setNewTokenRaw(null);
       invalidateTokens();
     },
-    onError: (err: any) => toast.error(err.response?.data?.message || "Failed to revoke token"),
+    onError: (err: unknown) => toast.error(apiErrorMessage(err, "Could not revoke the SCIM token. Try again.")),
   });
 
   const allTokens = tokens ?? [];
-  const activeTokens = allTokens.filter(
-    (token) => !token.revokedAt && (!token.expiresAt || new Date(token.expiresAt).getTime() > now),
-  );
-  const activeToken = activeTokens[0] ?? null;
-  const expiringSoonCount = activeTokens.filter((token) => {
-    if (!token.expiresAt) return false;
-    return new Date(token.expiresAt).getTime() - now <= 7 * DAY_MS;
-  }).length;
+  const liveTokens = allTokens.filter((token) => isLive(token, now));
+  const revokedCount = allTokens.filter((token) => token.revokedAt).length;
+  const expiredCount = allTokens.filter((token) => !token.revokedAt && isExpiredAt(token, now)).length;
+  const expiringSoonCount = liveTokens.filter((token) => isExpiringSoon(token, now)).length;
+  const anyExpiry = allTokens.some((token) => token.expiresAt);
   const lastUsedAt =
-    activeTokens
+    liveTokens
       .map((token) => token.lastUsedAt)
       .filter((value): value is string => Boolean(value))
       .sort((left, right) => new Date(right).getTime() - new Date(left).getTime())[0] ?? null;
 
+  const provisioningOn = liveTokens.length > 0;
+  const hasData = tokens !== undefined;
+
   const apiBaseUrl = env.VITE_API_URL.replace(/\/$/, "");
   const scimBaseUrl = activeOrgId ? `${apiBaseUrl}/scim/v2/${activeOrgId}` : `${apiBaseUrl}/scim/v2/{orgId}`;
   const allowedIps = parseAllowedIps(allowedIpsText);
+  const canCreate = selectedScopes.length > 0 && !generateMutation.isPending;
 
-  const pageTitle = mode === "settings" ? "SCIM provisioning" : "SCIM configuration";
+  const pageTitle = mode === "settings" ? "SCIM provisioning" : "SCIM";
   const pageDescription =
     mode === "settings"
       ? "Manage provisioning endpoints, token scopes, rotation, and IP allowlists for your organization."
-      : "Provisioning tokens and SCIM resource endpoints for identity automation.";
+      : "Provisioning tokens and the SCIM endpoints your identity provider uses to create and remove members.";
 
-  const facts: HeroFact[] = [
+  const readouts: Readout[] = [
     {
-      label: "Provisioning",
-      value: activeToken ? "Active" : "Inactive",
-      tone: activeToken ? "green" : "amber",
-      icon: ShieldCheck,
+      label: "Live tokens",
+      value: formatNumber(liveTokens.length),
+      sub: `of ${formatNumber(allTokens.length)} issued`,
+      tone: provisioningOn ? "good" : "neutral",
     },
-    { label: "Active tokens", value: activeTokens.length, icon: KeyRound },
     {
-      label: "Expiring in 7 days",
-      value: expiringSoonCount,
-      tone: expiringSoonCount > 0 ? "amber" : "neutral",
-      icon: Clock,
+      label: "Revoked",
+      value: formatNumber(revokedCount),
+      sub: expiredCount > 0 ? `${formatNumber(expiredCount)} more expired` : "None expired",
     },
+    ...(anyExpiry
+      ? [
+          {
+            label: "Expiring soon",
+            value: formatNumber(expiringSoonCount),
+            sub: "Live tokens, next 7 days",
+            tone: expiringSoonCount > 0 ? ("warn" as const) : ("neutral" as const),
+          },
+        ]
+      : []),
     {
       label: "Last used",
-      value: lastUsedAt ? <Timestamp value={lastUsedAt} /> : "Never",
-      icon: Users,
+      value: lastUsedAt ? (
+        <Timestamp value={lastUsedAt} />
+      ) : (
+        <span className="font-[family-name:var(--sans)]">Never</span>
+      ),
+      sub: "Latest request from a live token",
     },
   ];
 
   const steps: SetupStepItem[] = [
-    { title: "Issue a provisioning token", description: "Pick least-privilege scopes, then generate. The raw token is shown once.", done: !!activeToken },
-    { title: "Add the base URL to your IdP", description: <span className="font-[family-name:var(--mono)] text-[11.5px]">{scimBaseUrl}</span> },
+    {
+      title: "Issue a provisioning token",
+      description: "Pick least-privilege scopes, then create. The raw token is shown once.",
+      done: provisioningOn,
+    },
+    {
+      title: "Add the base URL to your IdP",
+      description: <span className="break-all font-[family-name:var(--mono)] text-[11.5px]">{scimBaseUrl}</span>,
+    },
     {
       title: "Set the authorization header",
       description: (
         <span>
-          Send <span className="font-[family-name:var(--mono)] text-[11.5px]">Authorization: Bearer scim_…</span> on every request.
+          Send <span className="font-[family-name:var(--mono)] text-[11.5px]">Authorization: Bearer scim_…</span> on every
+          request.
         </span>
       ),
     },
-    { title: "Restrict by IP", description: "Add your IdP egress CIDR ranges so tokens only work from known networks.", done: allowedIps.length > 0 },
+    {
+      title: "Restrict by IP",
+      description: "Add your IdP egress CIDR ranges so tokens only work from known networks.",
+      done: liveTokens.some((token) => token.allowedIps.length > 0),
+    },
     { title: "Schedule rotation", description: "Rotate on a fixed cadence and revoke tokens you no longer recognise." },
   ];
 
@@ -328,84 +384,240 @@ export function ScimProvisioningPage({ mode = "admin" }: ScimProvisioningPagePro
     );
   }
 
-  if (isLoading) {
-    return (
-      <div className="flex flex-col gap-6">
-        <PageHero eyebrow="Provisioning" title={pageTitle} description={pageDescription} icon={Workflow} />
-        <div className="grid gap-4 sm:grid-cols-2">
-          <CardSkeleton />
-          <CardSkeleton />
-        </div>
-      </div>
-    );
-  }
+  const revokingLastLive =
+    revokeTarget !== null && liveTokens.length === 1 && liveTokens[0]?.id === revokeTarget.id;
 
   return (
-    <div className="flex flex-col gap-6">
-      <PageHero
-        eyebrow="Provisioning"
+    <WorkspacePage>
+      <ProjectPageHeader
         title={pageTitle}
         description={pageDescription}
-        icon={Workflow}
-        actions={
-          <>
-            <Pill tone={activeToken ? "green" : "amber"} dot>
-              {activeToken ? "Provisioning active" : "No active token"}
-            </Pill>
-            <UiButton
-              disabled={generateMutation.isPending || selectedScopes.length === 0}
-              onClick={() => generateMutation.mutate()}
-            >
-              <KeyRound className="size-4" aria-hidden="true" />
-              Issue token
-            </UiButton>
-          </>
+        meta={
+          hasData
+            ? [
+                { label: "Provisioning", value: provisioningOn ? "On" : "Off" },
+                { label: "Live tokens", value: formatNumber(liveTokens.length), mono: true },
+              ]
+            : undefined
         }
-      >
-        <HeroFacts facts={facts} />
-      </PageHero>
+        actions={
+          <UiButton type="submit" form={TOKEN_FORM_ID} size="lg" disabled={!canCreate}>
+            Create token
+          </UiButton>
+        }
+      />
 
-      {newTokenRaw && (
-        <Notice tone="amber" icon={KeyRound} title="Copy this token now">
-          <p>The raw bearer token is returned only once. Store it in your secrets manager before leaving this page.</p>
-          <SecretField value={newTokenRaw} label="Bearer token" masked className="mt-3" />
-        </Notice>
-      )}
+      {isLoading ? (
+        <Readouts
+          loading
+          label="SCIM summary"
+          cells={[
+            { label: "Live tokens", value: "" },
+            { label: "Revoked", value: "" },
+            { label: "Last used", value: "" },
+          ]}
+        />
+      ) : hasData ? (
+        <Readouts cells={readouts} label="SCIM summary" />
+      ) : null}
+
+      <div aria-live="polite">
+        {newTokenRaw && (
+          <Notice tone="amber" title="Copy this token now">
+            <p>
+              This is the only time the raw bearer token is shown. Store it in your secrets manager before you leave this
+              page, then paste it into your identity provider.
+            </p>
+            <p className="mt-3 text-[12px] font-medium text-[var(--text2)]">Bearer token</p>
+            <SecretField value={newTokenRaw} masked className="mt-1.5" />
+          </Notice>
+        )}
+      </div>
 
       <SplitShell
         rail={
           <>
-            <Panel title="Wire up your IdP" description="Five steps to a working SCIM sync." icon={ShieldCheck} tone="ai">
+            <Panel title="Connect your identity provider" description="Five steps to a working SCIM sync.">
               <SetupSteps steps={steps} />
             </Panel>
-            <Panel title="Base URL" description="Paste this into the provisioning tab of your IdP application." icon={Link2} tone="brand">
-              <SecretField value={scimBaseUrl} label="SCIM base URL" />
+            <Panel
+              title="Endpoints"
+              description="Resource URLs your identity provider calls. Paste the base URL into its provisioning settings."
+              bodyClassName="p-0"
+            >
+              <SheetList label="SCIM endpoints">
+                {scimEndpoints(scimBaseUrl).map((endpoint) => (
+                  <SheetListItem key={endpoint.label} className="items-start gap-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="flex flex-wrap items-baseline gap-x-2 text-[13px] font-medium text-[var(--text)]">
+                        {endpoint.label}
+                        <span className="font-[family-name:var(--mono)] text-[11px] font-normal text-[var(--text3)]">
+                          {endpoint.method}
+                        </span>
+                      </p>
+                      <p className="mt-0.5 break-all font-[family-name:var(--mono)] text-[11.5px] leading-[1.5] text-[var(--text2)]">
+                        {endpoint.url}
+                      </p>
+                      <p className="mt-0.5 text-[12px] text-[var(--text3)]">{endpoint.description}</p>
+                    </div>
+                    <CopyButton value={endpoint.url} label="Copy" />
+                  </SheetListItem>
+                ))}
+              </SheetList>
             </Panel>
           </>
         }
       >
-        <Panel
-          title="Provisioning endpoints"
-          description="Resource URLs exposed to your identity provider."
-          icon={Link2}
-          tone="brand"
-          bodyClassName="p-5 flex flex-col gap-3"
+        <Sheet
+          title="Tokens"
+          description="Rotate to replace a token in place. Revoking is immediate and cannot be undone."
+          footer={
+            hasData && allTokens.length > 0 ? (
+              <span>
+                {formatNumber(liveTokens.length)} live of {formatNumber(allTokens.length)} issued
+              </span>
+            ) : undefined
+          }
         >
-          {scimEndpoints(scimBaseUrl).map((endpoint) => (
-            <EndpointRow key={endpoint.label} endpoint={endpoint} />
-          ))}
-        </Panel>
+          {isLoading ? (
+            <SheetLoading rows={3} label="Loading SCIM tokens" />
+          ) : isError && !hasData ? (
+            <SheetError
+              title="Could not load SCIM tokens"
+              message={apiErrorMessage(error, "The token request failed.")}
+              onRetry={() => void refetch()}
+            />
+          ) : allTokens.length === 0 ? (
+            <SheetEmpty
+              title="No SCIM tokens yet"
+              description="A token lets your identity provider call the endpoints listed alongside. Choose scopes in the form below, then create a token."
+            />
+          ) : (
+            <SheetTable columns={TOKEN_COLUMNS} caption="SCIM provisioning tokens">
+              {allTokens.map((token) => {
+                const state = tokenState(token, now);
+                const canMutate = state === "active" || state === "expiring";
+                const blockedReason =
+                  state === "revoked" ? "Token is revoked" : state === "expired" ? "Token has expired" : null;
+                const masked = maskToken(token.id);
+                return (
+                  <SheetRow key={token.id} muted={!canMutate}>
+                    <SheetCell>
+                      <RowTitle
+                        title={
+                          <>
+                            Created <Timestamp value={token.createdAt} />
+                          </>
+                        }
+                        subtitle={masked}
+                        subtitleMono
+                      />
+                    </SheetCell>
+                    <SheetCell className={HIDE_BELOW_LG}>
+                      {token.scopes.length ? (
+                        <div className="flex max-w-[340px] flex-wrap gap-1">
+                          {token.scopes.map((scope) => (
+                            // Scopes are identifiers: undo Pill's sentence-case first letter.
+                            <Pill
+                              key={scope}
+                              className="font-[family-name:var(--mono)] font-normal [&>span]:first-letter:normal-case"
+                            >
+                              {scope}
+                            </Pill>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="text-[12px] text-[var(--text3)]">None</span>
+                      )}
+                    </SheetCell>
+                    <SheetCell>
+                      <Pill tone={TOKEN_STATE[state].tone} dot={canMutate}>
+                        {TOKEN_STATE[state].label}
+                      </Pill>
+                    </SheetCell>
+                    <SheetCell className={HIDE_BELOW_XL}>
+                      {token.allowedIps.length ? (
+                        <span
+                          className="block truncate font-[family-name:var(--mono)] text-[12px] text-[var(--text2)]"
+                          title={token.allowedIps.join(", ")}
+                        >
+                          {token.allowedIps.join(", ")}
+                        </span>
+                      ) : (
+                        <span className="text-[12px] text-[var(--text3)]">Any IP</span>
+                      )}
+                    </SheetCell>
+                    <SheetCell className={HIDE_BELOW_MD}>
+                      {token.lastUsedAt ? (
+                        <span className="font-[family-name:var(--mono)] text-[12px] tabular-nums text-[var(--text2)]">
+                          <Timestamp value={token.lastUsedAt} />
+                        </span>
+                      ) : (
+                        <span className="text-[12px] text-[var(--text3)]">Never</span>
+                      )}
+                    </SheetCell>
+                    <SheetCell className={HIDE_BELOW_SM}>
+                      <span className="font-[family-name:var(--mono)] text-[12px] tabular-nums text-[var(--text2)]">
+                        {formatExpiryLabel(token.expiresAt)}
+                      </span>
+                    </SheetCell>
+                    <SheetCell align="right">
+                      <RowActions label={`Actions for token ${masked}`}>
+                        <DropdownMenuItem
+                          disabled={!canMutate || rotateMutation.isPending}
+                          onClick={() => rotateMutation.mutate(token.id)}
+                          className="flex-col items-start gap-0.5"
+                        >
+                          <span>Rotate token</span>
+                          {blockedReason && <span className="text-[11.5px] text-[var(--text3)]">{blockedReason}</span>}
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          variant="destructive"
+                          disabled={!canMutate || revokeMutation.isPending}
+                          onClick={() => setRevokeTarget(token)}
+                          className="flex-col items-start gap-0.5"
+                        >
+                          <span>Revoke token</span>
+                          {blockedReason && <span className="text-[11.5px] text-[var(--text3)]">{blockedReason}</span>}
+                        </DropdownMenuItem>
+                      </RowActions>
+                    </SheetCell>
+                  </SheetRow>
+                );
+              })}
+            </SheetTable>
+          )}
+        </Sheet>
 
         <Panel
-          title="Token policy"
+          title="Create a token"
           description="Scopes, network allowlist, and lifetime applied to the next token you issue."
-          icon={KeyRound}
-          tone="violet"
+          footer={
+            <UiButton type="submit" form={TOKEN_FORM_ID} disabled={!canCreate}>
+              {generateMutation.isPending && <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />}
+              Create token
+            </UiButton>
+          }
         >
-          <div className="flex flex-col gap-6">
-            <div className="flex flex-col gap-3">
-              <SectionHeading title="Scopes" description="At least one scope is required. Prefer least privilege." />
-              <div className="grid gap-3 sm:grid-cols-2">
+          <form
+            id={TOKEN_FORM_ID}
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (!canCreate) return;
+              generateMutation.mutate();
+            }}
+            className="flex flex-col gap-6"
+          >
+            <fieldset className="min-w-0">
+              <legend className="text-[13px] font-medium text-[var(--text2)]">Scopes</legend>
+              <p id="scim-scopes-hint" className="mt-1 text-[12px] leading-[1.5] text-[var(--text3)]">
+                At least one scope is required. Prefer least privilege.
+              </p>
+              <div
+                aria-describedby="scim-scopes-hint"
+                className="mt-3 divide-y divide-[var(--border)] overflow-hidden rounded-[var(--radius)] border border-[var(--border)]"
+              >
                 {SCIM_SCOPE_OPTIONS.map((option) => (
                   <ScopeTile
                     key={option.value}
@@ -415,140 +627,75 @@ export function ScimProvisioningPage({ mode = "admin" }: ScimProvisioningPagePro
                   />
                 ))}
               </div>
-            </div>
+              {selectedScopes.length === 0 && (
+                <p role="alert" className="mt-2 text-[12px] text-[var(--red)]">
+                  Select at least one scope to create a token.
+                </p>
+              )}
+            </fieldset>
 
             <div className="grid gap-5 sm:grid-cols-2">
-              <div className="flex flex-col gap-1.5">
-                <label htmlFor="scim-allowed-ips" className="text-[11px] font-medium uppercase tracking-[0.1em] text-[var(--text3)]">
-                  Allowed IP CIDRs
-                </label>
+              <DialogField
+                label="Allowed IP CIDRs"
+                name="scim-allowed-ips"
+                hint="Optional. Separate values with commas or new lines."
+              >
                 <textarea
                   id="scim-allowed-ips"
+                  name="scim-allowed-ips"
                   value={allowedIpsText}
                   onChange={(event) => setAllowedIpsText(event.target.value)}
                   rows={3}
                   placeholder={"203.0.113.10/32\n198.51.100.0/24"}
-                  className={`${fieldTextareaClass} font-[family-name:var(--mono)] text-[12.5px]`}
+                  className={`${fieldTextareaClass} font-[family-name:var(--mono)] text-[12px]`}
                 />
-                <span className="text-[11.5px] text-[var(--text3)]">Optional. Separate values with commas or new lines.</span>
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <label htmlFor="scim-expiry" className="text-[11px] font-medium uppercase tracking-[0.1em] text-[var(--text3)]">
-                  Token expiry in days
-                </label>
+              </DialogField>
+              <DialogField label="Token expiry in days" name="scim-expiry" hint="Leave blank to use the backend default.">
                 <input
                   id="scim-expiry"
+                  name="scim-expiry"
                   type="number"
                   min={1}
                   max={3650}
                   value={expiresInDays}
                   onChange={(event) => setExpiresInDays(event.target.value)}
-                  className={`${fieldInputClass} tabular-nums`}
+                  className={`${fieldInputClass} font-[family-name:var(--mono)] tabular-nums`}
                 />
-                <span className="text-[11.5px] text-[var(--text3)]">Leave blank to use the backend default.</span>
-              </div>
+              </DialogField>
             </div>
 
-            <div className="rounded-[12px] border border-[var(--border)] bg-[var(--bg2)] p-4">
+            <div className="border-t border-[var(--border)] pt-5">
+              <p className="mb-3 text-[13px] font-medium text-[var(--text2)]">Next token</p>
               <KeyValueGrid items={policyPreview(selectedScopes, allowedIps, expiresInDays)} columns={2} />
             </div>
-
-            <div className="flex justify-end">
-              <UiButton
-                disabled={generateMutation.isPending || selectedScopes.length === 0}
-                onClick={() => generateMutation.mutate()}
-              >
-                <KeyRound className="size-4" aria-hidden="true" />
-                Generate token
-              </UiButton>
-            </div>
-          </div>
-        </Panel>
-
-        <Panel
-          title="Issued tokens"
-          description="Rotate to replace a token in place. Revoking is immediate and cannot be undone."
-          icon={ShieldCheck}
-          tone="brand"
-          bodyClassName="p-0"
-        >
-          {allTokens.length === 0 ? (
-            <EmptyPanel
-              className="rounded-none border-0 border-t border-dashed"
-              icon={KeyRound}
-              title="No SCIM tokens yet"
-              description="Set a token policy above, then issue a token to start provisioning."
-            />
-          ) : (
-            <Table headers={TOKEN_HEADERS} maxHeight="26rem">
-              {allTokens.map((token: ScimToken) => {
-                const isExpired = token.expiresAt ? new Date(token.expiresAt).getTime() <= now : false;
-                const status = token.revokedAt ? "revoked" : isExpired ? "expired" : "active";
-                const canMutate = !token.revokedAt && !isExpired;
-                return (
-                  <Tr key={token.id}>
-                    <Td className="font-[family-name:var(--mono)] text-[12px] text-[var(--text)]">{maskToken(token.id)}</Td>
-                    <Td><StatusBadge status={status} /></Td>
-                    <Td className="text-[12.5px] text-[var(--text2)]">{token.scopes.length ? token.scopes.join(", ") : "None"}</Td>
-                    <Td className="font-[family-name:var(--mono)] text-[12px] text-[var(--text2)]">
-                      {token.allowedIps.length ? token.allowedIps.join(", ") : "Any IP"}
-                    </Td>
-                    <Td>
-                      {token.lastUsedAt ? (
-                        <Timestamp value={token.lastUsedAt} />
-                      ) : (
-                        <span className="text-[var(--text3)]">Never</span>
-                      )}
-                    </Td>
-                    <Td
-                      className={`text-[12.5px] tabular-nums ${
-                        isExpired
-                          ? "text-[var(--red)]"
-                          : formatExpiryLabel(token.expiresAt).endsWith("h left")
-                            ? "text-[var(--amber)]"
-                            : "text-[var(--text2)]"
-                      }`}
-                    >
-                      {formatExpiryLabel(token.expiresAt)}
-                    </Td>
-                    <Td>
-                      <div className="flex justify-end">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <UiButton variant="ghost" size="icon" className="size-8 text-[var(--text3)] hover:text-[var(--text)]">
-                              <span className="sr-only">Token actions</span>
-                              <MoreHorizontal className="size-4" aria-hidden="true" />
-                            </UiButton>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem
-                              disabled={!canMutate || rotateMutation.isPending}
-                              onClick={() => rotateMutation.mutate(token.id)}
-                            >
-                              <RefreshCcw className="mr-2 size-4" aria-hidden="true" />
-                              Rotate
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              disabled={!canMutate || revokeMutation.isPending}
-                              onClick={() => revokeMutation.mutate(token.id)}
-                              className="text-[var(--red)] focus:bg-[var(--red-bg)] focus:text-[var(--red)]"
-                            >
-                              <Trash2 className="mr-2 size-4" aria-hidden="true" />
-                              Revoke
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    </Td>
-                  </Tr>
-                );
-              })}
-            </Table>
-          )}
+          </form>
         </Panel>
       </SplitShell>
-    </div>
+
+      <ConfirmDialog
+        open={revokeTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setRevokeTarget(null);
+        }}
+        title="Revoke token"
+        description="Requests signed with this token fail immediately and your identity provider stops syncing through it. This cannot be undone."
+        confirmLabel="Revoke token"
+        pending={revokeMutation.isPending}
+        onConfirm={() => {
+          if (!revokeTarget) return;
+          revokeMutation.mutate(revokeTarget.id, { onSuccess: () => setRevokeTarget(null) });
+        }}
+      >
+        {revokeTarget && (
+          <div className="flex flex-col gap-2 text-[13px] leading-[1.6] text-[var(--text2)]">
+            <p>
+              Token <span className="font-[family-name:var(--mono)] text-[12px] text-[var(--text)]">{maskToken(revokeTarget.id)}</span>
+            </p>
+            {revokingLastLive && <p>This is the last live token, so SCIM provisioning turns off.</p>}
+          </div>
+        )}
+      </ConfirmDialog>
+    </WorkspacePage>
   );
 }
 

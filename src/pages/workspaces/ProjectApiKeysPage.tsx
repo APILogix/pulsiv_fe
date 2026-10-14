@@ -1,63 +1,17 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { Navigate } from "react-router";
-import {
-  Activity,
-  AlertTriangle,
-  Ban,
-  BarChart3,
-  CalendarClock,
-  CheckCircle2,
-  Gauge,
-  HardDrive,
-  KeyRound,
-  Layers,
-  MoreHorizontal,
-  Pencil,
-  Plus,
-  Power,
-  RefreshCcw,
-  ShieldAlert,
-  ShieldOff,
-  Trash2,
-  Zap,
-} from "lucide-react";
+import { AlertTriangle, Check, ChevronDown, Copy, Plus } from "lucide-react";
+
 import { useApiKey, useApiKeyMutations, useApiKeyUsage, useApiKeys } from "@/modules/projects/hooks/useApiKeys";
 import { useEnvironments } from "@/modules/projects/hooks/useEnvironments";
 import { environmentTypeLabel } from "@/modules/projects/environment.constants";
-import {
-  type ApiKeyStatus,
-  type ApiKeyUsageGranularity,
-  type CreateApiKeyBody,
-  EnvironmentType,
-  type ProjectApiKey,
+import type {
+  ApiKeyStatus,
+  ApiKeyUsageGranularity,
+  CreateApiKeyBody,
+  ProjectApiKey,
 } from "@/modules/projects/api/types";
-import { useOptionalCurrentProject } from "./ProjectShellPage";
-import {
-  IconChip,
-  KeyValueGrid,
-  Notice,
-  Panel,
-  Pill,
-  Ring,
-  SectionHeading,
-  SegmentedControl,
-  StatCard,
-  Toolbar,
-  fieldInputClass,
-  type KeyValueItem,
-  type SurfaceTone,
-} from "@/shared/ui/pulse";
-import { CopyButton, FilterSelect, Table, Td, Timestamp, Tr, formatBytes, formatCompact } from "@/shared/observe";
-import { UsageTrendChart } from "@/modules/projects/components/UsageTrendChart";
-import { Button as UiButton } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { projectPath } from "@/modules/projects/navigation/project-routes";
 import {
   ApiKeyRevealModal,
   ConfirmDialog,
@@ -67,10 +21,60 @@ import {
   apiErrorMessage,
   optionalText,
 } from "@/modules/projects/components/project-ui";
+import {
+  HIDE_BELOW_LG,
+  HIDE_BELOW_MD,
+  HIDE_BELOW_SM,
+  ProjectPageHeader,
+  Readouts,
+  RowActions,
+  RowTitle,
+  Sheet,
+  SheetCell,
+  SheetEmpty,
+  SheetError,
+  SheetLoading,
+  SheetRow,
+  SheetTable,
+  TextLink,
+  ToolbarCount,
+  WorkspacePage,
+  type Readout,
+  type SheetColumn,
+} from "@/modules/projects/components/project-page";
+import { UsageTrendChart } from "@/modules/projects/components/UsageTrendChart";
+import { Notice, Panel, Pill, SegmentedControl, fieldInputClass, type SurfaceTone } from "@/shared/ui/pulse";
+import {
+  FilterSelect,
+  KeyValueList,
+  Timestamp,
+  formatBytes,
+  formatCompact,
+  formatNumber,
+  type KeyValueItem,
+} from "@/shared/observe";
+import { Button as UiButton } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Sheet as Drawer,
+  SheetContent as DrawerContent,
+  SheetDescription as DrawerDescription,
+  SheetHeader as DrawerHeader,
+  SheetTitle as DrawerTitle,
+} from "@/components/ui/sheet";
 import { API_KEY_WORKFLOW, useWorkflow } from "@/shared/motion";
+import { useOptionalCurrentProject } from "./ProjectShellPage";
 
 // ── module-level constants (rules.md §1.2) ───────────────────
 
+// State colour only: rotated keys sit in their grace window, suspended keys are
+// paused, revoked keys are rejected.
 const KEY_STATUS_TONE: Record<ApiKeyStatus, SurfaceTone> = {
   active: "green",
   revoked: "red",
@@ -92,15 +96,14 @@ const USAGE_GRANULARITY_OPTIONS: { value: ApiKeyUsageGranularity; label: string 
   { value: "monthly", label: "Monthly" },
 ];
 
-const KEY_STATUS_ICON: Record<ApiKeyStatus, typeof CheckCircle2> = {
-  active: CheckCircle2,
-  revoked: ShieldOff,
-  expired: CalendarClock,
-  rotated: RefreshCcw,
-  suspended: Power,
-};
-
 const USAGE_RANGE_HOURS: Record<string, number> = { "24h": 24, "7d": 168, "30d": 720, "90d": 2160 };
+
+const USAGE_RANGE_LABEL: Record<string, string> = {
+  "24h": "Last 24 hours",
+  "7d": "Last 7 days",
+  "30d": "Last 30 days",
+  "90d": "Last 90 days",
+};
 
 const STATUS_FILTER_OPTIONS = [
   { value: "", label: "All statuses" },
@@ -111,23 +114,92 @@ const STATUS_FILTER_OPTIONS = [
   { value: "suspended", label: "Suspended" },
 ];
 
-const KEY_TABLE_HEADERS = ["Key", "Environment", "Status", "Expires", "Last used", ""];
+const EXPIRY_WARNING_MS = 30 * 24 * 60 * 60 * 1000;
+
+// The identity column takes the free width and truncates; the rest hug their content.
+const COLUMNS: SheetColumn[] = [
+  { key: "key", header: "Key", className: "w-full" },
+  { key: "environment", header: "Environment", className: `w-[168px] ${HIDE_BELOW_SM}` },
+  { key: "status", header: "Status", className: "w-[112px]" },
+  { key: "expires", header: "Expires", className: `w-[112px] ${HIDE_BELOW_LG}` },
+  { key: "lastUsed", header: "Last used", className: `w-[112px] ${HIDE_BELOW_MD}` },
+  { key: "actions", header: "Actions", srOnly: true, align: "right", className: "w-px" },
+];
+
+// Series follow design/dashboards/DESIGN.md: the product's own data in white
+// and blue, state explicitly in red (errors) and amber (failures).
+const USAGE_SERIES = [
+  { key: "requests", label: "Requests", color: "var(--text)" },
+  { key: "acceptedEvents", label: "Accepted", color: "var(--blue)" },
+  { key: "errorEvents", label: "Errors", color: "var(--red)" },
+  { key: "ingestionFailures", label: "Failures", color: "var(--amber)" },
+];
+
+const USAGE_TABLE_SERIES = [
+  { key: "requests", label: "Requests", color: "var(--text)" },
+  { key: "acceptedEvents", label: "Accepted events", color: "var(--blue)" },
+  { key: "errorEvents", label: "Error events", color: "var(--red)" },
+  { key: "ingestionFailures", label: "Failures", color: "var(--amber)" },
+  { key: "acceptedBytes", label: "Accepted bytes", color: "var(--violet)" },
+  { key: "rateLimitedRequests", label: "Rate limited", color: "var(--text3)" },
+];
+
+// Disabled menu items stay legible so the reason under the label can be read.
+const EXPLAINED_ITEM = "data-disabled:opacity-100";
 
 const asMessage = apiErrorMessage;
 
-function publicApiKeyPrefix(environment: { type: EnvironmentType; slug: string } | undefined): "pv_live_" | "pv_test_" {
-  return environment?.type === EnvironmentType.PRODUCTION || environment?.slug === "production" ? "pv_live_" : "pv_test_";
+function keyLabel(key: Pick<ProjectApiKey, "name">) {
+  return key.name || "Unnamed key";
 }
 
-// ── per-key usage sheet ──────────────────────────────────────
+// ── small pieces ─────────────────────────────────────────────
 
-function KeyUsageSheet({
+/** Menu item label, with the reason underneath when the action is unavailable. */
+function MenuItemText({ label, reason }: { label: string; reason?: string }) {
+  if (!reason) return <>{label}</>;
+  return (
+    <span className="flex min-w-0 flex-col gap-0.5 py-0.5">
+      <span className="text-[var(--text3)]">{label}</span>
+      <span className="text-[12px] leading-[1.35] text-[var(--text3)]">{reason}</span>
+    </span>
+  );
+}
+
+/** Icon-only copy control with a real accessible name. */
+function CopyIconButton({ value, label }: { value: string; label: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <UiButton
+      type="button"
+      variant="ghost"
+      size="icon-xs"
+      aria-label={copied ? `Copied ${label}` : `Copy ${label}`}
+      title={copied ? "Copied" : `Copy ${label}`}
+      onClick={() => {
+        void navigator.clipboard?.writeText(value).then(() => {
+          setCopied(true);
+          window.setTimeout(() => setCopied(false), 1500);
+        });
+      }}
+      className="shrink-0 text-[var(--text3)] hover:text-[var(--text)]"
+    >
+      {copied ? <Check className="size-3" aria-hidden="true" /> : <Copy className="size-3" aria-hidden="true" />}
+    </UiButton>
+  );
+}
+
+// ── per-key usage drawer ─────────────────────────────────────
+
+function KeyUsageDrawer({
   projectId,
   apiKey,
+  environmentName,
   onOpenChange,
 }: {
   projectId: string;
   apiKey: ProjectApiKey | null;
+  environmentName?: string;
   onOpenChange: (open: boolean) => void;
 }) {
   const [range, setRange] = useState("7d");
@@ -145,58 +217,79 @@ function KeyUsageSheet({
   const { data: fresh } = useApiKey(projectId, apiKey?.id);
   const detail = fresh ?? apiKey;
 
-  const errorRate = usage?.summary.errorRate ?? 0;
-  const ringTone: SurfaceTone = errorRate > 5 ? "red" : errorRate > 1 ? "amber" : "green";
-  const StatusIcon = detail ? KEY_STATUS_ICON[detail.status] : KeyRound;
+  const summary = usage?.summary;
+  const errorRate = summary?.errorRate ?? 0;
+  const lastUsed = usage?.lastUsedAt ?? detail?.lastUsedAt ?? null;
 
-  const metaItems: KeyValueItem[] = detail
+  const readouts: Readout[] = summary
     ? [
-        { label: "Environment", value: detail.environment?.name ?? "—" },
+        { label: "Requests", value: formatCompact(summary.requests), sub: USAGE_RANGE_LABEL[range] },
+        {
+          label: "Accepted events",
+          value: formatCompact(summary.acceptedEvents),
+          sub: `${formatBytes(summary.acceptedBytes)} accepted`,
+        },
+        {
+          label: "Error rate",
+          value: `${errorRate.toFixed(1)}%`,
+          sub: `${formatCompact(summary.errorEvents)} error events`,
+          tone: errorRate > 5 ? "bad" : errorRate > 1 ? "warn" : "neutral",
+        },
+        {
+          label: "Failures",
+          value: formatCompact(summary.ingestionFailures),
+          sub: "Ingestion failures",
+          tone: summary.ingestionFailures > 0 ? "warn" : "neutral",
+        },
+        {
+          label: "Rate limited",
+          value: formatCompact(summary.rateLimitedRequests),
+          sub: "Rate-limited requests",
+          tone: summary.rateLimitedRequests > 0 ? "warn" : "neutral",
+        },
+      ]
+    : [];
+
+  const details: KeyValueItem[] = detail
+    ? [
+        { label: "Environment", value: detail.environment?.name ?? environmentName ?? "—" },
+        { label: "Key prefix", value: usage?.keyPrefix ?? "—", mono: true },
         { label: "Created", value: <Timestamp value={detail.createdAt} /> },
         { label: "Expires", value: detail.expiresAt ? <Timestamp value={detail.expiresAt} /> : "Never" },
+        { label: "Last used", value: lastUsed ? <Timestamp value={lastUsed} /> : "Never" },
         {
           label: "Rotated from",
-          value: detail.rotatedFromKeyId ? (
-            <code className="font-[family-name:var(--mono)] text-[11px]">{detail.rotatedFromKeyId.slice(0, 12)}…</code>
-          ) : (
-            "—"
-          ),
+          value: detail.rotatedFromKeyId ?? "—",
+          mono: true,
+          copyable: Boolean(detail.rotatedFromKeyId),
         },
       ]
     : [];
 
   return (
-    <Sheet open={!!apiKey} onOpenChange={onOpenChange}>
-      <SheetContent className="w-full gap-0 sm:max-w-[960px]">
-        {/* ── identity header ── */}
-        <SheetHeader className="gap-0 border-b border-[var(--border)] p-5">
-          <div className="flex items-start gap-3">
-            <IconChip icon={StatusIcon} tone={detail ? KEY_STATUS_TONE[detail.status] : "brand"} size="lg" />
-            <div className="min-w-0 flex-1 pr-8">
-              <div className="flex flex-wrap items-center gap-2">
-                <SheetTitle className="text-[16px]">{detail?.name || "Ingestion key"}</SheetTitle>
-                {detail && <Pill tone={KEY_STATUS_TONE[detail.status]} dot>{detail.status}</Pill>}
-              </div>
-              <SheetDescription className="mt-1 flex items-center gap-1.5">
-                <code className="font-[family-name:var(--mono)] text-[12px]">{detail?.publicKey}</code>
-                {detail?.publicKey && <CopyButton value={detail.publicKey} label="" className="h-5 border-0 bg-transparent px-1 py-0" />}
-              </SheetDescription>
-            </div>
+    <Drawer open={!!apiKey} onOpenChange={onOpenChange}>
+      <DrawerContent className="gap-0 p-0 data-[side=right]:w-full data-[side=right]:sm:max-w-[880px]">
+        <DrawerHeader className="gap-1.5 border-b border-[var(--border)] px-5 py-4 pr-12">
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            <DrawerTitle className="min-w-0 truncate text-[16px] font-semibold tracking-[-0.01em] text-[var(--text)]">
+              {detail ? keyLabel(detail) : "Ingestion key"}
+            </DrawerTitle>
+            {detail && (
+              <Pill tone={KEY_STATUS_TONE[detail.status]} dot>
+                {detail.status}
+              </Pill>
+            )}
           </div>
-        </SheetHeader>
+          <div className="flex min-w-0 items-center gap-1">
+            <DrawerDescription className="min-w-0 truncate font-[family-name:var(--mono)] text-[12px] text-[var(--text2)]">
+              {detail?.publicKey ?? ""}
+            </DrawerDescription>
+            {detail?.publicKey && <CopyIconButton value={detail.publicKey} label="public key" />}
+          </div>
+        </DrawerHeader>
 
-        <div className="sidebar-scroll flex flex-col gap-6 overflow-y-auto p-5">
-          <Toolbar
-            trailing={
-              usage?.lastUsedAt ? (
-                <span className="flex items-center gap-1.5 text-[11.5px] text-[var(--text3)]">
-                  <Zap className="size-3.5" aria-hidden="true" /> Last used <Timestamp value={usage.lastUsedAt} />
-                </span>
-              ) : (
-                <span className="text-[11.5px] text-[var(--text3)]">Never used</span>
-              )
-            }
-          >
+        <div className="sidebar-scroll flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto p-5">
+          <div className="flex flex-wrap items-center gap-2">
             <SegmentedControl value={range} onChange={setRange} options={USAGE_RANGE_OPTIONS} ariaLabel="Usage range" />
             <SegmentedControl
               value={granularity}
@@ -204,82 +297,58 @@ function KeyUsageSheet({
               options={USAGE_GRANULARITY_OPTIONS}
               ariaLabel="Usage granularity"
             />
-          </Toolbar>
+            <span className="ml-auto whitespace-nowrap text-[12px] text-[var(--text3)]">
+              {lastUsed ? (
+                <>
+                  Last used <Timestamp value={lastUsed} />
+                </>
+              ) : (
+                "Never used"
+              )}
+            </span>
+          </div>
 
-          {isLoading && (
-            <div className="flex flex-col gap-5">
-              <div className="h-28 animate-pulse rounded-[var(--radius-lg)] bg-[var(--bg2)]" />
-              <div className="h-64 animate-pulse rounded-[var(--radius-lg)] bg-[var(--bg2)]" />
+          {isLoading ? (
+            <div role="status" aria-label="Loading usage" className="flex flex-col gap-4">
+              <div aria-hidden="true" className="loading-skeleton h-[88px] rounded-[var(--radius-lg)]" />
+              <div aria-hidden="true" className="loading-skeleton h-[320px] rounded-[var(--radius-lg)]" />
             </div>
-          )}
-          {error && <Notice tone="red">{asMessage(error)}</Notice>}
-
-          {usage && (
+          ) : error ? (
+            <div role="alert">
+              <Notice tone="red" icon={AlertTriangle} title="Could not load usage">
+                {asMessage(error)}
+              </Notice>
+            </div>
+          ) : usage ? (
             <>
-              {/* ── health snapshot: error-rate ring + headline metrics ── */}
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-[auto_1fr]">
-                <div className="flex items-center justify-center gap-4 rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] px-6 py-4 sm:px-8">
-                  <Ring value={errorRate} max={100} size={84} tone={ringTone} label={`${errorRate.toFixed(1)}%`} sublabel="Error rate" />
-                </div>
-                <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-                  <StatCard label="Requests" value={formatCompact(usage.summary.requests)} icon={Gauge} tone="brand" />
-                  <StatCard label="Accepted" value={formatCompact(usage.summary.acceptedEvents)} icon={CheckCircle2} tone="green" />
-                  <StatCard label="Failures" value={formatCompact(usage.summary.ingestionFailures)} icon={ShieldAlert} tone={usage.summary.ingestionFailures > 0 ? "amber" : "neutral"} />
-                </div>
-              </div>
-
-              <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--border)] sm:grid-cols-4">
-                {[
-                  { label: "Error events", value: formatCompact(usage.summary.errorEvents), icon: AlertTriangle },
-                  { label: "Accepted bytes", value: formatBytes(usage.summary.acceptedBytes), icon: HardDrive },
-                  { label: "Rate limited", value: formatCompact(usage.summary.rateLimitedRequests), icon: Activity },
-                  { label: "Key prefix", value: <code className="font-[family-name:var(--mono)] text-[12px]">{usage.keyPrefix}</code>, icon: KeyRound },
-                ].map((item) => (
-                  <div key={item.label} className="flex flex-col gap-1.5 bg-[var(--bg1)] px-3.5 py-3">
-                    <dt className="flex items-center gap-1.5 text-[10.5px] font-medium uppercase tracking-[0.1em] text-[var(--text3)]">
-                      <item.icon className="size-3" aria-hidden="true" />
-                      {item.label}
-                    </dt>
-                    <dd className="text-[14px] font-semibold tabular-nums text-[var(--text)]">{item.value}</dd>
-                  </div>
-                ))}
-              </dl>
-
-              {/* ── trend ── */}
-              <Panel title="Usage over time" description="Requests, accepted events, errors, and failures for the selected range." icon={BarChart3} bodyClassName="pt-4">
+              <Readouts cells={readouts} label="Usage summary" />
+              <Panel
+                title="Usage over time"
+                description="Requests, accepted events, errors, and failures in the selected range."
+              >
                 <UsageTrendChart
-                  ariaLabel={`Usage for ${detail?.name || usage.keyPrefix}`}
+                  ariaLabel={`Usage for ${detail ? keyLabel(detail) : usage.keyPrefix}`}
                   showTable
                   points={usage.series.map((point) => ({ ...point }))}
-                  series={[
-                    { key: "requests", label: "Requests", color: "var(--brand)" },
-                    { key: "acceptedEvents", label: "Accepted", color: "var(--green)" },
-                    { key: "errorEvents", label: "Errors", color: "var(--red)" },
-                    { key: "ingestionFailures", label: "Failures", color: "var(--amber)" },
-                  ]}
-                  tableSeries={[
-                    { key: "requests", label: "Requests", color: "var(--brand)" },
-                    { key: "acceptedEvents", label: "Accepted events", color: "var(--green)" },
-                    { key: "errorEvents", label: "Error events", color: "var(--red)" },
-                    { key: "ingestionFailures", label: "Failures", color: "var(--amber)" },
-                    { key: "acceptedBytes", label: "Accepted bytes", color: "var(--blue)" },
-                    { key: "rateLimitedRequests", label: "Rate limited", color: "var(--violet)" },
-                  ]}
-                  emptyMessage="No API-key usage was recorded in this range."
+                  series={USAGE_SERIES}
+                  tableSeries={USAGE_TABLE_SERIES}
+                  emptyMessage="No usage was recorded for this key in this range."
                 />
               </Panel>
-
-              {/* ── key metadata ── */}
-              {detail && (
-                <Panel title="Key details" icon={KeyRound} bodyClassName="pt-4">
-                  <KeyValueGrid items={metaItems} columns={2} />
-                </Panel>
-              )}
             </>
+          ) : null}
+
+          {detail && (
+            <Panel
+              title="Key details"
+              bodyClassName="px-5 py-1 [&_dl>div:last-child]:border-b-0 md:[&_dl>div:nth-last-child(2)]:border-b-0"
+            >
+              <KeyValueList items={details} columns={2} labelWidth={112} />
+            </Panel>
           )}
         </div>
-      </SheetContent>
-    </Sheet>
+      </DrawerContent>
+    </Drawer>
   );
 }
 
@@ -292,24 +361,44 @@ export default function ProjectApiKeysPage() {
     return <Navigate to="/projects" replace />;
   }
 
-  return <ProjectApiKeysContent projectId={currentProject.projectId} />;
+  return (
+    <ProjectApiKeysContent
+      projectId={currentProject.projectId}
+      orgSlug={currentProject.orgSlug}
+      publicId={currentProject.publicId}
+    />
+  );
 }
 
-function ProjectApiKeysContent({ projectId }: { projectId: string }) {
-  const { data: environments = [] } = useEnvironments(projectId);
+function ProjectApiKeysContent({
+  projectId,
+  orgSlug,
+  publicId,
+}: {
+  projectId: string;
+  orgSlug: string;
+  publicId: string;
+}) {
+  const { data: environments = [], isLoading: environmentsLoading } = useEnvironments(projectId);
   const activeEnvironments = environments.filter((environment) => environment.isActive);
+  const environmentById = new Map(environments.map((environment) => [environment.id, environment]));
 
   const [environmentId, setEnvironmentId] = useState("");
   const [status, setStatus] = useState("");
   const [includeInactive, setIncludeInactive] = useState(true);
 
-  const { data, isLoading, error } = useApiKeys(projectId, {
+  const { data, isLoading, error, refetch } = useApiKeys(projectId, {
     ...(environmentId ? { environmentId } : {}),
     ...(status ? { status: status as ApiKeyStatus } : {}),
     includeInactive,
     limit: 100,
   });
   const keys = data?.data ?? [];
+
+  // Readings cover every key. Without filters this is the same query and cache
+  // entry as the table.
+  const { data: summary, isLoading: summaryLoading } = useApiKeys(projectId, { includeInactive: true, limit: 100 });
+  const allKeys = summary?.data ?? [];
 
   const {
     createKey,
@@ -333,13 +422,38 @@ function ProjectApiKeysContent({ projectId }: { projectId: string }) {
   const [formError, setFormError] = useState<string | null>(null);
   const [createEnvironmentId, setCreateEnvironmentId] = useState("");
 
-  const activeCount = keys.filter((key) => key.status === "active").length;
-  const suspendedCount = keys.filter((key) => key.status === "suspended").length;
-  const expiringCount = keys.filter((key) => {
-    if (!key.expiresAt) return false;
-    const remaining = new Date(key.expiresAt).getTime() - Date.now();
-    return remaining > 0 && remaining <= 30 * 24 * 60 * 60 * 1000;
+  const countStatus = (value: ApiKeyStatus) => allKeys.filter((key) => key.status === value).length;
+  const activeCount = countStatus("active");
+  const suspendedCount = countStatus("suspended");
+  const revokedCount = countStatus("revoked");
+  const now = Date.now();
+  const expiringCount = allKeys.filter((key) => {
+    if (key.status !== "active" || !key.expiresAt) return false;
+    const remaining = new Date(key.expiresAt).getTime() - now;
+    return remaining > 0 && remaining <= EXPIRY_WARNING_MS;
   }).length;
+
+  const readouts: Readout[] = [
+    {
+      label: "Keys",
+      value: formatNumber(summary?.total ?? allKeys.length),
+      sub: `Across ${formatNumber(environments.length)} ${environments.length === 1 ? "environment" : "environments"}`,
+    },
+    { label: "Active", value: formatNumber(activeCount), sub: "Valid for ingestion" },
+    {
+      label: "Suspended",
+      value: formatNumber(suspendedCount),
+      sub: suspendedCount > 0 ? "Paused until activated again" : "None suspended",
+      tone: suspendedCount > 0 ? "warn" : "neutral",
+    },
+    {
+      label: "Expiring soon",
+      value: formatNumber(expiringCount),
+      sub: "Active keys expiring within 30 days",
+      tone: expiringCount > 0 ? "warn" : "neutral",
+    },
+    { label: "Revoked", value: formatNumber(revokedCount), sub: "Their telemetry is rejected" },
+  ];
 
   const environmentOptions = [
     { value: "", label: "All environments" },
@@ -409,222 +523,273 @@ function ProjectApiKeysContent({ projectId }: { projectId: string }) {
     );
   };
 
+  const hasFilters = Boolean(environmentId || status || !includeInactive);
+  const clearFilters = () => {
+    setEnvironmentId("");
+    setStatus("");
+    setIncludeInactive(true);
+  };
+
+  const noActiveEnvironment = !environmentsLoading && activeEnvironments.length === 0;
+  const createButton = (
+    <UiButton size="lg" onClick={() => setCreating(true)} disabled={activeEnvironments.length === 0}>
+      <Plus className="size-4" aria-hidden="true" /> Create key
+    </UiButton>
+  );
+
+  let body: ReactNode;
+  if (isLoading) {
+    body = <SheetLoading rows={4} label="Loading API keys" />;
+  } else if (error) {
+    body = <SheetError title="Could not load API keys" message={asMessage(error)} onRetry={() => void refetch()} />;
+  } else if (keys.length === 0) {
+    body = hasFilters ? (
+      <SheetEmpty
+        title="No keys match"
+        description="No key has this combination of environment and status."
+        action={
+          <UiButton variant="outline" size="lg" onClick={clearFilters}>
+            Clear filters
+          </UiButton>
+        }
+      />
+    ) : (
+      <SheetEmpty
+        title="No API keys yet"
+        description="An ingestion key lets an SDK send telemetry to one environment of this project. Create one, then copy its secret into the SDK configuration."
+        action={activeEnvironments.length > 0 ? createButton : undefined}
+      />
+    );
+  } else {
+    body = (
+      <SheetTable columns={COLUMNS} caption="API keys" minWidth={560}>
+        {keys.map((key) => {
+          const label = keyLabel(key);
+          const environment = environmentById.get(key.environmentId);
+          const environmentName = key.environment?.name ?? environment?.name;
+          const canToggle = key.status === "active" || key.status === "suspended";
+          return (
+            <SheetRow key={key.id} muted={key.status === "revoked" || key.status === "expired"}>
+              <SheetCell className="w-full max-w-0">
+                <RowTitle
+                  title={
+                    <button
+                      type="button"
+                      onClick={() => setInspecting(key)}
+                      className="max-w-full truncate rounded-[2px] text-left decoration-[var(--border2)] underline-offset-[3px] hover:underline focus-visible:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border2)]"
+                    >
+                      <span className="sr-only">View usage for </span>
+                      {label}
+                    </button>
+                  }
+                  subtitle={
+                    <span className="flex min-w-0 items-center gap-1">
+                      <code className="min-w-0 truncate font-[family-name:var(--mono)] text-[11.5px]">{key.publicKey}</code>
+                      <CopyIconButton value={key.publicKey} label={`public key for ${label}`} />
+                    </span>
+                  }
+                />
+              </SheetCell>
+              <SheetCell className={HIDE_BELOW_SM}>
+                <span className="flex min-w-0 items-center gap-2">
+                  <span
+                    aria-hidden="true"
+                    className="size-2 shrink-0 rounded-full ring-1 ring-[var(--border2)]"
+                    style={{ backgroundColor: environment?.color ?? "var(--text3)" }}
+                  />
+                  <span className="truncate text-[13px] text-[var(--text2)]">{environmentName ?? "—"}</span>
+                </span>
+              </SheetCell>
+              <SheetCell>
+                <Pill tone={KEY_STATUS_TONE[key.status]} dot>
+                  {key.status}
+                </Pill>
+              </SheetCell>
+              <SheetCell className={HIDE_BELOW_LG}>
+                {key.expiresAt ? (
+                  <Timestamp value={key.expiresAt} />
+                ) : (
+                  <span className="text-[12px] text-[var(--text3)]">Never</span>
+                )}
+              </SheetCell>
+              <SheetCell className={HIDE_BELOW_MD}>
+                {key.lastUsedAt ? (
+                  <Timestamp value={key.lastUsedAt} />
+                ) : (
+                  <span className="text-[12px] text-[var(--text3)]">Never</span>
+                )}
+              </SheetCell>
+              <SheetCell align="right">
+                <RowActions label={`Actions for ${label}`}>
+                  <DropdownMenuItem onSelect={() => setInspecting(key)}>View usage</DropdownMenuItem>
+                  <DropdownMenuItem
+                    onSelect={() => {
+                      setFormError(null);
+                      setEditing(key);
+                    }}
+                  >
+                    Edit label
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onSelect={() => setRotating(key)}>Rotate with grace period</DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => setRegenerating(key)}>Regenerate now</DropdownMenuItem>
+                  <DropdownMenuItem
+                    disabled={!canToggle}
+                    className={EXPLAINED_ITEM}
+                    onSelect={() => setKeyEnabled.mutate({ apiKeyId: key.id, enabled: key.status === "suspended" })}
+                  >
+                    <MenuItemText
+                      label={key.status === "suspended" ? "Activate" : "Suspend"}
+                      reason={canToggle ? undefined : "Only active or suspended keys"}
+                    />
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    variant="destructive"
+                    disabled={key.status === "revoked"}
+                    className={EXPLAINED_ITEM}
+                    onSelect={() => {
+                      setFormError(null);
+                      setRevoking(key);
+                    }}
+                  >
+                    <MenuItemText label="Revoke key" reason={key.status === "revoked" ? "Already revoked" : undefined} />
+                  </DropdownMenuItem>
+                </RowActions>
+              </SheetCell>
+            </SheetRow>
+          );
+        })}
+      </SheetTable>
+    );
+  }
+
+  const inspectingEnvironmentName = inspecting
+    ? inspecting.environment?.name ?? environmentById.get(inspecting.environmentId)?.name
+    : undefined;
+
   return (
-    <div className="flex flex-col gap-6">
-      <SectionHeading
-        title="Ingestion API keys"
-        description="Keys are environment-scoped. The secret is shown once at creation or rotation — store it immediately."
+    <WorkspacePage>
+      <ProjectPageHeader
+        title="API keys"
+        description="Ingestion credentials, each scoped to one environment. A key's secret is shown once, when the key is created or rotated."
         actions={
-          <div className="flex items-center gap-2">
+          <>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <UiButton variant="outline" size="lg">
-                  Bulk actions
+                  Bulk actions <ChevronDown className="size-3.5" aria-hidden="true" />
                 </UiButton>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuItem onClick={() => setBulkMode("rotate")}>
-                  <RefreshCcw className="mr-2 size-4" /> Rotate keys…
+                <DropdownMenuItem
+                  onSelect={() => {
+                    setFormError(null);
+                    setBulkMode("rotate");
+                  }}
+                >
+                  Rotate keys…
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setBulkMode("revoke")}>
-                  <Ban className="mr-2 size-4 text-[var(--red)]" /> Revoke keys…
+                <DropdownMenuItem
+                  variant="destructive"
+                  onSelect={() => {
+                    setFormError(null);
+                    setBulkMode("revoke");
+                  }}
+                >
+                  Revoke keys…
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            <UiButton size="lg" onClick={() => setCreating(true)} disabled={activeEnvironments.length === 0}>
-              <Plus className="mr-1.5 size-4" /> New key
-            </UiButton>
-          </div>
+            {createButton}
+          </>
         }
       />
 
-      {activeEnvironments.length === 0 && (
-        <Notice tone="amber" icon={Layers} title="No active environments">
+      {noActiveEnvironment && (
+        <Notice
+          tone="amber"
+          icon={AlertTriangle}
+          title="No active environments"
+          action={
+            <TextLink to={projectPath(orgSlug, publicId, "environments")} size="sm">
+              Open environments
+            </TextLink>
+          }
+        >
           API keys must belong to an active environment. Create or reactivate one on the Environments tab first.
         </Notice>
       )}
 
-      <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
-        <StatCard label="Keys" value={data?.total ?? keys.length} icon={KeyRound} tone="brand" />
-        <StatCard label="Active" value={activeCount} icon={CheckCircle2} tone="green" />
-        <StatCard label="Suspended" value={suspendedCount} icon={Ban} tone={suspendedCount > 0 ? "amber" : "neutral"} />
-        <StatCard label="Expiring in 30 days" value={expiringCount} icon={CalendarClock} tone="blue" />
-      </div>
+      <Readouts cells={readouts} loading={summaryLoading} label="API keys summary" />
 
-      <Toolbar>
-        <FilterSelect
-          label="Environment"
-          value={environmentId}
-          onChange={setEnvironmentId}
-          options={environmentOptions}
-        />
-        <FilterSelect label="Status" value={status} onChange={setStatus} options={STATUS_FILTER_OPTIONS} />
-        <label className="flex items-center gap-2 text-[12.5px] text-[var(--text2)]">
-          <input
-            type="checkbox"
-            checked={includeInactive}
-            onChange={(event) => setIncludeInactive(event.target.checked)}
-            className="size-4"
-          />
-          Include inactive
-        </label>
-      </Toolbar>
-
-      <Panel bodyClassName="p-0">
-        {isLoading ? (
-          <div className="flex flex-col gap-2 p-5">
-            {[0, 1, 2, 3].map((row) => (
-              <div key={row} className="h-10 animate-pulse rounded-[8px] bg-[var(--bg2)]" />
-            ))}
-          </div>
-        ) : error ? (
-          <div className="p-5">
-            <Notice tone="red" icon={AlertTriangle} title="Could not load API keys">
-              {asMessage(error)}
-            </Notice>
-          </div>
-        ) : keys.length === 0 ? (
-          <div className="flex flex-col items-center gap-3 py-12 text-center">
-            <IconChip icon={KeyRound} size="lg" tone="brand" />
-            <p className="text-[13.5px] font-semibold text-[var(--text)]">No API keys match these filters</p>
-            <p className="max-w-[44ch] text-[12.5px] text-[var(--text2)]">
-              Create an environment-scoped key to start sending telemetry from an SDK.
-            </p>
-          </div>
-        ) : (
-          <Table headers={KEY_TABLE_HEADERS} maxHeight="34rem">
-            {keys.map((key) => (
-              <Tr key={key.id}>
-                <Td>
-                  <div className="flex min-w-0 flex-col gap-0.5">
-                    <span className="truncate text-[13px] font-medium text-[var(--text)]">
-                      {key.name || "Unnamed key"}
-                    </span>
-                    <span className="flex items-center gap-1.5">
-                      <code className="truncate font-[family-name:var(--mono)] text-[11px] text-[var(--text3)]">
-                        {key.publicKey}
-                      </code>
-                      <CopyButton value={key.publicKey} label="" className="h-5 border-0 bg-transparent px-1 py-0" />
-                    </span>
-                  </div>
-                </Td>
-                <Td>
-                  <span className="text-[12.5px] text-[var(--text2)]">
-                    {key.environment?.name ?? environments.find((env) => env.id === key.environmentId)?.name ?? "—"}
-                  </span>
-                </Td>
-                <Td>
-                  <Pill tone={KEY_STATUS_TONE[key.status]} dot>
-                    {key.status}
-                  </Pill>
-                </Td>
-                <Td>
-                  {key.expiresAt ? <Timestamp value={key.expiresAt} /> : <span className="text-[12px] text-[var(--text3)]">Never</span>}
-                </Td>
-                <Td>
-                  {key.lastUsedAt ? (
-                    <Timestamp value={key.lastUsedAt} />
-                  ) : (
-                    <span className="text-[12px] text-[var(--text3)]">Never</span>
-                  )}
-                </Td>
-                <Td className="text-right">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <UiButton variant="ghost" size="icon-sm" aria-label={`Actions for ${key.name ?? key.publicKey}`}>
-                        <MoreHorizontal className="size-4" />
-                      </UiButton>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-52">
-                      <DropdownMenuItem onClick={() => setInspecting(key)}>
-                        <BarChart3 className="mr-2 size-4" /> Usage
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => {
-                          setFormError(null);
-                          setEditing(key);
-                        }}
-                      >
-                        <Pencil className="mr-2 size-4" /> Edit metadata
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => setRotating(key)}>
-                        <RefreshCcw className="mr-2 size-4" /> Rotate (with grace)
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => setRegenerating(key)}>
-                        <RefreshCcw className="mr-2 size-4" /> Regenerate now
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        disabled={!(["active", "suspended"] as ApiKeyStatus[]).includes(key.status)}
-                        onClick={() => setKeyEnabled.mutate({ apiKeyId: key.id, enabled: key.status === "suspended" })}
-                      >
-                        <Power className="mr-2 size-4" /> {key.status === "suspended" ? "Activate" : "Suspend"}
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => setRevoking(key)}>
-                        <Trash2 className="mr-2 size-4 text-[var(--red)]" /> Revoke permanently
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </Td>
-              </Tr>
-            ))}
-          </Table>
-        )}
-      </Panel>
+      <Sheet
+        label="API key list"
+        toolbar={
+          <>
+            <FilterSelect label="Environment" value={environmentId} onChange={setEnvironmentId} options={environmentOptions} />
+            <FilterSelect label="Status" value={status} onChange={setStatus} options={STATUS_FILTER_OPTIONS} />
+            <label className="flex h-9 cursor-pointer items-center gap-2 text-[13px] text-[var(--text2)]">
+              <input
+                type="checkbox"
+                checked={includeInactive}
+                onChange={(event) => setIncludeInactive(event.target.checked)}
+                className="size-4 cursor-pointer accent-[var(--text)]"
+              />
+              Include inactive
+            </label>
+            {!isLoading && !error && (
+              <ToolbarCount>
+                {hasFilters
+                  ? `${formatNumber(keys.length)} of ${formatNumber(summary?.total ?? allKeys.length)}`
+                  : `${formatNumber(data?.total ?? keys.length)} ${(data?.total ?? keys.length) === 1 ? "key" : "keys"}`}
+              </ToolbarCount>
+            )}
+          </>
+        }
+      >
+        {body}
+      </Sheet>
 
       {/* ── create ── */}
       <FormDialog
         open={creating}
         onOpenChange={(open) => {
-          setCreating(open);
           if (!open) {
+            setCreating(false);
             setFormError(null);
-            setCreateEnvironmentId("");
-            // Clear the step list so reopening never shows a stale failure.
             keyWorkflow.reset();
           }
         }}
-        title="New ingestion key"
-        description="The secret is returned once. Leave expiry empty for a key that never expires."
+        title="Create ingestion key"
+        description="Keys are scoped to one environment and don't expire."
         submitLabel="Create key"
-        pending={createKey.isPending}
+        pending={keyWorkflow.isActive}
         error={formError}
         onSubmit={handleCreate}
-        width="sm:max-w-[640px]"
-        workflowSteps={API_KEY_WORKFLOW}
-        workflowState={keyWorkflow}
       >
+        <Notice tone="amber" icon={AlertTriangle}>
+          Only one active key is kept per environment. Creating a key automatically replaces and revokes the
+          environment's current active key.
+        </Notice>
         <DialogField label="Environment" name="environmentId" required>
           <select
             id="environmentId"
             name="environmentId"
-            required
             className={fieldInputClass}
-            value={createEnvironmentId}
-            onChange={(event) => setCreateEnvironmentId(event.target.value)}
+            value={createEnvironmentId || (activeEnvironments[0]?.id ?? "")}
+            onChange={(e) => setCreateEnvironmentId(e.target.value)}
+            required
           >
-            <option value="">Select an environment…</option>
             {activeEnvironments.map((environment) => (
               <option key={environment.id} value={environment.id}>
-                {environment.name} · {environmentTypeLabel(environment.type)}
-                {environment.isDefault ? " (default)" : ""}
+                {environment.name} ({environmentTypeLabel(environment.type)})
               </option>
             ))}
           </select>
         </DialogField>
-
-        <Notice tone="neutral" icon={KeyRound} title="Public key prefix">
-          {createEnvironment
-            ? `${publicApiKeyPrefix(createEnvironment)} is used for ${createEnvironment.name}. The real environment stays stored internally.`
-            : "Production keys use pv_live_. Every non-production environment uses pv_test_."}
-        </Notice>
-
-        <DialogField label="Name" name="name">
-          <input id="name" name="name" maxLength={255} placeholder="Web SDK" className={fieldInputClass} />
-        </DialogField>
-        <DialogField label="Expires at" name="expiresAt" hint="Leave empty for never expires.">
-          <input id="expiresAt" name="expiresAt" type="datetime-local" className={fieldInputClass} />
+        <DialogField label="Key label" name="name" hint="Optional. Helps you tell keys apart, such as backend-ingest-prod.">
+          <input id="name" name="name" maxLength={100} placeholder="backend-ingest" autoComplete="off" className={fieldInputClass} />
         </DialogField>
       </FormDialog>
 
@@ -637,37 +802,31 @@ function ProjectApiKeysContent({ projectId }: { projectId: string }) {
             setFormError(null);
           }
         }}
-        title="Edit key metadata"
-        description="Name and expiry are the only editable key metadata."
+        title={editing ? `Edit ${keyLabel(editing)}` : "Edit key"}
+        description="Update key metadata. Key secrets and environments cannot be changed."
         submitLabel="Save changes"
         pending={updateKey.isPending}
         error={formError}
         onSubmit={handleEdit}
       >
-        {editing && (
-          <>
-            <DialogField label="Name" name="name">
-              <input id="name" name="name" defaultValue={editing.name ?? ""} maxLength={255} className={fieldInputClass} />
-            </DialogField>
-            <DialogField label="Expires at" name="expiresAt" hint="Clear to remove the expiry.">
-              <input
-                id="expiresAt"
-                name="expiresAt"
-                type="datetime-local"
-                defaultValue={editing.expiresAt?.slice(0, 16) ?? ""}
-                className={fieldInputClass}
-              />
-            </DialogField>
-          </>
-        )}
+        <DialogField label="Key label" name="name">
+          <input
+            id="name"
+            name="name"
+            defaultValue={editing?.name ?? ""}
+            maxLength={100}
+            autoComplete="off"
+            className={fieldInputClass}
+          />
+        </DialogField>
       </FormDialog>
 
       {/* ── rotate ── */}
       <ConfirmDialog
         open={!!rotating}
         onOpenChange={(open) => !open && setRotating(null)}
-        title="Rotate key?"
-        description="A new secret will be issued and the current credential will be superseded. Update clients with the new secret immediately."
+        title={`Rotate ${rotating ? keyLabel(rotating) : "key"}?`}
+        description="Rotates the key secret. A new secret will be displayed and the old secret will enter its rotation grace window."
         confirmLabel="Rotate key"
         pending={rotateKey.isPending}
         onConfirm={() => {
@@ -720,7 +879,7 @@ function ProjectApiKeysContent({ projectId }: { projectId: string }) {
       <FormDialog
         open={!!revoking}
         onOpenChange={(open) => !open && setRevoking(null)}
-        title={`Revoke ${revoking?.name || "key"}?`}
+        title={`Revoke ${revoking ? keyLabel(revoking) : "key"}?`}
         description="Revocation is permanent. Telemetry sent with this key will be rejected."
         submitLabel="Revoke key"
         pending={revokeKey.isPending}
@@ -732,11 +891,18 @@ function ProjectApiKeysContent({ projectId }: { projectId: string }) {
           );
         }}
       >
-        <Notice tone="red" icon={ShieldAlert}>
+        <Notice tone="red" icon={AlertTriangle}>
           This cannot be undone. Rotate instead if you need a grace period.
         </Notice>
-        <DialogField label="Revocation reason" name="revokedReason">
-          <input id="revokedReason" name="revokedReason" maxLength={500} placeholder="Leaked in client bundle" className={fieldInputClass} />
+        <DialogField label="Revocation reason" name="revokedReason" hint="Optional. Recorded in the audit log.">
+          <input
+            id="revokedReason"
+            name="revokedReason"
+            maxLength={500}
+            placeholder="Leaked in client bundle"
+            autoComplete="off"
+            className={fieldInputClass}
+          />
         </DialogField>
       </FormDialog>
 
@@ -744,7 +910,7 @@ function ProjectApiKeysContent({ projectId }: { projectId: string }) {
       <FormDialog
         open={!!bulkMode}
         onOpenChange={(open) => !open && setBulkMode(null)}
-        title={bulkMode === "rotate" ? "Bulk rotate keys" : "Bulk revoke keys"}
+        title={bulkMode === "rotate" ? "Rotate keys in bulk" : "Revoke keys in bulk"}
         description={
           bulkMode === "rotate"
             ? "Rotates every active key, optionally limited to one environment. New secrets are not displayed — retrieve them per key."
@@ -787,19 +953,21 @@ function ProjectApiKeysContent({ projectId }: { projectId: string }) {
           </select>
         </DialogField>
         {bulkMode === "revoke" && (
-          <DialogField label="Reason" name="reason">
-            <input id="reason" name="reason" maxLength={500} className={fieldInputClass} />
+          <DialogField label="Reason" name="reason" hint="Optional. Recorded in the audit log.">
+            <input id="reason" name="reason" maxLength={500} autoComplete="off" className={fieldInputClass} />
           </DialogField>
         )}
       </FormDialog>
 
-      {/* ── modern mono one-time secret modal ── */}
-      <ApiKeyRevealModal
-        revealed={revealed}
-        onClose={() => setRevealed(null)}
-      />
+      {/* ── one-time secret ── */}
+      <ApiKeyRevealModal revealed={revealed} onClose={() => setRevealed(null)} />
 
-      <KeyUsageSheet projectId={projectId} apiKey={inspecting} onOpenChange={(open) => !open && setInspecting(null)} />
-    </div>
+      <KeyUsageDrawer
+        projectId={projectId}
+        apiKey={inspecting}
+        environmentName={inspectingEnvironmentName}
+        onOpenChange={(open) => !open && setInspecting(null)}
+      />
+    </WorkspacePage>
   );
 }

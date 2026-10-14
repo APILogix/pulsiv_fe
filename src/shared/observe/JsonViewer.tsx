@@ -1,8 +1,9 @@
+import { useMemo } from "react";
 import { CopyButton } from "./primitives";
 
 // Read-only collapsible-ish JSON view. Pretty-prints with mono font.
 export function JsonViewer({ data, maxHeight = 420 }: { data: unknown; maxHeight?: number }) {
-  const json = JSON.stringify(data, jsonReplacer, 2);
+  const json = useMemo(() => JSON.stringify(data, jsonReplacer, 2), [data]);
   return (
     <div className="relative rounded-[10px] border border-[var(--border)] bg-[var(--bg)]">
       <div className="absolute right-3 top-3 z-10">

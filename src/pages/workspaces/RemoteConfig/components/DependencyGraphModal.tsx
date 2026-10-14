@@ -40,7 +40,7 @@ export function DependencyGraphModal() {
     >
       <div className="flex flex-col gap-3 py-2">
         {dependencies.map((dep, idx) => (
-          <div key={idx} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-[var(--border)] bg-[var(--bg2)]/60 p-4">
+          <div key={idx} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg2)]/60 p-4">
             <div className="flex items-center gap-3 min-w-0">
               <div className="flex size-8 items-center justify-center rounded-lg bg-[var(--brand)]/15 text-[var(--brand)] font-bold shrink-0">
                 <GitCommit className="size-4" />
@@ -56,7 +56,7 @@ export function DependencyGraphModal() {
             </div>
 
             <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-center">
-              <span className="flex items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-400 border border-emerald-500/30">
+              <span className="flex items-center gap-1 rounded-full bg-[var(--green)]/10 px-2.5 py-0.5 text-[11px] font-semibold text-[var(--green)] border border-[var(--green)]/30">
                 <ShieldCheck className="size-3" /> {dep.status}
               </span>
             </div>

@@ -4,6 +4,7 @@ import { useOrgStore } from "@/modules/organizations/store/org.store";
 import { useOrganizations } from "@/modules/organizations/hooks/useOrganizations";
 import { useBootstrapEffect } from "@/modules/bootstrap";
 import { AppLayout } from "./AppLayout";
+import { RouteSkeleton } from "@/shared/skeletons/RouteSkeleton";
 
 export function AuthenticatedAppLayout() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
@@ -17,12 +18,9 @@ export function AuthenticatedAppLayout() {
     return <Navigate to="/auth/login" replace />;
   }
 
-  if (isLoading && !activeOrgId) {
-    return (
-      <div className="flex h-screen w-screen items-center justify-center bg-[var(--bg)]">
-        <div className="h-6 w-6 animate-spin rounded-full border-2 border-[var(--brand)] border-t-transparent" />
-      </div>
-    );
+
+  if (isLoading && !organizations.length && !activeOrgId) {
+    return <RouteSkeleton framed />;
   }
 
   if (!activeOrgId && !organizations.length) {

@@ -1,9 +1,7 @@
-import { useState } from "react";
-import { CopyButton, Timestamp } from "@/shared/observe";
-import { ChevronDown, ChevronRight, Globe, Database, MousePointer, Terminal, AlertTriangle, Layers } from "lucide-react";
+import { Globe, Database, MousePointer, Terminal, AlertTriangle, Layers } from "lucide-react";
+import { EmptyNote, formatAbsoluteTime } from "@/shared/observe";
+import { cn } from "@/lib/utils";
 import type { Breadcrumb } from "./types";
-import { InteractiveJsonViewer } from "../request-detail/InteractiveJsonViewer";
-
 
 const CATEGORY_ICONS: Record<string, typeof Globe> = {
   http: Globe,
@@ -21,86 +19,54 @@ const CATEGORY_ICONS: Record<string, typeof Globe> = {
   navigation: Layers,
 };
 
-const LEVEL_TONES: Record<string, string> = {
-  error: "text-[var(--red)] bg-[var(--red-bg)]",
-  fatal: "text-[var(--red)] bg-[var(--red-bg)]",
-  warning: "text-[var(--amber)] bg-[var(--amber-bg)]",
-  warn: "text-[var(--amber)] bg-[var(--amber-bg)]",
-  info: "text-[var(--blue)] bg-[var(--blue-bg)]",
-  debug: "text-[var(--text2)] bg-[var(--bg3)] font-[family-name:var(--mono)]",
+const LEVEL_TEXT: Record<string, string> = {
+  error: "text-[var(--red)]",
+  fatal: "text-[var(--red)]",
+  warning: "text-[var(--amber)]",
+  warn: "text-[var(--amber)]",
+  info: "text-[var(--text2)]",
+  debug: "text-[var(--text3)]",
 };
 
-export function BreadcrumbsTimeline({ breadcrumbs }: { breadcrumbs: Breadcrumb[] }) {
-  const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
+const TIME_FMT = new Intl.DateTimeFormat("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
 
+function clock(value: unknown) {
+  if (!value) return null;
+  const d = new Date(typeof value === "number" && value < 1e12 ? value * 1000 : (value as string));
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+/** What happened right before the error, in the order the SDK recorded it. */
+export function BreadcrumbsTimeline({ breadcrumbs }: { breadcrumbs: Breadcrumb[] }) {
   if (!breadcrumbs || breadcrumbs.length === 0) {
-    return (
-      <div className="rounded-[var(--radius)] border border-dashed border-[var(--border)] p-6 text-center text-[13px] text-[var(--text3)]">
-        No breadcrumbs recorded before this error.
-      </div>
-    );
+    return <EmptyNote>No breadcrumbs were recorded before this error. The SDK records HTTP calls, console output, and navigation automatically when breadcrumbs are enabled.</EmptyNote>;
   }
 
   return (
-    <div className="relative border-l border-[var(--border)] ml-3 pl-6 space-y-4 py-1">
+    <ol className="overflow-hidden rounded-[var(--radius)] border border-[var(--border)]">
       {breadcrumbs.map((item, index) => {
-        const cat = (item.category ?? item.type ?? "log").toLowerCase();
+        const cat = String(item.category ?? item.type ?? "log").toLowerCase();
         const Icon = CATEGORY_ICONS[cat] ?? Terminal;
-        const level = (item.level ?? "info").toLowerCase();
-        const tone = LEVEL_TONES[level] ?? LEVEL_TONES.info;
-        const msg = item.message ?? item.category ?? "Breadcrumb event";
-        const hasData = item.data && Object.keys(item.data).length > 0;
-        const isExpanded = expandedIndex === index;
-        const timeVal = item.timestamp ?? item.occurredAt;
-
+        const level = String(item.level ?? "info").toLowerCase();
+        const msg = item.message ?? item.category ?? "Breadcrumb";
+        const at = clock(item.timestamp ?? item.occurredAt);
         return (
-          <div key={index} className="relative group">
-            {/* Timeline node icon dot */}
-            <div className="absolute -left-[37px] top-1 flex size-6 items-center justify-center rounded-full border border-[var(--border2)] bg-[var(--bg1)] text-[var(--text2)] group-hover:border-[var(--brand)] group-hover:text-[var(--brand)]">
-              <Icon className="size-3" />
-            </div>
-
-            {/* Breadcrumb row card */}
-            <div className="rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg1)] p-3 transition-colors hover:border-[var(--border2)]">
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
-                  <span className={`inline-flex items-center rounded px-1.5 py-0.5 font-[family-name:var(--mono)] text-[9px] font-medium uppercase tracking-[0.08em] ${tone}`}>
-                    {level}
-                  </span>
-                  <span className="font-[family-name:var(--mono)] text-[10px] uppercase tracking-[0.08em] text-[var(--text3)]">
-                    {cat}
-                  </span>
-                  <span className="font-[family-name:var(--mono)] text-[12px] font-medium text-[var(--text)] break-all">
-                    {msg}
-                  </span>
-                </div>
-
-                <div className="flex shrink-0 items-center gap-2">
-                  {timeVal && <Timestamp value={timeVal} />}
-                  {hasData && (
-                    <button
-                      type="button"
-                      onClick={() => setExpandedIndex(isExpanded ? null : index)}
-                      className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-[11px] text-[var(--text3)] hover:text-[var(--text)] font-[family-name:var(--mono)]"
-                    >
-                      {isExpanded ? <ChevronDown className="size-3" /> : <ChevronRight className="size-3" />}
-                      Data
-                    </button>
-                  )}
-                  <CopyButton value={msg} label="" className="h-6 border-0 px-1 text-[var(--text3)]" />
-                </div>
-              </div>
-
-              {/* Expandable JSON Data */}
-              {isExpanded && hasData && (
-                <div className="mt-3 border-t border-[var(--border)] pt-3">
-                  <InteractiveJsonViewer data={item.data} maxHeight={220} />
-                </div>
-              )}
-            </div>
-          </div>
+          <li
+            key={index}
+            className={cn(
+              "grid grid-cols-[76px_16px_88px_minmax(0,1fr)] items-baseline gap-3 border-b border-[var(--border)] bg-[var(--bg1)] px-3 py-2 last:border-0",
+              (level === "error" || level === "fatal") && "bg-[var(--red-bg)]",
+            )}
+          >
+            <time className="font-[family-name:var(--mono)] text-[11px] tabular-nums text-[var(--text3)]" title={at ? formatAbsoluteTime(at) : undefined}>
+              {at ? TIME_FMT.format(at) : "—"}
+            </time>
+            <Icon className={cn("size-3.5 self-center", LEVEL_TEXT[level] ?? "text-[var(--text3)]")} aria-hidden="true" />
+            <span className={cn("truncate text-[12px]", LEVEL_TEXT[level] ?? "text-[var(--text2)]")}>{cat}</span>
+            <span className="break-words font-[family-name:var(--mono)] text-[12px] text-[var(--text)]">{msg}</span>
+          </li>
         );
       })}
-    </div>
+    </ol>
   );
 }

@@ -9,9 +9,29 @@ import { AuthButton, AuthField, PasswordInput, fieldInputClass } from '@/shared/
 interface LoginFormProps {
   login: (data: LoginFormData) => void;
   isPending: boolean;
+  /**
+   * Called with the validated address when the user advances to the password
+   * step. This is the hook the workspace lookup hangs off — the email step tells
+   * the user "we use this to find your workspace", so something has to actually
+   * perform that lookup.
+   */
+  onEmailResolved?: (email: string) => void;
+  /** True while the workspace lookup is in flight, to keep Continue honest. */
+  isResolving?: boolean;
+  /**
+   * Rendered above the password field. Owned by the page so this component stays
+   * presentational and does not need to know about SSO or social providers.
+   */
+  passwordStepSlot?: React.ReactNode;
 }
 
-export function LoginForm({ login, isPending }: LoginFormProps) {
+export function LoginForm({
+  login,
+  isPending,
+  onEmailResolved,
+  isResolving = false,
+  passwordStepSlot,
+}: LoginFormProps) {
   const [step, setStep] = useState<'email' | 'password'>('email');
   const { register, handleSubmit, trigger, getValues, formState: { errors } } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
@@ -19,7 +39,9 @@ export function LoginForm({ login, isPending }: LoginFormProps) {
   });
 
   const continueToPassword = async () => {
-    if (await trigger('email')) setStep('password');
+    if (!(await trigger('email'))) return;
+    setStep('password');
+    onEmailResolved?.(getValues('email'));
   };
 
   return (
@@ -41,24 +63,20 @@ export function LoginForm({ login, isPending }: LoginFormProps) {
               autoFocus
               {...register('email')}
               disabled={isPending}
-              className={cn(fieldInputClass, 'h-10 font-mono text-[13px]')}
+              className={cn(fieldInputClass, 'h-11 text-[14px]')}
             />
           </AuthField>
 
-          <p className="border-t border-[var(--border)] pt-4 text-[12px] leading-5 text-[var(--text3)]">
-            By continuing, you agree to Sentinel&apos;s Terms and Conditions and Privacy Policy.
-          </p>
-
-          <AuthButton type="button" onClick={continueToPassword} disabled={isPending}>
+          <AuthButton type="button" onClick={continueToPassword} disabled={isPending} pending={isResolving}>
             Continue
           </AuthButton>
         </div>
       ) : (
         <div className="flex flex-col gap-4 animate-in fade-in-50 duration-150">
-          <div className="flex items-center justify-between gap-3 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg2)] px-3 py-2.5">
+          <div className="flex items-center justify-between gap-3 border-b border-[var(--border)] pb-4">
             <div className="min-w-0">
-              <p className="font-mono text-[10px] font-medium uppercase tracking-[0.09em] text-[var(--text3)]">Signing in as</p>
-              <span className="mt-0.5 block min-w-0 truncate font-mono text-[12px] text-[var(--text)]">
+              <p className="text-[12px] text-[var(--text3)]">Signing in as</p>
+              <span className="mt-0.5 block min-w-0 truncate text-[14px] font-medium text-[var(--text)]">
                 {getValues('email')}
               </span>
             </div>
@@ -66,11 +84,13 @@ export function LoginForm({ login, isPending }: LoginFormProps) {
               type="button"
               onClick={() => setStep('email')}
               disabled={isPending}
-              className="shrink-0 rounded-sm text-[12px] font-medium text-[var(--brand)] transition-colors hover:text-[var(--brand-d)] focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-[var(--brand-bg)] disabled:opacity-50"
+              className="shrink-0 rounded-sm text-[13px] font-medium text-[var(--text2)] underline decoration-[var(--border2)] underline-offset-4 transition-colors hover:text-[var(--text)] hover:decoration-[var(--text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--text)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg)] disabled:opacity-50"
             >
               Change
             </button>
           </div>
+
+          {passwordStepSlot}
 
           <AuthField
             label="Password"
@@ -79,7 +99,7 @@ export function LoginForm({ login, isPending }: LoginFormProps) {
             trailing={
               <Link
                 to="/auth/forgot-password"
-                className="rounded-sm text-[12px] font-medium text-[var(--text3)] transition-colors hover:text-[var(--text2)] focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-[var(--brand-bg)]"
+                className="rounded-sm text-[13px] text-[var(--text3)] transition-colors hover:text-[var(--text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--text)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg)]"
               >
                 Forgot password?
               </Link>
@@ -90,6 +110,7 @@ export function LoginForm({ login, isPending }: LoginFormProps) {
               placeholder="Enter your password"
               autoComplete="current-password"
               autoFocus
+              className="h-11 text-[14px]"
               {...register('password')}
               disabled={isPending}
             />

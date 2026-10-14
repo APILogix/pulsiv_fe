@@ -1,4 +1,4 @@
-import { FilterSelect, SearchInput } from "@/shared/observe";
+import { ENVIRONMENT_OPTIONS, FilterSelect, SearchInput } from "@/shared/observe";
 import type { ErrorGroupFilterState } from "../types/error-group";
 
 interface ErrorGroupFiltersProps {
@@ -8,7 +8,7 @@ interface ErrorGroupFiltersProps {
 }
 
 const STATUS_OPTS = [
-  { value: "", label: "All statuses" },
+  { value: "", label: "Any status" },
   { value: "open", label: "Open" },
   { value: "resolved", label: "Resolved" },
   { value: "ignored", label: "Ignored" },
@@ -16,60 +16,45 @@ const STATUS_OPTS = [
 ];
 
 const SEVERITY_OPTS = [
-  { value: "", label: "All severities" },
+  { value: "", label: "Any severity" },
   { value: "fatal", label: "Fatal" },
   { value: "error", label: "Error" },
   { value: "warning", label: "Warning" },
 ];
 
 const REGRESSION_OPTS = [
-  { value: "", label: "All" },
+  { value: "", label: "Regressed or not" },
   { value: "true", label: "Regressed" },
-  { value: "false", label: "Non-regressed" },
+  { value: "false", label: "Not regressed" },
 ];
 
-const ENV_OPTS = [
-  { value: "", label: "All environments" },
-  { value: "production", label: "Production" },
-  { value: "staging", label: "Staging" },
-  { value: "development", label: "Development" },
+const OCCURRENCE_OPTS = [
+  { value: "", label: "Any volume" },
+  { value: "10", label: "10+ events" },
+  { value: "100", label: "100+ events" },
+  { value: "1000", label: "1,000+ events" },
 ];
 
-const RELEASE_OPTS = [
-  { value: "", label: "All releases" },
-  { value: "v3.1.0", label: "v3.1.0" },
-  { value: "v3.0.9", label: "v3.0.9" },
-  { value: "v3.0.8", label: "v3.0.8" },
-];
-
-export function ErrorGroupFilters({ filters, onChange }: ErrorGroupFiltersProps) {
+export function ErrorGroupFilters({ filters, onChange, onClear }: ErrorGroupFiltersProps) {
+  const active = Object.entries(filters).some(([k, v]) => ["status", "severity", "isRegression", "environment", "release", "minOccurrences", "search"].includes(k) && Boolean(v));
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
       <SearchInput
-        placeholder="Search errors..."
+        key={filters.search}
+        placeholder="Search error name, message, fingerprint…"
         onSearch={(val) => onChange("search", val)}
         defaultValue={filters.search}
       />
-      <FilterSelect
-        value={filters.status}
-        onChange={(val) => onChange("status", val)}
-        options={STATUS_OPTS}
-      />
-      <FilterSelect
-        value={filters.severity}
-        onChange={(val) => onChange("severity", val)}
-        options={SEVERITY_OPTS}
-      />
-      <FilterSelect
-        value={filters.isRegression}
-        onChange={(val) => onChange("isRegression", val)}
-        options={REGRESSION_OPTS}
-      />
-      <FilterSelect
-        value={filters.release}
-        onChange={(val) => onChange("release", val)}
-        options={RELEASE_OPTS}
-      />
+      <FilterSelect value={filters.environment ?? ""} onChange={(val) => onChange("environment", val)} options={ENVIRONMENT_OPTIONS} />
+      <FilterSelect value={filters.status} onChange={(val) => onChange("status", val)} options={STATUS_OPTS} />
+      <FilterSelect value={filters.severity} onChange={(val) => onChange("severity", val)} options={SEVERITY_OPTS} />
+      <FilterSelect value={filters.isRegression} onChange={(val) => onChange("isRegression", val)} options={REGRESSION_OPTS} />
+      <FilterSelect value={filters.minOccurrences ?? ""} onChange={(val) => onChange("minOccurrences", val)} options={OCCURRENCE_OPTS} />
+      {active && (
+        <button type="button" onClick={onClear} className="h-9 px-2 text-[12px] text-[var(--text2)] transition-colors hover:text-[var(--text)]">
+          Clear filters
+        </button>
+      )}
     </div>
   );
 }

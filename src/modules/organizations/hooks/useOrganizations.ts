@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { orgApi } from '../api/org.api';
 import { useOrgStore } from '../store/org.store';
+import { useAuthStore } from '@/modules/auth/store/auth.store';
 import { useEffect, useCallback } from 'react';
 import { tokenService } from '@/modules/auth/services/token.service';
 import { useBootstrapOrganizations, bootstrapService } from '@/modules/bootstrap';
@@ -27,13 +28,18 @@ export const orgQueryKeys = {
 };
 
 export function useOrganizations() {
-  const { activeOrgId, setActiveOrgId, activeOrgSlug, setActiveOrgSlug } = useOrgStore();
+  const activeOrgId = useOrgStore((s) => s.activeOrgId);
+  const setActiveOrgId = useOrgStore((s) => s.setActiveOrgId);
+  const activeOrgSlug = useOrgStore((s) => s.activeOrgSlug);
+  const setActiveOrgSlug = useOrgStore((s) => s.setActiveOrgSlug);
   const bootstrapOrgs = useBootstrapOrganizations();
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
 
   const query = useQuery({
     queryKey: orgQueryKeys.lists(),
     queryFn: () => orgApi.listOrganizations({ limit: 100 }),
     staleTime: 5 * 60 * 1000,
+    enabled: isAuthenticated,
   });
 
   // Prefer bootstrap store organizations, falling back to query data

@@ -1,58 +1,42 @@
 import { useState } from "react";
-import {
-  Bell,
-  BellRing,
-  Hash,
-  Mail,
-  MonitorSmartphone,
-  RefreshCcw,
-  Send,
-  Webhook,
-} from "lucide-react";
-import type { LucideIcon } from "lucide-react";
+import { RefreshCcw } from "lucide-react";
+
 import {
   useAlertPreferenceMutations,
   useAlertPreferences,
   type MemberNotificationPreference,
 } from "@/modules/projects/hooks/useAlertPreferences";
-import { useNotificationEntitlement } from "@/modules/alerting/hooks/useAlerting";
 import { EntitlementRestrictedBanner } from "@/modules/alerting/components/EntitlementRestrictedBanner";
-import { useCurrentProject } from "./ProjectShellPage";
+import { DialogField, FormDialog, apiErrorMessage } from "@/modules/projects/components/project-ui";
 import {
-  IconChip,
-  Notice,
-  Panel,
-  Pill,
-  SectionHeading,
-  StatCard,
-  Toggle,
-  fieldInputClass,
-} from "@/shared/ui/pulse";
-import { Timestamp } from "@/shared/observe";
+  ProjectPageHeader,
+  Readouts,
+  SETTINGS_COLUMN,
+  Sheet,
+  SheetEmpty,
+  SheetError,
+  WorkspacePage,
+  type Readout,
+} from "@/modules/projects/components/project-page";
+import { Notice, Panel, Toggle, fieldInputClass } from "@/shared/ui/pulse";
+import { Timestamp, formatNumber } from "@/shared/observe";
 import { Button as UiButton } from "@/components/ui/button";
 import { QuietHoursPicker, type QuietHours } from "@/components/ui/quiet-hours-picker";
-import { DialogField, FormDialog, apiErrorMessage } from "@/modules/projects/components/project-ui";
 import { cn } from "@/lib/utils";
+import { useCurrentProject } from "./ProjectShellPage";
 
 // ── module-level constants (rules.md §1.2) ───────────────────
 
-const CHANNEL_ICON: Record<string, LucideIcon> = {
-  email: Mail,
-  slack: Hash,
-  webhook: Webhook,
-  push: MonitorSmartphone,
-  sms: Send,
+const CHANNEL_LABEL: Record<string, string> = {
+  email: "Email",
+  slack: "Slack",
+  webhook: "Webhook",
+  push: "Push",
+  sms: "SMS",
 };
 
 const SEVERITY_CHOICES = ["info", "warning", "error", "critical"] as const;
 const DIGEST_CHOICES = ["immediate", "hourly", "daily", "weekly"] as const;
-
-const SEVERITY_TONE: Record<string, "blue" | "amber" | "red" | "neutral"> = {
-  info: "blue",
-  warning: "amber",
-  error: "red",
-  critical: "red",
-};
 
 const DEFAULT_QUIET_HOURS: QuietHours = {
   enabled: false,
@@ -60,6 +44,17 @@ const DEFAULT_QUIET_HOURS: QuietHours = {
   end: "08:00",
   timezone: "UTC",
 };
+
+const CHECKBOX_CLASS = "size-4 shrink-0 cursor-pointer accent-[var(--text)]";
+
+function sentenceCase(value: string) {
+  const text = value.replace(/_/g, " ");
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+function channelLabel(channel: string) {
+  return CHANNEL_LABEL[channel] ?? sentenceCase(channel);
+}
 
 function quietHoursOf(preference: MemberNotificationPreference): QuietHours {
   const raw = (preference.quietHours ?? {}) as Partial<QuietHours>;
@@ -75,7 +70,7 @@ function quietHoursOf(preference: MemberNotificationPreference): QuietHours {
 
 export default function MemberAlertPreferencesPage() {
   const { projectId } = useCurrentProject();
-  const { data: preferences = [], isLoading, error } = useAlertPreferences(projectId);
+  const { data: preferences = [], isLoading, error, refetch } = useAlertPreferences(projectId);
   const { updatePreference, syncPreferences } = useAlertPreferenceMutations(projectId);
 
   const [tuning, setTuning] = useState<MemberNotificationPreference | null>(null);
@@ -90,6 +85,18 @@ export default function MemberAlertPreferencesPage() {
     (groups[preference.channel] ??= []).push(preference);
     return groups;
   }, {});
+  const channelCount = Object.keys(byChannel).length;
+
+  const readouts: Readout[] = [
+    {
+      label: "Preferences",
+      value: formatNumber(preferences.length),
+      sub: `Across ${formatNumber(channelCount)} ${channelCount === 1 ? "channel" : "channels"}`,
+    },
+    { label: "Receiving", value: formatNumber(enabledCount), sub: "Delivered to you" },
+    { label: "Muted", value: formatNumber(mutedCount), sub: "Turned off by you" },
+    { label: "Quiet hours", value: formatNumber(quietCount), sub: "Preferences with quiet hours" },
+  ];
 
   const openTuning = (preference: MemberNotificationPreference) => {
     setFormError(null);
@@ -97,117 +104,140 @@ export default function MemberAlertPreferencesPage() {
     setTuning(preference);
   };
 
+  const syncButton = (primary: boolean) => (
+    <UiButton
+      variant={primary ? "default" : "outline"}
+      size="lg"
+      onClick={() => syncPreferences.mutate()}
+      disabled={syncPreferences.isPending}
+    >
+      <RefreshCcw className={cn("size-4", syncPreferences.isPending && "animate-spin")} aria-hidden="true" />
+      {syncPreferences.isPending ? "Syncing defaults" : "Sync defaults"}
+    </UiButton>
+  );
+
+  let content;
+  if (isLoading && preferences.length === 0) {
+    content = (
+      <div role="status" aria-label="Loading preferences" className="flex flex-col gap-6">
+        {[0, 1].map((row) => (
+          <div key={row} aria-hidden="true" className="loading-skeleton h-44 rounded-[var(--radius-lg)]" />
+        ))}
+      </div>
+    );
+  } else if (error && preferences.length === 0) {
+    content = (
+      <Sheet label="Notification preferences">
+        <SheetError
+          title="Could not load your preferences"
+          message={apiErrorMessage(error)}
+          onRetry={() => void refetch()}
+        />
+      </Sheet>
+    );
+  } else if (preferences.length === 0) {
+    content = (
+      <Sheet label="Notification preferences">
+        <SheetEmpty
+          title="No preferences yet"
+          description="Sync defaults to create a preference for every channel and alert category this project supports. You can then mute or tune each one."
+          action={syncButton(true)}
+        />
+      </Sheet>
+    );
+  } else {
+    content = Object.entries(byChannel).map(([channel, entries]) => {
+      const delivering = entries.filter((entry) => entry.enabled).length;
+      return (
+        <Panel
+          key={channel}
+          title={channelLabel(channel)}
+          description={`${formatNumber(delivering)} of ${formatNumber(entries.length)} categories delivering.`}
+          bodyClassName="p-0"
+        >
+          <ul className="divide-y divide-[var(--border)]">
+            {entries.map((preference) => {
+              const quiet = quietHoursOf(preference);
+              const category = sentenceCase(preference.category);
+              return (
+                <li
+                  key={preference.id}
+                  className={cn(
+                    "flex flex-col gap-3 px-5 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:gap-6",
+                    !preference.enabled && "[&_.pref-copy]:opacity-60",
+                  )}
+                >
+                  <div className="pref-copy min-w-0">
+                    <p className="text-[13px] font-medium text-[var(--text)]">{category}</p>
+                    <p className="mt-0.5 text-[12px] leading-[1.5] text-[var(--text2)]">
+                      {sentenceCase(preference.severityThreshold)} and above · {sentenceCase(preference.digestMode)}
+                      {quiet.enabled && (
+                        <>
+                          {" · Quiet "}
+                          <span className="font-[family-name:var(--mono)] text-[11.5px] tabular-nums">
+                            {quiet.start}–{quiet.end}
+                          </span>{" "}
+                          {quiet.timezone}
+                        </>
+                      )}
+                    </p>
+                    <p className="mt-0.5 text-[12px] text-[var(--text3)]">
+                      Updated <Timestamp value={preference.updatedAt} />
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-3">
+                    <UiButton
+                      variant="outline"
+                      size="sm"
+                      onClick={() => openTuning(preference)}
+                      aria-label={`Configure ${category} alerts by ${channelLabel(channel)}`}
+                    >
+                      Configure
+                    </UiButton>
+                    <Toggle
+                      checked={preference.enabled}
+                      label={`Deliver ${category} alerts by ${channelLabel(channel)}`}
+                      disabled={updatePreference.isPending}
+                      onChange={(next) =>
+                        updatePreference.mutate({
+                          prefId: preference.id,
+                          payload: { enabled: next },
+                        })
+                      }
+                    />
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </Panel>
+      );
+    });
+  }
+
   return (
-    <div className="flex flex-col gap-6">
-      <SectionHeading
-        title="My notification preferences"
-        description="Personal delivery settings for this project, per channel and alert category. These apply to your account only."
-        actions={
-          <UiButton
-            variant="outline"
-            size="lg"
-            onClick={() => syncPreferences.mutate()}
-            disabled={syncPreferences.isPending}
-          >
-            <RefreshCcw className={cn("mr-1.5 size-4", syncPreferences.isPending && "animate-spin")} />
-            Sync defaults
-          </UiButton>
-        }
+    <WorkspacePage>
+      <ProjectPageHeader
+        title="My notifications"
+        description="Your personal delivery settings for this project, per channel and alert category. They apply to your account only."
+        actions={preferences.length > 0 ? syncButton(false) : undefined}
       />
 
-      <EntitlementRestrictedBanner projectId={projectId} />
+      <div className={`${SETTINGS_COLUMN} flex flex-col gap-6`}>
+        <EntitlementRestrictedBanner projectId={projectId} />
 
-      <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
-        <StatCard label="Preferences" value={preferences.length} icon={Bell} tone="brand" />
-        <StatCard label="Receiving" value={enabledCount} icon={BellRing} tone="green" />
-        <StatCard label="Muted" value={mutedCount} icon={Bell} tone={mutedCount > 0 ? "amber" : "neutral"} />
-        <StatCard label="Quiet hours set" value={quietCount} icon={MonitorSmartphone} tone="violet" />
-      </div>
+        {preferences.length > 0 && <Readouts cells={readouts} label="Preference summary" />}
 
-      {error && <Notice tone="red">{apiErrorMessage(error)}</Notice>}
-
-      {isLoading ? (
-        <div className="flex flex-col gap-4">
-          {[0, 1].map((row) => (
-            <div key={row} className="h-40 animate-pulse rounded-[14px] bg-[var(--bg2)]" />
-          ))}
-        </div>
-      ) : preferences.length === 0 ? (
-        <Panel>
-          <div className="flex flex-col items-center gap-3 py-10 text-center">
-            <IconChip icon={Bell} size="lg" tone="brand" />
-            <p className="text-[13.5px] font-semibold text-[var(--text)]">No preferences yet</p>
-            <p className="max-w-[48ch] text-[12.5px] text-[var(--text2)]">
-              Run <strong>Sync defaults</strong> to create a preference row for every channel and alert category this
-              project supports.
-            </p>
-            <UiButton size="lg" onClick={() => syncPreferences.mutate()} disabled={syncPreferences.isPending}>
-              <RefreshCcw className="mr-1.5 size-4" /> Sync defaults
-            </UiButton>
+        {error && preferences.length > 0 && (
+          <div role="alert">
+            <Notice tone="red" title="Could not refresh your preferences">
+              {apiErrorMessage(error)}
+            </Notice>
           </div>
-        </Panel>
-      ) : (
-        Object.entries(byChannel).map(([channel, entries]) => {
-          const Icon = CHANNEL_ICON[channel] ?? Bell;
-          return (
-            <Panel
-              key={channel}
-              title={channel}
-              description={`${entries.filter((entry) => entry.enabled).length} of ${entries.length} categories delivering.`}
-              icon={Icon}
-              bodyClassName="p-0"
-            >
-              <ul className="divide-y divide-[var(--border)]">
-                {entries.map((preference) => {
-                  const quiet = quietHoursOf(preference);
-                  return (
-                    <li
-                      key={preference.id}
-                      className="flex flex-wrap items-center justify-between gap-3 px-5 py-3.5"
-                    >
-                      <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <p className="text-[13px] font-medium capitalize text-[var(--text)]">
-                            {preference.category}
-                          </p>
-                          <Pill tone={SEVERITY_TONE[preference.severityThreshold] ?? "neutral"}>
-                            {preference.severityThreshold}+
-                          </Pill>
-                          <Pill tone="neutral">{preference.digestMode}</Pill>
-                          {quiet.enabled && (
-                            <Pill tone="violet">
-                              quiet {quiet.start}–{quiet.end} {quiet.timezone}
-                            </Pill>
-                          )}
-                        </div>
-                        <p className="mt-0.5 text-[11.5px] text-[var(--text3)]">
-                          Updated <Timestamp value={preference.updatedAt} />
-                        </p>
-                      </div>
-                      <div className="flex shrink-0 items-center gap-2">
-                        <UiButton variant="outline" size="sm" onClick={() => openTuning(preference)}>
-                          Configure
-                        </UiButton>
-                        <Toggle
-                          checked={preference.enabled}
-                          label={`Toggle ${preference.channel} ${preference.category}`}
-                          disabled={updatePreference.isPending}
-                          onChange={(next) =>
-                            updatePreference.mutate({
-                              prefId: preference.id,
-                              payload: { enabled: next },
-                            })
-                          }
-                        />
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
-            </Panel>
-          );
-        })
-      )}
+        )}
+
+        {content}
+      </div>
 
       <FormDialog
         open={!!tuning}
@@ -217,7 +247,7 @@ export default function MemberAlertPreferencesPage() {
             setFormError(null);
           }
         }}
-        title={tuning ? `${tuning.channel} · ${tuning.category}` : "Configure preference"}
+        title={tuning ? `${sentenceCase(tuning.category)} by ${channelLabel(tuning.channel)}` : "Configure preference"}
         description="Severity floor, digest cadence, and quiet hours for this channel and category."
         submitLabel="Save preference"
         pending={updatePreference.isPending}
@@ -245,7 +275,7 @@ export default function MemberAlertPreferencesPage() {
       >
         {tuning && (
           <>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <DialogField label="Minimum severity" name="severityThreshold">
                 <select
                   id="severityThreshold"
@@ -255,7 +285,7 @@ export default function MemberAlertPreferencesPage() {
                 >
                   {SEVERITY_CHOICES.map((severity) => (
                     <option key={severity} value={severity}>
-                      {severity}
+                      {sentenceCase(severity)}
                     </option>
                   ))}
                 </select>
@@ -264,27 +294,27 @@ export default function MemberAlertPreferencesPage() {
                 <select id="digestMode" name="digestMode" defaultValue={tuning.digestMode} className={fieldInputClass}>
                   {DIGEST_CHOICES.map((mode) => (
                     <option key={mode} value={mode}>
-                      {mode}
+                      {sentenceCase(mode)}
                     </option>
                   ))}
                 </select>
               </DialogField>
             </div>
 
-            <label className="flex items-center gap-2 rounded-[10px] border border-[var(--border)] bg-[var(--bg2)] px-3.5 py-3 text-[12.5px] text-[var(--text)]">
-              <input type="checkbox" name="enabled" defaultChecked={tuning.enabled} className="size-4" />
+            <label className="flex w-fit cursor-pointer items-center gap-2.5 text-[13px] text-[var(--text)]">
+              <input type="checkbox" name="enabled" defaultChecked={tuning.enabled} className={CHECKBOX_CLASS} />
               Deliver these alerts to me
             </label>
 
             <QuietHoursPicker value={quietHours} onChange={setQuietHours} />
 
-            <Notice tone="amber" icon={BellRing}>
+            <Notice tone="neutral">
               Quiet hours suppress non-critical delivery on this channel. Critical alerts may still be delivered
               depending on organization policy.
             </Notice>
           </>
         )}
       </FormDialog>
-    </div>
+    </WorkspacePage>
   );
 }

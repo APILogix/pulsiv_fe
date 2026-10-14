@@ -22,7 +22,6 @@
     "countries-and-timezones": "^3.9.0",
     "framer-motion": "^12.42.0",
     "lucide-react": "^0.468.0",
-    "qrcode": "^1.5.4",
     "radix-ui": "^1.6.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
@@ -40,7 +39,6 @@
   },
   "devDependencies": {
     "@types/node": "^22.10.1",
-    "@types/qrcode": "^1.5.5",
     "@types/react": "^19.0.1",
     "@types/react-dom": "^19.0.2",
     "@types/react-simple-maps": "^3.0.6",

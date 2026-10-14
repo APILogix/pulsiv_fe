@@ -1,23 +1,24 @@
+import { lazy, Suspense } from "react";
 import { RouterProvider } from "react-router";
 import { AppProviders } from "./providers/AppProviders";
 import { router } from "./router/routes";
-import { GlobalStepUpModal } from "@/modules/auth/components/GlobalStepUpModal";
 import { useAuthStore } from "@/modules/auth/store/auth.store";
-import { AppBootstrapGate } from "@/shared/ui/loading";
+
+const GlobalStepUpModal = lazy(() =>
+  import("@/modules/auth/components/GlobalStepUpModal").then((m) => ({ default: m.GlobalStepUpModal }))
+);
 
 function App() {
-  const hasHydrated = useAuthStore((state) => state.hasHydrated);
+  const stepUpPromise = useAuthStore((state) => state.stepUpPromise);
 
   return (
     <AppProviders>
-      {hasHydrated ? (
-        <>
-          <RouterProvider router={router} />
+      <RouterProvider router={router} />
+      {stepUpPromise ? (
+        <Suspense fallback={null}>
           <GlobalStepUpModal />
-        </>
-      ) : (
-        <AppBootstrapGate visible={true} />
-      )}
+        </Suspense>
+      ) : null}
     </AppProviders>
   );
 }

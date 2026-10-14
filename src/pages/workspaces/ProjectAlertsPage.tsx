@@ -1,218 +1,435 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router";
-import {
-  AlertOctagon,
-  CheckCircle2,
-  Filter,
-  RefreshCw,
-  Search,
-} from "lucide-react";
-import { useCurrentProject } from "./ProjectShellPage";
-import {
-  useProjectAlerts,
-  useNotificationEntitlement,
-} from "@/modules/alerting/hooks/useAlerting";
-import { IncidentStateBadge } from "@/modules/alerting/components/IncidentStateBadge";
-import { toIncidentView } from "@/modules/alerting/components/incident-view";
-import { SeverityBadge } from "@/shared/observe";
-import { EntitlementRestrictedBanner } from "@/modules/alerting/components/EntitlementRestrictedBanner";
-import { cn } from "@/lib/utils";
+import { RefreshCw } from "lucide-react";
 
-import { useProjectAlertingStatus } from "@/modules/alerting/hooks/useAlerting";
+import { useProjectAlerts, useProjectAlertingStatus } from "@/modules/alerting/hooks/useAlerting";
+import { toIncidentView } from "@/modules/alerting/components/incident-view";
+import { EntitlementRestrictedBanner } from "@/modules/alerting/components/EntitlementRestrictedBanner";
+import type { AlertEvent, AlertEventStatus, AlertIncident, IncidentState } from "@/modules/alerting/api/types";
+import { projectPath } from "@/modules/projects/navigation/project-routes";
+import { apiErrorMessage } from "@/modules/projects/components/project-ui";
+import {
+  HIDE_BELOW_LG,
+  HIDE_BELOW_MD,
+  HIDE_BELOW_XL,
+  ProjectPageHeader,
+  Readouts,
+  RowTitle,
+  SearchField,
+  Sheet,
+  SheetCell,
+  SheetEmpty,
+  SheetError,
+  SheetLoading,
+  SheetRow,
+  SheetTable,
+  TextLink,
+  ToolbarCount,
+  WorkspacePage,
+  type Readout,
+  type SheetColumn,
+} from "@/modules/projects/components/project-page";
+import { Pill, SegmentedControl, type SegmentOption, type SurfaceTone } from "@/shared/ui/pulse";
+import {
+  FilterSelect,
+  SeverityBadge,
+  Timestamp,
+  formatAbsoluteTime,
+  formatNumber,
+  formatRelativeTime,
+} from "@/shared/observe";
+import { Button as UiButton } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { useCurrentProject } from "./ProjectShellPage";
+
+// ── module-level constants (rules.md §1.2) ───────────────────
+
+type StateFilter = "all" | "active" | "triggered" | "acknowledged" | "resolved";
+
+// The newest 100 alerts; the endpoint caps a page at 100.
+const ALERTS_QUERY = { limit: 100 };
+
+const SEVERITY_OPTIONS = [
+  { value: "all", label: "All" },
+  { value: "critical", label: "Critical" },
+  { value: "error", label: "Error" },
+  { value: "warning", label: "Warning" },
+  { value: "info", label: "Info" },
+];
+
+// Red while it fires, amber while someone holds it, green once it is over.
+const STATE_PILL: Record<IncidentState, { label: string; tone: SurfaceTone }> = {
+  triggered: { label: "Firing", tone: "red" },
+  escalated: { label: "Escalated", tone: "red" },
+  pending: { label: "Pending", tone: "amber" },
+  acknowledged: { label: "Acknowledged", tone: "amber" },
+  muted: { label: "Muted", tone: "neutral" },
+  resolved: { label: "Resolved", tone: "green" },
+  closed: { label: "Closed", tone: "neutral" },
+  healthy: { label: "Healthy", tone: "green" },
+};
+
+const COLUMNS: SheetColumn[] = [
+  { key: "incident", header: "Incident" },
+  { key: "severity", header: "Severity", className: "w-[112px]" },
+  { key: "state", header: "State", className: "w-[136px]" },
+  { key: "started", header: "Started", className: `w-[120px] ${HIDE_BELOW_MD}` },
+  { key: "duration", header: "Duration", className: `w-[112px] ${HIDE_BELOW_LG}` },
+  { key: "resolved", header: "Resolved", className: `w-[120px] ${HIDE_BELOW_XL}` },
+  { key: "occurrences", header: "Occurrences", className: `w-[112px] ${HIDE_BELOW_XL}`, align: "right" },
+];
+
+// Organization-level alert detail, unchanged from the previous list.
+const incidentPath = (id: string) => `/alerts/${id}`;
+
+// ── data helpers ─────────────────────────────────────────────
+
+/**
+ * The project alerts endpoint returns runtime rows that carry `state`,
+ * `firstSeenAt`, and `lastSeenAt` where `AlertEvent` declares `status`,
+ * `startedAt`, and `updatedAt`. Fill the declared fields from those when they
+ * are missing, so the shared incident view reads the real state and times.
+ */
+type ProjectAlertRow = AlertEvent & {
+  state?: AlertEventStatus;
+  firstSeenAt?: string;
+  lastSeenAt?: string;
+  occurredAt?: string;
+};
+
+function toProjectIncident(event: AlertEvent): AlertIncident {
+  const row = event as ProjectAlertRow;
+  return toIncidentView({
+    ...row,
+    status: (row.status ?? row.state) as AlertEventStatus,
+    startedAt: row.startedAt ?? row.firstSeenAt ?? row.occurredAt ?? row.createdAt,
+    updatedAt: row.updatedAt ?? row.lastSeenAt ?? row.createdAt,
+  });
+}
+
+const isOpen = (state: IncidentState) => state === "triggered" || state === "acknowledged";
+
+function matchesState(incident: AlertIncident, filter: StateFilter): boolean {
+  if (filter === "all") return true;
+  if (filter === "active") return isOpen(incident.state);
+  return incident.state === filter;
+}
+
+function summarize(incidents: AlertIncident[]) {
+  let firing = 0;
+  let acknowledged = 0;
+  let resolved = 0;
+  let critical = 0;
+  let lastResolvedAt: string | null = null;
+  let lastResolvedMs = Number.NEGATIVE_INFINITY;
+
+  for (const incident of incidents) {
+    if (incident.state === "triggered") firing += 1;
+    if (incident.state === "acknowledged") acknowledged += 1;
+    if (incident.severity === "critical" && isOpen(incident.state)) critical += 1;
+    if (incident.state === "resolved") {
+      resolved += 1;
+      const ms = incident.resolvedAt ? Date.parse(incident.resolvedAt) : Number.NaN;
+      if (!Number.isNaN(ms) && ms > lastResolvedMs) {
+        lastResolvedMs = ms;
+        lastResolvedAt = incident.resolvedAt ?? null;
+      }
+    }
+  }
+
+  return { firing, acknowledged, resolved, critical, open: firing + acknowledged, lastResolvedAt };
+}
+
+/**
+ * Start to resolution, or start to the last refresh while it is still open.
+ * `null` when the incident has neither, so the cell shows a dash instead of a
+ * made-up length.
+ */
+function incidentDuration(incident: AlertIncident, refreshedAt: number): number | null {
+  const start = Date.parse(incident.firstTriggeredAt);
+  if (Number.isNaN(start)) return null;
+  if (incident.resolvedAt) {
+    const end = Date.parse(incident.resolvedAt);
+    return Number.isNaN(end) ? null : Math.max(0, end - start);
+  }
+  if (!isOpen(incident.state) || refreshedAt <= 0) return null;
+  return Math.max(0, refreshedAt - start);
+}
+
+/** Two units at most: 42s, 3m 12s, 5h 40m, 2d 3h. */
+function formatElapsed(ms: number): string {
+  const totalSeconds = Math.round(ms / 1000);
+  if (totalSeconds < 60) return `${totalSeconds}s`;
+  const minutes = Math.floor(totalSeconds / 60);
+  if (minutes < 60) {
+    const seconds = totalSeconds % 60;
+    return seconds > 0 ? `${minutes}m ${seconds}s` : `${minutes}m`;
+  }
+  const hours = Math.floor(minutes / 60);
+  if (hours < 48) {
+    const rest = minutes % 60;
+    return rest > 0 ? `${hours}h ${rest}m` : `${hours}h`;
+  }
+  const days = Math.floor(hours / 24);
+  const rest = hours % 24;
+  return rest > 0 ? `${days}d ${rest}h` : `${days}d`;
+}
+
+// ── page ─────────────────────────────────────────────────────
 
 export default function ProjectAlertsPage() {
-  const { projectId, orgSlug } = useCurrentProject();
+  const { projectId, orgSlug, publicId } = useCurrentProject();
   const navigate = useNavigate();
-  const [selectedStatus, setSelectedStatus] = useState("all");
+  const [selectedStatus, setSelectedStatus] = useState<StateFilter>("all");
   const [selectedSeverity, setSelectedSeverity] = useState("all");
   const [search, setSearch] = useState("");
 
-  const { data: alertsData, isLoading, refetch, isRefetching } = useProjectAlerts(projectId, {
-    limit: 100,
-  });
+  const {
+    data: alertsData,
+    isLoading,
+    error,
+    refetch,
+    isRefetching,
+    dataUpdatedAt,
+  } = useProjectAlerts(projectId, ALERTS_QUERY);
   const { data: alertingStatus } = useProjectAlertingStatus(projectId);
 
-  const incidents = useMemo(
-    () => (alertsData?.data ?? []).map(toIncidentView),
-    [alertsData],
-  );
-
+  const incidents = useMemo(() => (alertsData?.data ?? []).map(toProjectIncident), [alertsData]);
 
   const filtered = useMemo(() => {
     return incidents.filter((incident) => {
-      const matchesStatus =
-        selectedStatus === "all" ||
-        (selectedStatus === "active"
-          ? incident.state === "triggered" || incident.state === "acknowledged"
-          : incident.state === selectedStatus);
+      const matchesStatus = matchesState(incident, selectedStatus);
 
-      const matchesSeverity =
-        selectedSeverity === "all" || incident.severity === selectedSeverity;
+      const matchesSeverity = selectedSeverity === "all" || incident.severity === selectedSeverity;
 
       const matchesSearch =
         search.trim() === "" ||
-        `${incident.title} ${incident.service} ${incident.fingerprint}`
-          .toLowerCase()
-          .includes(search.toLowerCase());
+        `${incident.title} ${incident.service} ${incident.fingerprint}`.toLowerCase().includes(search.toLowerCase());
 
       return matchesStatus && matchesSeverity && matchesSearch;
     });
   }, [incidents, selectedStatus, selectedSeverity, search]);
 
+  const summary = useMemo(() => summarize(incidents), [incidents]);
+  const total = alertsData?.total ?? incidents.length;
+  const partial = total > incidents.length;
+  const loading = isLoading && !alertsData;
+  const loadFailed = Boolean(error) && !alertsData;
+  const primaryDestination = alertingStatus?.connectorStatus.primary;
+  const rulesPath = projectPath(orgSlug, publicId, "alert-rules");
+
+  const clearFilters = () => {
+    setSearch("");
+    setSelectedStatus("all");
+    setSelectedSeverity("all");
+  };
+
+  // Readings describe every loaded incident, never the current filter.
+  const readouts: Readout[] = [
+    {
+      label: "Incidents",
+      value: formatNumber(total),
+      sub: partial ? `Readings use the latest ${formatNumber(incidents.length)}` : "Recorded for this project",
+    },
+    {
+      label: "Firing",
+      value: formatNumber(summary.firing),
+      tone: summary.firing > 0 ? "bad" : "neutral",
+      sub: summary.firing > 0 ? "Not acknowledged yet" : "Nothing firing",
+    },
+    {
+      label: "Acknowledged",
+      value: formatNumber(summary.acknowledged),
+      tone: summary.acknowledged > 0 ? "warn" : "neutral",
+      sub: summary.acknowledged > 0 ? "Awaiting resolution" : "None awaiting resolution",
+    },
+    {
+      label: "Critical",
+      value: formatNumber(summary.critical),
+      tone: summary.critical > 0 ? "bad" : "neutral",
+      sub: "Firing or acknowledged",
+    },
+    {
+      label: "Resolved",
+      value: formatNumber(summary.resolved),
+      sub: summary.lastResolvedAt ? `Last ${formatRelativeTime(summary.lastResolvedAt)}` : "None resolved yet",
+    },
+  ];
+
+  const stateOptions: SegmentOption<StateFilter>[] = [
+    { value: "all", label: "All", count: incidents.length },
+    { value: "active", label: "Open", count: summary.open },
+    { value: "triggered", label: "Firing", count: summary.firing },
+    { value: "acknowledged", label: "Acknowledged", count: summary.acknowledged },
+    { value: "resolved", label: "Resolved", count: summary.resolved },
+  ];
+
+  let body: ReactNode;
+  if (loading) {
+    body = <SheetLoading rows={6} label="Loading incidents" />;
+  } else if (loadFailed) {
+    body = (
+      <SheetError
+        title="Could not load incidents"
+        message={apiErrorMessage(error, "The incident list is unavailable right now.")}
+        onRetry={() => void refetch()}
+      />
+    );
+  } else if (incidents.length === 0) {
+    body = (
+      <SheetEmpty
+        title="No incidents yet"
+        description="An incident appears here when one of this project's alert rules breaches its threshold. Subscribe the project to rules and tune their thresholds in Alert rules."
+        action={
+          <TextLink to={rulesPath} arrow>
+            Open alert rules
+          </TextLink>
+        }
+      />
+    );
+  } else if (filtered.length === 0) {
+    body = (
+      <SheetEmpty
+        title="No incidents match"
+        description={
+          search.trim()
+            ? `Nothing matches “${search.trim()}” with the current filters.`
+            : "No incident matches the current state and severity filters."
+        }
+        action={
+          <UiButton variant="outline" size="lg" onClick={clearFilters}>
+            Clear filters
+          </UiButton>
+        }
+      />
+    );
+  } else {
+    body = (
+      <SheetTable columns={COLUMNS} caption="Incidents for this project" minWidth={520}>
+        {filtered.map((incident) => {
+          const to = incidentPath(incident.id);
+          const pill = STATE_PILL[incident.state] ?? STATE_PILL.healthy;
+          const elapsed = incidentDuration(incident, dataUpdatedAt);
+          return (
+            <SheetRow key={incident.id} onActivate={() => navigate(to)}>
+              <SheetCell>
+                <RowTitle
+                  title={incident.title || "Untitled incident"}
+                  to={to}
+                  subtitle={incident.fingerprint}
+                  subtitleMono
+                />
+              </SheetCell>
+              <SheetCell>
+                <SeverityBadge severity={incident.severity} />
+              </SheetCell>
+              <SheetCell>
+                <Pill tone={pill.tone} dot>
+                  {pill.label}
+                </Pill>
+              </SheetCell>
+              <SheetCell className={HIDE_BELOW_MD}>
+                <Timestamp value={incident.firstTriggeredAt} />
+              </SheetCell>
+              <SheetCell className={HIDE_BELOW_LG}>
+                {elapsed === null ? (
+                  <span className="font-[family-name:var(--mono)] text-[12px] text-[var(--text3)]">—</span>
+                ) : (
+                  <span
+                    className="font-[family-name:var(--mono)] text-[12px] tabular-nums text-[var(--text2)]"
+                    title={incident.resolvedAt ? undefined : "Still open. Measured to the last refresh."}
+                  >
+                    {formatElapsed(elapsed)}
+                  </span>
+                )}
+              </SheetCell>
+              <SheetCell className={HIDE_BELOW_XL}>
+                {incident.resolvedAt ? (
+                  <Timestamp value={incident.resolvedAt} />
+                ) : (
+                  <span className="text-[12px] text-[var(--text3)]">Not resolved</span>
+                )}
+              </SheetCell>
+              <SheetCell className={HIDE_BELOW_XL} align="right">
+                <span
+                  className="font-[family-name:var(--mono)] text-[12px] tabular-nums text-[var(--text2)]"
+                  title={`Last seen ${formatAbsoluteTime(incident.lastTriggeredAt)}`}
+                >
+                  {formatNumber(incident.occurrenceCount ?? 0)}
+                </span>
+              </SheetCell>
+            </SheetRow>
+          );
+        })}
+      </SheetTable>
+    );
+  }
+
   return (
-    <div className="mx-auto w-full max-w-[1400px] space-y-6">
-      {/* Page Header */}
-      <div className="flex flex-col justify-between gap-4 border-b border-border/60 pb-4 sm:flex-row sm:items-center">
-        <div>
-          <div className="flex items-center gap-2">
-            <AlertOctagon className="size-5 text-rose-500" />
-            <h1 className="text-xl font-bold tracking-tight text-[var(--text)]">
-              Project Alerts & Incidents
-            </h1>
-          </div>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Triggered incidents and threshold breaches evaluated for this project.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-3">
-          {alertingStatus?.connectorStatus.primary && (
-            <div className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-400">
-              <CheckCircle2 className="size-3.5" />
-              <span>Primary destination: {alertingStatus.connectorStatus.primary.name} ({alertingStatus.connectorStatus.primary.type})</span>
-            </div>
-          )}
-
-          <button
-            onClick={() => refetch()}
-            disabled={isRefetching}
-            className="inline-flex items-center gap-1.5 self-start rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium text-[var(--text)] transition-colors hover:bg-muted"
-          >
-            <RefreshCw className={cn("size-3.5", isRefetching && "animate-spin")} />
+    <WorkspacePage>
+      <ProjectPageHeader
+        title="Incidents"
+        description="Triggered incidents and threshold breaches evaluated for this project."
+        meta={[
+          primaryDestination
+            ? { label: "Primary destination", value: `${primaryDestination.name} (${primaryDestination.type})` }
+            : null,
+        ]}
+        actions={
+          <UiButton variant="outline" size="lg" onClick={() => void refetch()} disabled={isRefetching}>
+            <RefreshCw className={cn("size-4", isRefetching && "animate-spin")} aria-hidden="true" />
             Refresh
-          </button>
-        </div>
-      </div>
+          </UiButton>
+        }
+      />
 
-      {/* Plan Entitlement & Connector Notification Banner */}
       <EntitlementRestrictedBanner projectId={projectId} />
 
+      {!loadFailed && <Readouts cells={readouts} loading={loading} label="Incident summary" />}
 
-      {/* Filter Toolbar */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-2.5 size-3.5 text-muted-foreground" />
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Filter by title, service, or fingerprint…"
-            className="w-full rounded-lg border border-border bg-background py-2 pl-9 pr-3 text-xs text-[var(--text)] placeholder:text-muted-foreground focus:border-[var(--brand)] focus:outline-none focus:ring-1 focus:ring-[var(--brand)]"
-          />
-        </div>
-
-        <div className="flex items-center gap-2">
-          <select
-            value={selectedStatus}
-            onChange={(e) => setSelectedStatus(e.target.value)}
-            className="rounded-lg border border-border bg-background px-3 py-2 text-xs text-[var(--text)]"
-          >
-            <option value="all">All statuses</option>
-            <option value="active">Active (Firing / Acked)</option>
-            <option value="triggered">Firing</option>
-            <option value="acknowledged">Acknowledged</option>
-            <option value="resolved">Resolved</option>
-          </select>
-
-          <select
-            value={selectedSeverity}
-            onChange={(e) => setSelectedSeverity(e.target.value)}
-            className="rounded-lg border border-border bg-background px-3 py-2 text-xs text-[var(--text)]"
-          >
-            <option value="all">All severities</option>
-            <option value="critical">Critical</option>
-            <option value="error">Error</option>
-            <option value="warning">Warning</option>
-            <option value="info">Info</option>
-          </select>
-        </div>
-      </div>
-
-      {/* Alert Feed Table */}
-      {isLoading ? (
-        <div className="rounded-xl border border-border/60 bg-card/60 p-12 text-center text-xs text-muted-foreground">
-          Loading project alerts…
-        </div>
-      ) : filtered.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-border/80 bg-card/40 p-12 text-center">
-          <CheckCircle2 className="mx-auto size-9 text-emerald-400 opacity-80" />
-          <p className="mt-2 text-sm font-semibold text-[var(--text)]">No project alerts found</p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            {incidents.length === 0
-              ? "All telemetry signals for this project are operating within configured thresholds."
-              : "No incidents match the active search and filter criteria."}
-          </p>
-        </div>
-      ) : (
-        <div className="overflow-hidden rounded-xl border border-border/60 bg-card/60 shadow-sm">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="border-b border-border/60 bg-muted/40 text-[10px] uppercase text-muted-foreground font-mono">
-                <tr>
-                  <th className="p-3">State</th>
-                  <th className="p-3">Severity</th>
-                  <th className="p-3">Incident / Source</th>
-                  <th className="p-3">Occurrences</th>
-                  <th className="p-3">Last Triggered</th>
-                  <th className="p-3 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border/40 font-normal">
-                {filtered.map((incident) => (
-                  <tr
-                    key={incident.id}
-                    onClick={() => navigate(`/alerts/${incident.id}`)}
-                    className="group cursor-pointer hover:bg-muted/30 transition-colors"
-                  >
-                    <td className="p-3">
-                      <IncidentStateBadge state={incident.state} size="sm" />
-                    </td>
-                    <td className="p-3">
-                      <SeverityBadge severity={incident.severity} size="sm" />
-                    </td>
-                    <td className="p-3">
-                      <div className="font-semibold text-[var(--text)] group-hover:text-[var(--brand)] transition-colors">
-                        {incident.title}
-                      </div>
-                      <div className="font-mono text-[10px] text-muted-foreground">
-                        {incident.fingerprint}
-                      </div>
-                    </td>
-                    <td className="p-3 font-mono text-[11px]">
-                      <span className="rounded bg-muted/60 px-1.5 py-0.5 font-semibold text-muted-foreground">
-                        {incident.occurrenceCount}x
-                      </span>
-                    </td>
-                    <td className="p-3 text-muted-foreground font-mono text-[11px]">
-                      {new Date(incident.lastTriggeredAt).toLocaleString()}
-                    </td>
-                    <td className="p-3 text-right">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          navigate(`/alerts/${incident.id}`);
-                        }}
-                        className="rounded border border-border px-2.5 py-1 text-[11px] font-medium text-muted-foreground hover:bg-muted hover:text-[var(--text)]"
-                      >
-                        Inspect →
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-    </div>
+      <Sheet
+        label="Incident list"
+        toolbar={
+          <>
+            <SearchField
+              value={search}
+              onChange={setSearch}
+              placeholder="Search by title, service, or fingerprint"
+              label="Search incidents"
+            />
+            {/* Scrolls sideways on narrow screens instead of widening the page. */}
+            <div className="sidebar-scroll max-w-full overflow-x-auto">
+              <SegmentedControl
+                value={selectedStatus}
+                onChange={setSelectedStatus}
+                options={stateOptions}
+                ariaLabel="Filter incidents by state"
+              />
+            </div>
+            <FilterSelect
+              label="Severity"
+              value={selectedSeverity}
+              onChange={setSelectedSeverity}
+              options={SEVERITY_OPTIONS}
+            />
+            {!loading && !loadFailed && (
+              <ToolbarCount>
+                {formatNumber(filtered.length)} {filtered.length === 1 ? "incident" : "incidents"}
+              </ToolbarCount>
+            )}
+          </>
+        }
+        footer={
+          partial && !loadFailed ? (
+            <span>
+              Showing the latest {formatNumber(incidents.length)} of {formatNumber(total)} incidents. Search and filters
+              apply to these.
+            </span>
+          ) : undefined
+        }
+      >
+        {body}
+      </Sheet>
+    </WorkspacePage>
   );
 }

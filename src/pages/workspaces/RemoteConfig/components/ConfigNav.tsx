@@ -33,18 +33,18 @@ export function ConfigNav({ items, active, onSelect }: ConfigNavProps) {
             type="button"
             onClick={() => onSelect(item.id)}
             className={cn(
-              'group flex items-center gap-3 rounded-[10px] px-3 py-2.5 text-left text-[13.5px] font-medium transition-colors',
+              'group flex items-center gap-3 rounded-[var(--radius-lg)] px-3 py-2.5 text-left text-[13.5px] font-medium transition-colors',
               isActive
                 ? item.danger
-                  ? 'bg-red-500/10 text-red-500'
+                  ? 'bg-[var(--red)]/10 text-[var(--red)]'
                   : 'bg-[var(--brand)]/10 text-[var(--brand)]'
                 : 'text-[var(--text2)] hover:bg-[var(--bg2)] hover:text-[var(--text)]',
             )}
           >
             <span
               className={cn(
-                'flex size-7 shrink-0 items-center justify-center rounded-[8px] transition-colors',
-                isActive ? (item.danger ? 'bg-red-500/15' : 'bg-[var(--brand)]/15') : 'bg-[var(--bg2)] group-hover:bg-[var(--bg3)]',
+                'flex size-7 shrink-0 items-center justify-center rounded-[var(--radius)] transition-colors',
+                isActive ? (item.danger ? 'bg-[var(--red)]/15' : 'bg-[var(--brand)]/15') : 'bg-[var(--bg2)] group-hover:bg-[var(--bg3)]',
               )}
             >
               <AbstractIcon name={item.icon} />
@@ -54,7 +54,7 @@ export function ConfigNav({ items, active, onSelect }: ConfigNavProps) {
               <span
                 className={cn(
                   'flex min-w-[20px] shrink-0 items-center justify-center rounded-full px-1.5 py-0.5 text-[11px] font-semibold',
-                  item.danger ? 'bg-red-500 text-white' : 'bg-[var(--brand)] text-white',
+                  item.danger ? 'bg-[var(--red)] text-white' : 'bg-[var(--brand)] text-white',
                 )}
               >
                 {item.changedCount}

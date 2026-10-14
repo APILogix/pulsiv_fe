@@ -68,49 +68,68 @@ export const TRIGGER_TYPES = [
 ] as const;
 export type TriggerType = (typeof TRIGGER_TYPES)[number];
 
+/**
+ * Must stay in sync with `ACTION_TYPES` in
+ * `pulse/src/modules/automation/types.ts`. The backend now rejects any unknown or
+ * retired action type at creation time (`service.validateActions`), so offering a
+ * type here that the backend does not support produces a guaranteed save failure.
+ *
+ * Nine types were removed from the product because they had no backing entity,
+ * duplicated another action, or were unsafe to automate — see
+ * `pulse/docs/automationv2/24-action-inventory-and-decisions.md`.
+ */
 export const ACTION_TYPES = [
+  // Perform a real side effect via existing infrastructure.
   "notification.send",
-  "incident.create",
-  "incident.assign_owner",
-  "incident.timeline.append",
-  "incident.postmortem.generate_draft",
-  "ticket.github.create",
-  "ticket.jira.create",
-  "pagerduty.trigger",
-  "runbook.open",
-  "runbook.step.create",
-  "status_page.update",
-  "approval.request",
-  "connector.delivery.retry",
-  "alert.severity.change",
-  "alert.silence.create",
-  "ai.summary.generate",
-  "ai.root_cause.generate",
-  "report.export",
-  "rollback.recommend",
-  "release.guard.warn",
-  "release.guard.pause",
   "quota.notify",
-  "quota.throttle_recommend",
-  "retention.archive",
-  "retention.purge_request",
   "security.notify",
   "webhook.call",
+  "pagerduty.trigger",
+  "connector.delivery.retry",
+  "alert.silence.create",
+  "incident.create",
+  "incident.timeline.append",
+  "incident.assign_owner",
+  "approval.request",
+  "rollback.recommend",
   "noop",
+  // Require an external integration; fail explicitly with
+  // INTEGRATION_NOT_CONFIGURED when it is not configured on the deployment.
+  "ai.summary.generate",
+  "ai.root_cause.generate",
+  "incident.postmortem.generate_draft",
+  "report.export",
+  "ticket.github.create",
+  "ticket.jira.create",
 ] as const;
 export type ActionType = (typeof ACTION_TYPES)[number];
 
 /**
- * Backend forces `requiresApproval: true` for these action types regardless of
- * the risk level the caller sends (`service.validateActions`).
+ * Action types that have no in-product implementation. A workflow can still be
+ * created with them, but a run will fail with `INTEGRATION_NOT_CONFIGURED` rather
+ * than silently reporting success, so the UI warns before the user commits.
  */
-export const DANGEROUS_ACTIONS: readonly ActionType[] = [
-  "release.guard.pause",
-  "retention.purge_request",
-  "quota.throttle_recommend",
-  "status_page.update",
-  "webhook.call",
+export const INTEGRATION_DEPENDENT_ACTIONS: readonly ActionType[] = [
+  "ai.summary.generate",
+  "ai.root_cause.generate",
+  "incident.postmortem.generate_draft",
+  "report.export",
+  "ticket.github.create",
+  "ticket.jira.create",
 ];
+
+/**
+ * Action types the backend forces `requiresApproval: true` for, regardless of the
+ * risk level sent (`service.validateActions` + the runner's risk gate).
+ *
+ * Now empty. The four previously-listed destructive actions were removed from the
+ * product entirely, which is stricter than gating them. `webhook.call` also left
+ * this list because it is now connector-referenced only: it can target just a
+ * pre-existing webhook connector whose URL is SSRF-validated inside the connectors
+ * subsystem, so its destination is approved infrastructure rather than a URL typed
+ * into a workflow. Approval is still enforced for anything marked high/critical risk.
+ */
+export const DANGEROUS_ACTIONS: readonly ActionType[] = [];
 
 export const CONDITION_OPERATORS = [
   "eq",

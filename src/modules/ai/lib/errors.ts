@@ -1,4 +1,5 @@
 import { AxiosError } from "axios";
+import { ApiError } from "@/infrastructure/api-client/api-error";
 
 export interface NormalizedAiError {
   status: number | null;
@@ -23,7 +24,30 @@ const FRIENDLY: Record<string, string> = {
   PROVIDER_ERROR: "The AI provider is temporarily unavailable.",
 };
 
+function classify(status: number | null, code: string | null, serverMessage?: string): NormalizedAiError {
+  return {
+    status,
+    code,
+    message:
+      (code && FRIENDLY[code]) ??
+      serverMessage ??
+      (status === 404 || status === 501
+        ? "This capability isn't available yet."
+        : "Something went wrong talking to the AI service."),
+    unavailable: status === 404 || status === 501,
+    locked: status === 403 || code === "LOCKED",
+    outOfCredits: status === 402 || code === "INSUFFICIENT_CREDITS",
+    rateLimited: status === 429,
+  };
+}
+
 export function normalizeAiError(error: unknown): NormalizedAiError {
+  // Everything from apiClient arrives as ApiError (error.interceptor.ts). The
+  // previous AxiosError-only branch never matched, so "locked", "out of
+  // credits" and "unavailable" states were all reported as generic failures.
+  if (error instanceof ApiError) {
+    return classify(error.status, error.code ?? null, error.message || undefined);
+  }
   if (error instanceof AxiosError) {
     const status = error.response?.status ?? null;
     const payload = error.response?.data as

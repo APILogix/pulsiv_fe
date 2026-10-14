@@ -104,10 +104,10 @@ export function InfiniteTable<T>({
 
   // Sticky pagination footer — always visible, never scrolled away
   const paginationFooter = (onPreviousPage || onNextPage) ? (
-    <div className="flex h-11 shrink-0 items-center justify-between border-t border-[var(--border)] bg-[var(--bg2)]/60 px-4 font-[family-name:var(--mono)] text-[11px] tabular-nums text-[var(--text3)]">
+    <div className="flex h-11 shrink-0 items-center justify-between border-t border-[var(--border)] bg-[var(--bg1)] px-4 text-[12px] text-[var(--text3)]">
       <div>
-        <span>Showing {items.length} items</span>
-        {pagination?.limit ? <span> · Limit {pagination.limit}</span> : null}
+        <span>Showing <span className="font-[family-name:var(--mono)] tabular-nums text-[var(--text2)]">{items.length}</span> rows</span>
+        {pagination?.limit ? <span> · page size <span className="font-[family-name:var(--mono)] tabular-nums">{pagination.limit}</span></span> : null}
       </div>
       <div className="flex items-center gap-2">
         {onPreviousPage && (
@@ -140,7 +140,7 @@ export function InfiniteTable<T>({
     <div className={cn("flex min-h-0 flex-col overflow-hidden rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)]", className)}>
       {/* Sticky column header row */}
       <div
-        className="grid shrink-0 items-center gap-3 border-b border-[var(--border)] bg-[var(--bg2)] px-4 py-2.5 font-[family-name:var(--mono)] text-[10px] font-medium uppercase tracking-[0.09em] text-[var(--text3)] select-none"
+        className="grid shrink-0 items-center gap-3 border-b border-[var(--border)] bg-[var(--bg1)] px-4 py-2.5 text-[12px] font-medium text-[var(--text3)] select-none"
         style={{ gridTemplateColumns: gridTemplate }}
       >
         {selectable && (
@@ -159,7 +159,7 @@ export function InfiniteTable<T>({
           </button>
         )}
         {columns.map((c) => (
-          <span key={c.key} className={c.align === "right" ? "text-right" : ""}>{c.header}</span>
+          <span key={c.key} className={cn("truncate", c.align === "right" && "text-right")}>{c.header}</span>
         ))}
       </div>
 
@@ -193,7 +193,12 @@ export function InfiniteTable<T>({
         </div>
       ) : (
         <VirtualList
-          className="min-h-0 flex-1"
+          // Rows stay on screen while the next filter/page loads; dimming says
+          // "updating" without swapping the table for a skeleton.
+          className={cn(
+            "min-h-0 flex-1 transition-opacity duration-200 ease-out motion-reduce:transition-none",
+            loading && "opacity-60",
+          )}
           height="fill"
           items={visibleItems}
           rowHeight={44}

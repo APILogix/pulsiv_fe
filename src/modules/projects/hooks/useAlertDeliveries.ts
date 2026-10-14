@@ -2,31 +2,45 @@ import { useQuery } from "@tanstack/react-query";
 import { apiClient } from "@/infrastructure/api-client/axios";
 import { useOrgStore } from "@/modules/organizations/store/org.store";
 
+/** Mirrors `AlertDeliveryDto` in pulse/src/modules/projects/alerts/deliveries/delivery-log.service.ts. */
+export interface AlertDelivery {
+  id: string;
+  /** Epoch milliseconds. */
+  timestamp: number;
+  /** Connector name, or the notification type when the connector is gone. */
+  routeName: string;
+  /** Connector provider, e.g. "slack" or "webhook". */
+  connectorType: string;
+  status: string;
+  severity: string;
+  attempts: number;
+  /** Delivery latency in milliseconds. */
+  latency: number | null;
+}
+
+export interface AlertDeliveryFilters {
+  status?: string;
+  severity?: string;
+  limit?: number;
+  offset?: number;
+}
+
 export const alertDeliveryKeys = {
   all: ["alert-deliveries"] as const,
   lists: (projectId: string) => [...alertDeliveryKeys.all, "list", projectId] as const,
 };
 
-export const useAlertDeliveries = (projectId: string, filters?: { status?: string; severity?: string; limit?: number; offset?: number }) => {
+export const useAlertDeliveries = (projectId: string, filters?: AlertDeliveryFilters) => {
   const activeOrgId = useOrgStore((state) => state.activeOrgId);
   return useQuery({
     queryKey: [...alertDeliveryKeys.lists(projectId), activeOrgId, filters],
-    queryFn: async () => {
-      // Temporary fallback: The backend might not have this endpoint yet. 
-      // If it fails, we will return dummy data. But we should try to hit it first.
-      try {
-        const { data } = await apiClient.get(`/organizations/${activeOrgId}/projects/${projectId}/alert-deliveries`, {
-          params: filters,
-        });
-        return data.data ?? [];
-      } catch (err) {
-        console.warn("Backend endpoint missing, using mock data for deliveries.");
-        return [
-          { id: "del_1", timestamp: Date.now() - 10000, routeName: "Production Criticals", connectorType: "slack", status: "delivered", attempts: 1, latency: 45 },
-          { id: "del_2", timestamp: Date.now() - 50000, routeName: "Deployment Status", connectorType: "pagerduty", status: "failed", attempts: 3, latency: 1200 },
-          { id: "del_3", timestamp: Date.now() - 120000, routeName: "Production Criticals", connectorType: "webhook", status: "pending", attempts: 1, latency: null },
-        ];
-      }
+    // Failures surface as errors. The list never falls back to sample rows,
+    // which would read as real delivery history.
+    queryFn: async (): Promise<AlertDelivery[]> => {
+      const { data } = await apiClient.get(`/organizations/${activeOrgId}/projects/${projectId}/alert-deliveries`, {
+        params: filters,
+      });
+      return (data.data ?? []) as AlertDelivery[];
     },
     enabled: !!activeOrgId && !!projectId,
   });

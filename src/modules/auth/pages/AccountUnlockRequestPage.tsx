@@ -1,20 +1,19 @@
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { LockKeyhole, MailCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { accountUnlockRequestSchema } from '../schemas/auth.schema';
 import type { AccountUnlockRequestFormData } from '../schemas/auth.schema';
 import { useRequestAccountUnlock } from '../hooks/useRequestAccountUnlock';
 import {
   AuthButton,
-  AuthCard,
+  AuthFact,
   AuthField,
   AuthFooter,
   AuthHeading,
   AuthLink,
-  AuthResult,
-  Notice,
+  AuthNote,
+  AuthTextButton,
   fieldInputClass,
 } from '@/shared/ui/pulse';
 
@@ -35,19 +34,16 @@ export default function AccountUnlockRequestPage() {
   if (submitted) {
     return (
       <div className="w-full">
-        <AuthResult
-          icon={MailCheck}
-          tone="green"
+        <AuthHeading
           title="Check your inbox"
-          description="If the account is locked, an unlock link is on its way. The link works once and expires shortly."
-        >
-          <AuthCard>
-            <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-[var(--text3)]">Sent to</p>
-            <p className="mt-1.5 truncate font-mono text-[13px] text-[var(--text)]">
-              {getValues('email')}
-            </p>
-          </AuthCard>
-        </AuthResult>
+          description="If this account is locked, an unlock link is on its way. The link works once and expires shortly."
+        />
+
+        <AuthFact
+          label="Sent to"
+          value={getValues('email')}
+          action={<AuthTextButton onClick={() => setSubmitted(false)}>Change</AuthTextButton>}
+        />
 
         <AuthFooter>
           <AuthLink to="/auth/login">Back to sign in</AuthLink>
@@ -59,44 +55,37 @@ export default function AccountUnlockRequestPage() {
   return (
     <div className="w-full">
       <AuthHeading
-        eyebrow="Account defense"
-        icon={LockKeyhole}
-        tone="amber"
         title="Unlock your account"
-        description="Accounts lock automatically after repeated failed sign-in attempts. We'll email you a link to lift the lock."
+        description="Accounts lock after repeated failed sign-in attempts. We'll email you a link to lift the lock."
       />
 
-      <AuthCard>
-        <form className="flex flex-col gap-4" onSubmit={onSubmit}>
-          <AuthField
-            label="Work email"
-            htmlFor="email"
-            error={errors.email ? 'Enter a valid email address.' : undefined}
-          >
-            <input
-              id="email"
-              type="email"
-              placeholder="you@company.com"
-              autoComplete="email"
-              autoFocus
-              {...register('email')}
-              disabled={isPending}
-              className={cn(fieldInputClass, 'h-10 font-mono text-[13px]')}
-            />
-          </AuthField>
+      <form className="flex flex-col gap-4" onSubmit={onSubmit}>
+        <AuthField
+          label="Work email"
+          htmlFor="email"
+          error={errors.email ? 'Enter a valid email address.' : undefined}
+        >
+          <input
+            id="email"
+            type="email"
+            placeholder="you@company.com"
+            autoComplete="email"
+            autoFocus
+            {...register('email')}
+            disabled={isPending}
+            className={cn(fieldInputClass, 'h-11 text-[14px]')}
+          />
+        </AuthField>
 
-          <AuthButton type="submit" pending={isPending}>
-            Send unlock link
-          </AuthButton>
-        </form>
+        <AuthButton type="submit" pending={isPending}>
+          Send unlock link
+        </AuthButton>
+      </form>
 
-        <Notice tone="amber" className="mt-4">
-          Locks also clear on their own after the cooldown window ends.
-        </Notice>
-      </AuthCard>
+      <AuthNote className="mt-4">Locks also clear on their own once the cooldown window ends.</AuthNote>
 
       <AuthFooter>
-        Password trouble instead? <AuthLink to="/auth/forgot-password">Reset your password</AuthLink>
+        Forgot your password instead? <AuthLink to="/auth/forgot-password">Reset it</AuthLink>
       </AuthFooter>
     </div>
   );

@@ -1,6 +1,4 @@
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft } from "lucide-react";
-import { Button } from "@/components/ui/button";
 
 /**
  * Content-shaped skeletons (sentinel-design.md §9 — skeleton blocks, never
@@ -8,38 +6,34 @@ import { Button } from "@/components/ui/button";
  * structurally identical.
  */
 
+/** Mirrors the detail sheet: breadcrumb + headline, readout band, tabs, panels. */
 export function DetailSkeleton() {
   return (
-    <div className="flex flex-col gap-5 animate-in fade-in duration-500">
-      <Button variant="ghost" disabled className="w-fit text-[var(--text3)]">
-        <ArrowLeft className="size-4" /> Back
-      </Button>
-
-      {/* Page Header Mock */}
-      <div className="flex flex-col gap-2 mb-2">
-        <Skeleton className="h-8 w-64" />
-        <Skeleton className="h-4 w-96" />
+    <div className="flex flex-col gap-6" aria-busy="true" aria-label="Loading">
+      <div className="flex flex-col gap-3 border-b border-[var(--border)] pb-5">
+        <Skeleton className="h-3 w-48" />
+        <Skeleton className="h-7 w-[min(520px,80%)]" />
+        <div className="flex gap-2">
+          <Skeleton className="h-5 w-16" />
+          <Skeleton className="h-5 w-20" />
+          <Skeleton className="h-5 w-28" />
+        </div>
       </div>
-
-      {/* KPI Cards Mock */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <Skeleton key={i} className="h-24 w-full rounded-[var(--radius-lg)]" />
+      <div className="grid grid-cols-2 gap-px overflow-hidden rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--border)] lg:grid-cols-5">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <div key={i} className="flex flex-col gap-2.5 bg-[var(--bg1)] px-4 py-3.5">
+            <Skeleton className="h-3 w-16" />
+            <Skeleton className="h-6 w-20" />
+          </div>
         ))}
       </div>
-
-      {/* Tabs and Content Mock */}
-      <div className="mt-4 flex flex-col gap-4">
-        <div className="flex gap-4 border-b border-[var(--border)] pb-2">
-          <Skeleton className="h-6 w-20" />
-          <Skeleton className="h-6 w-20" />
-          <Skeleton className="h-6 w-20" />
-        </div>
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-          <Skeleton className="h-[300px] w-full rounded-[var(--radius-lg)]" />
-          <Skeleton className="h-[300px] w-full rounded-[var(--radius-lg)]" />
-        </div>
+      <div className="flex gap-5 border-b border-[var(--border)] pb-3">
+        <Skeleton className="h-4 w-16" />
+        <Skeleton className="h-4 w-16" />
+        <Skeleton className="h-4 w-20" />
       </div>
+      <Skeleton className="h-[220px] w-full rounded-[var(--radius-lg)]" />
+      <Skeleton className="h-[160px] w-full rounded-[var(--radius-lg)]" />
     </div>
   );
 }

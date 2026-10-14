@@ -1,46 +1,34 @@
-import { useState } from "react";
+import { useId, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
-import {
-  Activity,
-  AlertTriangle,
-  ChevronDown,
-  Eye,
-  KeyRound,
-  Layers,
-  Search,
-  Settings,
-  ShieldAlert,
-  Users,
-} from "lucide-react";
-import type { LucideIcon } from "lucide-react";
+import { ChevronDown, Search } from "lucide-react";
+
 import { orgApi } from "@/modules/organizations/api/org.api";
 import { orgQueryKeys } from "@/modules/organizations/hooks/useOrganizations";
 import { useOrgStore } from "@/modules/organizations/store/org.store";
 import type { AuditLog } from "@/modules/organizations/types/org.types";
-import { useCurrentProject } from "./ProjectShellPage";
-import { IconChip, Notice, Panel, Pill, SectionHeading, Toolbar, fieldInputClass, type SurfaceTone } from "@/shared/ui/pulse";
-import { JsonViewer, Timestamp } from "@/shared/observe";
-import { Button as UiButton } from "@/components/ui/button";
 import { apiErrorMessage } from "@/modules/projects/components/project-ui";
+import {
+  ProjectPageHeader,
+  Sheet,
+  SheetEmpty,
+  SheetError,
+  SheetList,
+  SheetLoading,
+  ToolbarCount,
+  WorkspacePage,
+} from "@/modules/projects/components/project-page";
+import { Pill, fieldInputClass, type SurfaceTone } from "@/shared/ui/pulse";
+import { JsonViewer, Timestamp, formatNumber } from "@/shared/observe";
+import { Button as UiButton } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useCurrentProject } from "./ProjectShellPage";
 
 // ── module-level constants (rules.md §1.2) ───────────────────
 
-const ENTITY_ICON: Record<string, LucideIcon> = {
-  project: Layers,
-  project_settings: Settings,
-  api_key: KeyRound,
-  project_api_key: KeyRound,
-  environment: Layers,
-  project_member: Users,
-  project_role: ShieldAlert,
-  alert_channel: Activity,
-  alert_threshold: Activity,
-};
+// Successful entries carry no pill; only outcomes that need attention are marked.
+const QUIET_STATUSES = new Set(["success", "ok"]);
 
 const STATUS_TONE: Record<string, SurfaceTone> = {
-  success: "green",
-  ok: "green",
   failure: "red",
   failed: "red",
   error: "red",
@@ -48,49 +36,49 @@ const STATUS_TONE: Record<string, SurfaceTone> = {
   pending: "amber",
 };
 
-function actionTone(action: string): SurfaceTone {
-  if (/delete|revoke|remove|archive/i.test(action)) return "red";
-  if (/create|add|invite|enable/i.test(action)) return "green";
-  if (/update|patch|rotate|regenerate|toggle/i.test(action)) return "amber";
-  return "neutral";
+const PAGE_SIZE = 25;
+const MAX_ENTRIES = 100;
+
+function sentenceCase(value: string) {
+  const text = value.replace(/_/g, " ");
+  return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
 // ── activity row ─────────────────────────────────────────────
 
 function ActivityRow({ item }: { item: AuditLog }) {
   const [expanded, setExpanded] = useState(false);
-  const Icon = ENTITY_ICON[item.entityType] ?? Activity;
-  const hasDetail = Object.keys(item.metadata ?? {}).length > 0 || (item.changedFields?.length ?? 0) > 0;
+  const detailId = useId();
+  const status = item.status?.toLowerCase() ?? "";
+  const hasDetail = Object.keys(item.metadata ?? {}).length > 0;
+  const changedFields = item.changedFields ?? [];
 
   return (
-    <li className="flex flex-col">
-      <div className="flex items-start gap-3 px-5 py-3.5">
-        <IconChip icon={Icon} tone={actionTone(item.action)} size="sm" className="mt-0.5" />
+    <li>
+      <div className="flex items-start gap-4 px-5 py-3.5">
         <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <code className="font-[family-name:var(--mono)] text-[12.5px] font-medium text-[var(--text)]">
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            <code className="min-w-0 break-all font-[family-name:var(--mono)] text-[12.5px] font-medium text-[var(--text)]">
               {item.action}
             </code>
-            <Pill tone={STATUS_TONE[item.status?.toLowerCase()] ?? "neutral"} dot>
-              {item.status || "unknown"}
-            </Pill>
-            {item.isSensitive && (
-              <Pill tone="red">
-                <ShieldAlert className="size-3" aria-hidden="true" /> sensitive
+            {!QUIET_STATUSES.has(status) && (
+              <Pill tone={STATUS_TONE[status] ?? "neutral"} dot>
+                {item.status || "unknown"}
               </Pill>
             )}
+            {item.isSensitive && <Pill>Sensitive</Pill>}
           </div>
-          <p className="mt-1 text-[12.5px] text-[var(--text2)]">
-            <span className="text-[var(--text3)]">{item.entityType.replace(/_/g, " ")}</span>
-            {item.entityName && <> · {item.entityName}</>}
-            {item.actorEmail && <> · by {item.actorEmail}</>}
+          <p className="mt-1 text-[12px] leading-[1.5] text-[var(--text2)]">
+            {sentenceCase(item.entityType)}
+            {item.entityName && <span className="text-[var(--text)]"> {item.entityName}</span>}
+            {item.actorEmail && <span className="text-[var(--text3)]"> · by {item.actorEmail}</span>}
           </p>
-          {(item.changedFields?.length ?? 0) > 0 && (
-            <div className="mt-1.5 flex flex-wrap gap-1">
-              {item.changedFields!.map((field) => (
+          {changedFields.length > 0 && (
+            <div className="mt-2 flex flex-wrap items-center gap-1" aria-label="Changed fields">
+              {changedFields.map((field) => (
                 <code
                   key={field}
-                  className="rounded-[4px] bg-[var(--bg2)] px-1.5 py-0.5 font-[family-name:var(--mono)] text-[10.5px] text-[var(--text3)]"
+                  className="rounded-[4px] bg-[var(--bg3)] px-1.5 py-0.5 font-[family-name:var(--mono)] text-[11px] text-[var(--text2)]"
                 >
                   {field}
                 </code>
@@ -98,26 +86,31 @@ function ActivityRow({ item }: { item: AuditLog }) {
             </div>
           )}
         </div>
-        <div className="flex shrink-0 items-center gap-2">
-          <span className="text-[11.5px] text-[var(--text3)]">
-            <Timestamp value={item.createdAt} />
-          </span>
-          {hasDetail && (
+        <div className="flex shrink-0 items-center gap-1.5 pt-0.5">
+          <Timestamp value={item.createdAt} />
+          {hasDetail ? (
             <UiButton
               variant="ghost"
               size="icon-sm"
-              aria-label={expanded ? "Hide details" : "Show details"}
+              aria-label={expanded ? `Hide details for ${item.action}` : `Show details for ${item.action}`}
               aria-expanded={expanded}
+              aria-controls={detailId}
               onClick={() => setExpanded((current) => !current)}
             >
-              <ChevronDown className={cn("size-4 transition-transform", expanded && "rotate-180")} />
+              <ChevronDown
+                className={cn("size-4 transition-transform duration-150 motion-reduce:transition-none", expanded && "rotate-180")}
+                aria-hidden="true"
+              />
             </UiButton>
+          ) : (
+            // Keeps timestamps aligned with the rows that have a disclosure.
+            <span aria-hidden="true" className="size-7 shrink-0" />
           )}
         </div>
       </div>
-      {expanded && (
-        <div className="border-t border-[var(--border)] bg-[var(--bg2)]/50 px-5 py-3">
-          <JsonViewer data={item.metadata} />
+      {hasDetail && (
+        <div id={detailId} hidden={!expanded} className="border-t border-[var(--border)] bg-[var(--bg)] px-5 py-3">
+          {expanded && <JsonViewer data={item.metadata} />}
         </div>
       )}
     </li>
@@ -130,15 +123,16 @@ export default function ProjectActivityPage() {
   const { projectId } = useCurrentProject();
   const activeOrgId = useOrgStore((state) => state.activeOrgId);
   const [action, setAction] = useState("");
-  const [limit, setLimit] = useState(25);
+  const [limit, setLimit] = useState(PAGE_SIZE);
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: [...orgQueryKeys.auditLogs(activeOrgId!), { projectId, limit, action }],
-    queryFn: () => orgApi.listAuditLogs(activeOrgId!, {
-      projectId,
-      limit,
-      action: action || undefined,
-    }),
+    queryFn: () =>
+      orgApi.listAuditLogs(activeOrgId!, {
+        projectId,
+        limit,
+        action: action || undefined,
+      }),
     enabled: !!activeOrgId && !!projectId,
   });
   const items = data?.data ?? [];
@@ -146,89 +140,108 @@ export default function ProjectActivityPage() {
   const asMessage = apiErrorMessage;
 
   const sensitiveCount = items.filter((item) => item.isSensitive).length;
+  const atCap = limit >= MAX_ENTRIES;
+
+  let body: ReactNode;
+  if (isLoading) {
+    body = <SheetLoading rows={5} label="Loading activity" />;
+  } else if (error) {
+    body = <SheetError title="Could not load activity" message={asMessage(error)} onRetry={() => void refetch()} />;
+  } else if (items.length === 0) {
+    body = action ? (
+      <SheetEmpty
+        title="No activity matches that action"
+        description={`Nothing in this project's audit trail has the action “${action}”. Actions look like api_key.rotated.`}
+        action={
+          <UiButton variant="outline" size="lg" onClick={() => setAction("")}>
+            Clear filter
+          </UiButton>
+        }
+      />
+    ) : (
+      <SheetEmpty
+        title="No activity recorded yet"
+        description="Entries appear as members change settings, rotate keys, or manage alerting."
+      />
+    );
+  } else {
+    body = (
+      <SheetList label="Activity entries">
+        {items.map((item) => (
+          <ActivityRow key={item.id} item={item} />
+        ))}
+      </SheetList>
+    );
+  }
 
   return (
-    <div className="flex flex-col gap-6">
-      <SectionHeading
-        title="Activity log"
-        description="Every mutation to this project is recorded in the organization audit trail with actor, IP, and changed fields."
+    <WorkspacePage>
+      <ProjectPageHeader
+        title="Activity"
+        description="Every change to this project, from the organization audit trail: what changed, who changed it, and when."
       />
 
-      <Toolbar
-        trailing={
-          <span className="text-[12px] tabular-nums text-[var(--text3)]">
-            {items.length} entries{sensitiveCount > 0 ? ` · ${sensitiveCount} sensitive` : ""}
-          </span>
+      <Sheet
+        label="Activity"
+        toolbar={
+          <>
+            <form
+              role="search"
+              className="relative min-w-[200px] flex-1 sm:max-w-[360px]"
+              onSubmit={(event) => {
+                event.preventDefault();
+                const input = event.currentTarget.elements.namedItem("activity-action") as HTMLInputElement | null;
+                setAction(input?.value.trim() ?? "");
+              }}
+            >
+              <Search
+                className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[var(--text3)]"
+                aria-hidden="true"
+              />
+              <input
+                key={action}
+                id="activity-action"
+                name="activity-action"
+                type="search"
+                defaultValue={action}
+                placeholder="Filter by action, then press Enter"
+                aria-label="Filter activity by action, for example api_key.rotated"
+                autoComplete="off"
+                spellCheck={false}
+                className={`${fieldInputClass} pl-9 font-[family-name:var(--mono)] text-[12px] [&::-webkit-search-cancel-button]:appearance-none`}
+              />
+            </form>
+            {action && (
+              <UiButton variant="ghost" onClick={() => setAction("")}>
+                Clear
+              </UiButton>
+            )}
+            {!isLoading && !error && (
+              <ToolbarCount>
+                {formatNumber(items.length)} {items.length === 1 ? "entry" : "entries"}
+                {sensitiveCount > 0 ? ` · ${formatNumber(sensitiveCount)} sensitive` : ""}
+              </ToolbarCount>
+            )}
+          </>
+        }
+        footer={
+          data?.meta.hasMore ? (
+            <>
+              <span>{atCap ? `Showing the latest ${MAX_ENTRIES} entries.` : "Older entries are available."}</span>
+              <UiButton
+                variant="outline"
+                size="sm"
+                disabled={atCap}
+                onClick={() => setLimit((current) => Math.min(current + PAGE_SIZE, MAX_ENTRIES))}
+              >
+                Load more
+              </UiButton>
+            </>
+          ) : undefined
         }
       >
-        <form
-          className="relative min-w-[220px] flex-1"
-          onSubmit={(event) => {
-            event.preventDefault();
-            const input = event.currentTarget.elements.namedItem("activity-action") as HTMLInputElement | null;
-            setAction(input?.value.trim() ?? "");
-          }}
-        >
-          <Search
-            className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[var(--text3)]"
-            aria-hidden="true"
-          />
-          <input
-            id="activity-action"
-            name="activity-action"
-            type="search"
-            defaultValue={action}
-            placeholder="Filter by action, e.g. api_key.rotated"
-            aria-label="Filter activity by action"
-            className={`${fieldInputClass} pl-9`}
-          />
-        </form>
-        {action && (
-          <UiButton variant="ghost" size="lg" onClick={() => setAction("")}>
-            Clear
-          </UiButton>
-        )}
-      </Toolbar>
-
-      {error && (
-        <Notice tone="red" icon={AlertTriangle} title="Could not load activity">
-          {asMessage(error)}
-        </Notice>
-      )}
-
-      <Panel bodyClassName="p-0">
-        {isLoading ? (
-          <div className="flex flex-col gap-2 p-5">
-            {[0, 1, 2, 3, 4].map((row) => (
-              <div key={row} className="h-14 animate-pulse rounded-[8px] bg-[var(--bg2)]" />
-            ))}
-          </div>
-        ) : items.length === 0 ? (
-          <div className="flex flex-col items-center gap-3 py-12 text-center">
-            <IconChip icon={Eye} size="lg" tone="brand" />
-            <p className="text-[13.5px] font-semibold text-[var(--text)]">
-              {action ? "No activity matches that action" : "No activity recorded yet"}
-            </p>
-            <p className="max-w-[46ch] text-[12.5px] text-[var(--text2)]">
-              Entries appear as members change settings, rotate keys, or manage alerting.
-            </p>
-          </div>
-        ) : (
-          <ul className="divide-y divide-[var(--border)]">
-            {items.map((item) => (
-              <ActivityRow key={item.id} item={item} />
-            ))}
-          </ul>
-        )}
-      </Panel>
-
-      {data?.meta.hasMore && (
-        <div className="flex justify-center">
-          <UiButton variant="outline" size="lg" onClick={() => setLimit((current) => Math.min(current + 25, 100))}>
-            Load more
-          </UiButton>
-        </div>
-      )}
-    </div>
+        {body}
+      </Sheet>
+    </WorkspacePage>
   );
 }

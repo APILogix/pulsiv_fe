@@ -65,7 +65,7 @@ export function MergeDialog({
           <select
             value={targetId}
             onChange={(e) => setTargetId(e.target.value)}
-            className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg2)] p-2.5 text-[13px] text-[var(--text)] outline-none"
+            className="w-full rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg2)] p-2.5 text-[13px] text-[var(--text)] outline-none"
           >
             <option value="">Select target error group...</option>
             {targets.map((t) => (
@@ -77,7 +77,7 @@ export function MergeDialog({
         </div>
 
         {selectedTarget && (
-          <div className="rounded-lg border border-[var(--border)] bg-[var(--bg2)] p-3 text-[12px] space-y-1">
+          <div className="rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg2)] p-3 text-[12px] space-y-1">
             <div className="font-semibold text-[var(--brand)]">Target Preview</div>
             <div className="text-[var(--text)]">{selectedTarget.lastErrorName}</div>
             <div className="text-[var(--text3)]">{selectedTarget.lastErrorMessage}</div>
@@ -91,7 +91,7 @@ export function MergeDialog({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg border border-[var(--border)] px-4 py-2 text-[13px] font-medium text-[var(--text2)] hover:bg-[var(--bg2)] cursor-pointer"
+            className="rounded-[var(--radius)] border border-[var(--border)] px-4 py-2 text-[13px] font-medium text-[var(--text2)] hover:bg-[var(--bg2)] cursor-pointer"
           >
             Cancel
           </button>
@@ -99,7 +99,7 @@ export function MergeDialog({
             type="button"
             disabled={!targetId || isDone || isSubmitting}
             onClick={handleMerge}
-            className="rounded-lg bg-[var(--brand)] px-4 py-2 text-[13px] font-medium text-[var(--bg)] hover:opacity-90 cursor-pointer disabled:opacity-50"
+            className="rounded-[var(--radius)] bg-[var(--brand)] px-4 py-2 text-[13px] font-medium text-[var(--bg)] hover:opacity-90 cursor-pointer disabled:opacity-50"
           >
             {isDone ? "Merged!" : "Merge Groups"}
           </button>

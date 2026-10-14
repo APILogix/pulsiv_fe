@@ -44,6 +44,8 @@ export function getErrorMessage(error: unknown): string {
   if (!error) return 'An unexpected error occurred.';
 
   if (error instanceof ApiError) {
+    // The caller is surfacing this message itself: skip the global toast.
+    error.handled = true;
     return error.message;
   }
 
@@ -65,12 +67,20 @@ export function getErrorCode(error: unknown): string {
   return normalized.code || 'UNKNOWN';
 }
 
+/** Long enough for a caller's catch / mutation onError to run; imperceptible to a person. */
+const TOAST_DEFER_MS = 60;
+
 /**
  * Global Error Interceptor — maps all backend error responses to ApiError
  * and triggers toast notifications. Handles step-up 403 challenge re-tries.
  */
 export function createErrorInterceptor(client: AxiosInstance) {
   return async function errorInterceptor(error: AxiosError) {
+    // A cancelled request is not a failure: TanStack Query aborts superseded
+    // fetches (filter changes, unmounts). No toast, no ApiError; the original
+    // CanceledError lets the query revert to its previous state.
+    if (axios.isCancel(error)) return Promise.reject(error);
+
     const apiError = normalizeAxiosError(error);
 
     // 403 STEP_UP_REQUIRED handling
@@ -84,10 +94,15 @@ export function createErrorInterceptor(client: AxiosInstance) {
       }
     }
 
-    // Present toast notification (skip for silent requests if config specifies skipToast)
-    const skipToast = (error.config as any)?.skipToast === true;
+    // Present toast notification (skip for silent requests if config specifies skipToast).
+    // Deferred one short tick: if the caller surfaces the error itself
+    // (`apiErrorMessage` marks it handled in its catch/onError), the global
+    // toast is skipped instead of stacking a second message on top.
+    const skipToast = (error.config as { skipToast?: boolean } | undefined)?.skipToast === true;
     if (!skipToast) {
-      presentApiErrorToast(apiError);
+      window.setTimeout(() => {
+        if (!apiError.handled) presentApiErrorToast(apiError);
+      }, TOAST_DEFER_MS);
     }
 
     return Promise.reject(apiError);

@@ -16,6 +16,8 @@
  *  - prefetch is skipped on constrained connections (save-data / 2g).
  */
 
+import { stripOrgSlug } from "@/shared/skeletons";
+
 type Loader = () => Promise<unknown>;
 
 /** Module entry points, keyed by the nav path that leads to them. */
@@ -27,6 +29,11 @@ const LOADERS: Record<string, Loader> = {
   "/dashboards/errors": () => import("@/pages/dashboards/ErrorTriage"),
   "/dashboards/geo": () => import("@/pages/dashboards/GeoAnalytics"),
   "/dashboards/realtime": () => import("@/pages/dashboards/RealtimeTraffic"),
+  "/dashboards/tracing": () => import("@/pages/dashboards/TracingDependencyMap"),
+  "/dashboards/infrastructure": () => import("@/pages/dashboards/InfrastructureCost"),
+  "/dashboards/security": () => import("@/pages/dashboards/SecurityThreat"),
+  "/dashboards/releases": () => import("@/pages/dashboards/ReleaseQuality"),
+  "/dashboards/business": () => import("@/pages/dashboards/BusinessMetrics"),
   "/dashboards/reports": () => import("@/pages/dashboards/ScheduledReportsPage"),
 
   "/observability": () => import("@/pages/observe/ExecutiveDashboard"),
@@ -109,9 +116,13 @@ export function prefetchRoute(path: string) {
 
 function resolveKey(path: string): string | undefined {
   if (LOADERS[path]) return path;
-  const segments = path.split("/").filter(Boolean);
-  // Project routes live under /:orgSlug/projects — normalise to the shared key.
-  if (segments[1] === "projects") return "/projects";
+  const stripped = stripOrgSlug(path);
+  if (LOADERS[stripped]) return stripped;
+
+  const segments = stripped.split("/").filter(Boolean);
+  // Project routes live under /p/:publicId or /projects — normalise to the shared key.
+  if (segments[0] === "p" || segments[0] === "projects") return "/projects";
+
   while (segments.length > 0) {
     segments.pop();
     const candidate = `/${segments.join("/")}`;

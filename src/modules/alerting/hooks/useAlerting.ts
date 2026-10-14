@@ -49,6 +49,7 @@ import type {
   UpdateRuleBody,
   UpsertEscalationStepBody,
   OrganizationAlertPolicy,
+  IncidentListQuery,
 } from "../api/types";
 
 /** Live surfaces refresh on this cadence (rules.md: never poll under 5s). */
@@ -116,6 +117,7 @@ export function useOrganizationAlertPolicies(query: { limit?: number; offset?: n
     queryKey: alertingKeys.orgPolicies(activeOrgId, query),
     queryFn: () => orgPoliciesApi.list(activeOrgId!, query),
     enabled: !!activeOrgId,
+    placeholderData: (previous) => previous,
   });
 }
 
@@ -144,17 +146,110 @@ export function useOrganizationAlertPolicyMutations() {
   };
 }
 
-export function useAlertIncidents(query: { state?: import("../api/types").IncidentState; severity?: import("../api/types").EventListQuery['severity']; search?: string; limit?: number; offset?: number } = {}) {
+// ── Incidents ───────────────────────────────────────────────────────────────
+// Backed by the real /alerting/incidents endpoints. Every list is SERVER
+// paginated/filtered/sorted: the query object is forwarded verbatim and is part
+// of the react-query key, so changing a filter refetches from the backend
+// instead of narrowing an already-downloaded page.
+
+/**
+ * Paginated incident list.
+ *
+ * `keepPreviousData` keeps the current page visible while the next one loads, so
+ * paging does not flash an empty table.
+ */
+export function useIncidents(query: IncidentListQuery = {}) {
   const { activeOrgId } = useAlertingScope();
   return useQuery({
     queryKey: alertingKeys.incidents(activeOrgId, query),
-    queryFn: async () => {
-      const result = await incidentsApi.list(activeOrgId!, query);
-      return { ...result, data: result.data.map(toIncidentView) };
-    },
+    queryFn: () => incidentsApi.list(activeOrgId!, query),
+    enabled: !!activeOrgId,
+    refetchInterval: LIVE_REFETCH_MS,
+    placeholderData: (previous) => previous,
+  });
+}
+
+export function useIncident(incidentId: string | undefined) {
+  const { activeOrgId } = useAlertingScope();
+  return useQuery({
+    queryKey: ["alerting", "incident", activeOrgId, incidentId],
+    queryFn: () => incidentsApi.getById(activeOrgId!, incidentId!),
+    enabled: !!activeOrgId && !!incidentId,
+    refetchInterval: LIVE_REFETCH_MS,
+  });
+}
+
+export function useIncidentSummary() {
+  const { activeOrgId } = useAlertingScope();
+  return useQuery({
+    queryKey: ["alerting", "incident-summary", activeOrgId],
+    queryFn: () => incidentsApi.summary(activeOrgId!),
     enabled: !!activeOrgId,
     refetchInterval: LIVE_REFETCH_MS,
   });
+}
+
+export function useIncidentTimeline(
+  incidentId: string | undefined,
+  query: { limit?: number; offset?: number } = {},
+) {
+  const { activeOrgId } = useAlertingScope();
+  return useQuery({
+    queryKey: ["alerting", "incident-timeline", activeOrgId, incidentId, query],
+    queryFn: () => incidentsApi.timeline(activeOrgId!, incidentId!, query),
+    enabled: !!activeOrgId && !!incidentId,
+  });
+}
+
+export function useIncidentNotifications(
+  incidentId: string | undefined,
+  query: { limit?: number; offset?: number } = {},
+) {
+  const { activeOrgId } = useAlertingScope();
+  return useQuery({
+    queryKey: ["alerting", "incident-notifications", activeOrgId, incidentId, query],
+    queryFn: () => incidentsApi.notifications(activeOrgId!, incidentId!, query),
+    enabled: !!activeOrgId && !!incidentId,
+  });
+}
+
+/**
+ * Incident lifecycle actions.
+ *
+ * Every mutation invalidates the incident list, the specific incident, its
+ * timeline, and the overview summary, because a single transition changes all
+ * four. Authorization is enforced by the backend; a 409 surfaces as a rejected
+ * mutation the caller can toast.
+ */
+export function useIncidentMutations(incidentId?: string) {
+  const { activeOrgId, requireOrgId } = useAlertingScope();
+  const queryClient = useQueryClient();
+
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: ["alerting", "incidents", activeOrgId], exact: false });
+    queryClient.invalidateQueries({ queryKey: ["alerting", "incident-summary", activeOrgId] });
+    if (incidentId) {
+      queryClient.invalidateQueries({ queryKey: ["alerting", "incident", activeOrgId, incidentId] });
+      queryClient.invalidateQueries({ queryKey: ["alerting", "incident-timeline", activeOrgId, incidentId], exact: false });
+    }
+  };
+
+  return {
+    acknowledge: useMutation({
+      mutationFn: (id: string) => incidentsApi.acknowledge(requireOrgId(), id),
+      onSuccess: invalidate,
+    }),
+    resolve: useMutation({
+      mutationFn: ({ id, reason }: { id: string; reason?: string }) =>
+        incidentsApi.resolve(requireOrgId(), id, reason ? { reason } : {}),
+      onSuccess: invalidate,
+    }),
+    assign: useMutation({
+      mutationFn: ({ id, assigneeUserId }: { id: string; assigneeUserId: string | null }) =>
+        incidentsApi.assign(requireOrgId(), id, { assigneeUserId }),
+      onSuccess: invalidate,
+    }),
+  };
 }
 
 export function useProjectPolicySubscriptions(projectId: string | undefined) {
@@ -196,6 +291,7 @@ export function useAlertRules(query: RuleListQuery = {}) {
     queryKey: alertingKeys.rules(activeOrgId, query),
     queryFn: () => rulesApi.list(activeOrgId!, query),
     enabled: !!activeOrgId,
+    placeholderData: (previous) => previous,
   });
 }
 
@@ -392,6 +488,7 @@ export function useAlertEvents(query: EventListQuery = {}) {
     queryFn: () => eventsApi.list(activeOrgId!, query),
     enabled: !!activeOrgId,
     refetchInterval: LIVE_REFETCH_MS,
+    placeholderData: (previous) => previous,
   });
 }
 
@@ -465,6 +562,7 @@ export function useDeadLetters(query: DeadLetterListQuery = {}) {
     queryFn: () => deadLettersApi.list(activeOrgId!, query),
     enabled: !!activeOrgId,
     refetchInterval: LIVE_REFETCH_MS,
+    placeholderData: (previous) => previous,
   });
 }
 
@@ -492,6 +590,7 @@ export function useSilences(query: SilenceListQuery = {}) {
     queryKey: alertingKeys.silences(activeOrgId, query),
     queryFn: () => silencesApi.list(activeOrgId!, query),
     enabled: !!activeOrgId,
+    placeholderData: (previous) => previous,
   });
 }
 

@@ -823,3 +823,107 @@ export interface MaintenanceWindow {
   createdAt: string;
 }
 
+
+// ── Incidents (real backend contract) ─────────────────────────────────────────
+// Mirrors `IncidentDto` in pulse/src/modules/alerting/incidents/incidents.types.ts,
+// served by /organizations/:orgId/alerting/incidents.
+//
+// NOTE: this replaces the older speculative `AlertIncident` shape, which was
+// never backed by an incidents endpoint (the previous `incidentsApi` proxied
+// /events and mapped statuses client-side). Incidents are now a real, durable
+// primary-database entity, so the wire type is authoritative rather than derived.
+
+/** Incident lifecycle. Matches the `alert_incident_status` enum exactly. */
+export type IncidentStatus = "open" | "acknowledged" | "resolved";
+
+export interface Incident {
+  id: string;
+  organizationId: string;
+  /** Present for project-scoped rules; null for organization-level rules. */
+  projectId: string | null;
+  environment: string | null;
+  ruleId: string | null;
+  ruleRevision: number | null;
+  /** Canonical alert identity. Two incidents with the same fingerprint are the same logical alert. */
+  fingerprint: string;
+  /** Grouping key, e.g. 'global' or 'route=/users/:id|service=api'. */
+  dimensionKey: string;
+  status: IncidentStatus;
+  severity: AlertSeverity;
+  title: string;
+  service: string | null;
+  route: string | null;
+  observedValue: number | null;
+  thresholdValue: number | null;
+  /** Matched evaluations folded into this incident (never a new row per event). */
+  occurrenceCount: number;
+  startedAt: string;
+  lastSeenAt: string;
+  /** Server-computed: to resolvedAt when resolved, else to now. */
+  durationSeconds: number;
+  acknowledgedAt: string | null;
+  acknowledgedBy: string | null;
+  assignedTo: string | null;
+  resolvedAt: string | null;
+  resolvedBy: string | null;
+  resolutionReason: string | null;
+  labels: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface IncidentListQuery {
+  limit?: number;
+  offset?: number;
+  sortBy?: "startedAt" | "lastSeenAt" | "severity" | "status" | "occurrenceCount" | "updatedAt";
+  sortOrder?: "asc" | "desc";
+  status?: IncidentStatus;
+  /** Shorthand facet; ignored by the server when `status` is also supplied. */
+  active?: boolean;
+  severity?: AlertSeverity;
+  projectId?: string;
+  environment?: string;
+  service?: string;
+  route?: string;
+  ruleId?: string;
+  assignedTo?: string;
+  from?: string;
+  to?: string;
+  search?: string;
+}
+
+export interface IncidentTimelineEntry {
+  at: string;
+  kind: string;
+  actorType: "worker" | "user" | "system" | "api";
+  actorUserId: string | null;
+  detail: Record<string, unknown>;
+}
+
+export interface IncidentNotification {
+  id: string;
+  channelKind: string;
+  provider: string | null;
+  status: string;
+  attemptNumber: number | null;
+  errorCategory: string | null;
+  latencyMs: number | null;
+  at: string;
+}
+
+export interface IncidentSummary {
+  activeTotal: number;
+  activeBySeverity: Record<string, number>;
+  triggeredSince: number;
+  resolvedSince: number;
+  windowHours: number;
+}
+
+export interface ResolveIncidentBody {
+  reason?: string;
+}
+
+export interface AssignIncidentBody {
+  /** null clears the assignment. */
+  assigneeUserId: string | null;
+}

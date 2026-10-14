@@ -6,51 +6,148 @@ import { cn } from "@/lib/utils";
 import { IconChip, type SurfaceTone } from "./surfaces";
 
 // ── Auth heading ─────────────────────────────────────────────
+// The heading carries the page. No eyebrow, no icon chip, no centering: the
+// same left-aligned title + one supporting line the sign-in page uses.
+// See design/auth/DESIGN.md.
 
 export function AuthHeading({
-  eyebrow,
   title,
   description,
-  icon,
-  tone = "brand",
-  align = "left",
-  hideLogo = false,
 }: {
-  eyebrow?: string;
   title: string;
   description?: React.ReactNode;
-  icon?: LucideIcon;
-  tone?: SurfaceTone;
-  align?: "left" | "center";
-  hideLogo?: boolean;
 }) {
-  const centered = align === "center";
   return (
-    <div className={cn("mb-5 flex flex-col gap-2.5", centered && "items-center text-center")}>
-      {!hideLogo && (
-        <div className={cn("flex items-center mb-0.5", centered ? "justify-center" : "justify-start")}>
-          <div className="inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--bg2)]/60 px-2.5 py-1 text-[11px] font-mono tracking-[0.14em] text-[var(--text2)] shadow-sm">
-            <span className="size-1.5 rounded-full bg-[var(--brand)]" />
-            <span className="font-bold text-[var(--text)] tracking-[0.12em]">SENT<span className="text-[var(--brand)]">I</span>NEL</span>
-            <span className="text-[var(--text3)] text-[9px] font-medium">CONSOLE</span>
-          </div>
-        </div>
+    <header className="mb-8">
+      <h1 className="text-[28px] font-semibold leading-[1.15] tracking-[-0.03em] text-[var(--text)]">
+        {title}
+      </h1>
+      {description && (
+        <p className="mt-2 max-w-[46ch] text-[14px] leading-[1.55] text-[var(--text2)]">{description}</p>
       )}
-      {icon && <IconChip icon={icon} tone={tone} size="lg" />}
-      {eyebrow && (
-        <p className="font-mono text-[10px] font-medium uppercase tracking-[0.09em] text-[var(--text3)]">{eyebrow}</p>
+    </header>
+  );
+}
+
+// ── Callout ──────────────────────────────────────────────────
+// The one boxed element auth allows. Reserved for information that changes
+// what the user does next (SSO-governed domain, failed link, locked account).
+// Tone lives in the icon and a tinted hairline only; the body stays neutral.
+
+const CALLOUT_TONE = {
+  neutral: { box: "border-[var(--border2)]", icon: "text-[var(--text)]" },
+  success: { box: "border-[var(--green)]/35", icon: "text-[var(--green)]" },
+  warning: { box: "border-[var(--amber)]/35", icon: "text-[var(--amber)]" },
+  danger: { box: "border-[var(--red)]/40", icon: "text-[var(--red)]" },
+} as const;
+
+export type AuthCalloutTone = keyof typeof CALLOUT_TONE;
+
+export function AuthCallout({
+  icon: Icon,
+  title,
+  children,
+  tone = "neutral",
+  role = "status",
+  className,
+}: {
+  icon: LucideIcon;
+  title: string;
+  children?: React.ReactNode;
+  tone?: AuthCalloutTone;
+  role?: "status" | "alert";
+  className?: string;
+}) {
+  const palette = CALLOUT_TONE[tone];
+  return (
+    <div
+      role={role}
+      className={cn(
+        "flex items-start gap-3 rounded-[var(--radius)] border bg-[var(--bg1)] px-3.5 py-3",
+        palette.box,
+        className
       )}
-      <div className={cn("flex flex-col gap-1.5", centered && "items-center")}>
-        <h1 className="font-[family-name:var(--display)] text-[24px] sm:text-[26px] font-semibold leading-tight tracking-[-0.03em] text-[var(--text)]">
-          {title}
-        </h1>
-        {description && (
-          <p className={cn("text-[13px] leading-[1.5] text-[var(--text2)]", centered ? "max-w-[38ch]" : "max-w-[44ch]")}>
-            {description}
-          </p>
-        )}
+    >
+      <Icon className={cn("mt-0.5 size-4 shrink-0", palette.icon)} aria-hidden="true" />
+      <div className="min-w-0 flex-1">
+        <p className="text-[13px] font-medium leading-[1.5] text-[var(--text)]">{title}</p>
+        {children && <div className="mt-0.5 text-[12px] leading-[1.55] text-[var(--text2)]">{children}</div>}
       </div>
     </div>
+  );
+}
+
+// ── Fact row ─────────────────────────────────────────────────
+// "Signing in as" pattern: a quiet label over the one value the user must
+// recognise (address, domain, factor), closed by a hairline.
+
+export function AuthFact({
+  label,
+  value,
+  mono = false,
+  action,
+  className,
+}: {
+  label: string;
+  value: React.ReactNode;
+  mono?: boolean;
+  action?: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={cn("flex items-center justify-between gap-3 border-b border-[var(--border)] pb-4", className)}>
+      <div className="min-w-0">
+        <p className="text-[12px] text-[var(--text3)]">{label}</p>
+        <span
+          className={cn(
+            "mt-0.5 block min-w-0 truncate text-[14px] font-medium text-[var(--text)]",
+            mono && "font-mono text-[13px]"
+          )}
+        >
+          {value}
+        </span>
+      </div>
+      {action && <div className="shrink-0">{action}</div>}
+    </div>
+  );
+}
+
+// ── Pending line ─────────────────────────────────────────────
+
+export function AuthPending({ children, className }: { children: React.ReactNode; className?: string }) {
+  return (
+    <p
+      role="status"
+      aria-live="polite"
+      className={cn("flex items-center gap-2 text-[13px] text-[var(--text2)]", className)}
+    >
+      <Loader2 className="size-3.5 shrink-0 animate-spin text-[var(--text3)]" aria-hidden="true" />
+      {children}
+    </p>
+  );
+}
+
+// ── Inline text action ───────────────────────────────────────
+// Underlined, quiet. For "Change", "Resend code", "Try another way".
+
+export const authTextActionClass =
+  "rounded-sm text-[13px] font-medium text-[var(--text2)] underline decoration-[var(--border2)] underline-offset-4 transition-colors hover:text-[var(--text)] hover:decoration-[var(--text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--text)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg)] disabled:cursor-not-allowed disabled:text-[var(--text3)] disabled:no-underline";
+
+export function AuthTextButton({
+  children,
+  onClick,
+  disabled,
+  className,
+}: {
+  children: React.ReactNode;
+  onClick: () => void;
+  disabled?: boolean;
+  className?: string;
+}) {
+  return (
+    <button type="button" onClick={onClick} disabled={disabled} className={cn(authTextActionClass, className)}>
+      {children}
+    </button>
   );
 }
 
@@ -75,9 +172,9 @@ export function AuthCard({ children, className }: { children: React.ReactNode; c
 
 export function AuthDivider({ children }: { children: React.ReactNode }) {
   return (
-    <div className="my-4 flex items-center">
+    <div className="my-5 flex items-center">
       <span className="h-px flex-1 bg-[var(--border)]" />
-      <span className="px-3 font-mono text-[10px] font-medium uppercase tracking-[0.09em] text-[var(--text3)]">{children}</span>
+      <span className="px-3 text-[12px] text-[var(--text3)]">{children}</span>
       <span className="h-px flex-1 bg-[var(--border)]" />
     </div>
   );
@@ -91,22 +188,24 @@ export function OAuthButton({
   onClick,
   disabled,
   pending,
+  pendingText,
 }: {
   children: React.ReactNode;
   icon: React.ReactNode;
   onClick: () => void;
   disabled?: boolean;
   pending?: boolean;
+  pendingText?: string;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
       disabled={disabled || pending}
-      className="flex h-10 w-full items-center justify-center gap-2.5 rounded-[var(--radius)] border border-[var(--border2)] bg-transparent text-[13px] font-medium text-[var(--text2)] transition-colors duration-150 hover:border-[var(--text3)] hover:text-[var(--text)] focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-[var(--brand-bg)] disabled:cursor-not-allowed disabled:opacity-55"
+      className="flex h-11 w-full items-center justify-center gap-2.5 rounded-[var(--radius)] border border-[var(--border2)] bg-transparent text-[13px] font-medium text-[var(--text)] transition-colors duration-150 hover:border-[var(--text3)] hover:bg-[var(--bg2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--text)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg)] disabled:cursor-not-allowed disabled:opacity-55"
     >
       {pending ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : icon}
-      {pending ? "Redirecting…" : children}
+      {pending ? (pendingText ?? "Waiting for sign-in…") : children}
     </button>
   );
 }
@@ -130,27 +229,53 @@ export function AuthButton({
   variant?: "primary" | "ghost" | "danger";
   className?: string;
 }) {
-  const tone =
-    variant === "ghost"
-      ? "border border-[var(--border2)] bg-transparent text-[var(--text2)] hover:border-[var(--text3)] hover:text-[var(--text)]"
-      : variant === "danger"
-        ? "bg-[var(--red)] text-white hover:bg-[var(--red-d)]"
-        : "bg-[var(--brand)] text-[var(--brand-fg)] hover:bg-[var(--brand-d)]";
   return (
     <button
       type={type}
       onClick={onClick}
       disabled={disabled || pending}
       aria-busy={pending}
-      className={cn(
-        "inline-flex h-10 w-full items-center justify-center gap-2 rounded-[var(--radius)] text-[13px] font-semibold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-[var(--brand-bg)] disabled:cursor-not-allowed disabled:opacity-55",
-        tone,
-        className
-      )}
+      className={cn(authButtonClass(variant), className)}
     >
       {pending && <Loader2 className="size-4 animate-spin" aria-hidden="true" />}
       {children}
     </button>
+  );
+}
+
+type AuthButtonVariant = "primary" | "ghost" | "danger";
+
+function authButtonClass(variant: AuthButtonVariant) {
+  const tone =
+    variant === "ghost"
+      ? "border border-[var(--border2)] bg-transparent text-[var(--text)] hover:border-[var(--text3)] hover:bg-[var(--bg2)]"
+      : variant === "danger"
+        ? "bg-[var(--red)] text-white hover:bg-[var(--red-d)]"
+        : "bg-[var(--brand)] text-[var(--brand-fg)] hover:bg-[var(--brand-d)]";
+  return cn(
+    "inline-flex h-11 w-full items-center justify-center gap-2 rounded-[var(--radius)] text-[13px] font-semibold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--text)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg)] disabled:cursor-not-allowed disabled:opacity-55",
+    tone
+  );
+}
+
+// ── Navigating primary action ────────────────────────────────
+// Same geometry as AuthButton, for actions that route instead of submit.
+
+export function AuthLinkButton({
+  to,
+  children,
+  variant = "primary",
+  className,
+}: {
+  to: string;
+  children: React.ReactNode;
+  variant?: AuthButtonVariant;
+  className?: string;
+}) {
+  return (
+    <Link to={to} className={cn(authButtonClass(variant), className)}>
+      {children}
+    </Link>
   );
 }
 
@@ -208,14 +333,22 @@ export function AuthResult({
 // ── Footer link row ──────────────────────────────────────────
 
 export function AuthFooter({ children }: { children: React.ReactNode }) {
-  return <p className="mt-5 text-center text-[13px] text-[var(--text3)]">{children}</p>;
+  return <p className="mt-8 text-[13px] leading-[1.6] text-[var(--text2)]">{children}</p>;
+}
+
+// ── Quiet note ───────────────────────────────────────────────
+// Secondary guidance ("links expire in 24 hours") as plain text, not a
+// coloured notice box.
+
+export function AuthNote({ children, className }: { children: React.ReactNode; className?: string }) {
+  return <p className={cn("text-[12px] leading-[1.6] text-[var(--text3)]", className)}>{children}</p>;
 }
 
 export function AuthLink({ to, children }: { to: string; children: React.ReactNode }) {
   return (
     <Link
       to={to}
-      className="rounded-sm font-medium text-[var(--brand)] transition-colors hover:text-[var(--brand-d)] focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-[var(--brand-bg)]"
+      className="rounded-sm font-medium text-[var(--text)] underline decoration-[var(--border2)] underline-offset-4 transition-colors hover:decoration-[var(--text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--text)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg)]"
     >
       {children}
     </Link>
@@ -242,7 +375,7 @@ export function AuthField({
   return (
     <div className="flex flex-col gap-1.5">
       <div className="flex items-baseline justify-between gap-3">
-        <label htmlFor={htmlFor} className="font-mono text-[10px] font-medium uppercase tracking-[0.09em] text-[var(--text3)]">
+        <label htmlFor={htmlFor} className="text-[13px] font-medium text-[var(--text2)]">
           {label}
         </label>
         {trailing}

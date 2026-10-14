@@ -1,261 +1,199 @@
-import { useNavigate } from "react-router";
-import { Radio, BookOpen, ExternalLink } from "lucide-react";
-import { useTimeRangeStore } from "@/stores/timeRangeStore";
+import { useEffect, useState } from "react";
+import { Pause, Play } from "lucide-react";
 import {
-  useRequestSummary,
-  useStatusDistribution,
-  useEndpointsAnalytics,
-} from "@/modules/analytics";
-import {
-  PageHeader, SectionCard,
-  Table, Tr, Td, MonospaceText,
-  formatCompact, formatLatency,
-} from "@/shared/observe";
-import { AnimatedEmptyState } from "@/shared/motion";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Donut, ChartCard, HeroBand, ZoneLabel } from "./widgets";
+  BoardButton,
+  BoardPage,
+  Ledger,
+  Panel,
+  RankList,
+  Readouts,
+  SplitBar,
+  TimeChart,
+  Trend,
+  stateText,
+  type State,
+  type VerdictItem,
+} from "./board/kit";
+import { ENDPOINTS, series, type Endpoint } from "./board/fixtures";
+import { bytes, compact, ms, pct } from "./board/format";
 
-export default function RealtimeTraffic() {
-  const navigate = useNavigate();
-  const isLive = useTimeRangeStore((s) => s.isLive);
-  const toggleLive = useTimeRangeStore((s) => s.toggleLive);
+/*
+ * Traffic overview: what is happening right now. A deterministic 2-second
+ * tick walks precomputed per-second sequences, so readings change and flip
+ * into place like a live board. Pause stops the tick.
+ * Sample data only; getTrafficBoard() is the seam a live stream replaces.
+ */
 
-  const { data: summaryRes, isLoading: isSummaryLoading } = useRequestSummary({ window: "1m" });
-  const { data: statusRes, isLoading: isStatusLoading } = useStatusDistribution({ window: "1m" });
-  const { data: endpointsRes, isLoading: isEndpointsLoading } = useEndpointsAnalytics({ window: "1m", limit: 10 });
+const LEN = 240; // precomputed seconds; the tick wraps around
+const WINDOW = 60;
 
-  const isLoading = isSummaryLoading || isStatusLoading || isEndpointsLoading;
+function getTrafficBoard() {
+  const routes = ENDPOINTS.map((e) => {
+    const base = e.requests / 86_400;
+    return {
+      e,
+      rps: series(`rt-${e.id}`, LEN, base, base * 0.4, { diurnal: false, floor: 0 }),
+      err: series(`rt-err-${e.id}`, LEN, e.errorRate, e.errorRate * 0.6, { diurnal: false, floor: 0 }),
+      p95: series(`rt-p95-${e.id}`, LEN, e.p95, e.p95 * 0.3, { diurnal: false, floor: 1 }),
+    };
+  });
+  const total = Array.from({ length: LEN }, (_, i) => Math.round(routes.reduce((a, r) => a + r.rps[i], 0)));
+  const errors = Array.from({ length: LEN }, (_, i) => Math.round(routes.reduce((a, r) => a + (r.rps[i] * r.err[i]) / 100, 0) * 10) / 10);
+  const clients = [
+    { label: "acme-retail", value: 212 },
+    { label: "northwind-prod", value: 164 },
+    { label: "globex-eu", value: 118 },
+    { label: "initech-mobile", value: 74 },
+    { label: "umbrella-labs", value: 41 },
+  ];
+  return { routes, total, errors, clients };
+}
 
-  const cards = summaryRes?.data?.cards ?? [];
-  const reqCard = cards.find((c) => c.key === "requests.total");
-  const errCard = cards.find((c) => c.key === "requests.error_rate");
-  const p50Card = cards.find((c) => c.key === "requests.latency_p50");
-  const p95Card = cards.find((c) => c.key === "requests.latency_p95");
-  const rateLimitCard = cards.find((c) => c.key === "requests.rate_limited_count");
+type Route = ReturnType<typeof getTrafficBoard>["routes"][number];
 
-  const totalReq = reqCard?.value ?? 0;
-  const p50 = p50Card?.value ?? 0;
-  const p95 = p95Card?.value ?? 0;
-  const errorRate = errCard?.value ?? 0;
-  const rateLimitHits = rateLimitCard?.value ?? 0;
+function windowOf(arr: number[], tick: number, n = WINDOW) {
+  return Array.from({ length: n }, (_, i) => arr[(tick - n + 1 + i + LEN * 4) % LEN]);
+}
 
-  const distribution = statusRes?.data?.distribution ?? [];
-  const statusSegments = [
-    { label: "2xx Success", value: distribution.find((d) => d.class === "2xx")?.count ?? 0, color: "var(--green)" },
-    { label: "3xx Redirect", value: distribution.find((d) => d.class === "3xx")?.count ?? 0, color: "var(--blue)" },
-    { label: "4xx Client", value: distribution.find((d) => d.class === "4xx")?.count ?? 0, color: "var(--amber)" },
-    { label: "5xx Server", value: distribution.find((d) => d.class === "5xx")?.count ?? 0, color: "var(--red)" },
-  ].filter((s) => s.value > 0);
+const secLabel = (i: number) => `${WINDOW - 1 - i}s ago`;
 
-  const topRoutes = endpointsRes?.data?.table?.rows ?? [];
+function routeState(e: Endpoint, err: number): State {
+  if (e.state === "bad" || err >= 2) return "bad";
+  if (e.state === "warn" || err >= 0.3) return "warn";
+  return "ok";
+}
 
-  if (isLoading) {
-    return <RealtimeTrafficSkeleton isLive={isLive} toggleLive={toggleLive} />;
-  }
-
-  if (!isLoading && totalReq === 0 && topRoutes.length === 0) {
-    return (
-      <div className="mx-auto flex w-full max-w-[1400px] flex-col gap-6">
-        <PageHeader
-          title="Real-Time Traffic & Request Flow"
-          description="Know exactly what is happening right now across all APIs · updates continuously."
-          actions={
-            <button
-              type="button"
-              onClick={toggleLive}
-              className="inline-flex items-center gap-2 rounded-[8px] border border-[var(--border)] bg-[var(--bg2)] px-3 py-1.5 text-sm font-medium text-[var(--text)]"
-            >
-              <span className={`size-2 rounded-full ${isLive ? "pulse-dot bg-[var(--green)]" : "bg-[var(--green)]"}`} />
-              Live (1m window)
-            </button>
-          }
-        />
-        <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] p-8">
-          <AnimatedEmptyState
-            illustration="dashboard"
-            title="Listening for Real-Time Traffic"
-            description="No live requests detected in the current 1-minute window. Ingest requests via the SDK or OpenTelemetry collector to view live streams."
-            action={
-              <button
-                type="button"
-                onClick={() => navigate("/settings/quickstart")}
-                className="inline-flex items-center gap-2 rounded-[8px] bg-[var(--brand)] px-4 py-2 text-[13px] font-semibold text-[var(--bg)] transition hover:opacity-90"
-              >
-                <BookOpen className="size-4" />
-                SDK Quickstart
-              </button>
-            }
-            secondaryAction={
-              <button
-                type="button"
-                onClick={() => navigate("/observability/requests")}
-                className="inline-flex items-center gap-2 rounded-[8px] border border-[var(--border)] bg-[var(--bg2)] px-4 py-2 text-[13px] font-medium text-[var(--text)] transition hover:bg-[var(--bg3)]"
-              >
-                <ExternalLink className="size-4" />
-                Explore Historical Requests
-              </button>
-            }
-            hint="Live polling is active (1m rolling window). Telemetry sent with your API key will appear in sub-second intervals."
-          />
-        </div>
-      </div>
-    );
-  }
-
+function RouteDetail({ r, tick }: { r: Route; tick: number }) {
   return (
-    <div className="mx-auto flex w-full max-w-[1400px] flex-col gap-5">
-      <PageHeader
-        title="Real-Time Traffic & Request Flow"
-        description="Know exactly what is happening right now across all APIs · updates every 15s."
-        actions={
-          <button
-            type="button"
-            onClick={toggleLive}
-            className="inline-flex items-center gap-2 rounded-[8px] border border-[var(--border)] bg-[var(--bg2)] px-3 py-1.5 text-sm font-medium text-[var(--text)]"
-          >
-            <span className={`size-2 rounded-full ${isLive ? "pulse-dot bg-[var(--green)]" : "bg-[var(--green)]"}`} />
-            Live (1m window)
-          </button>
-        }
-      />
-
-      <HeroBand
-        metrics={[
-          { label: "Total requests", value: formatCompact(totalReq), delta: "Live rollups", trend: "neutral", sparkColor: "var(--green)" },
-          { label: "Rate-limit (429)", value: formatCompact(rateLimitHits), delta: rateLimitHits > 0 ? "Rate limited" : "Nominal", trend: rateLimitHits > 0 ? "down" : "up", sparkColor: "var(--amber)" },
-          { label: "Error rate (5xx)", value: `${errorRate.toFixed(2)}%`, delta: "Error ratio", trend: errorRate > 1 ? "down" : "up", sparkColor: "var(--red)" },
-          { label: "P50 latency", value: formatLatency(p50), delta: "Median", trend: "neutral", sparkColor: "var(--blue)" },
-          { label: "P95 latency", value: formatLatency(p95), delta: "Tail", trend: "neutral", sparkColor: "var(--violet)" },
-        ]}
-      />
-
-      <ZoneLabel>Live pulse</ZoneLabel>
-
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <ChartCard
-          title="Real-time request metrics"
-          action={<Radio className="size-4 text-[var(--green)]" />}
-          headline={`${formatCompact(totalReq)} total`}
-          headlineLabel="in current 1m bucket"
-          timeAxis="Last 1 minute"
-        >
-          <div className="flex flex-col justify-center py-6 gap-2">
-            <div className="text-3xl font-bold font-mono text-[var(--brand)]">{totalReq.toLocaleString()} requests</div>
-            <div className="text-xs text-[var(--text3)]">Pre-aggregated from 1-minute partitioned rollups with sub-10ms query latency.</div>
-          </div>
-        </ChartCard>
-
-        <ChartCard
-          title="Status code distribution"
-          legend={statusSegments.map((s) => ({ label: s.label, color: s.color }))}
-        >
-          <Donut
-            segments={statusSegments.length > 0 ? statusSegments : [{ label: "2xx", value: 1, color: "var(--green)" }]}
-            centerLabel={formatCompact(totalReq)}
-            centerSub="req"
-            size={140}
-          />
-        </ChartCard>
-      </div>
-
-      <ZoneLabel>Hot paths</ZoneLabel>
-
-      <SectionCard title="Top active endpoints (1m)">
-        <Table headers={["#", "Endpoint", "Requests", "Error %", "P50", "P95", "Bytes Out"]}>
-          {topRoutes.length === 0 ? (
-            <Tr>
-              <Td>—</Td>
-              <Td><span className="text-[var(--text3)]">No endpoint traffic in the current window</span></Td>
-              <Td>—</Td>
-              <Td>—</Td>
-              <Td>—</Td>
-              <Td>—</Td>
-              <Td>—</Td>
-            </Tr>
-          ) : (
-            topRoutes.map((r, i) => (
-              <Tr key={r.endpoint} onClick={() => navigate("/observability/requests")}>
-                <Td className="w-8 tabular-nums text-[var(--text3)]">{i + 1}</Td>
-                <Td><MonospaceText value={r.endpoint} className="max-w-[320px]" /></Td>
-                <Td className="tabular-nums font-semibold">{formatCompact(r.requests)}</Td>
-                <Td className="tabular-nums">{(r.errorRatePct ?? 0).toFixed(1)}%</Td>
-                <Td className="tabular-nums">{r.p50Ms ? formatLatency(r.p50Ms) : "—"}</Td>
-                <Td className="tabular-nums">{r.p95Ms ? formatLatency(r.p95Ms) : "—"}</Td>
-                <Td className="tabular-nums font-mono text-[11px]">{r.bytesOut.toLocaleString()} B</Td>
-              </Tr>
-            ))
-          )}
-        </Table>
-      </SectionCard>
-    </div>
+    <TimeChart
+      label={`${r.e.method} ${r.e.path} requests per second over the last minute`}
+      height={170}
+      xLabels={["60s ago", "45s", "30s", "15s", "now"]}
+      format={(v) => `${Math.round(v)}`}
+      pointLabel={secLabel}
+      series={[
+        { label: "Req/s", color: "var(--text)", data: windowOf(r.rps, tick), area: true },
+        { label: "P95 ms", color: "var(--blue)", data: windowOf(r.p95, tick).map((v) => v / 10), dashed: true },
+      ]}
+    />
   );
 }
 
-function RealtimeTrafficSkeleton({ isLive, toggleLive }: { isLive: boolean; toggleLive: () => void }) {
+export default function RealtimeTraffic() {
+  const { routes, total, errors, clients } = getTrafficBoard();
+  const [tick, setTick] = useState(WINDOW);
+  const [live, setLive] = useState(true);
+
+  useEffect(() => {
+    if (!live) return;
+    const id = window.setInterval(() => setTick((t) => t + 1), 2000);
+    return () => window.clearInterval(id);
+  }, [live]);
+
+  const at = (arr: number[]) => arr[tick % LEN];
+  const rps = at(total);
+  const errPerMin = Math.round(windowOf(errors, tick).reduce((a, v) => a + v, 0));
+  const p95Now = Math.round(routes.reduce((a, r) => a + at(r.p95) * at(r.rps), 0) / Math.max(1, rps));
+  const status = { s2: rps * 0.912, s3: rps * 0.021, s4: rps * 0.058, s5: rps * 0.009 };
+
+  const verdict: VerdictItem[] = [
+    { state: "bad", text: "POST /v1/alerts/dispatch failing 1 in 26 requests" },
+    { state: "warn", text: `${errPerMin} failed requests in the last minute` },
+  ];
+
   return (
-    <div className="mx-auto flex w-full max-w-[1400px] flex-col gap-5 animate-in fade-in duration-300">
-      <PageHeader
-        title="Real-Time Traffic & Request Flow"
-        description="Know exactly what is happening right now across all APIs · updates continuously."
-        actions={
-          <button
-            type="button"
-            onClick={toggleLive}
-            className="inline-flex items-center gap-2 rounded-[8px] border border-[var(--border)] bg-[var(--bg2)] px-3 py-1.5 text-sm font-medium text-[var(--text)]"
-          >
-            <span className={`size-2 rounded-full ${isLive ? "pulse-dot bg-[var(--green)]" : "bg-[var(--green)]"}`} />
-            Live (1m window)
-          </button>
-        }
+    <BoardPage
+      title="Traffic overview"
+      description="Requests as they arrive. Values update every two seconds; pause to read them."
+      verdict={verdict}
+      window="Last 60 seconds"
+      actions={
+        <BoardButton onClick={() => setLive((v) => !v)} title={live ? "Pause live updates" : "Resume live updates"}>
+          <span className="inline-flex items-center gap-1.5">
+            {live ? <Pause className="size-3.5" aria-hidden="true" /> : <Play className="size-3.5" aria-hidden="true" />}
+            {live ? "Pause" : "Resume"}
+          </span>
+        </BoardButton>
+      }
+    >
+      <Readouts
+        items={[
+          { label: "Requests per second", value: compact(rps), note: live ? "live" : "paused" },
+          { label: "In flight", value: String(Math.round(rps * 0.11)), note: "open connections" },
+          { label: "Failed per minute", value: String(errPerMin), note: "5xx, last 60s", state: errPerMin > 60 ? "bad" : errPerMin > 20 ? "warn" : undefined },
+          { label: "P95, last minute", value: ms(p95Now), note: "request-weighted" },
+          { label: "Active clients", value: String(38 + (tick % 7)), note: "distinct API keys" },
+          { label: "Bandwidth out", value: `${bytes(rps * 48_000)}/s`, note: "egress" },
+        ]}
       />
 
-      <div className="grid grid-cols-2 divide-[var(--border)] overflow-hidden rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] max-lg:gap-px max-lg:bg-[var(--border)] lg:grid-cols-none lg:auto-cols-fr lg:grid-flow-col lg:divide-x">
-        {[0, 1, 2, 3, 4].map((i) => (
-          <div key={i} className="flex flex-col gap-2 bg-[var(--bg1)] px-5 py-4">
-            <Skeleton className="h-3 w-24" />
-            <Skeleton className="h-7 w-20" />
-            <Skeleton className="h-3 w-16" />
-          </div>
-        ))}
+      <Ledger
+        id="route"
+        title="Routes now"
+        meta="Worst first, last minute"
+        rows={routes}
+        rowId={(r) => r.e.id}
+        rowState={(r) => routeState(r.e, at(r.err))}
+        attention={(r) => at(r.rps)}
+        primary={{
+          header: "Route",
+          cell: (r) => (
+            <span className="font-mono">
+              <span className="mr-2 text-[11px] text-[var(--text3)]">{r.e.method}</span>
+              {r.e.path}
+            </span>
+          ),
+          sub: (r) => r.e.service,
+        }}
+        columns={[
+          { key: "trend", header: "Last 60s", hide: "lg", cell: (r) => <Trend data={windowOf(r.rps, tick, 30)} state={routeState(r.e, at(r.err))} label={`${r.e.path} requests per second`} /> },
+          { key: "rps", header: "Req/s", align: "right", sortValue: (r) => at(r.rps), cell: (r) => <span className="text-[var(--text)]">{Math.round(at(r.rps))}</span> },
+          { key: "p95", header: "P95", align: "right", sortValue: (r) => at(r.p95), cell: (r) => ms(at(r.p95)) },
+          {
+            key: "err",
+            header: "Errors",
+            align: "right",
+            sortValue: (r) => at(r.err),
+            cell: (r) => <span style={{ color: stateText(routeState(r.e, at(r.err))) }}>{pct(at(r.err))}</span>,
+          },
+        ]}
+        detail={(r) => <RouteDetail r={r} tick={tick} />}
+      />
+
+      <Panel title="Last 60 seconds" meta="All routes, per second">
+        <TimeChart
+          label="Requests and failed requests per second over the last minute"
+          xLabels={["60s ago", "45s", "30s", "15s", "now"]}
+          format={(v) => compact(v)}
+          pointLabel={secLabel}
+          series={[
+            { label: "Req/s", color: "var(--text)", data: windowOf(total, tick), area: true },
+            { label: "Failed/s ×10", color: "var(--red)", data: windowOf(errors, tick).map((v) => v * 10) },
+          ]}
+        />
+      </Panel>
+
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+        <Panel title="Status mix" meta="Share of responses, now">
+          <SplitBar
+            label="Responses by status class right now"
+            format={(v) => `${Math.round(v)}/s`}
+            segments={[
+              { label: "2xx", value: status.s2, color: "var(--border2)" },
+              { label: "3xx", value: status.s3, color: "var(--text3)" },
+              { label: "4xx", value: status.s4, color: "var(--amber)", state: "warn" },
+              { label: "5xx", value: status.s5, color: "var(--red)", state: "bad" },
+            ]}
+          />
+        </Panel>
+        <Panel title="Busiest clients" meta="Requests per second by API key">
+          <RankList
+            label="API keys ranked by requests per second"
+            format={(v) => `${v}/s`}
+            items={clients.map((c, i) => ({ ...c, value: c.value + ((tick + i * 3) % 9) - 4, state: c.label === "acme-retail" ? "warn" : undefined, sub: c.label === "acme-retail" ? "90% of limit" : undefined }))}
+          />
+        </Panel>
       </div>
-
-      <ZoneLabel>Live pulse</ZoneLabel>
-
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <div className="flex flex-col rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] p-5">
-          <Skeleton className="mb-4 h-4 w-44" />
-          <div className="flex flex-col justify-center py-6 gap-2">
-            <Skeleton className="h-9 w-48" />
-            <Skeleton className="h-3 w-72" />
-          </div>
-        </div>
-
-        <div className="flex flex-col rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] p-5">
-          <Skeleton className="mb-4 h-4 w-44" />
-          <div className="flex items-center justify-center py-6">
-            <Skeleton className="size-36 rounded-full" />
-          </div>
-        </div>
-      </div>
-
-      <ZoneLabel>Hot paths</ZoneLabel>
-
-      <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] p-5">
-        <Skeleton className="mb-4 h-4 w-48" />
-        <div className="flex flex-col gap-3">
-          {[0, 1, 2, 3, 4].map((i) => (
-            <div key={i} className="flex items-center justify-between gap-4 border-b border-[var(--border)] pb-3 last:border-b-0">
-              <Skeleton className="h-4 w-8" />
-              <Skeleton className="h-4 w-64" />
-              <Skeleton className="h-4 w-16" />
-              <Skeleton className="h-4 w-12" />
-              <Skeleton className="h-4 w-16" />
-              <Skeleton className="h-4 w-16" />
-              <Skeleton className="h-4 w-20" />
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
+    </BoardPage>
   );
 }

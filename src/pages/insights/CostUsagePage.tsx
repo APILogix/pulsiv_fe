@@ -12,7 +12,7 @@ export default function CostUsagePage() {
   const [sparklineData] = useState(() => Array.from({ length: 30 }, (_, i) => 5 + i * 0.4 + Math.random() * 3));
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-6">
       <PageHeader title="Cost & Usage" description="AI model spend tracking and token usage governance." />
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">

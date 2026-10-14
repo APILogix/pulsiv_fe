@@ -13,9 +13,12 @@ import { stepUpWithPasskey, WebAuthnCeremonyError } from '@/modules/auth/service
 import { useMutation } from '@tanstack/react-query';
 import { Loader2, Mail, KeyRound } from 'lucide-react';
 import { toast } from 'sonner';
+import { apiErrorMessage } from "@/infrastructure/api-client/api-error";
 
 export function GlobalStepUpModal() {
-  const { stepUpPromise, resolveStepUp, rejectStepUp } = useAuthStore();
+  const stepUpPromise = useAuthStore((s) => s.stepUpPromise);
+  const resolveStepUp = useAuthStore((s) => s.resolveStepUp);
+  const rejectStepUp = useAuthStore((s) => s.rejectStepUp);
   const isOpen = !!stepUpPromise;
   
   const [challenge, setChallenge] = useState<MFAChallenge | null>(null);
@@ -62,7 +65,7 @@ export function GlobalStepUpModal() {
       toast.success('Verification code sent');
       setIsResending(false);
     } catch (error: any) {
-      toast.error(error.response?.data?.error?.message || 'Failed to send verification code');
+      toast.error(apiErrorMessage(error) || 'Failed to send verification code');
       setIsResending(false);
     }
   };
@@ -74,7 +77,7 @@ export function GlobalStepUpModal() {
       toast.success("Identity verified");
     },
     onError: (error: any) => {
-      const msg = error.response?.data?.error?.message || "Invalid code";
+      const msg = apiErrorMessage(error) || "Invalid code";
       toast.error(msg);
     }
   });

@@ -1,46 +1,32 @@
-import { formatBytes, formatLatency } from "@/shared/observe";
+import { ReadoutBand, formatBytes, formatLatency } from "@/shared/observe";
+import type { ReadoutCell } from "@/shared/observe";
 import type { RequestSummaryCards } from "./types";
-import { displayValue } from "./helpers";
+
+function statusClass(code: number | null) {
+  if (code === null) return { sub: "HTTP status", tone: "neutral" as const };
+  if (code >= 500) return { sub: "Server error", tone: "bad" as const };
+  if (code >= 400) return { sub: "Client error", tone: "warn" as const };
+  if (code >= 300) return { sub: "Redirect", tone: "neutral" as const };
+  return { sub: "Success", tone: "good" as const };
+}
 
 export function SummaryCards({ cards }: { cards: RequestSummaryCards }) {
-  const items = [
+  const code = typeof cards.status === "number" ? cards.status : null;
+  const status = statusClass(code);
+  const slow = cards.duration != null && cards.duration >= 1000;
+
+  const cells: ReadoutCell[] = [
     {
       label: "Duration",
       value: cards.duration == null ? "—" : formatLatency(cards.duration),
+      sub: slow ? "slower than 1 s" : "end-to-end",
+      tone: slow ? "bad" : cards.duration != null && cards.duration >= 500 ? "warn" : "neutral",
     },
-    {
-      label: "Status code",
-      value: displayValue(cards.status),
-    },
-    {
-      label: "Request size",
-      value: cards.requestSize == null ? "—" : formatBytes(cards.requestSize),
-    },
-    {
-      label: "Response size",
-      value: cards.responseSize == null ? "—" : formatBytes(cards.responseSize),
-    },
-    {
-      label: "Span count",
-      value: cards.spanCount == null ? "—" : String(cards.spanCount),
-    },
+    { label: "Status", value: cards.status == null ? "—" : String(cards.status), sub: status.sub, tone: status.tone },
+    { label: "Request size", value: cards.requestSize == null ? "—" : formatBytes(cards.requestSize), sub: "inbound body" },
+    { label: "Response size", value: cards.responseSize == null ? "—" : formatBytes(cards.responseSize), sub: "outbound body" },
+    { label: "Spans", value: cards.spanCount == null ? "—" : String(cards.spanCount), sub: "in the correlated trace" },
   ];
 
-  return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-      {items.map((item) => (
-        <div
-          key={item.label}
-          className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] px-4 py-3"
-        >
-          <div className="font-[family-name:var(--mono)] text-[10px] font-medium uppercase tracking-[0.08em] text-[var(--text3)]">
-            {item.label}
-          </div>
-          <div className="mt-1.5 font-[family-name:var(--mono)] text-[20px] font-medium leading-none tracking-[-0.02em] tabular-nums text-[var(--text)]">
-            {item.value}
-          </div>
-        </div>
-      ))}
-    </div>
-  );
+  return <ReadoutBand cells={cells} />;
 }

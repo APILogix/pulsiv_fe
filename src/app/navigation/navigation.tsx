@@ -117,7 +117,7 @@ export const mainNavigation: MainNavItem[] = [
       { label: "Traces", path: "/observability/traces", icon: ListTree, status: "live", description: "Distributed traces across services and spans.", group: "Events" },
       { label: "Logs", path: "/observability/logs", icon: Logs, status: "live", description: "Searchable, tailing log stream across services.", group: "Events" },
       { label: "Replays", path: "/observability/replay", icon: Video, status: "live", description: "Recorded browser sessions with DOM and network capture.", group: "Events" },
-      { label: "Latency", path: "/observability/latency", icon: LineChart, status: "partial", description: "Latency view based on current aggregate analytics support.", group: "Performance" },
+      { label: "Latency", path: "/observability/latency", icon: LineChart, status: "live", description: "Latency percentiles, distribution, and the endpoints that own the tail.", group: "Performance" },
       { label: "Metrics", path: "/observability/metrics", icon: Activity, status: "live", description: "Custom counters, gauges, and histograms.", group: "Performance" },
       { label: "Runtime Metrics", path: "/observability/runtime-metrics", icon: MemoryStick, status: "live", description: "V8 / Node.js internals: heap usage and active handles.", group: "Performance" },
       { label: "Profiling", path: "/observability/profiling", icon: Cpu, status: "live", description: "CPU and memory profiles captured from running processes.", group: "Performance" },

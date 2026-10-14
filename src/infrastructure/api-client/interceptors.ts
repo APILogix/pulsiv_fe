@@ -8,10 +8,12 @@ export function setupInterceptors(client: AxiosInstance) {
   // Request: attach Bearer token
   client.interceptors.request.use(authInterceptor);
 
-  // Response: refresh on 401, then error handling, then retry logic
+  // Response: 1) refresh on 401, 2) retry on 5xx/network dropouts, 3) unwrap & toast errors
   attachRefreshInterceptor(client);
 
-  // Response unwrapping interceptor for canonical success envelopes
+  client.interceptors.response.use((res) => res, createRetryInterceptor(client));
+
+  // Response unwrapping interceptor for canonical success envelopes + error toast
   client.interceptors.response.use(
     (response: AxiosResponse) => {
       // If response body is a canonical success envelope, attach data directly
@@ -27,6 +29,4 @@ export function setupInterceptors(client: AxiosInstance) {
     },
     createErrorInterceptor(client)
   );
-
-  client.interceptors.response.use((res) => res, createRetryInterceptor(client));
 }

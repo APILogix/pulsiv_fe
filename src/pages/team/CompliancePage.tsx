@@ -1,138 +1,176 @@
-import { CalendarClock, ClipboardCheck, Download, FileCheck2, ShieldCheck } from "lucide-react";
-
+import { Button as UiButton } from "@/components/ui/button";
 import { useCompliance } from "@/hooks/useDummyData";
 import type { Compliance } from "@/lib/dummy-data";
 import {
-  HeroFacts,
-  KeyValueGrid,
-  Meter,
-  PageHero,
-  Panel,
-  Pill,
-  Ring,
-  SectionHeading,
-  type HeroFact,
-  type KeyValueItem,
-} from "@/shared/ui/pulse";
-import { Button, StatusBadge, Table, Td, Timestamp, Tr, demoSuccess } from "@/shared/observe";
+  HIDE_BELOW_MD,
+  HIDE_BELOW_SM,
+  ProjectPageHeader,
+  Readouts,
+  RowTitle,
+  Sheet,
+  SheetCell,
+  SheetEmpty,
+  SheetRow,
+  SheetTable,
+  WorkspacePage,
+  type Readout,
+  type ReadoutTone,
+  type SheetColumn,
+} from "@/modules/projects/components/project-page";
+import { Timestamp, demoSuccess, formatDate, formatRelativeTime } from "@/shared/observe";
+import { Notice, Pill, type SurfaceTone } from "@/shared/ui/pulse";
 
-const AUDIT_HEADERS = ["Framework", "State", "Controls", "Coverage", "Last audit", "Next audit"];
+// ── Helpers ──────────────────────────────────────────────────
+
+const STATE_LABEL: Record<string, string> = {
+  compliant: "Compliant",
+  "in-progress": "In progress",
+  "not-started": "Not started",
+};
+
+const STATE_TONE: Record<string, SurfaceTone> = {
+  compliant: "green",
+  "in-progress": "amber",
+  "not-started": "neutral",
+};
 
 function coverage(framework: Compliance) {
   if (framework.controlsTotal === 0) return 0;
   return Math.round((framework.controlsPassing / framework.controlsTotal) * 100);
 }
 
-function frameworkFacts(framework: Compliance): KeyValueItem[] {
-  return [
-    { label: "Controls passing", value: `${framework.controlsPassing} of ${framework.controlsTotal}` },
-    { label: "Coverage", value: `${coverage(framework)}%` },
-    { label: "Last audit", value: <Timestamp value={framework.lastAuditAt} /> },
-    { label: "Next audit", value: <Timestamp value={framework.nextAuditAt} /> },
-  ];
+function coverageTone(percent: number): ReadoutTone {
+  if (percent >= 90) return "good";
+  if (percent >= 70) return "warn";
+  return "bad";
 }
 
-function statePill(status: string) {
-  if (status === "compliant") return <Pill tone="green" dot>Compliant</Pill>;
-  if (status === "in-progress") return <Pill tone="amber" dot>In progress</Pill>;
-  return <Pill tone="neutral" dot>Not started</Pill>;
+function StatePill({ status }: { status: string }) {
+  return (
+    <Pill tone={STATE_TONE[status] ?? "neutral"} dot={status === "compliant" || status === "in-progress"}>
+      {STATE_LABEL[status] ?? status}
+    </Pill>
+  );
 }
+
+const FRAMEWORK_COLUMNS: SheetColumn[] = [
+  { key: "framework", header: "Framework" },
+  { key: "state", header: "State", className: "w-[130px]" },
+  { key: "controls", header: "Controls", className: `w-[110px] ${HIDE_BELOW_SM}`, align: "right" },
+  { key: "coverage", header: "Coverage", className: "w-[96px]", align: "right" },
+  { key: "last", header: "Last audit", className: `w-[130px] ${HIDE_BELOW_MD}` },
+  { key: "next", header: "Next audit", className: `w-[130px] ${HIDE_BELOW_MD}` },
+];
+
+// ── Page ─────────────────────────────────────────────────────
 
 export default function CompliancePage() {
   const { data } = useCompliance();
-  const frameworks = data ?? [];
+  const frameworks = data;
 
   const compliant = frameworks.filter((framework) => framework.status === "compliant").length;
+  const inProgress = frameworks.filter((framework) => framework.status === "in-progress").length;
   const controlsTotal = frameworks.reduce((sum, framework) => sum + framework.controlsTotal, 0);
   const controlsPassing = frameworks.reduce((sum, framework) => sum + framework.controlsPassing, 0);
   const overall = controlsTotal === 0 ? 0 : Math.round((controlsPassing / controlsTotal) * 100);
-  const nextAudit = frameworks.length
-    ? frameworks.reduce((soonest, framework) => (framework.nextAuditAt < soonest ? framework.nextAuditAt : soonest), frameworks[0].nextAuditAt)
+  const nextFramework = frameworks.length
+    ? frameworks.reduce((soonest, framework) => (framework.nextAuditAt < soonest.nextAuditAt ? framework : soonest))
     : null;
 
-  const facts: HeroFact[] = [
-    { label: "Frameworks tracked", value: frameworks.length, icon: FileCheck2 },
-    { label: "Compliant", value: compliant, tone: compliant > 0 ? "green" : "neutral", icon: ShieldCheck },
-    { label: "Controls passing", value: `${controlsPassing}/${controlsTotal}`, icon: ClipboardCheck },
+  const readouts: Readout[] = [
+    {
+      label: "Frameworks tracked",
+      value: frameworks.length,
+      sub: inProgress > 0 ? `${inProgress} in progress` : "Each with its own control set",
+    },
+    {
+      label: "Compliant",
+      value: `${compliant}/${frameworks.length}`,
+      sub: compliant === frameworks.length ? "Every framework" : `${frameworks.length - compliant} not yet compliant`,
+      tone: frameworks.length > 0 && compliant === frameworks.length ? "good" : "neutral",
+    },
+    {
+      label: "Controls passing",
+      value: `${controlsPassing}/${controlsTotal}`,
+      sub: `${overall}% across every framework`,
+      tone: controlsTotal > 0 ? coverageTone(overall) : "neutral",
+    },
     {
       label: "Next audit",
-      value: nextAudit ? <Timestamp value={nextAudit} /> : "—",
-      icon: CalendarClock,
+      value: nextFramework ? formatDate(nextFramework.nextAuditAt) : "—",
+      sub: nextFramework
+        ? `${nextFramework.framework}, ${formatRelativeTime(nextFramework.nextAuditAt)}`
+        : "No audit scheduled",
     },
   ];
 
   return (
-    <div className="flex flex-col gap-6">
-      <PageHero
-        eyebrow="Governance"
+    <WorkspacePage>
+      <ProjectPageHeader
         title="Compliance"
+        badges={<Pill tone="neutral">Demo data</Pill>}
         description="Framework coverage, control health, and audit schedule for this organization."
-        icon={ShieldCheck}
         actions={
-          <Button variant="secondary" onClick={() => demoSuccess("Compliance report generated")}>
-            <Download className="size-4" aria-hidden="true" />
+          <UiButton variant="outline" size="lg" onClick={() => demoSuccess("Compliance report generated")}>
             Download report
-          </Button>
+          </UiButton>
+        }
+      />
+
+      <Notice tone="neutral">
+        These records are sample data until the compliance API is connected.
+      </Notice>
+
+      <Readouts cells={readouts} label="Compliance summary" />
+
+      <Sheet
+        title="Frameworks"
+        description="Each framework tracks its own control set and audit cadence."
+        footer={
+          <span>
+            {compliant} of {frameworks.length} frameworks compliant, {controlsPassing} of {controlsTotal} controls passing
+          </span>
         }
       >
-        <HeroFacts facts={facts} />
-      </PageHero>
-
-      <Panel
-        title="Control coverage"
-        description="Share of all tracked controls currently passing across every framework."
-        icon={ClipboardCheck}
-        tone="brand"
-      >
-        <div className="flex flex-col items-center gap-6 sm:flex-row sm:items-center">
-          <Ring value={overall} label={`${overall}%`} sublabel="Passing" size={112} tone={overall >= 90 ? "green" : overall >= 70 ? "amber" : "red"} />
-          <div className="flex min-w-0 flex-1 flex-col gap-4">
+        {frameworks.length === 0 ? (
+          <SheetEmpty
+            title="No frameworks tracked"
+            description="Frameworks such as SOC 2 or GDPR appear here with their control coverage once the compliance API is connected."
+          />
+        ) : (
+          <SheetTable columns={FRAMEWORK_COLUMNS} caption="Compliance frameworks, control coverage, and audit dates" minWidth={440}>
             {frameworks.map((framework) => (
-              <Meter
-                key={framework.id}
-                label={framework.framework}
-                used={framework.controlsPassing}
-                limit={framework.controlsTotal}
-                tone={framework.status === "compliant" ? "green" : "amber"}
-                hint={`${coverage(framework)}% of controls passing`}
-              />
+              <SheetRow key={framework.id}>
+                <SheetCell>
+                  <RowTitle
+                    title={framework.framework}
+                    subtitle={`${framework.controlsPassing} of ${framework.controlsTotal} controls passing`}
+                  />
+                </SheetCell>
+                <SheetCell>
+                  <StatePill status={framework.status} />
+                </SheetCell>
+                <SheetCell align="right" className={HIDE_BELOW_SM}>
+                  <span className="font-[family-name:var(--mono)] text-[12px] tabular-nums text-[var(--text2)]">
+                    {framework.controlsPassing}/{framework.controlsTotal}
+                  </span>
+                </SheetCell>
+                <SheetCell align="right">
+                  <span className="font-[family-name:var(--mono)] text-[12px] tabular-nums text-[var(--text)]">
+                    {coverage(framework)}%
+                  </span>
+                </SheetCell>
+                <SheetCell className={HIDE_BELOW_MD}>
+                  <Timestamp value={framework.lastAuditAt} />
+                </SheetCell>
+                <SheetCell className={HIDE_BELOW_MD}>
+                  <Timestamp value={framework.nextAuditAt} />
+                </SheetCell>
+              </SheetRow>
             ))}
-          </div>
-        </div>
-      </Panel>
-
-      <SectionHeading title="Frameworks" description="Each framework tracks its own control set and audit cadence." />
-
-      <div className="grid gap-4 lg:grid-cols-2">
-        {frameworks.map((framework) => (
-          <Panel
-            key={framework.id}
-            title={framework.framework}
-            icon={FileCheck2}
-            tone={framework.status === "compliant" ? "green" : framework.status === "in-progress" ? "amber" : "neutral"}
-            actions={statePill(framework.status)}
-          >
-            <KeyValueGrid items={frameworkFacts(framework)} columns={2} />
-          </Panel>
-        ))}
-      </div>
-
-      <Panel title="Controls and audits" description="Full framework register with audit history." icon={CalendarClock} tone="blue" bodyClassName="p-0">
-        <Table headers={AUDIT_HEADERS} maxHeight="30rem">
-          {frameworks.map((framework) => (
-            <Tr key={framework.id}>
-              <Td className="font-medium">{framework.framework}</Td>
-              <Td><StatusBadge status={framework.status} /></Td>
-              <Td className="font-[family-name:var(--mono)] text-[12px] tabular-nums text-[var(--text2)]">
-                {framework.controlsPassing}/{framework.controlsTotal}
-              </Td>
-              <Td className="tabular-nums">{coverage(framework)}%</Td>
-              <Td><Timestamp value={framework.lastAuditAt} /></Td>
-              <Td><Timestamp value={framework.nextAuditAt} /></Td>
-            </Tr>
-          ))}
-        </Table>
-      </Panel>
-    </div>
+          </SheetTable>
+        )}
+      </Sheet>
+    </WorkspacePage>
   );
 }

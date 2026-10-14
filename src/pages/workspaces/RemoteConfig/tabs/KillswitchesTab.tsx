@@ -1,112 +1,167 @@
 import { useState } from 'react';
+import { toast } from 'sonner';
+import { ShieldAlert, ShieldCheck } from 'lucide-react';
+
+import { ConfirmDialog } from '@/modules/projects/components/project-ui';
+import { Notice, Panel, Pill, RowStack, Toggle } from '@/shared/ui/pulse';
+
 import { SectionBanner } from '../components/HelpSystem';
 import type { SdkConfigState } from '../schema';
-import { Switch } from '@/components/ui/switch';
-import { cn } from '@/lib/utils';
-import { toast } from 'sonner';
-import { Button } from '@/shared/observe';
-import { ShieldAlert, AlertTriangle, Flame } from 'lucide-react';
 
 interface KillswitchesTabProps {
   killswitches: SdkConfigState['killswitches'];
   onChange: (key: keyof SdkConfigState['killswitches'], value: boolean) => void;
 }
 
-const SWITCHES = [
-  { key: 'disableSDK' as const, label: 'Disable Entire SDK', desc: 'Stops ALL telemetry collection and egress. The SDK becomes a no-op.' },
-  { key: 'disableTransport' as const, label: 'Disable Transport', desc: 'Stops all data from being sent to Pulse. Events queue locally and are dropped when full.' },
-  { key: 'disableErrors' as const, label: 'Disable Error Capture', desc: 'Stops error event collection. Unhandled exceptions are no longer reported.' },
-  { key: 'disableLogs' as const, label: 'Disable Logging', desc: 'Stops log shipping. Application logs are no longer sent to Pulse.' },
-  { key: 'disableMetrics' as const, label: 'Disable Metrics', desc: 'Stops all metrics collection and shipping.' },
-  { key: 'disableTracing' as const, label: 'Disable Tracing', desc: 'Stops distributed trace generation. No spans are created.' },
-  { key: 'disableProfiling' as const, label: 'Disable Profiling', desc: 'Stops CPU/memory profiling.' },
+type KillswitchKey = keyof SdkConfigState['killswitches'];
+
+interface SwitchDef {
+  key: KillswitchKey;
+  label: string;
+  desc: string;
+  impact: 'critical' | 'high' | 'medium' | 'low';
+}
+
+const SWITCHES: SwitchDef[] = [
+  {
+    key: 'disableSDK',
+    label: 'Entire SDK',
+    desc: 'Turns the SDK into a no-op. Listeners, patches, and workers stop running.',
+    impact: 'critical',
+  },
+  {
+    key: 'disableTransport',
+    label: 'Network transport',
+    desc: 'Stops all outgoing traffic to ingestion endpoints. Events are not sent over the network.',
+    impact: 'high',
+  },
+  {
+    key: 'disableErrors',
+    label: 'Error capture',
+    desc: 'Stops capturing unhandled exceptions and promise rejections.',
+    impact: 'medium',
+  },
+  {
+    key: 'disableLogs',
+    label: 'Log shipping',
+    desc: 'Stops capturing structured log entries. Logs print only to the local console.',
+    impact: 'medium',
+  },
+  {
+    key: 'disableMetrics',
+    label: 'Metrics',
+    desc: 'Stops runtime and custom metric aggregation and dispatch.',
+    impact: 'medium',
+  },
+  {
+    key: 'disableTracing',
+    label: 'Distributed tracing',
+    desc: 'Stops trace generation and span assembly across all active requests.',
+    impact: 'medium',
+  },
+  {
+    key: 'disableProfiling',
+    label: 'CPU and memory profiling',
+    desc: 'Stops continuous CPU and heap profiling, removing its process overhead.',
+    impact: 'low',
+  },
 ];
 
+const labelFor = (key: KillswitchKey) => SWITCHES.find((item) => item.key === key)?.label ?? key;
+
 export function KillswitchesTab({ killswitches, onChange }: KillswitchesTabProps) {
-  const [confirmKey, setConfirmKey] = useState<keyof SdkConfigState['killswitches'] | null>(null);
+  const [confirmKey, setConfirmKey] = useState<KillswitchKey | null>(null);
+  const pendingSwitch = confirmKey ? SWITCHES.find((item) => item.key === confirmKey) : undefined;
 
-  const handleToggle = (key: keyof SdkConfigState['killswitches'], val: boolean) => {
-    if (val) {
+  const handleToggle = (key: KillswitchKey, next: boolean) => {
+    if (next) {
+      // Arming always asks first; disarming is the safe direction.
       setConfirmKey(key);
-    } else {
-      onChange(key, false);
-      toast.success(`${SWITCHES.find((s) => s.key === key)?.label} disarmed.`);
+      return;
     }
+    onChange(key, false);
+    toast.success(`Killswitch disarmed: ${labelFor(key).toLowerCase()}`, {
+      description: 'Publish to apply it to connected SDKs.',
+    });
   };
 
-  const confirmToggle = () => {
-    if (confirmKey) {
-      onChange(confirmKey, true);
-      toast.error(`${SWITCHES.find((s) => s.key === confirmKey)?.label} ARMED.`);
-      setConfirmKey(null);
-    }
+  const confirmArm = () => {
+    if (!confirmKey) return;
+    onChange(confirmKey, true);
+    toast.warning(`Killswitch armed: ${labelFor(confirmKey).toLowerCase()}`, {
+      description: 'Publish to apply it to connected SDKs.',
+    });
+    setConfirmKey(null);
   };
+
+  const armedCount = SWITCHES.filter((item) => killswitches[item.key]).length;
 
   return (
-    <div className="flex flex-col gap-6 animate-in fade-in duration-300">
-      <SectionBanner title="Emergency Incident Controls & Killswitches" type="danger">
-        Emergency override switches for immediate incident mitigation. Arming a killswitch immediately halts telemetry across connected SDK fleets.
+    <div className="flex flex-col gap-6">
+      <SectionBanner title="Killswitches" type="danger">
+        Emergency overrides for incident mitigation. An armed killswitch takes precedence over every other telemetry
+        setting and suppresses matching telemetry across all connected SDKs.
       </SectionBanner>
 
-      <div className="rounded-[16px] border border-red-500/40 bg-red-500/5 shadow-xl overflow-hidden">
-        <div className="border-b border-red-500/30 px-5 py-4 flex items-center justify-between bg-red-500/10">
-          <h3 className="font-bold text-[14px] text-red-400 flex items-center gap-2">
-            <ShieldAlert className="size-4 text-red-500 animate-pulse" /> Emergency Killswitch Panel
-          </h3>
-          <span className="text-[11px] font-mono font-bold text-red-400">7 Emergency Triggers</span>
-        </div>
+      {armedCount > 0 ? (
+        <Notice tone="red" icon={ShieldAlert} title={`${armedCount} ${armedCount === 1 ? 'killswitch' : 'killswitches'} armed`}>
+          Matching telemetry is suppressed on connected SDKs once this configuration is published.
+        </Notice>
+      ) : (
+        <Notice icon={ShieldCheck} title="No killswitches armed">
+          Telemetry follows the settings in the other sections.
+        </Notice>
+      )}
 
-        <div className="divide-y divide-red-500/20">
-          {SWITCHES.map(({ key, label, desc }) => {
+      <Panel
+        title="Switches"
+        description="Arming asks for confirmation. Changes apply after you publish."
+        bodyClassName="p-0"
+      >
+        <RowStack>
+          {SWITCHES.map(({ key, label, desc, impact }) => {
             const isArmed = killswitches[key];
             return (
-              <div key={key} className={cn('flex items-center justify-between p-5 transition-colors', isArmed ? 'bg-red-500/20' : 'hover:bg-red-500/10')}>
-                <div className="flex items-start gap-4">
-                  <div className={cn("flex size-10 shrink-0 items-center justify-center rounded-xl font-bold text-sm border", isArmed ? "bg-red-500 text-white border-red-600 shadow-md shadow-red-500/30" : "bg-red-500/20 text-red-400 border-red-500/30")}>
-                    <Flame className="size-5" />
+              <div key={key} className="flex items-center justify-between gap-6 px-5 py-3.5">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-[13px] font-medium text-[var(--text)]">{label}</span>
+                    {isArmed && (
+                      <Pill tone="red" dot>
+                        Armed
+                      </Pill>
+                    )}
                   </div>
-                  <div>
-                    <h4 className={cn('font-bold text-[14px]', isArmed ? 'text-red-400' : 'text-[var(--text)]')}>{label}</h4>
-                    <p className={cn('mt-0.5 text-[12px]', isArmed ? 'text-red-300 font-semibold' : 'text-[var(--text3)]')}>{desc}</p>
-                  </div>
+                  <p className="mt-0.5 max-w-[68ch] text-[12px] leading-[1.5] text-[var(--text2)]">{desc}</p>
+                  <p className="mt-1 font-[family-name:var(--mono)] text-[11.5px] text-[var(--text3)]">
+                    {key} · {impact} impact
+                  </p>
                 </div>
-                <div className="pl-4">
-                  <Switch checked={isArmed} onCheckedChange={(val) => handleToggle(key, val)} />
-                </div>
+                <Toggle
+                  checked={isArmed}
+                  onChange={(next) => handleToggle(key, next)}
+                  label={`Killswitch for ${label.toLowerCase()}`}
+                />
               </div>
             );
           })}
-        </div>
-      </div>
+        </RowStack>
+      </Panel>
 
-      {confirmKey && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
-          <div className="w-full max-w-md rounded-2xl border border-red-500/40 bg-[var(--bg1)] p-6 shadow-2xl animate-in zoom-in-95 duration-200">
-            <div className="flex items-center gap-3 text-red-400">
-              <AlertTriangle className="size-6 shrink-0" />
-              <h2 className="text-[17px] font-bold">Arm Emergency Killswitch?</h2>
-            </div>
-
-            <div className="mt-4 rounded-xl border border-red-500/40 bg-red-500/10 p-4">
-              <p className="font-bold text-sm text-red-300">{SWITCHES.find((s) => s.key === confirmKey)?.label}</p>
-              <p className="mt-1 text-xs text-[var(--text2)]">{SWITCHES.find((s) => s.key === confirmKey)?.desc}</p>
-            </div>
-
-            <p className="mt-4 text-xs text-[var(--text2)] leading-relaxed">
-              This action takes effect immediately across all active SDK instances. Are you sure you want to proceed?
-            </p>
-
-            <div className="mt-6 flex justify-end gap-3">
-              <Button type="button" variant="ghost" onClick={() => setConfirmKey(null)} className="h-9 px-4 text-xs">
-                Cancel
-              </Button>
-              <Button type="button" className="h-9 px-4 text-xs font-bold bg-red-600 hover:bg-red-500 text-white shadow-lg shadow-red-600/30" onClick={confirmToggle}>
-                Arm Killswitch Immediately
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmDialog
+        open={pendingSwitch !== undefined}
+        onOpenChange={(open) => {
+          if (!open) setConfirmKey(null);
+        }}
+        title={pendingSwitch ? `Arm the ${pendingSwitch.label.toLowerCase()} killswitch?` : 'Arm killswitch?'}
+        description={pendingSwitch?.desc}
+        confirmLabel="Arm killswitch"
+        onConfirm={confirmArm}
+      >
+        <p className="text-[13px] leading-[1.6] text-[var(--text2)]">
+          It is added to this draft. After you publish, connected SDKs apply it on their next configuration refresh.
+        </p>
+      </ConfirmDialog>
     </div>
   );
 }

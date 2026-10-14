@@ -2,16 +2,22 @@ import { useRef, useState } from "react";
 import { ArrowDownRight, ArrowUpRight, Minus } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { IconChip, type SurfaceTone } from "./surfaces";
+import type { SurfaceTone } from "./surfaces";
 import { ChartTooltip } from "./chart-tooltip";
 
 // ── module-level constants (rules.md §1.2) ──
 
 const TREND_TONE: Record<string, string> = {
-  up: "text-[var(--green)] bg-[var(--green-bg)]",
-  down: "text-[var(--red)] bg-[var(--red-bg)]",
-  flat: "text-[var(--text3)] bg-[var(--bg2)]",
+  up: "text-[var(--green)]",
+  down: "text-[var(--red)]",
+  flat: "text-[var(--text3)]",
 };
+
+/** Sparkline colour for a tone: state tones keep their colour, the rest read as neutral data. */
+function seriesColor(tone: SurfaceTone): string {
+  if (tone === "green" || tone === "amber" || tone === "red" || tone === "ai") return `var(--${tone})`;
+  return "var(--text2)";
+}
 
 const TREND_ICON: Record<string, LucideIcon> = {
   up: ArrowUpRight,
@@ -28,11 +34,11 @@ export function TrendPill({ trend, children }: { trend: Trend; children: React.R
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-[family-name:var(--mono)] text-[10px] font-medium tabular-nums",
+        "inline-flex items-center gap-0.5 font-[family-name:var(--mono)] text-[12px] font-medium tabular-nums",
         TREND_TONE[trend]
       )}
     >
-      <Icon className="size-3" aria-hidden="true" />
+      <Icon className="size-3.5" aria-hidden="true" />
       {children}
     </span>
   );
@@ -106,14 +112,14 @@ export function Sparkline({
           <polygon
             points={`0,${height} ${points.join(" ")} ${width},${height}`}
             fill={color}
-            fillOpacity="0.14"
+            fillOpacity="0.08"
           />
         )}
         <polyline
           points={points.join(" ")}
           fill="none"
           stroke={color}
-          strokeWidth="1.75"
+          strokeWidth="1.5"
           strokeLinecap="round"
           strokeLinejoin="round"
           vectorEffect="non-scaling-stroke"
@@ -183,31 +189,30 @@ export function StatCard({
   series?: number[];
   className?: string;
 }) {
-  const accent = tone === "neutral" ? "var(--text3)" : `var(--${tone})`;
+  // `icon` is accepted for call-site compatibility but not drawn: KPI tiles
+  // never carry an icon chip (design/dashboards/DESIGN.md).
+  void icon;
   return (
     <div
       className={cn(
-        "pulse-lift relative flex flex-col overflow-hidden rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)]",
+        "relative flex min-w-0 flex-col overflow-hidden rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)]",
         className
       )}
     >
-      <div className="flex flex-1 flex-col gap-3 p-4">
-        <div className="flex items-start justify-between gap-2">
-          <span className="font-[family-name:var(--mono)] text-[10px] font-medium uppercase tracking-[0.09em] text-[var(--text3)]">{label}</span>
-          {icon && <IconChip icon={icon} tone={tone} size="sm" />}
-        </div>
+      <div className="flex flex-1 flex-col gap-2.5 px-5 py-4">
+        <span className="truncate text-[12px] text-[var(--text2)]">{label}</span>
         <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-          <span className="font-[family-name:var(--mono)] text-[26px] font-medium leading-none tabular-nums tracking-[-0.02em] text-[var(--text)]">
+          <span className="font-[family-name:var(--mono)] text-[24px] font-medium leading-none tabular-nums tracking-[-0.02em] text-[var(--text)]">
             {value}
           </span>
-          {unit && <span className="font-[family-name:var(--mono)] text-[11px] font-medium text-[var(--text3)]">{unit}</span>}
+          {unit && <span className="font-[family-name:var(--mono)] text-[12px] text-[var(--text3)]">{unit}</span>}
           {trend && delta && <TrendPill trend={trend}>{delta}</TrendPill>}
         </div>
         {footnote && <p className="text-[12px] leading-snug text-[var(--text3)]">{footnote}</p>}
       </div>
       {series && series.length > 1 && (
-        <div className="-mb-px">
-          <Sparkline data={series} color={accent} height={38} interactive />
+        <div className="-mb-px px-0">
+          <Sparkline data={series} color={seriesColor(tone)} height={32} interactive />
         </div>
       )}
     </div>
@@ -237,8 +242,8 @@ export function Meter({
 }) {
   const unlimited = limit === null || limit === undefined || limit === -1;
   const pct = unlimited || limit === 0 ? 0 : Math.min(100, (used / limit) * 100);
-  const derived: SurfaceTone = tone ?? (pct >= 90 ? "red" : pct >= 75 ? "amber" : "brand");
-  const accent = `var(--${derived})`;
+  const derived: SurfaceTone = tone ?? (pct >= 90 ? "red" : pct >= 75 ? "amber" : "neutral");
+  const accent = derived === "neutral" || derived === "brand" ? "var(--text)" : `var(--${derived})`;
   const fmt = format ?? ((value: number) => value.toLocaleString("en-US"));
 
   return (
@@ -251,7 +256,7 @@ export function Meter({
         </span>
       </div>
       <div
-        className="h-1.5 w-full overflow-hidden rounded-full bg-[var(--bg3)]"
+        className="h-1 w-full overflow-hidden rounded-full bg-[var(--bg3)]"
         role="progressbar"
         aria-label={label}
         aria-valuenow={Math.round(pct)}
@@ -287,9 +292,9 @@ export function Ring({
   tone?: SurfaceTone;
 }) {
   const pct = max <= 0 ? 0 : Math.max(0, Math.min(1, value / max));
-  const derived: SurfaceTone = tone ?? (pct >= 0.9 ? "red" : pct >= 0.75 ? "amber" : "brand");
-  const accent = `var(--${derived})`;
-  const stroke = 8;
+  const derived: SurfaceTone = tone ?? (pct >= 0.9 ? "red" : pct >= 0.75 ? "amber" : "neutral");
+  const accent = derived === "neutral" || derived === "brand" ? "var(--text)" : `var(--${derived})`;
+  const stroke = 6;
   const radius = (size - stroke) / 2;
   const circumference = 2 * Math.PI * radius;
 
@@ -316,7 +321,7 @@ export function Ring({
             {label}
           </span>
         )}
-        {sublabel && <span className="font-[family-name:var(--mono)] text-[10px] uppercase tracking-[0.09em] text-[var(--text3)]">{sublabel}</span>}
+        {sublabel && <span className="text-[11px] text-[var(--text3)]">{sublabel}</span>}
       </div>
     </div>
   );
@@ -335,7 +340,7 @@ export function KeyValueGrid({ items, columns = 2 }: { items: KeyValueItem[]; co
     <dl className={cn("grid grid-cols-1 gap-x-6 gap-y-4", grid)}>
       {items.map((item) => (
         <div key={item.label} className="flex flex-col gap-1">
-          <dt className="font-[family-name:var(--mono)] text-[10px] font-medium uppercase tracking-[0.09em] text-[var(--text3)]">{item.label}</dt>
+          <dt className="text-[12px] text-[var(--text3)]">{item.label}</dt>
           <dd className="min-w-0 break-words text-[13px] text-[var(--text)]">{item.value}</dd>
         </div>
       ))}

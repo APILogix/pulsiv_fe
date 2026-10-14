@@ -1,7 +1,19 @@
-import { SectionBanner, FieldTooltip, MicroCopy } from '../components/HelpSystem';
+import { useId, useState } from 'react';
+
+import {
+  Sheet,
+  SheetCell,
+  SheetRow,
+  SheetTable,
+  ToolbarCount,
+  type SheetColumn,
+} from '@/modules/projects/components/project-page';
+import { Panel, RowStack, Toggle, fieldInputClass, fieldMonoClass } from '@/shared/ui/pulse';
+import { cn } from '@/lib/utils';
+
+import { SectionBanner } from '../components/HelpSystem';
 import { NumberField } from '../components/NumberField';
 import { ROUTE_KEYS, ROUTE_LABELS, type RouteKey, type SdkConfigState } from '../schema';
-import { Switch } from '@/components/ui/switch';
 import {
   BOUNDS,
   COMPRESSION_MODES,
@@ -14,11 +26,6 @@ import {
   type QueueOverflowStrategy,
   type FieldError,
 } from '../bounds';
-import { Activity, Radio, RefreshCw } from 'lucide-react';
-
-const inputClass =
-  'w-full rounded-[8px] border border-[var(--border)] bg-[var(--bg2)] px-3 py-1.5 text-[13px] text-[var(--text)] outline-none transition-colors focus:border-[var(--brand)] focus:ring-1 focus:ring-[var(--brand)] disabled:opacity-50 font-mono';
-const selectClass = 'w-full rounded-[8px] border border-[var(--border)] bg-[var(--bg2)] px-3 py-1.5 text-[13px] text-[var(--text)] outline-none transition-colors focus:border-[var(--brand)] focus:ring-1 focus:ring-[var(--brand)] disabled:opacity-50 cursor-pointer';
 
 interface TransportTabProps {
   transport: SdkConfigState['transport'];
@@ -32,12 +39,150 @@ interface TransportTabProps {
   errors: FieldError[];
 }
 
-const PRIORITY_BADGE: Record<TransportPriority, string> = {
-  critical: 'bg-red-500/15 text-red-400 border-red-500/30 font-bold',
-  high: 'bg-amber-500/15 text-amber-400 border-amber-500/30 font-bold',
-  normal: 'bg-cyan-500/15 text-cyan-400 border-cyan-500/30 font-semibold',
-  low: 'bg-[var(--bg3)] text-[var(--text2)] border-[var(--border)] font-medium',
+const PRIORITY_LABEL: Record<TransportPriority, string> = {
+  critical: 'Critical',
+  high: 'High',
+  normal: 'Normal',
+  low: 'Low',
 };
+
+const COMPRESSION_LABEL: Record<CompressionMode, string> = {
+  gzip: 'gzip',
+  none: 'None',
+};
+
+const BACKOFF_LABEL: Record<RetryBackoff, string> = {
+  exponential: 'Exponential',
+  linear: 'Linear',
+  fixed: 'Fixed',
+};
+
+const OVERFLOW_LABEL: Record<QueueOverflowStrategy, string> = {
+  drop_oldest: 'Drop oldest events',
+  drop_newest: 'Drop newest events',
+  reject: 'Reject new events',
+};
+
+type PriorityFilter = 'all' | TransportPriority;
+
+const ROUTE_COLUMNS: SheetColumn[] = [
+  { key: 'route', header: 'Route' },
+  { key: 'priority', header: 'Priority', className: 'w-[132px]' },
+  { key: 'batch', header: 'Batch size', className: 'w-[120px]' },
+  { key: 'flush', header: 'Flush interval', className: 'w-[136px]' },
+  { key: 'timeout', header: 'Timeout', className: 'w-[136px]' },
+  { key: 'compression', header: 'Compression', className: 'w-[124px]' },
+];
+
+const ERROR_INPUT = 'border-[var(--red)]/60 hover:border-[var(--red)] focus:border-[var(--red)] focus:ring-[var(--red-bg)]';
+const CELL_SELECT = cn(fieldInputClass, 'h-8 pr-7 text-[12.5px]');
+
+/** Compact numeric input for a table cell, with its unit inside the field. */
+function CellNumber({
+  label,
+  value,
+  onChange,
+  min,
+  max,
+  unit,
+  error,
+}: {
+  label: string;
+  value: number;
+  onChange: (value: number) => void;
+  min: number;
+  max: number;
+  unit?: string;
+  error?: string;
+}) {
+  const id = useId();
+  return (
+    <div className="flex flex-col gap-1">
+      <div className="relative">
+        <input
+          id={id}
+          type="number"
+          value={value}
+          onChange={(e) => onChange(Number(e.target.value))}
+          min={min}
+          max={max}
+          step={1}
+          aria-label={unit ? `${label} (${unit})` : label}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={error ? `${id}-error` : undefined}
+          className={cn(fieldMonoClass, 'h-8 text-right tabular-nums', unit && 'pr-9', error && ERROR_INPUT)}
+        />
+        {unit && (
+          <span
+            aria-hidden="true"
+            className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 font-[family-name:var(--mono)] text-[11.5px] text-[var(--text3)]"
+          >
+            {unit}
+          </span>
+        )}
+      </div>
+      {error && (
+        <p id={`${id}-error`} className="whitespace-normal text-[11.5px] leading-[1.4] text-[var(--red)]">
+          {error}
+        </p>
+      )}
+    </div>
+  );
+}
+
+/** Label + native select, matching NumberField's geometry. */
+function SelectField<T extends string>({
+  label,
+  value,
+  options,
+  labels,
+  onChange,
+}: {
+  label: string;
+  value: T;
+  options: readonly T[];
+  labels: Record<T, string>;
+  onChange: (value: T) => void;
+}) {
+  const id = useId();
+  return (
+    <div className="flex min-w-0 flex-col gap-1.5">
+      <label htmlFor={id} className="text-[13px] font-medium text-[var(--text2)]">
+        {label}
+      </label>
+      <select id={id} value={value} onChange={(e) => onChange(e.target.value as T)} className={fieldInputClass}>
+        {options.map((option) => (
+          <option key={option} value={option}>
+            {labels[option]}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
+/** One switch row at the top of a panel. */
+function SwitchRow({
+  label,
+  description,
+  checked,
+  onChange,
+}: {
+  label: string;
+  description: string;
+  checked: boolean;
+  onChange: (next: boolean) => void;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-6 px-5 py-3.5">
+      <div className="min-w-0">
+        <p className="text-[13px] font-medium text-[var(--text)]">{label}</p>
+        <p className="mt-0.5 text-[12px] leading-[1.5] text-[var(--text2)]">{description}</p>
+      </div>
+      <Toggle checked={checked} onChange={onChange} label={label} />
+    </div>
+  );
+}
 
 export function TransportTab({
   transport,
@@ -50,260 +195,231 @@ export function TransportTab({
   onChangeRuntime,
   errors,
 }: TransportTabProps) {
+  const [filterPriority, setFilterPriority] = useState<PriorityFilter>('all');
+  const filterId = useId();
   const errorFor = (path: string) => errors.find((e) => e.path === path)?.message;
 
+  const filteredRoutes = ROUTE_KEYS.filter(
+    (key) => filterPriority === 'all' || transport.routes[key].priority === filterPriority,
+  );
+
   return (
-    <div className="flex flex-col gap-6 animate-in fade-in duration-300">
+    <div className="flex flex-col gap-6">
       <SectionBanner
-        title="Transport Layer & Ingestion Pipeline"
-        type="info"
-        definition="The transport engine manages telemetry batching, compression algorithms, HTTP connection pools, retry backoffs, and route priorities."
+        title="Transport"
+        definition="Batching, compression, keep-alive connection pools, and delivery priority for every telemetry route."
       >
-        Configure high-throughput telemetry ingestion rules across all SDK routes.
+        Network tuning and retry behaviour for high-throughput delivery.
       </SectionBanner>
 
-      {/* Route Matrix */}
-      <div className="rounded-[16px] border border-[var(--border)] bg-[var(--bg1)] shadow-md overflow-hidden">
-        <div className="border-b border-[var(--border)] px-5 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Activity className="size-4 text-[var(--brand)]" />
-            <h3 className="font-bold text-[14px] text-[var(--text)]">Route Ingestion Matrix</h3>
-          </div>
-          <span className="text-[11px] font-mono text-[var(--text3)]">10 Standard Telemetry Routes</span>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-[13px]">
-            <thead>
-              <tr className="border-b border-[var(--border)] bg-[var(--bg2)]/60 text-[11px] uppercase font-bold text-[var(--text3)]">
-                <th className="px-5 py-3 whitespace-nowrap">Telemetry Route</th>
-                <th className="px-5 py-3 whitespace-nowrap">Flush Priority</th>
-                <th className="px-5 py-3 whitespace-nowrap">Batch Size</th>
-                <th className="px-5 py-3 whitespace-nowrap">Flush Interval (ms)</th>
-                <th className="px-5 py-3 whitespace-nowrap">HTTP Timeout (ms)</th>
-                <th className="px-5 py-3 whitespace-nowrap">Compression</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[var(--border)]">
-              {ROUTE_KEYS.map((routeKey) => {
-                const route = transport.routes[routeKey];
-                const prefix = `transport.routes.${routeKey}`;
-                return (
-                  <tr key={routeKey} className="hover:bg-[var(--bg2)]/40 transition-colors">
-                    <td className="px-5 py-3.5 font-bold text-[var(--text)]">{ROUTE_LABELS[routeKey]}</td>
-                    <td className="px-5 py-3.5">
-                      <select
-                        value={route.priority}
-                        onChange={(e) => onChangeRoute(routeKey, 'priority', e.target.value as TransportPriority)}
-                        className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] uppercase tracking-wider ${PRIORITY_BADGE[route.priority]} bg-transparent cursor-pointer outline-none`}
-                      >
-                        {TRANSPORT_PRIORITIES.map((p) => (
-                          <option key={p} value={p} className="bg-[var(--bg1)] text-[var(--text)] font-sans">
-                            {p}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-                    <td className="px-5 py-3.5">
-                      <input
-                        type="number"
-                        value={route.batchSize}
-                        onChange={(e) => onChangeRoute(routeKey, 'batchSize', Number(e.target.value))}
-                        min={BOUNDS['route.batchSize'].min}
-                        max={BOUNDS['route.batchSize'].max}
-                        className={`${inputClass} w-24 text-right ${errorFor(`${prefix}.batchSize`) ? 'border-red-500/60' : ''}`}
-                      />
-                    </td>
-                    <td className="px-5 py-3.5">
-                      <input
-                        type="number"
-                        value={route.flushIntervalMs}
-                        onChange={(e) => onChangeRoute(routeKey, 'flushIntervalMs', Number(e.target.value))}
-                        min={BOUNDS['route.flushIntervalMs'].min}
-                        max={BOUNDS['route.flushIntervalMs'].max}
-                        className={`${inputClass} w-28 text-right ${errorFor(`${prefix}.flushIntervalMs`) ? 'border-red-500/60' : ''}`}
-                      />
-                    </td>
-                    <td className="px-5 py-3.5">
-                      <input
-                        type="number"
-                        value={route.timeoutMs}
-                        onChange={(e) => onChangeRoute(routeKey, 'timeoutMs', Number(e.target.value))}
-                        min={BOUNDS['route.timeoutMs'].min}
-                        max={BOUNDS['route.timeoutMs'].max}
-                        className={`${inputClass} w-28 text-right ${errorFor(`${prefix}.timeoutMs`) ? 'border-red-500/60' : ''}`}
-                      />
-                    </td>
-                    <td className="px-5 py-3.5">
-                      <select
-                        value={route.compression}
-                        onChange={(e) => onChangeRoute(routeKey, 'compression', e.target.value as CompressionMode)}
-                        className="rounded-[6px] border border-[var(--border)] bg-[var(--bg2)] px-2 py-1 font-mono text-[12px] text-[var(--text)] outline-none cursor-pointer"
-                      >
-                        {COMPRESSION_MODES.map((mode) => (
-                          <option key={mode} value={mode}>
-                            {mode}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Retry & Queue Control Split */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        <div className="rounded-[16px] border border-[var(--border)] bg-[var(--bg1)] shadow-md p-5 flex flex-col gap-4">
-          <h3 className="font-bold text-[14px] text-[var(--text)] flex items-center gap-2">
-            <RefreshCw className="size-4 text-sky-400" /> Retry & Backoff Policy
-          </h3>
-
-          <div className="flex items-center justify-between rounded-xl bg-[var(--bg2)] p-4 border border-[var(--border)]">
-            <div>
-              <div className="font-bold text-[13px] text-[var(--text)] flex items-center gap-1.5">
-                Retry Engine Enabled
-                <FieldTooltip definition="When off, a failed upload is dropped immediately instead of retried." />
-              </div>
-              <MicroCopy active={transport.retry.enabled}>
-                {transport.retry.enabled ? 'Failed uploads are retried automatically.' : 'Failed uploads are dropped immediately.'}
-              </MicroCopy>
-            </div>
-            <Switch checked={transport.retry.enabled} onCheckedChange={(val) => onChangeRetry('enabled', val)} />
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <label className="text-[12px] font-bold text-[var(--text3)] uppercase tracking-wider">Backoff Strategy</label>
+      <Sheet
+        title="Routes"
+        description="Per-endpoint batching, timeouts, compression, and delivery priority."
+        toolbar={
+          <>
+            <label htmlFor={filterId} className="text-[12px] text-[var(--text3)]">
+              Priority
+            </label>
             <select
-              value={transport.retry.backoff}
-              onChange={(e) => onChangeRetry('backoff', e.target.value as RetryBackoff)}
-              className={selectClass}
-              disabled={!transport.retry.enabled}
+              id={filterId}
+              value={filterPriority}
+              onChange={(e) => setFilterPriority(e.target.value as PriorityFilter)}
+              className={cn(fieldInputClass, 'h-8 w-auto pr-7 text-[12.5px]')}
             >
-              {RETRY_BACKOFF_MODES.map((mode) => (
-                <option key={mode} value={mode}>
-                  {mode}
+              <option value="all">All priorities</option>
+              {TRANSPORT_PRIORITIES.map((priority) => (
+                <option key={priority} value={priority}>
+                  {PRIORITY_LABEL[priority]}
                 </option>
               ))}
             </select>
-          </div>
+            <ToolbarCount>
+              {filteredRoutes.length} of {ROUTE_KEYS.length} routes
+            </ToolbarCount>
+          </>
+        }
+      >
+        {filteredRoutes.length === 0 ? (
+          <p className="px-5 py-6 text-[13px] text-[var(--text2)]">
+            No routes use {PRIORITY_LABEL[filterPriority as TransportPriority].toLowerCase()} priority.
+          </p>
+        ) : (
+          <SheetTable columns={ROUTE_COLUMNS} caption="Transport settings per telemetry route" minWidth={820}>
+            {filteredRoutes.map((routeKey) => {
+              const route = transport.routes[routeKey];
+              const name = ROUTE_LABELS[routeKey];
+              const prefix = `transport.routes.${routeKey}`;
+              return (
+                <SheetRow key={routeKey}>
+                  <SheetCell>
+                    <div className="min-w-0">
+                      <div className="truncate text-[13px] font-medium text-[var(--text)]">{name}</div>
+                      <div className="font-[family-name:var(--mono)] text-[11.5px] text-[var(--text3)]">/{routeKey}</div>
+                    </div>
+                  </SheetCell>
+                  <SheetCell>
+                    <select
+                      value={route.priority}
+                      onChange={(e) => onChangeRoute(routeKey, 'priority', e.target.value as TransportPriority)}
+                      aria-label={`${name} priority`}
+                      className={CELL_SELECT}
+                    >
+                      {TRANSPORT_PRIORITIES.map((priority) => (
+                        <option key={priority} value={priority}>
+                          {PRIORITY_LABEL[priority]}
+                        </option>
+                      ))}
+                    </select>
+                  </SheetCell>
+                  <SheetCell>
+                    <CellNumber
+                      label={`${name} batch size`}
+                      value={route.batchSize}
+                      onChange={(v) => onChangeRoute(routeKey, 'batchSize', v)}
+                      min={BOUNDS['route.batchSize'].min}
+                      max={BOUNDS['route.batchSize'].max}
+                      error={errorFor(`${prefix}.batchSize`)}
+                    />
+                  </SheetCell>
+                  <SheetCell>
+                    <CellNumber
+                      label={`${name} flush interval`}
+                      value={route.flushIntervalMs}
+                      onChange={(v) => onChangeRoute(routeKey, 'flushIntervalMs', v)}
+                      min={BOUNDS['route.flushIntervalMs'].min}
+                      max={BOUNDS['route.flushIntervalMs'].max}
+                      unit="ms"
+                      error={errorFor(`${prefix}.flushIntervalMs`)}
+                    />
+                  </SheetCell>
+                  <SheetCell>
+                    <CellNumber
+                      label={`${name} timeout`}
+                      value={route.timeoutMs}
+                      onChange={(v) => onChangeRoute(routeKey, 'timeoutMs', v)}
+                      min={BOUNDS['route.timeoutMs'].min}
+                      max={BOUNDS['route.timeoutMs'].max}
+                      unit="ms"
+                      error={errorFor(`${prefix}.timeoutMs`)}
+                    />
+                  </SheetCell>
+                  <SheetCell>
+                    <select
+                      value={route.compression}
+                      onChange={(e) => onChangeRoute(routeKey, 'compression', e.target.value as CompressionMode)}
+                      aria-label={`${name} compression`}
+                      className={CELL_SELECT}
+                    >
+                      {COMPRESSION_MODES.map((mode) => (
+                        <option key={mode} value={mode}>
+                          {COMPRESSION_LABEL[mode]}
+                        </option>
+                      ))}
+                    </select>
+                  </SheetCell>
+                </SheetRow>
+              );
+            })}
+          </SheetTable>
+        )}
+      </Sheet>
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <NumberField
-              label="Max Retries"
-              value={transport.retry.maxRetries}
-              onChange={(v) => onChangeRetry('maxRetries', v)}
-              bound={BOUNDS['transport.retry.maxRetries']}
-              tooltip="How many times to retry a failed upload before dropping the batch."
-              error={errorFor('transport.retry.maxRetries')}
+      {/* Forms stay in the reading column; only the route table runs wide. */}
+      <div className="flex max-w-[800px] flex-col gap-6">
+        <Panel title="Connection pool" description="Shared HTTP connections to the ingestion endpoints." bodyClassName="p-0">
+          <RowStack>
+            <SwitchRow
+              label="Keep-alive"
+              description="Reuse open connections between batches instead of reconnecting."
+              checked={transport.keepAlive}
+              onChange={(next) => onChange('keepAlive', next)}
             />
-            <NumberField
-              label="Base Delay"
-              value={transport.retry.baseDelayMs}
-              onChange={(v) => onChangeRetry('baseDelayMs', v)}
-              bound={BOUNDS['transport.retry.baseDelayMs']}
-              tooltip="Initial delay before the first retry."
-              suffix="ms"
-              error={errorFor('transport.retry.baseDelayMs')}
-            />
-          </div>
-        </div>
-
-        <div className="rounded-[16px] border border-[var(--border)] bg-[var(--bg1)] shadow-md p-5 flex flex-col gap-4">
-          <h3 className="font-bold text-[14px] text-[var(--text)] flex items-center gap-2">
-            <Radio className="size-4 text-amber-400" /> Memory Queue & Overflow
-          </h3>
-
-          <div className="flex flex-col gap-1.5">
-            <label className="text-[12px] font-bold text-[var(--text3)] uppercase tracking-wider">Queue Overflow Strategy</label>
-            <select
-              value={transport.queue.overflowStrategy}
-              onChange={(e) => onChangeQueue('overflowStrategy', e.target.value as QueueOverflowStrategy)}
-              className={selectClass}
-            >
-              {QUEUE_OVERFLOW_STRATEGIES.map((mode) => (
-                <option key={mode} value={mode}>
-                  {mode}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            <NumberField
-              label="Queue Max Capacity"
-              value={transport.queue.maxSize}
-              onChange={(v) => onChangeQueue('maxSize', v)}
-              bound={BOUNDS['transport.queue.maxSize']}
-              tooltip="Maximum events buffered in memory."
-              error={errorFor('transport.queue.maxSize')}
-            />
-            <NumberField
-              label="Critical Reserve Slots"
-              value={transport.queue.criticalReserve}
-              onChange={(v) => onChangeQueue('criticalReserve', v)}
-              bound={BOUNDS['transport.queue.criticalReserve']}
-              tooltip="Slots reserved exclusively for critical-priority events."
-              error={errorFor('transport.queue.criticalReserve')}
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Connection Pool & TTL Delivery */}
-      <div className="grid gap-6 sm:grid-cols-2">
-        <div className="rounded-[16px] border border-[var(--border)] bg-[var(--bg1)] shadow-md p-5 flex flex-col gap-4">
-          <h3 className="font-bold text-[14px] text-[var(--text)]">HTTP Connection Pool</h3>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <NumberField
-              label="Max Connections"
-              value={transport.connections.maxTotalConnections}
-              onChange={(v) => onChangeConnections('maxTotalConnections', v)}
-              bound={BOUNDS['transport.connections.maxTotalConnections']}
-              error={errorFor('transport.connections.maxTotalConnections')}
-            />
-            <NumberField
-              label="Acquire Timeout"
-              value={transport.connections.acquireTimeoutMs}
-              onChange={(v) => onChangeConnections('acquireTimeoutMs', v)}
-              bound={BOUNDS['transport.connections.acquireTimeoutMs']}
-              suffix="ms"
-              error={errorFor('transport.connections.acquireTimeoutMs')}
-            />
-          </div>
-          <div className="flex items-center justify-between rounded-xl bg-[var(--bg2)] p-4 border border-[var(--border)]">
-            <div>
-              <div className="font-bold text-[13px] text-[var(--text)]">HTTP Keep-Alive</div>
-              <MicroCopy active={transport.keepAlive}>
-                {transport.keepAlive ? 'TCP connections are reused.' : 'New TCP connections opened for every upload.'}
-              </MicroCopy>
+            <div className="grid gap-x-5 gap-y-5 px-5 py-4 sm:grid-cols-2">
+              <NumberField
+                label="Max total connections"
+                value={transport.connections.maxTotalConnections}
+                onChange={(v) => onChangeConnections('maxTotalConnections', v)}
+                bound={BOUNDS['transport.connections.maxTotalConnections']}
+                error={errorFor('transport.connections.maxTotalConnections')}
+              />
+              <NumberField
+                label="Acquire timeout"
+                value={transport.connections.acquireTimeoutMs}
+                onChange={(v) => onChangeConnections('acquireTimeoutMs', v)}
+                bound={BOUNDS['transport.connections.acquireTimeoutMs']}
+                suffix="ms"
+                error={errorFor('transport.connections.acquireTimeoutMs')}
+              />
             </div>
-            <Switch checked={transport.keepAlive} onCheckedChange={(val) => onChange('keepAlive', val)} />
-          </div>
-        </div>
+          </RowStack>
+        </Panel>
 
-        <div className="rounded-[16px] border border-[var(--border)] bg-[var(--bg1)] shadow-md p-5 flex flex-col gap-4">
-          <h3 className="font-bold text-[14px] text-[var(--text)]">Config Refresh TTL</h3>
-          <NumberField
-            label="Config Cache TTL"
-            value={runtime.configTtlSeconds}
-            onChange={(v) => onChangeRuntime('configTtlSeconds', v)}
-            bound={BOUNDS['runtime.configTtlSeconds']}
-            suffix="seconds"
-            error={errorFor('runtime.configTtlSeconds')}
-          />
-          <div className="flex items-center justify-between rounded-xl bg-[var(--bg2)] p-4 border border-[var(--border)]">
-            <div>
-              <div className="font-bold text-[13px] text-[var(--text)]">Stale-While-Revalidate</div>
-              <MicroCopy active={runtime.staleWhileRevalidate}>
-                {runtime.staleWhileRevalidate ? 'Non-blocking background refresh.' : 'Blocks SDK until fresh config is returned.'}
-              </MicroCopy>
+        <Panel title="Retry and queue" description="What happens when a batch fails or the send queue fills up." bodyClassName="p-0">
+          <RowStack>
+            <SwitchRow
+              label="Automatic retries"
+              description="Retry failed batches using the backoff below."
+              checked={transport.retry.enabled}
+              onChange={(next) => onChangeRetry('enabled', next)}
+            />
+            <div className="grid gap-x-5 gap-y-5 px-5 py-4 sm:grid-cols-2">
+              <NumberField
+                label="Max retry attempts"
+                value={transport.retry.maxRetries}
+                onChange={(v) => onChangeRetry('maxRetries', v)}
+                bound={BOUNDS['transport.retry.maxRetries']}
+                error={errorFor('transport.retry.maxRetries')}
+              />
+              <NumberField
+                label="Base delay"
+                value={transport.retry.baseDelayMs}
+                onChange={(v) => onChangeRetry('baseDelayMs', v)}
+                bound={BOUNDS['transport.retry.baseDelayMs']}
+                suffix="ms"
+                error={errorFor('transport.retry.baseDelayMs')}
+              />
+              <SelectField
+                label="Backoff"
+                value={transport.retry.backoff}
+                options={RETRY_BACKOFF_MODES}
+                labels={BACKOFF_LABEL}
+                onChange={(value) => onChangeRetry('backoff', value)}
+              />
+              <SelectField
+                label="When the queue is full"
+                value={transport.queue.overflowStrategy}
+                options={QUEUE_OVERFLOW_STRATEGIES}
+                labels={OVERFLOW_LABEL}
+                onChange={(value) => onChangeQueue('overflowStrategy', value)}
+              />
             </div>
-            <Switch checked={runtime.staleWhileRevalidate} onCheckedChange={(val) => onChangeRuntime('staleWhileRevalidate', val)} />
-          </div>
-        </div>
+          </RowStack>
+        </Panel>
+
+        <Panel
+          title="Configuration refresh"
+          description={`Connected SDKs cache their active configuration for ${runtime.configTtlSeconds.toLocaleString()} seconds before checking the Pulse configuration endpoint again.`}
+          bodyClassName="p-0"
+        >
+          <RowStack>
+            <div className="grid gap-x-5 gap-y-5 px-5 py-4 sm:grid-cols-2">
+              <NumberField
+                label="Config TTL"
+                value={runtime.configTtlSeconds}
+                onChange={(v) => onChangeRuntime('configTtlSeconds', v)}
+                bound={BOUNDS['runtime.configTtlSeconds']}
+                suffix="s"
+                error={errorFor('runtime.configTtlSeconds')}
+              />
+            </div>
+            <SwitchRow
+              label="Stale while revalidate"
+              description="Keep using the cached configuration while a refresh is in flight."
+              checked={runtime.staleWhileRevalidate}
+              onChange={(next) => onChangeRuntime('staleWhileRevalidate', next)}
+            />
+          </RowStack>
+        </Panel>
       </div>
     </div>
   );

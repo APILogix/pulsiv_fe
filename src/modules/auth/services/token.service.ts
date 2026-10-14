@@ -14,71 +14,150 @@ const CURRENT_ORG_SLUG_KEY = 'pulse_current_org_slug';
 const CURRENT_PROJECT_ID_KEY = 'pulse_current_project_id';
 const CURRENT_PROJECT_SLUG_KEY = 'pulse_current_project_slug';
 
+let memoryAccessToken: string | null = null;
+let memoryExpiresAt: Date | null = null;
+
+// Clean up legacy localStorage tokens if present to prevent persistence of old tokens
+try {
+  if (typeof window !== 'undefined' && window.localStorage) {
+    if (window.localStorage.getItem(ACCESS_TOKEN_KEY)) {
+      window.localStorage.removeItem(ACCESS_TOKEN_KEY);
+      window.localStorage.removeItem(EXPIRES_AT_KEY);
+    }
+  }
+} catch {
+  // Ignore storage access errors in restricted contexts
+}
+
 class TokenService {
   getAccessToken(): string | null {
-    return localStorage.getItem(ACCESS_TOKEN_KEY);
+    if (memoryAccessToken) return memoryAccessToken;
+    try {
+      if (typeof window !== 'undefined' && window.sessionStorage) {
+        memoryAccessToken = window.sessionStorage.getItem(ACCESS_TOKEN_KEY);
+        return memoryAccessToken;
+      }
+    } catch {
+      // Storage access blocked or unavailable
+    }
+    return null;
   }
 
   getExpiresAt(): Date | null {
-    const raw = localStorage.getItem(EXPIRES_AT_KEY);
-    return raw ? new Date(raw) : null;
+    if (memoryExpiresAt) return memoryExpiresAt;
+    try {
+      if (typeof window !== 'undefined' && window.sessionStorage) {
+        const raw = window.sessionStorage.getItem(EXPIRES_AT_KEY);
+        memoryExpiresAt = raw ? new Date(raw) : null;
+        return memoryExpiresAt;
+      }
+    } catch {
+      // Storage access blocked
+    }
+    return null;
   }
 
   setAccessToken(accessToken: string, expiresAt?: Date | string): void {
-    localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
-    if (expiresAt) {
-      localStorage.setItem(
-        EXPIRES_AT_KEY,
-        typeof expiresAt === 'string' ? expiresAt : expiresAt.toISOString(),
-      );
+    memoryAccessToken = accessToken;
+    try {
+      if (typeof window !== 'undefined' && window.sessionStorage) {
+        window.sessionStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
+        if (expiresAt) {
+          const iso = typeof expiresAt === 'string' ? expiresAt : expiresAt.toISOString();
+          memoryExpiresAt = new Date(iso);
+          window.sessionStorage.setItem(EXPIRES_AT_KEY, iso);
+        }
+      }
+    } catch {
+      // Storage access blocked
     }
   }
 
   getCurrentOrgId(): string | null {
-    return localStorage.getItem(CURRENT_ORG_ID_KEY);
+    try {
+      return sessionStorage.getItem(CURRENT_ORG_ID_KEY) || localStorage.getItem(CURRENT_ORG_ID_KEY);
+    } catch {
+      return null;
+    }
   }
 
   setCurrentOrgId(orgId: string | null | undefined): void {
-    if (orgId) {
-      localStorage.setItem(CURRENT_ORG_ID_KEY, orgId);
-    } else {
-      localStorage.removeItem(CURRENT_ORG_ID_KEY);
+    try {
+      if (orgId) {
+        sessionStorage.setItem(CURRENT_ORG_ID_KEY, orgId);
+        localStorage.setItem(CURRENT_ORG_ID_KEY, orgId);
+      } else {
+        sessionStorage.removeItem(CURRENT_ORG_ID_KEY);
+        localStorage.removeItem(CURRENT_ORG_ID_KEY);
+      }
+    } catch {
+      // Storage access blocked
     }
   }
 
   getCurrentOrgSlug(): string | null {
-    return localStorage.getItem(CURRENT_ORG_SLUG_KEY);
+    try {
+      return sessionStorage.getItem(CURRENT_ORG_SLUG_KEY) || localStorage.getItem(CURRENT_ORG_SLUG_KEY);
+    } catch {
+      return null;
+    }
   }
 
   setCurrentOrgSlug(slug: string | null | undefined): void {
-    if (slug) {
-      localStorage.setItem(CURRENT_ORG_SLUG_KEY, slug);
-    } else {
-      localStorage.removeItem(CURRENT_ORG_SLUG_KEY);
+    try {
+      if (slug) {
+        sessionStorage.setItem(CURRENT_ORG_SLUG_KEY, slug);
+        localStorage.setItem(CURRENT_ORG_SLUG_KEY, slug);
+      } else {
+        sessionStorage.removeItem(CURRENT_ORG_SLUG_KEY);
+        localStorage.removeItem(CURRENT_ORG_SLUG_KEY);
+      }
+    } catch {
+      // Storage access blocked
     }
   }
 
   getCurrentProjectId(): string | null {
-    return localStorage.getItem(CURRENT_PROJECT_ID_KEY);
+    try {
+      return sessionStorage.getItem(CURRENT_PROJECT_ID_KEY) || localStorage.getItem(CURRENT_PROJECT_ID_KEY);
+    } catch {
+      return null;
+    }
   }
 
   setCurrentProjectId(projectId: string | null | undefined): void {
-    if (projectId) {
-      localStorage.setItem(CURRENT_PROJECT_ID_KEY, projectId);
-    } else {
-      localStorage.removeItem(CURRENT_PROJECT_ID_KEY);
+    try {
+      if (projectId) {
+        sessionStorage.setItem(CURRENT_PROJECT_ID_KEY, projectId);
+        localStorage.setItem(CURRENT_PROJECT_ID_KEY, projectId);
+      } else {
+        sessionStorage.removeItem(CURRENT_PROJECT_ID_KEY);
+        localStorage.removeItem(CURRENT_PROJECT_ID_KEY);
+      }
+    } catch {
+      // Storage access blocked
     }
   }
 
   getCurrentProjectSlug(): string | null {
-    return localStorage.getItem(CURRENT_PROJECT_SLUG_KEY);
+    try {
+      return sessionStorage.getItem(CURRENT_PROJECT_SLUG_KEY) || localStorage.getItem(CURRENT_PROJECT_SLUG_KEY);
+    } catch {
+      return null;
+    }
   }
 
   setCurrentProjectSlug(slug: string | null | undefined): void {
-    if (slug) {
-      localStorage.setItem(CURRENT_PROJECT_SLUG_KEY, slug);
-    } else {
-      localStorage.removeItem(CURRENT_PROJECT_SLUG_KEY);
+    try {
+      if (slug) {
+        sessionStorage.setItem(CURRENT_PROJECT_SLUG_KEY, slug);
+        localStorage.setItem(CURRENT_PROJECT_SLUG_KEY, slug);
+      } else {
+        sessionStorage.removeItem(CURRENT_PROJECT_SLUG_KEY);
+        localStorage.removeItem(CURRENT_PROJECT_SLUG_KEY);
+      }
+    } catch {
+      // Storage access blocked
     }
   }
 
@@ -91,12 +170,27 @@ class TokenService {
   }
 
   clearTokens(): void {
-    localStorage.removeItem(ACCESS_TOKEN_KEY);
-    localStorage.removeItem(EXPIRES_AT_KEY);
-    localStorage.removeItem(CURRENT_ORG_ID_KEY);
-    localStorage.removeItem(CURRENT_ORG_SLUG_KEY);
-    localStorage.removeItem(CURRENT_PROJECT_ID_KEY);
-    localStorage.removeItem(CURRENT_PROJECT_SLUG_KEY);
+    memoryAccessToken = null;
+    memoryExpiresAt = null;
+    try {
+      if (typeof window !== 'undefined') {
+        sessionStorage.removeItem(ACCESS_TOKEN_KEY);
+        sessionStorage.removeItem(EXPIRES_AT_KEY);
+        sessionStorage.removeItem(CURRENT_ORG_ID_KEY);
+        sessionStorage.removeItem(CURRENT_ORG_SLUG_KEY);
+        sessionStorage.removeItem(CURRENT_PROJECT_ID_KEY);
+        sessionStorage.removeItem(CURRENT_PROJECT_SLUG_KEY);
+
+        localStorage.removeItem(ACCESS_TOKEN_KEY);
+        localStorage.removeItem(EXPIRES_AT_KEY);
+        localStorage.removeItem(CURRENT_ORG_ID_KEY);
+        localStorage.removeItem(CURRENT_ORG_SLUG_KEY);
+        localStorage.removeItem(CURRENT_PROJECT_ID_KEY);
+        localStorage.removeItem(CURRENT_PROJECT_SLUG_KEY);
+      }
+    } catch {
+      // Storage access blocked
+    }
   }
 }
 

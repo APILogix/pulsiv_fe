@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/infrastructure/api-client/axios';
 import { useOrgStore } from '@/modules/organizations/store/org.store';
 
@@ -98,132 +98,129 @@ export function normalizeExplorerListResponse<T = unknown>(payload: unknown): Ex
   };
 }
 
+/** Unwrap the `{ success, data }` envelope when present. */
+function unwrap<T>(payload: unknown): T {
+  if (isRecord(payload) && 'data' in payload && payload.data !== undefined) return payload.data as T;
+  return payload as T;
+}
+
+/* ─────────────────────────── query keys ─────────────────────────── */
+
+/**
+ * One key hierarchy for every explorer read, so the same request made by two
+ * pages (e.g. requests counts on the overview and the requests list) is
+ * fetched once and shared from cache.
+ */
+export const observabilityKeys = {
+  all: ['observability'] as const,
+  org: (orgId: string) => [...observabilityKeys.all, orgId] as const,
+  resource: (orgId: string, resource: string) => [...observabilityKeys.org(orgId), resource] as const,
+  list: (orgId: string, resource: string, params: Record<string, unknown>) =>
+    [...observabilityKeys.resource(orgId, resource), 'list', params] as const,
+  detail: (orgId: string, resource: string, id: string) =>
+    [...observabilityKeys.resource(orgId, resource), 'detail', id] as const,
+  related: (orgId: string, resource: string, id: string, relation: string) =>
+    [...observabilityKeys.resource(orgId, resource), 'detail', id, 'related', relation] as const,
+};
+
+/** Explorer data is live telemetry: fresh for 30s, then refreshed on revisit. */
+const EXPLORER_STALE_MS = 30_000;
+
+function cleanParams(params: Record<string, unknown>) {
+  return Object.fromEntries(
+    Object.entries(params).filter(([, value]) => value !== undefined && value !== null && value !== ''),
+  );
+}
+
+/* ─────────────────────────── hooks ─────────────────────────── */
+
+/**
+ * Explorer list. Previously a `useEffect` + `useState` fetch: no cache, no
+ * dedupe, no cancellation, a refetch on every mount. Now:
+ *  - cached per (org, resource, params); back-navigation renders instantly
+ *  - superseded requests are aborted via `signal` when filters change
+ *  - `keepPreviousData` keeps the current rows on screen while the next
+ *    page/filter loads, instead of blanking the table; `isFetching` lets the
+ *    caller mark the table as refreshing.
+ */
 export function useObservabilityList<T = unknown>(resource: string, params: Record<string, unknown> = {}) {
-  const activeOrgId = useOrgStore(state => state.activeOrgId);
-  const [data, setData] = useState<ExplorerListResponse<T> | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [error, setError] = useState<Error | null>(null);
+  const activeOrgId = useOrgStore((state) => state.activeOrgId);
+  const query = cleanParams(params);
 
-  useEffect(() => {
-    if (!activeOrgId || !resource) {
-      setIsLoading(false);
-      return;
-    }
-    
-    // Clean up empty params
-    const cleanParams = Object.fromEntries(
-      Object.entries(params).filter(([_, v]) => v !== undefined && v !== null && v !== '')
-    );
-
-    let isMounted = true;
-    setIsLoading(true);
-    
-    apiClient.get(`/organizations/${activeOrgId}/observability/${resource}`, { params: cleanParams })
-      .then(res => {
-        if (isMounted) {
-          setData(normalizeExplorerListResponse<T>(res.data));
-          setError(null);
-        }
-      })
-      .catch(err => {
-        if (isMounted) {
-          setError(err);
-          setData(null);
-        }
-      })
-      .finally(() => {
-        if (isMounted) setIsLoading(false);
+  const result = useQuery({
+    queryKey: observabilityKeys.list(activeOrgId ?? '', resource, query),
+    queryFn: async ({ signal }) => {
+      const res = await apiClient.get(`/organizations/${activeOrgId}/observability/${encodeURIComponent(resource)}`, {
+        params: query,
+        signal,
       });
+      return normalizeExplorerListResponse<T>(res.data);
+    },
+    enabled: Boolean(activeOrgId && resource),
+    staleTime: EXPLORER_STALE_MS,
+    placeholderData: keepPreviousData,
+  });
 
-    return () => {
-      isMounted = false;
-    };
-  }, [activeOrgId, resource, JSON.stringify(params)]);
-
-  return { data, isLoading, error };
+  return {
+    data: result.data ?? null,
+    isLoading: result.isLoading,
+    isFetching: result.isFetching,
+    isPlaceholderData: result.isPlaceholderData,
+    error: result.error,
+    refetch: result.refetch,
+  };
 }
 
 export function useObservabilityDetail<T = unknown>(resource: string, id: string) {
-  const activeOrgId = useOrgStore(state => state.activeOrgId);
-  const [data, setData] = useState<T | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [error, setError] = useState<Error | null>(null);
+  const activeOrgId = useOrgStore((state) => state.activeOrgId);
 
-  useEffect(() => {
-    if (!activeOrgId || !resource || !id) {
-      setIsLoading(false);
-      return;
-    }
+  const result = useQuery({
+    queryKey: observabilityKeys.detail(activeOrgId ?? '', resource, id),
+    queryFn: async ({ signal }) => {
+      const res = await apiClient.get(
+        `/organizations/${activeOrgId}/observability/${encodeURIComponent(resource)}/${encodeURIComponent(id)}`,
+        { signal },
+      );
+      return unwrap<T>(res.data);
+    },
+    enabled: Boolean(activeOrgId && resource && id),
+    // An event is immutable once written; keep it for the session.
+    staleTime: 10 * 60 * 1000,
+  });
 
-    let isMounted = true;
-    setIsLoading(true);
-
-    apiClient.get(`/organizations/${activeOrgId}/observability/${resource}/${encodeURIComponent(id)}`)
-      .then(res => {
-        if (isMounted) {
-          // The backend returns `{ success: true, data: EventDetail }` or just the detail.
-          // Let's assume it returns `{ data: ... }` based on standard Fastify envelope.
-          setData(res.data?.data || res.data);
-          setError(null);
-        }
-      })
-      .catch(err => {
-        if (isMounted) {
-          setError(err);
-          setData(null);
-        }
-      })
-      .finally(() => {
-        if (isMounted) setIsLoading(false);
-      });
-
-    return () => {
-      isMounted = false;
-    };
-  }, [activeOrgId, resource, id]);
-
-  return { data, isLoading, error };
+  return {
+    data: (result.data ?? null) as T | null,
+    isLoading: result.isLoading,
+    error: result.error,
+  };
 }
 
 export function useObservabilityRelated<T = unknown>(resource: string, id: string, relation: string) {
-  const activeOrgId = useOrgStore(state => state.activeOrgId);
-  const [data, setData] = useState<T[] | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [error, setError] = useState<Error | null>(null);
+  const activeOrgId = useOrgStore((state) => state.activeOrgId);
 
-  useEffect(() => {
-    if (!activeOrgId || !resource || !id || !relation) {
-      setIsLoading(false);
-      return;
-    }
+  const result = useQuery({
+    queryKey: observabilityKeys.related(activeOrgId ?? '', resource, id, relation),
+    queryFn: async ({ signal }) => {
+      // Every path segment is encoded; ids can carry `/` or `#`.
+      const res = await apiClient.get(
+        `/organizations/${activeOrgId}/observability/${encodeURIComponent(resource)}/${encodeURIComponent(id)}/related/${encodeURIComponent(relation)}`,
+        { signal },
+      );
+      const data = unwrap<T[] | null>(res.data);
+      return Array.isArray(data) ? data : [];
+    },
+    enabled: Boolean(activeOrgId && resource && id && relation),
+    staleTime: EXPLORER_STALE_MS,
+  });
 
-    let isMounted = true;
-    setIsLoading(true);
-
-    apiClient.get(`/organizations/${activeOrgId}/observability/${resource}/${id}/related/${relation}`)
-      .then(res => {
-        if (isMounted) {
-          setData(res.data?.data || res.data || []);
-          setError(null);
-        }
-      })
-      .catch(err => {
-        if (isMounted) {
-          setError(err);
-          setData(null);
-        }
-      })
-      .finally(() => {
-        if (isMounted) setIsLoading(false);
-      });
-
-    return () => {
-      isMounted = false;
-    };
-  }, [activeOrgId, resource, id, relation]);
-
-  return { data, isLoading, error };
+  return {
+    data: result.data ?? null,
+    isLoading: result.isLoading,
+    error: result.error,
+  };
 }
+
+/* ─────────────────────────── AI actions (mutations) ─────────────────────────── */
 
 export async function askObservabilityEvent(
   orgId: string,
@@ -232,11 +229,23 @@ export async function askObservabilityEvent(
   intent: AIIntent,
   question?: string,
 ): Promise<ObservabilityAIResult> {
-  const res = await apiClient.post(`/organizations/${orgId}/observability/${resource}/${encodeURIComponent(id)}/ask`, {
-    intent,
-    ...(question ? { question } : {}),
-  });
-  return res.data?.data || res.data;
+  const res = await apiClient.post(
+    `/organizations/${orgId}/observability/${encodeURIComponent(resource)}/${encodeURIComponent(id)}/ask`,
+    {
+      intent,
+      ...(question ? { question } : {}),
+    },
+  );
+  return unwrap<ObservabilityAIResult>(res.data);
+}
+
+export interface BulkAnalysisResponse {
+  summary?: string;
+  facts?: string[];
+  answer?: string;
+  /** Some deployments return credit exhaustion in-band rather than as a 402. */
+  code?: string;
+  error?: { code?: string; message?: string };
 }
 
 export async function analyzeBulkObservability(
@@ -251,7 +260,7 @@ export async function analyzeBulkObservability(
     timeRange?: unknown;
     prompt?: string;
   }
-) {
-  const res = await apiClient.post(`/organizations/${orgId}/observability/${resource}/analyze`, payload);
-  return res.data?.data || res.data;
+): Promise<BulkAnalysisResponse> {
+  const res = await apiClient.post(`/organizations/${orgId}/observability/${encodeURIComponent(resource)}/analyze`, payload);
+  return unwrap<BulkAnalysisResponse>(res.data);
 }

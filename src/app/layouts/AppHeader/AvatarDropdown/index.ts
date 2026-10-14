@@ -1,2 +1,8 @@
 export { DropdownMenu as AvatarDropdown } from './DropdownMenu';
-export { avatarMenuGroups, findAvatarMenuItem } from './config';
+export {
+  accountNavGroups,
+  avatarMenuGroups,
+  avatarDropdownGroups,
+  findAvatarMenuItem,
+} from './config';
+

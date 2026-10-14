@@ -1,94 +1,146 @@
-import { useState } from "react";
+import type { ExplorerPagination } from "./hooks/useObservabilityApi";
+import { useState, useEffect } from "react";
 import { PlayCircle } from "lucide-react";
 import { useObservabilityList } from "./hooks/useObservabilityApi";
 import {
-  PageHeader, KpiCard, FillPage, FilterBar, SearchInput,
-  EnvironmentBadge, AskAiButton, Timestamp, InfiniteTable,
-  TimeRangePicker, useTimeRangeParams,
+  PageHeader, FillPage, TableToolbar, SearchInput, FilterSelect, EnvironmentBadge,
+  AskAiButton, Timestamp, InfiniteTable, TimeRangePicker, useTimeRangeParams,
+  SignalSheet, useSignalTimeline, useTimeWindow, rangeParams, formatCompact, formatDuration,
+  MUTED_DASH, NEUTRAL_CHIP, ENVIRONMENT_OPTIONS,
 } from "@/shared/observe";
-import type { Column } from "@/shared/observe";
-import type { ReplayEvent } from "@/types/events";
+import type { Column, ReadoutCell } from "@/shared/observe";
+import { useOrgStore } from "@/modules/organizations/store/org.store";
+import { useCursorPagination } from "./hooks/useCursorPagination";
+
+interface ReplayRow {
+  id?: string;
+  publicId?: string;
+  eventId?: string;
+  occurredAt?: string;
+  sessionId?: string;
+  name?: string;
+  service?: string;
+  endpoint?: string;
+  release?: string;
+  environment?: string;
+  durationMs?: number;
+}
 
 export default function ReplayPage() {
+  const activeProjectSlug = useOrgStore((s) => s.activeProjectSlug);
   const [query, setQuery] = useState("");
-  const [cursor, setCursor] = useState<string | undefined>(undefined);
-  const [cursorHistory, setCursorHistory] = useState<string[]>([]);
+  const [environment, setEnvironment] = useState("");
   const { timeRangeState } = useTimeRangeParams();
+  const window = useTimeWindow(timeRangeState);
+  const [activePagination, setActivePagination] = useState<ExplorerPagination | undefined>(undefined);
 
-  const handleNextPage = (nextCursor: string) => {
-    setCursorHistory((prev) => [...prev, cursor ?? ""]);
-    setCursor(nextCursor);
-  };
-
-  const handlePreviousPage = () => {
-    if (cursorHistory.length === 0) return;
-    const prevCursor = cursorHistory[cursorHistory.length - 1];
-    setCursorHistory((prev) => prev.slice(0, -1));
-    setCursor(prevCursor || undefined);
-  };
-
-  const { data, isLoading } = useObservabilityList<any>("replays", {
-    search: query || undefined,
-    range: timeRangeState.mode === "preset" ? timeRangeState.range : undefined,
-    from: timeRangeState.from,
-    to: timeRangeState.to,
-    cursor,
+  const { cursor, paginationProps, onNextPage, onPreviousPage } = useCursorPagination(activePagination, {
+    dependencies: [activeProjectSlug, environment, query, timeRangeState],
   });
+
+  const filters = {
+    project: activeProjectSlug ?? undefined,
+    environment: environment || undefined,
+    search: query || undefined,
+    ...rangeParams(timeRangeState),
+  };
+
+  const { data, isLoading } = useObservabilityList<ReplayRow>("replays", { ...filters, cursor });
+  const timeline = useSignalTimeline("replays", filters, window);
+
+  useEffect(() => {
+    if (data?.pagination) setActivePagination(data.pagination);
+  }, [data?.pagination]);
 
   const rows = data?.items ?? [];
   const summary = data?.summary ?? {};
   const stats = data?.statistics ?? {};
-
-  const sessions = Number(summary.uniqueSessions ?? summary.sessions ?? new Set(rows.map((r: any) => r.sessionId)).size);
   const total = Number(summary.total ?? rows.length);
-  const users = Number(summary.uniqueUsers ?? summary.users ?? 0);
-  const avgDuration = Number(stats.avgDuration ?? 0);
+  const sessions = Number(summary.uniqueSessions ?? new Set(rows.map((r) => r.sessionId)).size);
+  const users = Number(summary.uniqueUsers ?? 0);
 
-  const columns: Column<ReplayEvent>[] = [
-    { key: "play", header: "", width: "40px", cell: () => <PlayCircle className="size-4 text-[var(--brand)]" /> },
-    { key: "session", header: "Session", width: "1fr", cell: (r) => <span className="truncate font-[family-name:var(--mono)] text-[12px] text-[var(--text)]">{r.sessionId}</span> },
-    { key: "segment", header: "Segment", width: "90px", align: "right", cell: (r) => <span className="tabular-nums">{r.segmentId ?? (r as any).segment_id ?? 0}</span> },
-    { key: "duration", header: "Duration", width: "100px", align: "right", cell: (r) => <span className="tabular-nums font-[family-name:var(--mono)] text-[12px] text-[var(--text3)]">{(r.durationMs ?? (r as any).duration_ms ?? 0)}ms</span> },
-    { key: "time", header: "Recorded", width: "120px", cell: (r) => <Timestamp value={(r as any).occurredAt ?? r.timestamp} /> },
-    { key: "env", header: "Environment", width: "120px", cell: (r) => <EnvironmentBadge environment={r.environment ?? (r as any).metadata?.environment} /> },
-    { key: "ai", header: "", width: "90px", cell: (r) => <AskAiButton question={`Summarize what happened in session replay ${r.sessionId} (segment ${r.segmentId}, ${(r as any).durationMs ?? 0}ms).`} /> },
+  const cells: ReadoutCell[] = [
+    { label: "Sessions", value: formatCompact(sessions), sub: "recorded browser sessions" },
+    { label: "Segments", value: formatCompact(total), sub: sessions ? `${(total / sessions).toFixed(1)} per session` : undefined },
+    { label: "Users", value: formatCompact(users), sub: "identified users" },
+    { label: "Avg segment", value: stats.avgDuration != null ? formatDuration(Number(stats.avgDuration)) : "—", sub: stats.maxDuration != null ? `longest ${formatDuration(Number(stats.maxDuration))}` : undefined },
   ];
+
+  const baseColumns: Column<ReplayRow>[] = [
+    { key: "time", header: "Recorded", width: "104px", cell: (r) => <Timestamp value={r.occurredAt} /> },
+    {
+      key: "session",
+      header: "Session",
+      width: "180px",
+      cell: (r) =>
+        r.sessionId ? (
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); setQuery(r.sessionId!); }}
+            className={NEUTRAL_CHIP}
+            title="Show every segment from this session"
+          >
+            <PlayCircle className="size-3 shrink-0" aria-hidden="true" />
+            <span className="truncate">{r.sessionId}</span>
+          </button>
+        ) : MUTED_DASH,
+    },
+    {
+      key: "page",
+      header: "Page",
+      width: "minmax(220px, 1fr)",
+      cell: (r) => {
+        const page = r.endpoint ?? r.name;
+        return page ? <span className="truncate font-[family-name:var(--mono)] text-[12px] text-[var(--text)]" title={page}>{page}</span> : MUTED_DASH;
+      },
+    },
+    { key: "service", header: "App", width: "130px", cell: (r) => (r.service ? <span className="truncate text-[12px] text-[var(--text2)]">{r.service}</span> : MUTED_DASH) },
+    { key: "release", header: "Release", width: "110px", cell: (r) => (r.release ? <span className="truncate font-[family-name:var(--mono)] text-[12px] text-[var(--text2)]">{r.release}</span> : MUTED_DASH) },
+    {
+      key: "ai",
+      header: "",
+      width: "96px",
+      align: "right",
+      cell: (r) => <AskAiButton question={`Summarize what happened in session replay ${r.sessionId ?? r.publicId} on ${r.endpoint ?? r.name ?? "an unknown page"}.`} />,
+    },
+  ];
+  const columns = environment
+    ? baseColumns
+    : [...baseColumns.slice(0, -1), { key: "env", header: "Environment", width: "118px", cell: (r: ReplayRow) => <EnvironmentBadge environment={r.environment} /> }, baseColumns[baseColumns.length - 1]];
 
   return (
     <FillPage>
       <PageHeader
-        title="Session Replay"
-        description="Recorded browser sessions with DOM, network, and console capture."
+        title="Session replay"
+        description="Recorded browser sessions with DOM, network, and console capture. Pick a session to line up all of its segments."
         actions={<TimeRangePicker />}
       />
 
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <KpiCard label="Recorded sessions" value={sessions} />
-        <KpiCard label="Total replays" value={total} />
-        <KpiCard label="Unique users" value={users} />
-        <KpiCard label="Avg duration" value={`${avgDuration}ms`} />
-      </div>
+      <SignalSheet cells={cells} loading={isLoading && !data} bars={timeline.bars} timelineLoading={timeline.isLoading} countLabel="Segments" errorLabel="With errors" />
 
-      <FilterBar onClear={() => setQuery("")}>
-        <SearchInput placeholder="Search session ID…" onSearch={setQuery} defaultValue={query} />
-      </FilterBar>
+      <TableToolbar>
+        <SearchInput key={query} placeholder="Search session id, page, release…" onSearch={setQuery} defaultValue={query} />
+        <FilterSelect value={environment} onChange={setEnvironment} options={ENVIRONMENT_OPTIONS} />
+        {query && (
+          <button type="button" onClick={() => setQuery("")} className="h-9 px-2 text-[12px] text-[var(--text2)] hover:text-[var(--text)]">
+            Clear search
+          </button>
+        )}
+      </TableToolbar>
 
       <InfiniteTable
-        className="flex-1"
+        className="min-h-[320px] flex-1"
         loading={isLoading}
         items={rows}
-        queryKey={["replay-page", query, timeRangeState, cursor]}
+        queryKey={["replay-page", activeProjectSlug, environment, query, timeRangeState, cursor]}
         columns={columns}
-        getKey={(r) => (r as any).publicId ?? r.id ?? r.eventId ?? String(Math.random())}
-        pagination={{
-          nextCursor: data?.pagination?.nextCursor,
-          previousCursor: data?.pagination?.previousCursor,
-          hasNext: data?.pagination?.hasNext,
-          hasPrevious: cursorHistory.length > 0 || !!data?.pagination?.hasPrevious,
-          limit: data?.pagination?.limit,
-        }}
-        onNextPage={handleNextPage}
-        onPreviousPage={cursorHistory.length > 0 ? handlePreviousPage : undefined}
+        getKey={(r) => r.publicId ?? r.id ?? r.eventId ?? ""}
+        emptyTitle="No replays in this window"
+        emptyIllustration="dashboard"
+        emptyMessage="Enable session replay in the browser SDK to record DOM, network, and console activity."
+        pagination={paginationProps}
+        onNextPage={onNextPage}
+        onPreviousPage={onPreviousPage}
       />
     </FillPage>
   );

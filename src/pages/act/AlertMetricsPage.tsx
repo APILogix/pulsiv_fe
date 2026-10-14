@@ -1,114 +1,369 @@
 /**
- * Alert metrics — `GET /organizations/:orgId/alerting/metrics`.
+ * Alert metrics: `GET /organizations/:orgId/alerting/metrics`.
  *
- * Rolled-up metric buckets (rule firing counts, notification counts, etc.)
- * keyed by metricType + granularity. This is an operator-facing analytics
- * view, not a dashboard-builder — it renders the raw bucket rows plus a
- * simple sparkline per metric type.
+ * Rolled-up metric buckets (rule firing counts, notification counts, and so
+ * on) keyed by metricType and granularity. An operator view of the raw
+ * buckets, with one row per metric type whose sparkline plots that type's
+ * buckets in time order.
  */
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
-import { Gauge } from "lucide-react";
-import { PageHeader, KpiCard, FillPage, Table, Tr, Td, Timestamp, MetricSparkline } from "@/shared/observe";
-import { apiErrorMessage } from "@/modules/projects/components/project-ui";
+
 import { useAlertMetrics } from "@/modules/alerting/hooks/useAlerting";
-import { fieldInputClass } from "@/shared/ui/pulse";
-import { METRIC_GRANULARITIES, type MetricGranularity } from "@/modules/alerting/api/types";
+import { METRIC_GRANULARITIES, type AlertMetric, type MetricGranularity } from "@/modules/alerting/api/types";
+import { labelize } from "@/modules/alerting/components/alerting-ui";
+import { apiErrorMessage } from "@/modules/projects/components/project-ui";
+import {
+  HIDE_BELOW_LG,
+  HIDE_BELOW_MD,
+  HIDE_BELOW_SM,
+  ProjectPageHeader,
+  Readouts,
+  SearchField,
+  Sheet,
+  SheetCell,
+  SheetEmpty,
+  SheetError,
+  SheetLoading,
+  SheetRow,
+  SheetTable,
+  ToolbarCount,
+  WorkspacePage,
+  type Readout,
+  type SheetColumn,
+} from "@/modules/projects/components/project-page";
+import { SegmentedControl, type SegmentOption } from "@/shared/ui/pulse";
+import {
+  MetricSparkline,
+  Timestamp,
+  formatAbsoluteTime,
+  formatNumber,
+  formatRelativeTime,
+} from "@/shared/observe";
+import { Button as UiButton } from "@/components/ui/button";
+
+// ── Module-level constants ───────────────────────────────────
+
+// The page asks for at most this many buckets (one week of hours).
+const BUCKET_LIMIT = 168;
+const PAGE_SIZE = 25;
+
+const GRANULARITY_OPTIONS: SegmentOption<MetricGranularity>[] = METRIC_GRANULARITIES.map((value) => ({
+  value,
+  label: labelize(value),
+}));
+
+const TYPE_COLUMNS: SheetColumn[] = [
+  { key: "type", header: "Metric type" },
+  { key: "trend", header: "Trend", className: `w-[176px] ${HIDE_BELOW_MD}` },
+  { key: "buckets", header: "Buckets", className: `w-[96px] ${HIDE_BELOW_SM}`, align: "right" },
+  { key: "latest", header: "Latest", className: "w-[104px]", align: "right" },
+  { key: "sum", header: "Sum", className: "w-[112px]", align: "right" },
+];
+
+const BUCKET_COLUMNS: SheetColumn[] = [
+  { key: "type", header: "Metric type" },
+  { key: "value", header: "Value", className: "w-[112px]", align: "right" },
+  { key: "start", header: "Bucket start", className: "w-[136px]" },
+  { key: "end", header: "Bucket end", className: `w-[136px] ${HIDE_BELOW_MD}` },
+  { key: "rule", header: "Rule", className: `w-[136px] ${HIDE_BELOW_LG}` },
+];
+
+const MONO_VALUE = "font-[family-name:var(--mono)] text-[12px] tabular-nums text-[var(--text2)]";
+
+// ── Helpers ──────────────────────────────────────────────────
+
+const numeric = (metric: AlertMetric) => Number(metric.value || 0);
+const bucketTime = (metric: AlertMetric) => new Date(metric.bucketStart).getTime();
+
+interface TypeSummary {
+  type: string;
+  buckets: number;
+  sum: number;
+  latest: number;
+  series: number[];
+}
+
+function summarizeTypes(metrics: AlertMetric[]): TypeSummary[] {
+  const grouped = new Map<string, AlertMetric[]>();
+  for (const metric of metrics) {
+    const list = grouped.get(metric.metricType) ?? [];
+    list.push(metric);
+    grouped.set(metric.metricType, list);
+  }
+  return Array.from(grouped.entries()).map(([type, rows]) => {
+    const ordered = rows.slice().sort((a, b) => bucketTime(a) - bucketTime(b));
+    const series = ordered.map(numeric);
+    return {
+      type,
+      buckets: rows.length,
+      sum: series.reduce((total, value) => total + value, 0),
+      latest: series[series.length - 1] ?? 0,
+      series,
+    };
+  });
+}
+
+/** Rounded for display without inventing precision the bucket did not carry. */
+function formatValue(value: number): string {
+  return Number.isInteger(value) ? formatNumber(value) : value.toFixed(2);
+}
+
+// ── Page ─────────────────────────────────────────────────────
 
 export default function AlertMetricsPage() {
   const [granularity, setGranularity] = useState<MetricGranularity>("hour");
   const [metricType, setMetricType] = useState("");
-  const { data, isLoading, error } = useAlertMetrics({
+  const [page, setPage] = useState(0);
+  const { data, isLoading, error, refetch } = useAlertMetrics({
     granularity,
-    limit: 168,
+    limit: BUCKET_LIMIT,
     ...(metricType ? { metricType } : {}),
   });
-  const metrics = data ?? [];
 
-  if (error) toast.error(apiErrorMessage(error, "Could not load alert metrics."));
+  // One toast per failure, not one per render.
+  useEffect(() => {
+    if (error) toast.error(apiErrorMessage(error, "Could not load alert metrics."));
+  }, [error]);
 
-  const byType = useMemo(() => {
-    const grouped = new Map<string, typeof metrics>();
-    for (const m of metrics) {
-      const list = grouped.get(m.metricType) ?? [];
-      list.push(m);
-      grouped.set(m.metricType, list);
-    }
-    return grouped;
-  }, [metrics]);
+  const metrics = useMemo(() => data ?? [], [data]);
+  const types = useMemo(() => summarizeTypes(metrics), [metrics]);
 
-  const totalValue = metrics.reduce((sum, m) => sum + Number(m.value || 0), 0);
+  const totalValue = metrics.reduce((sum, metric) => sum + numeric(metric), 0);
+  const latestBucketEnd = metrics.reduce<string | null>((latest, metric) => {
+    if (!latest) return metric.bucketEnd;
+    return new Date(metric.bucketEnd).getTime() > new Date(latest).getTime() ? metric.bucketEnd : latest;
+  }, null);
+  const capped = metrics.length >= BUCKET_LIMIT;
+  const filterNote = metricType.trim() ? `Filtered to ${metricType.trim()}` : `By ${granularity}`;
+
+  const loading = isLoading && !data;
+  const loadFailed = Boolean(error) && !data;
+
+  const pageCount = Math.max(1, Math.ceil(metrics.length / PAGE_SIZE));
+  const safePage = Math.min(page, pageCount - 1);
+  const pageStart = safePage * PAGE_SIZE;
+  const pageRows = metrics.slice(pageStart, pageStart + PAGE_SIZE);
+
+  const changeGranularity = (next: MetricGranularity) => {
+    setGranularity(next);
+    setPage(0);
+  };
+  const changeMetricType = (next: string) => {
+    setMetricType(next);
+    setPage(0);
+  };
+
+  const readouts: Readout[] = [
+    {
+      label: "Buckets",
+      value: formatNumber(metrics.length),
+      sub: capped ? `Capped at ${formatNumber(BUCKET_LIMIT)} per request` : filterNote,
+    },
+    {
+      label: "Metric types",
+      value: formatNumber(types.length),
+      sub: filterNote,
+    },
+    {
+      label: "Sum across buckets",
+      value: formatNumber(Math.round(totalValue)),
+      sub: capped ? `Over the ${formatNumber(BUCKET_LIMIT)} buckets loaded` : "Every bucket in the response",
+    },
+    {
+      label: "Latest bucket",
+      value: latestBucketEnd ? formatRelativeTime(latestBucketEnd) : "—",
+      title: latestBucketEnd ? formatAbsoluteTime(latestBucketEnd) : undefined,
+      sub: latestBucketEnd ? "When the newest bucket closes" : "No buckets yet",
+    },
+  ];
+
+  const toolbar = (
+    <>
+      {/* Scrolls sideways on narrow screens instead of widening the page. */}
+      <div className="sidebar-scroll max-w-full overflow-x-auto">
+        <SegmentedControl
+          value={granularity}
+          onChange={changeGranularity}
+          options={GRANULARITY_OPTIONS}
+          ariaLabel="Bucket granularity"
+        />
+      </div>
+      <SearchField
+        value={metricType}
+        onChange={changeMetricType}
+        placeholder="Metric type, e.g. rule_fired"
+        label="Filter by metric type"
+      />
+      {!loading && !loadFailed && (
+        <ToolbarCount>
+          {formatNumber(types.length)} {types.length === 1 ? "type" : "types"}
+        </ToolbarCount>
+      )}
+    </>
+  );
+
+  let typesBody: ReactNode;
+  if (loading) {
+    typesBody = <SheetLoading rows={4} label="Loading alert metrics" />;
+  } else if (loadFailed) {
+    typesBody = (
+      <SheetError
+        title="Could not load alert metrics"
+        message={apiErrorMessage(error, "The metrics request failed. Try again, or pick another granularity.")}
+        onRetry={() => void refetch()}
+      />
+    );
+  } else if (metrics.length === 0) {
+    typesBody = (
+      <SheetEmpty
+        title={metricType.trim() ? "No buckets for this metric type" : "No metrics recorded for this window yet"}
+        description={
+          metricType.trim()
+            ? `Nothing is recorded as “${metricType.trim()}” at ${granularity} granularity. Check the name or clear the filter.`
+            : "Buckets appear here as rules fire and notifications go out."
+        }
+        action={
+          metricType.trim() ? (
+            <UiButton variant="outline" size="lg" onClick={() => changeMetricType("")}>
+              Clear filter
+            </UiButton>
+          ) : undefined
+        }
+      />
+    );
+  } else {
+    typesBody = (
+      <SheetTable columns={TYPE_COLUMNS} caption="Alert metrics grouped by metric type" minWidth={400}>
+        {types.map((summary) => (
+          <SheetRow key={summary.type}>
+            <SheetCell className="max-w-0">
+              <span className="block truncate font-[family-name:var(--mono)] text-[12.5px] text-[var(--text)]">
+                {summary.type}
+              </span>
+            </SheetCell>
+            <SheetCell className={HIDE_BELOW_MD}>
+              {summary.series.length > 1 ? (
+                <span
+                  role="img"
+                  aria-label={`${summary.type} over ${summary.series.length} buckets, oldest to newest`}
+                  className="block"
+                >
+                  <MetricSparkline data={summary.series} width={144} height={24} />
+                </span>
+              ) : (
+                <span className="text-[12px] text-[var(--text3)]">One bucket</span>
+              )}
+            </SheetCell>
+            <SheetCell className={HIDE_BELOW_SM} align="right">
+              <span className={MONO_VALUE}>{formatNumber(summary.buckets)}</span>
+            </SheetCell>
+            <SheetCell align="right">
+              <span className={MONO_VALUE}>{formatValue(summary.latest)}</span>
+            </SheetCell>
+            <SheetCell align="right">
+              <span className="font-[family-name:var(--mono)] text-[12px] tabular-nums text-[var(--text)]">
+                {formatValue(summary.sum)}
+              </span>
+            </SheetCell>
+          </SheetRow>
+        ))}
+      </SheetTable>
+    );
+  }
+
+  const showBuckets = !loading && !loadFailed && metrics.length > 0;
 
   return (
-    <FillPage>
-      <PageHeader
+    <WorkspacePage>
+      <ProjectPageHeader
         title="Metrics"
         description="Rolled-up counters for rule firings, notifications, and delivery outcomes."
+        meta={[{ label: "Granularity", value: labelize(granularity) }]}
       />
 
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <KpiCard label="Buckets" value={metrics.length} icon={Gauge} />
-        <KpiCard label="Metric types" value={byType.size} />
-        <KpiCard label="Sum (period)" value={totalValue.toFixed(0)} />
-        <KpiCard label="Granularity" value={granularity} />
-      </div>
+      {!loadFailed && <Readouts cells={readouts} loading={loading} label="Metrics summary" />}
 
-      <div className="flex flex-wrap items-center gap-3">
-        <label className="flex items-center gap-2">
-          <span className="font-[family-name:var(--mono)] text-[10px] font-medium uppercase tracking-[0.09em] text-[var(--text3)]">Granularity</span>
-          <select value={granularity} onChange={(e) => setGranularity(e.target.value as MetricGranularity)} className={`${fieldInputClass} h-9 w-auto`}>
-            {METRIC_GRANULARITIES.map((g) => (
-              <option key={g} value={g}>{g}</option>
+      <Sheet
+        title="By metric type"
+        description="One row per metric type. The trend plots that type's buckets from oldest to newest."
+        toolbar={toolbar}
+      >
+        {typesBody}
+      </Sheet>
+
+      {showBuckets && (
+        <Sheet
+          title="Buckets"
+          description="Every bucket in the response, with the granularity and filter above."
+          footer={
+            <>
+              <span>
+                Showing{" "}
+                <span className="font-[family-name:var(--mono)] tabular-nums">
+                  {formatNumber(pageStart + 1)}–{formatNumber(pageStart + pageRows.length)}
+                </span>{" "}
+                of <span className="font-[family-name:var(--mono)] tabular-nums">{formatNumber(metrics.length)}</span>
+              </span>
+              {pageCount > 1 && (
+                <div className="flex items-center gap-2">
+                  <UiButton
+                    variant="outline"
+                    size="sm"
+                    aria-label="Previous page of buckets"
+                    disabled={safePage === 0}
+                    onClick={() => setPage(safePage - 1)}
+                  >
+                    <ChevronLeft className="size-4" aria-hidden="true" />
+                    Previous
+                  </UiButton>
+                  <UiButton
+                    variant="outline"
+                    size="sm"
+                    aria-label="Next page of buckets"
+                    disabled={safePage >= pageCount - 1}
+                    onClick={() => setPage(safePage + 1)}
+                  >
+                    Next
+                    <ChevronRight className="size-4" aria-hidden="true" />
+                  </UiButton>
+                </div>
+              )}
+            </>
+          }
+        >
+          <SheetTable columns={BUCKET_COLUMNS} caption="Alert metric buckets" minWidth={420}>
+            {pageRows.map((metric) => (
+              <SheetRow key={metric.id}>
+                <SheetCell className="max-w-0">
+                  <span className="block truncate font-[family-name:var(--mono)] text-[12px] text-[var(--text)]">
+                    {metric.metricType}
+                  </span>
+                </SheetCell>
+                <SheetCell align="right">
+                  <span className={MONO_VALUE}>{metric.value}</span>
+                </SheetCell>
+                <SheetCell>
+                  <Timestamp value={metric.bucketStart} />
+                </SheetCell>
+                <SheetCell className={HIDE_BELOW_MD}>
+                  <Timestamp value={metric.bucketEnd} />
+                </SheetCell>
+                <SheetCell className={HIDE_BELOW_LG}>
+                  {metric.ruleId ? (
+                    <code title={metric.ruleId} className="font-[family-name:var(--mono)] text-[11.5px] text-[var(--text2)]">
+                      {metric.ruleId.slice(0, 8)}…
+                    </code>
+                  ) : (
+                    <span className="text-[12px] text-[var(--text3)]">Org-level</span>
+                  )}
+                </SheetCell>
+              </SheetRow>
             ))}
-          </select>
-        </label>
-        <label className="flex items-center gap-2">
-          <span className="font-[family-name:var(--mono)] text-[10px] font-medium uppercase tracking-[0.09em] text-[var(--text3)]">Metric type</span>
-          <input value={metricType} onChange={(e) => setMetricType(e.target.value)} placeholder="e.g. rule_fired" className={`${fieldInputClass} h-9 w-56`} />
-        </label>
-      </div>
-
-      {byType.size > 0 && (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {Array.from(byType.entries()).map(([type, rows]) => {
-            const series = rows
-              .slice()
-              .sort((a, b) => new Date(a.bucketStart).getTime() - new Date(b.bucketStart).getTime())
-              .map((r) => Number(r.value || 0));
-            return (
-              <div key={type} className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] p-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-[13px] font-medium text-[var(--text)]">{type}</span>
-                  <span className="tabular-nums text-[12px] text-[var(--text3)]">{rows.length} buckets</span>
-                </div>
-                <div className="mt-2">
-                  <MetricSparkline data={series} width={220} height={40} />
-                </div>
-              </div>
-            );
-          })}
-        </div>
+          </SheetTable>
+        </Sheet>
       )}
-
-      {isLoading ? (
-        <div className="flex flex-col gap-2">
-          {[0, 1, 2].map((i) => <div key={i} className="loading-skeleton h-11 rounded-[var(--radius)] bg-[var(--bg2)]" />)}
-        </div>
-      ) : metrics.length === 0 ? (
-        <div className="flex flex-1 items-center justify-center text-[13px] text-[var(--text3)]">No metrics recorded for this window yet.</div>
-      ) : (
-        <Table headers={["Metric type", "Value", "Bucket start", "Bucket end", "Rule"]} maxHeight="calc(100vh - 30rem)">
-          {metrics.map((m) => (
-            <Tr key={m.id}>
-              <Td>{m.metricType}</Td>
-              <Td><span className="tabular-nums">{m.value}</span></Td>
-              <Td><Timestamp value={m.bucketStart} /></Td>
-              <Td><Timestamp value={m.bucketEnd} /></Td>
-              <Td>{m.ruleId ? <code className="font-[family-name:var(--mono)] text-[11.5px]">{m.ruleId.slice(0, 8)}…</code> : <span className="text-[var(--text3)]">Org-level</span>}</Td>
-            </Tr>
-          ))}
-        </Table>
-      )}
-    </FillPage>
+    </WorkspacePage>
   );
 }

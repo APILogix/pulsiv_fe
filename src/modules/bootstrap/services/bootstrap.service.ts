@@ -1,4 +1,5 @@
 import { apiClient } from '@/infrastructure/api-client/axios';
+import { errorStatus, isNetworkFailure } from '@/infrastructure/api-client/api-error';
 import { tokenService } from '@/modules/auth/services/token.service';
 import { useOrgStore } from '@/modules/organizations/store/org.store';
 import { orgApi } from '@/modules/organizations/api/org.api';
@@ -50,11 +51,34 @@ export class BootstrapService {
       try {
         let response: any;
         try {
-          response = await apiClient.get('/api/v1/me/bootstrap', { headers });
+          response = await apiClient.get('/me/bootstrap', { headers });
         } catch (err: any) {
-          // Fallback route if /api/v1/me/bootstrap isn't reachable
-          if (err.response?.status === 404) {
-            response = await apiClient.get('/me/bootstrap', { headers });
+          // If /me/bootstrap is not deployed, synthesize bootstrap state from organizations
+          if (errorStatus(err) === 404) {
+            const orgsRes = await orgApi.listOrganizations({ limit: 100 }).catch(() => ({ data: [] }));
+            const orgs = Array.isArray(orgsRes.data) ? orgsRes.data : [];
+            const activeOrg = orgs.find((o) => o.id === targetOrgId) ?? orgs[0] ?? null;
+
+            const synthesized: BootstrapData = {
+              currentOrganizationId: activeOrg?.id ?? null,
+              organizations: orgs.map((o) => ({
+                id: o.id,
+                name: o.name,
+                slug: o.slug,
+                role: (o as any).role ?? 'member',
+                isCurrent: o.id === (activeOrg?.id ?? null),
+              })),
+              projects: [],
+              billing: null,
+              features: {},
+              integrations: {},
+              quotas: {},
+              usage: {
+                monthlyEvents: { limit: 1000000, used: 0, remaining: 1000000, percentage: 0 },
+                aiCredits: { limit: 500, used: 0, remaining: 500, percentage: 0 },
+              },
+            };
+            response = { data: { success: true, data: synthesized } };
           } else {
             throw err;
           }
@@ -105,8 +129,10 @@ export class BootstrapService {
 
         return data;
       } catch (error: any) {
-        const isNetworkError = !error.response || error.code === 'ERR_NETWORK';
-        const errorMessage = error.response?.data?.message || error.message || 'Failed to fetch application bootstrap';
+        // ApiError-aware: the old `!error.response` check was true for every
+        // failure, so 401/403/500 were all treated as "offline".
+        const isNetworkError = isNetworkFailure(error);
+        const errorMessage = error?.message || 'Failed to fetch application bootstrap';
 
         if (isNetworkError && store.bootstrap) {
           // Retain cached UI snapshot during transient network loss

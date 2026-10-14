@@ -250,50 +250,7 @@ export function ServiceHealthSkeleton() {
 
 /* ───────────────────────────── Workspaces ──────────────────────────────── */
 
-/** Projects list — project cards with health chips. */
-export function ProjectsSkeleton() {
-  return (
-    <SkeletonShell label="Loading projects">
-      <SkeletonPageHeader />
-      <div className="flex flex-wrap items-center gap-2">
-        <Block className="h-8 w-64" delay={80} />
-        <Block className="h-8 w-28" delay={104} />
-        <Block className="ml-auto h-8 w-24" delay={128} />
-      </div>
-      <SkeletonCardGrid count={6} delay={150} />
-    </SkeletonShell>
-  );
-}
-
-/** Project overview — env chips, KPI row, chart, recent activity. */
-export function ProjectOverviewSkeleton() {
-  return (
-    <SkeletonShell label="Loading project overview">
-      <SkeletonPageHeader />
-      <div className="flex flex-wrap items-center gap-2">
-        {[0, 1, 2].map((i) => (
-          <Block key={i} className="h-7 w-24" rounded="full" delay={80 + i * 24} />
-        ))}
-      </div>
-      <SkeletonKpiRow count={4} baseDelay={140} />
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-        <SkeletonChartCard delay={220} height="h-56" />
-        <SurfaceCard delay={250} className="flex flex-col gap-3">
-          <Block className="h-4 w-32" />
-          {[0, 1, 2, 3, 4, 5].map((i) => (
-            <div key={i} className="flex items-start gap-2.5">
-              <Block className="mt-0.5 size-6 shrink-0" rounded="full" delay={i * 24} />
-              <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-                <Block className="h-3 w-4/5" delay={i * 24 + 8} />
-                <Block className="h-3 w-1/3" delay={i * 24 + 16} />
-              </div>
-            </div>
-          ))}
-        </SurfaceCard>
-      </div>
-    </SkeletonShell>
-  );
-}
+/* The projects list, project tabs, and remote config live in ./workspace.tsx. */
 
 /** Creation wizard — step rail + focused form. */
 export function WizardSkeleton() {
@@ -609,3 +566,31 @@ export function GenericPageSkeleton() {
     </SkeletonShell>
   );
 }
+
+/** Auth card skeleton for public login/register/recovery pages. */
+export function AuthCardSkeleton() {
+  return (
+    // Mirrors the bare auth form column (design/auth/DESIGN.md): left-aligned
+    // heading, two fields, one action. No card.
+    <div className="flex w-full items-center justify-center" aria-busy="true" aria-label="Loading">
+      <div className="flex w-full max-w-[400px] flex-col">
+        <div className="mb-8 flex flex-col gap-3">
+          <Block className="h-7 w-56" />
+          <Block className="h-3.5 w-64" delay={20} />
+        </div>
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-1.5">
+            <Block className="h-3 w-16" delay={40} />
+            <Block className="h-11 w-full" rounded="sm" delay={60} />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Block className="h-3 w-20" delay={80} />
+            <Block className="h-11 w-full" rounded="sm" delay={100} />
+          </div>
+          <Block className="h-11 w-full" rounded="sm" delay={120} />
+        </div>
+      </div>
+    </div>
+  );
+}
+

@@ -12,7 +12,7 @@ const PLANS = [
     popular: false,
     features: [
       { name: "Up to 3 Projects", included: true },
-      { name: "10,000 Events/month", included: true },
+      { name: "100,000 Credits/month", included: true },
       { name: "Community Support", included: true },
       { name: "7-day Log Retention", included: true },
       { name: "Custom Webhooks", included: false },
@@ -29,7 +29,7 @@ const PLANS = [
     popular: true,
     features: [
       { name: "Unlimited Projects", included: true },
-      { name: "100,000 Events/month", included: true },
+      { name: "1,000,000 Credits/month", included: true },
       { name: "Priority Email Support", included: true },
       { name: "30-day Log Retention", included: true },
       { name: "Custom Webhooks", included: true },
@@ -46,7 +46,7 @@ const PLANS = [
     popular: false,
     features: [
       { name: "Unlimited Projects", included: true },
-      { name: "Unlimited Events", included: true },
+      { name: "Unlimited Credits", included: true },
       { name: "24/7 Phone Support", included: true },
       { name: "90-day Log Retention", included: true },
       { name: "Custom Webhooks", included: true },
@@ -71,7 +71,7 @@ export default function BillingPlansPage() {
           return (
             <div 
               key={plan.id} 
-              className={`relative flex flex-col rounded-2xl border bg-[var(--bg1)] p-8 transition-all hover:-translate-y-1 hover:shadow-xl ${
+              className={`relative flex flex-col rounded-2xl border bg-[var(--bg1)] p-8 transition-[translate,box-shadow] duration-200 ease-out motion-reduce:hover:translate-y-0 hover:-translate-y-1 hover:shadow-xl ${
                 plan.popular 
                   ? "border-[var(--brand)] shadow-[0_0_20px_rgba(var(--brand-rgb),0.1)]" 
                   : "border-[var(--border)]"

@@ -1,0 +1,1 @@
+import{i as d,r as n}from"./react-core-CXfSUNs3.js";function f(t,c){const e=d.c(4),o=c===void 0?350:c,[u,i]=n.useState(t);let s,r;return e[0]!==o||e[1]!==t?(s=()=>{const a=setTimeout(()=>{i(t)},o);return()=>{clearTimeout(a)}},r=[t,o],e[0]=o,e[1]=t,e[2]=s,e[3]=r):(s=e[2],r=e[3]),n.useEffect(s,r),u}export{f as u};

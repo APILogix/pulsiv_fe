@@ -1,0 +1,1 @@
+import{m as a,p as d,a0 as c}from"./index-hVaBMl9b.js";const p=a()(d((s,t)=>({records:[],add:r=>s(e=>({records:[r,...e.records.filter(o=>o.jobId!==r.jobId)]})),remove:r=>s(e=>({records:e.records.filter(o=>o.jobId!==r)})),forOrg:r=>t().records.filter(e=>e.orgId===r)}),{name:"ai-report-history",storage:c(()=>localStorage)}));export{p as u};

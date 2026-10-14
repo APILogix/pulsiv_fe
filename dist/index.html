@@ -18,22 +18,25 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      rel="preload"
-      as="style"
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap"
-    />
-    <link
       rel="stylesheet"
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap"
-      media="print"
-      onload="this.media='all'"
     />
-    <noscript>
-      <link
-        rel="stylesheet"
-        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap"
-      />
-    </noscript>
+    <script type="speculationrules">
+      {
+        "prefetch": [
+          {
+            "source": "document",
+            "where": {
+              "and": [
+                { "href_matches": "/*" },
+                { "not": { "href_matches": "/auth/*" } }
+              ]
+            },
+            "eagerness": "moderate"
+          }
+        ]
+      }
+    </script>
     <!--
       Anti-FOUC theme boot (mono theme locked).
     -->
@@ -47,14 +50,17 @@
         }
       })();
     </script>
-    <script type="module" crossorigin src="/assets/index-aehZ2Lun.js"></script>
-    <link rel="modulepreload" crossorigin href="/assets/react-core-DP6dhlaz.js">
-    <link rel="modulepreload" crossorigin href="/assets/router-vendor-BtMfTJmS.js">
-    <link rel="modulepreload" crossorigin href="/assets/icons-vendor-C_S7ALkH.js">
-    <link rel="modulepreload" crossorigin href="/assets/query-vendor-jUPP_qA-.js">
-    <link rel="modulepreload" crossorigin href="/assets/cmdk-vendor-C-DXE3Ff.js">
-    <link rel="modulepreload" crossorigin href="/assets/motion-vendor-B3oCQzpD.js">
-    <link rel="stylesheet" crossorigin href="/assets/index-DhbPGk-h.css">
+    <script type="module" crossorigin src="/assets/index-hVaBMl9b.js"></script>
+    <link rel="modulepreload" crossorigin href="/assets/react-core-CXfSUNs3.js">
+    <link rel="modulepreload" crossorigin href="/assets/router-vendor-DSPTWQ70.js">
+    <link rel="modulepreload" crossorigin href="/assets/toast-vendor-BR2JrG1O.js">
+    <link rel="modulepreload" crossorigin href="/assets/icons-vendor-6Cl1nRXW.js">
+    <link rel="modulepreload" crossorigin href="/assets/query-vendor-BHM6Nljc.js">
+    <link rel="modulepreload" crossorigin href="/assets/radix-vendor-Ct4rrpvC.js">
+    <link rel="modulepreload" crossorigin href="/assets/motion-vendor-Cyks9G4l.js">
+    <link rel="modulepreload" crossorigin href="/assets/network-vendor-RXCkG4If.js">
+    <link rel="modulepreload" crossorigin href="/assets/zod-vendor-B-Ru3RjB.js">
+    <link rel="stylesheet" crossorigin href="/assets/index-Cp6zqC2b.css">
   </head>
   <body>
     <div id="root"></div>

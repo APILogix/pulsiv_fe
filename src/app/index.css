@@ -805,3 +805,31 @@ body.flyout-overlay-active #main-content {
     filter: none !important;
   }
 }
+
+/* ══════════════════════════════════════════════════════════════
+   CHROME CORE WEB VITALS & LIGHTHOUSE PERFORMANCE ENHANCEMENTS
+   - font-size-adjust: from-font for zero CLS on font swap
+   - content-visibility: auto + contain-intrinsic-size for fast rendering
+   - Hardware-composited smooth transforms
+   ══════════════════════════════════════════════════════════════ */
+html {
+  font-size-adjust: from-font;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Off-screen deferred rendering utility (CWV INP/TBT/FCP optimization) */
+.cv-auto,
+.heavy-section-deferred {
+  content-visibility: auto;
+  contain-intrinsic-size: auto none auto 240px;
+}
+
+/* Composited GPU acceleration layer for smooth interactive animations */
+.gpu-accelerated {
+  transform: translateZ(0);
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+}
+

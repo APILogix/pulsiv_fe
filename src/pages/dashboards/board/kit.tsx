@@ -248,7 +248,7 @@ export function Panel({
   flush?: boolean;
 }) {
   return (
-    <section className={cn("flex min-w-0 flex-col rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)]", className)}>
+    <section aria-label={title} className={cn("flex min-w-0 flex-col rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)]", className)}>
       <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-5 pb-1 pt-4">
         <div className="flex min-w-0 items-baseline gap-3">
           <h2 className="text-[14px] font-semibold tracking-[-0.01em] text-[var(--text)]">{title}</h2>
@@ -407,7 +407,7 @@ export function Ledger<T>({
     sort?.key === key ? (sort.dir === "asc" ? "ascending" : "descending") : "none";
 
   return (
-    <section className={cn("flex min-w-0 flex-col rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)]", className)}>
+    <section aria-label={title} className={cn("flex min-w-0 flex-col rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)]", className)}>
       <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-5 py-3.5">
         <div className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1">
           <h2 className="text-[14px] font-semibold tracking-[-0.01em] text-[var(--text)]">{title}</h2>
@@ -801,7 +801,10 @@ export function TimeChart({
         </span>
       </div>
       <svg
+        width={W}
+        height={H}
         viewBox={`0 0 ${W} ${H}`}
+        style={{ aspectRatio: `${W} / ${H}` }}
         className="block h-auto w-full touch-none select-none"
         role="img"
         aria-label={label}
@@ -924,7 +927,15 @@ export function Columns({
           </span>
         ))}
       </div>
-      <svg viewBox={`0 0 ${W} ${H}`} className="block h-auto w-full" role="img" aria-label={label}>
+      <svg
+        width={W}
+        height={H}
+        viewBox={`0 0 ${W} ${H}`}
+        style={{ aspectRatio: `${W} / ${H}` }}
+        className="block h-auto w-full"
+        role="img"
+        aria-label={label}
+      >
         {ticks.map((t) => {
           const ty = PT + CH - (t / max) * CH;
           return (

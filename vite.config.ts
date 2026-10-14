@@ -58,11 +58,19 @@ export default defineConfig({
       "zod",
     ],
   },
+  esbuild: {
+    drop: process.env.NODE_ENV === "production" ? ["console", "debugger"] : [],
+    legalComments: "none",
+  },
   build: {
     target: "es2022",
     cssCodeSplit: true,
+    cssMinify: true,
     emptyOutDir: false,
     chunkSizeWarningLimit: 600,
+    modulePreload: {
+      polyfill: true,
+    },
     rollupOptions: {
       output: {
         manualChunks(id) {
@@ -79,6 +87,18 @@ export default defineConfig({
             if (id.includes('lucide-react')) {
               return 'icons-vendor';
             }
+            if (id.includes('radix-ui') || id.includes('@radix-ui')) {
+              return 'radix-vendor';
+            }
+            if (id.includes('@tanstack/react-query')) {
+              return 'query-vendor';
+            }
+            if (id.includes('axios')) {
+              return 'network-vendor';
+            }
+            if (id.includes('zod')) {
+              return 'zod-vendor';
+            }
             if (id.includes('react-simple-maps') || id.includes('d3-')) {
               return 'map-vendor';
             }
@@ -91,8 +111,8 @@ export default defineConfig({
             if (id.includes('cmdk')) {
               return 'cmdk-vendor';
             }
-            if (id.includes('@tanstack/react-query')) {
-              return 'query-vendor';
+            if (id.includes('sonner')) {
+              return 'toast-vendor';
             }
           }
         },

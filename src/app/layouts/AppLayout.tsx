@@ -33,21 +33,29 @@ export function AppLayout() {
       id="sentinel-root"
       className="flex h-screen overflow-hidden w-full bg-[var(--bg)] font-sans relative z-0"
     >
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:px-3 focus:py-1.5 focus:bg-[var(--brand)] focus:text-[var(--brand-fg)] focus:rounded-[var(--radius)] focus:text-xs focus:font-semibold focus:shadow-lg focus:outline-none focus:ring-2 focus:ring-[var(--brand-glow)]"
+      >
+        Skip to main content
+      </a>
       <AppDualSidebar />
-      <main className="flex-1 min-w-0 flex flex-col h-screen overflow-hidden transition-opacity duration-200" id="main-content">
+      <div className="flex-1 min-w-0 flex flex-col h-screen overflow-hidden transition-opacity duration-200">
         <AppHeader onMenuClick={handleMenuClick} />
-        <div
+        <main
+          id="main-content"
+          tabIndex={-1}
           ref={scrollRef}
-          className="scroll-region flex-1 overflow-auto relative flex flex-col [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+          className="scroll-region flex-1 overflow-auto relative flex flex-col focus:outline-none [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
         >
           <AppErrorBoundary>
             <div className="flex min-h-0 w-full flex-1 flex-col">
               <Outlet />
             </div>
           </AppErrorBoundary>
-        </div>
+        </main>
         <ScrollToTop targetRef={scrollRef} />
-      </main>
+      </div>
       <LoginMetricsTransition />
       <PostLoginSetup />
       <Suspense fallback={null}>

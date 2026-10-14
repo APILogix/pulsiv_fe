@@ -73,6 +73,7 @@ export function useWorkflows(query: WorkflowListQuery = {}) {
     queryKey: automationKeys.workflows(activeOrgId, query),
     queryFn: () => workflowsApi.list(activeOrgId!, query),
     enabled: !!activeOrgId,
+    placeholderData: (previous) => previous,
   });
 }
 
@@ -92,6 +93,7 @@ export function useWorkflowRuns(workflowId: string | undefined, query: Paginatio
     queryFn: () => workflowsApi.runs(activeOrgId!, workflowId!, query),
     enabled: !!activeOrgId && !!workflowId,
     refetchInterval: LIVE_REFETCH_MS,
+    placeholderData: (previous) => previous,
   });
 }
 
@@ -146,6 +148,7 @@ export function useRuns(query: RunListQuery = {}) {
     queryFn: () => runsApi.list(activeOrgId!, query),
     enabled: !!activeOrgId,
     refetchInterval: LIVE_REFETCH_MS,
+    placeholderData: (previous) => previous,
   });
 }
 
@@ -196,6 +199,7 @@ export function useApprovals(query: ApprovalListQuery = {}) {
     queryFn: () => approvalsApi.list(activeOrgId!, query),
     enabled: !!activeOrgId,
     refetchInterval: LIVE_REFETCH_MS,
+    placeholderData: (previous) => previous,
   });
 }
 

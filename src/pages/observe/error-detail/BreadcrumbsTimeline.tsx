@@ -1,5 +1,6 @@
-import { CopyButton, Timestamp } from "@/shared/observe";
-import { Globe, Database, MousePointer, Terminal, AlertTriangle, Layers, Zap } from "lucide-react";
+import { Globe, Database, MousePointer, Terminal, AlertTriangle, Layers } from "lucide-react";
+import { EmptyNote, formatAbsoluteTime } from "@/shared/observe";
+import { cn } from "@/lib/utils";
 import type { Breadcrumb } from "./types";
 
 const CATEGORY_ICONS: Record<string, typeof Globe> = {
@@ -18,65 +19,54 @@ const CATEGORY_ICONS: Record<string, typeof Globe> = {
   navigation: Layers,
 };
 
-const LEVEL_TONES: Record<string, string> = {
-  error: "text-[var(--red)] bg-[var(--red-bg)] border-[var(--red)]/20",
-  fatal: "text-[var(--red)] bg-[var(--red-bg)] border-[var(--red)]/20",
-  warning: "text-[var(--amber)] bg-[var(--amber-bg)] border-[var(--amber)]/20",
-  warn: "text-[var(--amber)] bg-[var(--amber-bg)] border-[var(--amber)]/20",
-  info: "text-[var(--blue)] bg-[var(--blue-bg)] border-[var(--blue)]/20",
-  debug: "text-[var(--text2)] bg-[var(--bg2)] border-[var(--border)]",
+const LEVEL_TEXT: Record<string, string> = {
+  error: "text-[var(--red)]",
+  fatal: "text-[var(--red)]",
+  warning: "text-[var(--amber)]",
+  warn: "text-[var(--amber)]",
+  info: "text-[var(--text2)]",
+  debug: "text-[var(--text3)]",
 };
 
+const TIME_FMT = new Intl.DateTimeFormat("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
+
+function clock(value: unknown) {
+  if (!value) return null;
+  const d = new Date(typeof value === "number" && value < 1e12 ? value * 1000 : (value as string));
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+/** What happened right before the error, in the order the SDK recorded it. */
 export function BreadcrumbsTimeline({ breadcrumbs }: { breadcrumbs: Breadcrumb[] }) {
   if (!breadcrumbs || breadcrumbs.length === 0) {
-    return (
-      <div className="rounded-xl border border-dashed border-[var(--border)] p-8 text-center text-[13px] text-[var(--text3)]">
-        No breadcrumbs recorded before this error.
-      </div>
-    );
+    return <EmptyNote>No breadcrumbs were recorded before this error. The SDK records HTTP calls, console output, and navigation automatically when breadcrumbs are enabled.</EmptyNote>;
   }
 
   return (
-    <div className="relative border-l border-[var(--border)] ml-3 pl-7 space-y-4 py-1">
+    <ol className="overflow-hidden rounded-[var(--radius)] border border-[var(--border)]">
       {breadcrumbs.map((item, index) => {
-        const cat = (item.category ?? item.type ?? "log").toLowerCase();
+        const cat = String(item.category ?? item.type ?? "log").toLowerCase();
         const Icon = CATEGORY_ICONS[cat] ?? Terminal;
-        const level = (item.level ?? "info").toLowerCase();
-        const tone = LEVEL_TONES[level] ?? LEVEL_TONES.info;
-        const msg = item.message ?? item.category ?? "Breadcrumb event";
-        const timeVal = item.timestamp ?? item.occurredAt;
-
+        const level = String(item.level ?? "info").toLowerCase();
+        const msg = item.message ?? item.category ?? "Breadcrumb";
+        const at = clock(item.timestamp ?? item.occurredAt);
         return (
-          <div key={index} className="relative group">
-            {/* Timeline node icon dot */}
-            <div className="absolute -left-[41px] top-1.5 flex size-7 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--bg1)] text-[var(--text3)] group-hover:border-[var(--brand)] group-hover:text-[var(--brand)] transition-colors shadow-xs">
-              <Icon className="size-3.5" />
-            </div>
-
-            {/* Breadcrumb row card */}
-            <div className="rounded-xl border border-[var(--border)] bg-[var(--bg)] p-4 transition-all hover:border-[var(--border2)] hover:bg-[var(--bg1)]/80 shadow-xs">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2.5">
-                  <span className={`inline-flex items-center rounded-md border px-2 py-0.5 font-[family-name:var(--mono)] text-[9.5px] font-semibold uppercase tracking-[0.08em] ${tone}`}>
-                    {level}
-                  </span>
-                  <span className="font-[family-name:var(--mono)] text-[10.5px] uppercase font-semibold tracking-[0.08em] text-[var(--text3)]">
-                    {cat}
-                  </span>
-                  <span className="font-[family-name:var(--mono)] text-[13px] font-medium text-[var(--text)] break-all">
-                    {msg}
-                  </span>
-                </div>
-
-                <div className="flex shrink-0 items-center gap-2.5">
-                  {timeVal && <Timestamp value={timeVal} />}
-                  <CopyButton value={msg} label="" className="h-6 w-6 border-0 p-0 text-[var(--text3)] hover:text-[var(--text)]" />
-                </div>
-              </div>
-            </div>
-          </div>
+          <li
+            key={index}
+            className={cn(
+              "grid grid-cols-[76px_16px_88px_minmax(0,1fr)] items-baseline gap-3 border-b border-[var(--border)] bg-[var(--bg1)] px-3 py-2 last:border-0",
+              (level === "error" || level === "fatal") && "bg-[var(--red-bg)]",
+            )}
+          >
+            <time className="font-[family-name:var(--mono)] text-[11px] tabular-nums text-[var(--text3)]" title={at ? formatAbsoluteTime(at) : undefined}>
+              {at ? TIME_FMT.format(at) : "—"}
+            </time>
+            <Icon className={cn("size-3.5 self-center", LEVEL_TEXT[level] ?? "text-[var(--text3)]")} aria-hidden="true" />
+            <span className={cn("truncate text-[12px]", LEVEL_TEXT[level] ?? "text-[var(--text2)]")}>{cat}</span>
+            <span className="break-words font-[family-name:var(--mono)] text-[12px] text-[var(--text)]">{msg}</span>
+          </li>
         );
       })}
-    </div>
+    </ol>
   );
 }

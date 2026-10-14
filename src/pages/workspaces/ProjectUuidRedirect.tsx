@@ -20,7 +20,8 @@ import { DetailSkeleton } from "@/shared/observe";
 export function ProjectUuidRedirect() {
   const { projectId = "", "*": rest = "" } = useParams<{ projectId: string; "*": string }>();
   const { organizations, isLoading: orgsLoading } = useOrganizations();
-  const { activeOrgId, activeOrgSlug } = useOrgStore();
+  const activeOrgId = useOrgStore((s) => s.activeOrgId);
+  const activeOrgSlug = useOrgStore((s) => s.activeOrgSlug);
   const { data: project, isLoading: projectLoading, error } = useProject(projectId);
   const navigate = useNavigate();
 

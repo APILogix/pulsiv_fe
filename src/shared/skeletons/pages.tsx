@@ -250,50 +250,7 @@ export function ServiceHealthSkeleton() {
 
 /* ───────────────────────────── Workspaces ──────────────────────────────── */
 
-/** Projects list — project cards with health chips. */
-export function ProjectsSkeleton() {
-  return (
-    <SkeletonShell label="Loading projects">
-      <SkeletonPageHeader />
-      <div className="flex flex-wrap items-center gap-2">
-        <Block className="h-8 w-64" delay={80} />
-        <Block className="h-8 w-28" delay={104} />
-        <Block className="ml-auto h-8 w-24" delay={128} />
-      </div>
-      <SkeletonCardGrid count={6} delay={150} />
-    </SkeletonShell>
-  );
-}
-
-/** Project overview — env chips, KPI row, chart, recent activity. */
-export function ProjectOverviewSkeleton() {
-  return (
-    <SkeletonShell label="Loading project overview">
-      <SkeletonPageHeader />
-      <div className="flex flex-wrap items-center gap-2">
-        {[0, 1, 2].map((i) => (
-          <Block key={i} className="h-7 w-24" rounded="full" delay={80 + i * 24} />
-        ))}
-      </div>
-      <SkeletonKpiRow count={4} baseDelay={140} />
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-        <SkeletonChartCard delay={220} height="h-56" />
-        <SurfaceCard delay={250} className="flex flex-col gap-3">
-          <Block className="h-4 w-32" />
-          {[0, 1, 2, 3, 4, 5].map((i) => (
-            <div key={i} className="flex items-start gap-2.5">
-              <Block className="mt-0.5 size-6 shrink-0" rounded="full" delay={i * 24} />
-              <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-                <Block className="h-3 w-4/5" delay={i * 24 + 8} />
-                <Block className="h-3 w-1/3" delay={i * 24 + 16} />
-              </div>
-            </div>
-          ))}
-        </SurfaceCard>
-      </div>
-    </SkeletonShell>
-  );
-}
+/* The projects list, project tabs, and remote config live in ./workspace.tsx. */
 
 /** Creation wizard — step rail + focused form. */
 export function WizardSkeleton() {
@@ -610,178 +567,29 @@ export function GenericPageSkeleton() {
   );
 }
 
-/**
- * Remote Configuration — mirrors the real RemoteConfigPage layout:
- * Page Header, Configuration Status strip, [ Navigation ] sidebar,
- * and [ Configuration Section ] with Setting [ Skeleton Toggle ],
- * Setting [ Skeleton Input ], Setting [ Skeleton Select ].
- */
-export function RemoteConfigSkeleton() {
-  return (
-    <SkeletonShell label="Loading remote configuration" className="mx-auto w-full max-w-[1400px]">
-      {/* Page Header */}
-      <div className="flex flex-col gap-4">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <Block className="size-10 shrink-0" rounded="lg" />
-            <div className="flex flex-col gap-1.5">
-              <Block className="h-6 w-52" />
-              <Block className="h-3.5 w-72" delay={20} />
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <Block className="h-8 w-24" delay={30} />
-            <Block className="h-8 w-28" delay={45} />
-          </div>
-        </div>
-
-        {/* Configuration Status Strip */}
-        <SurfaceCard delay={60} className="grid grid-cols-2 gap-3 p-3 sm:grid-cols-4">
-          <div className="flex items-center gap-2.5">
-            <Block className="size-6 shrink-0" rounded="full" />
-            <div className="flex flex-col gap-1">
-              <Block className="h-2.5 w-16" />
-              <Block className="h-3.5 w-24" />
-            </div>
-          </div>
-          <div className="flex items-center gap-2.5">
-            <Block className="size-6 shrink-0" rounded="full" />
-            <div className="flex flex-col gap-1">
-              <Block className="h-2.5 w-14" />
-              <Block className="h-3.5 w-20" />
-            </div>
-          </div>
-          <div className="flex items-center gap-2.5">
-            <Block className="size-6 shrink-0" rounded="full" />
-            <div className="flex flex-col gap-1">
-              <Block className="h-2.5 w-20" />
-              <Block className="h-3.5 w-28" />
-            </div>
-          </div>
-          <div className="flex items-center gap-2.5">
-            <Block className="size-6 shrink-0" rounded="full" />
-            <div className="flex flex-col gap-1">
-              <Block className="h-2.5 w-16" />
-              <Block className="h-3.5 w-20" />
-            </div>
-          </div>
-        </SurfaceCard>
-      </div>
-
-      {/* Main Body: [ Navigation ] + [ Configuration Sections ] */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[240px_minmax(0,1fr)]">
-        {/* [ Navigation ] */}
-        <SurfaceCard delay={90} className="flex flex-col gap-2 p-3">
-          <Block className="mb-2 h-3.5 w-24" />
-          {[0, 1, 2, 3, 4, 5].map((i) => (
-            <div key={i} className="flex items-center gap-2.5 rounded-md px-2 py-2">
-              <Block className="size-4 shrink-0" rounded="sm" delay={100 + i * 18} />
-              <Block className="h-3.5 flex-1" delay={100 + i * 18 + 6} />
-            </div>
-          ))}
-        </SurfaceCard>
-
-        {/* Configuration Sections */}
-        <div className="flex flex-col gap-6">
-          {/* [ Configuration Section 1 ] */}
-          <SurfaceCard delay={120} className="flex flex-col gap-5 p-5">
-            <div className="flex items-center justify-between border-b border-[var(--border)] pb-3">
-              <div className="flex flex-col gap-1">
-                <Block className="h-4 w-40" />
-                <Block className="h-3 w-64" delay={130} />
-              </div>
-              <Block className="h-6 w-20" delay={140} />
-            </div>
-
-            {/* Setting: Label + Skeleton Toggle */}
-            <div className="flex items-center justify-between gap-4 border-b border-[var(--border)]/60 pb-4">
-              <div className="flex flex-col gap-1.5 max-w-[400px]">
-                <Block className="h-3.5 w-36" delay={150} />
-                <Block className="h-3 w-64" delay={160} />
-              </div>
-              <Block className="h-5 w-9 shrink-0" rounded="full" delay={170} />
-            </div>
-
-            {/* Setting: Label + Skeleton Input */}
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-[var(--border)]/60 pb-4">
-              <div className="flex flex-col gap-1.5 max-w-[400px]">
-                <Block className="h-3.5 w-32" delay={180} />
-                <Block className="h-3 w-72" delay={190} />
-              </div>
-              <Block className="h-8 w-full max-w-[260px] shrink-0" delay={200} />
-            </div>
-
-            {/* Setting: Label + Skeleton Select */}
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between gap-4 pb-2">
-              <div className="flex flex-col gap-1.5 max-w-[400px]">
-                <Block className="h-3.5 w-40" delay={210} />
-                <Block className="h-3 w-60" delay={220} />
-              </div>
-              <Block className="h-8 w-full max-w-[260px] shrink-0" delay={230} />
-            </div>
-          </SurfaceCard>
-
-          {/* [ Configuration Section 2 ] */}
-          <SurfaceCard delay={240} className="flex flex-col gap-5 p-5">
-            <div className="flex items-center justify-between border-b border-[var(--border)] pb-3">
-              <div className="flex flex-col gap-1">
-                <Block className="h-4 w-48" />
-                <Block className="h-3 w-72" delay={250} />
-              </div>
-            </div>
-
-            {/* Setting: Label + Skeleton Input */}
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-[var(--border)]/60 pb-4">
-              <div className="flex flex-col gap-1.5 max-w-[400px]">
-                <Block className="h-3.5 w-44" delay={260} />
-                <Block className="h-3 w-64" delay={270} />
-              </div>
-              <Block className="h-8 w-full max-w-[260px] shrink-0" delay={280} />
-            </div>
-
-            {/* Setting: Label + Skeleton Toggle */}
-            <div className="flex items-center justify-between gap-4 pb-2">
-              <div className="flex flex-col gap-1.5 max-w-[400px]">
-                <Block className="h-3.5 w-36" delay={290} />
-                <Block className="h-3 w-56" delay={300} />
-              </div>
-              <Block className="h-5 w-9 shrink-0" rounded="full" delay={310} />
-            </div>
-          </SurfaceCard>
-        </div>
-      </div>
-    </SkeletonShell>
-  );
-}
-
 /** Auth card skeleton for public login/register/recovery pages. */
 export function AuthCardSkeleton() {
   return (
-    <div className="relative flex min-h-[60vh] w-full items-center justify-center p-4">
-      <SurfaceCard className="w-full max-w-[440px] flex flex-col gap-6 p-7 shadow-lg">
-        <div className="flex flex-col items-center gap-3 text-center">
-          <Block className="size-10" rounded="lg" />
-          <Block className="h-6 w-44" delay={20} />
-          <Block className="h-3.5 w-60" delay={40} />
+    // Mirrors the bare auth form column (design/auth/DESIGN.md): left-aligned
+    // heading, two fields, one action. No card.
+    <div className="flex w-full items-center justify-center" aria-busy="true" aria-label="Loading">
+      <div className="flex w-full max-w-[400px] flex-col">
+        <div className="mb-8 flex flex-col gap-3">
+          <Block className="h-7 w-56" />
+          <Block className="h-3.5 w-64" delay={20} />
         </div>
         <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
-            <Block className="h-3 w-16" delay={60} />
-            <Block className="h-9 w-full" rounded="sm" delay={80} />
+            <Block className="h-3 w-16" delay={40} />
+            <Block className="h-11 w-full" rounded="sm" delay={60} />
           </div>
           <div className="flex flex-col gap-1.5">
-            <div className="flex items-center justify-between">
-              <Block className="h-3 w-16" delay={100} />
-              <Block className="h-3 w-24" delay={100} />
-            </div>
-            <Block className="h-9 w-full" rounded="sm" delay={120} />
+            <Block className="h-3 w-20" delay={80} />
+            <Block className="h-11 w-full" rounded="sm" delay={100} />
           </div>
-          <Block className="mt-2 h-10 w-full" rounded="sm" delay={140} />
+          <Block className="h-11 w-full" rounded="sm" delay={120} />
         </div>
-        <div className="flex justify-center border-t border-[var(--border)] pt-4">
-          <Block className="h-3 w-48" delay={160} />
-        </div>
-      </SurfaceCard>
+      </div>
     </div>
   );
 }

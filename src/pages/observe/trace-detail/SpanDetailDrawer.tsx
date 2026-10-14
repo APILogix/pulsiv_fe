@@ -118,14 +118,14 @@ export function SpanDetailDrawer({
       />
 
       {/* Slide-out Drawer */}
-      <aside className="fixed inset-y-0 right-0 z-50 flex w-full max-w-[640px] flex-col border-l border-[var(--border)] bg-[var(--bg1)] shadow-2xl animate-in slide-in-from-right duration-200">
+      <aside className="fixed inset-y-0 right-0 z-50 flex w-full max-w-[640px] flex-col border-l border-[var(--border)] bg-[var(--bg1)] animate-in slide-in-from-right duration-200">
         {/* Drawer Header */}
         <div className="flex shrink-0 items-start justify-between border-b border-[var(--border)] p-5">
           <div className="flex min-w-0 flex-col gap-1.5">
             <div className="flex items-center gap-2">
               <span
                 className={cn(
-                  "rounded-md border px-2 py-0.5 font-[family-name:var(--mono)] text-[10px] font-bold uppercase tracking-wider",
+                  "rounded-[4px] border px-2 py-0.5 font-[family-name:var(--mono)] text-[10px] font-semibold  ",
                   kindBadgeStyle,
                 )}
               >
@@ -143,14 +143,14 @@ export function SpanDetailDrawer({
                 {span.status.toUpperCase()}
               </span>
               {span.isBottleneck && (
-                <span className="flex items-center gap-1 rounded-full bg-[var(--amber-bg)] px-2 py-0.5 text-[10.5px] font-bold text-[var(--amber)]">
+                <span className="flex items-center gap-1 rounded-full bg-[var(--amber-bg)] px-2 py-0.5 text-[10.5px] font-semibold text-[var(--amber)]">
                   <Flame className="size-3" />
                   Bottleneck
                 </span>
               )}
             </div>
             <h2
-              className="truncate font-[family-name:var(--mono)] text-[16px] font-bold text-[var(--text)]"
+              className="truncate font-[family-name:var(--mono)] text-[16px] font-semibold text-[var(--text)]"
               title={span.name}
             >
               {span.name}
@@ -214,7 +214,7 @@ export function SpanDetailDrawer({
             <div className="flex flex-col gap-5">
               {/* Database quick banner if DB span */}
               {isDb && (
-                <div className="flex items-center justify-between rounded-xl border border-[var(--amber)]/30 bg-[var(--amber-bg)]/40 p-3.5">
+                <div className="flex items-center justify-between rounded-[var(--radius)] border border-[var(--amber)]/30 bg-[var(--amber-bg)]/40 p-3.5">
                   <div className="flex items-center gap-2.5 min-w-0">
                     <Database className="size-4 shrink-0 text-[var(--amber)]" />
                     <div className="min-w-0">
@@ -238,11 +238,11 @@ export function SpanDetailDrawer({
 
               {/* Timing KPI grid */}
               <div className="grid grid-cols-3 gap-3">
-                <div className="rounded-xl border border-[var(--border)] bg-[var(--bg2)]/50 p-3">
-                  <div className="font-[family-name:var(--mono)] text-[10px] uppercase tracking-wider text-[var(--text3)]">
+                <div className="rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg2)]/50 p-3">
+                  <div className="text-[12px] font-medium text-[var(--text3)]">
                     Total Duration
                   </div>
-                  <div className="mt-1 font-[family-name:var(--mono)] text-[15px] font-bold text-[var(--text)]">
+                  <div className="mt-1 font-[family-name:var(--mono)] text-[15px] font-semibold text-[var(--text)]">
                     {formatDurationMs(span.durationMs)}
                   </div>
                   <div className="mt-0.5 text-[10.5px] text-[var(--text3)]">
@@ -250,11 +250,11 @@ export function SpanDetailDrawer({
                   </div>
                 </div>
 
-                <div className="rounded-xl border border-[var(--violet)]/30 bg-[var(--violet-bg)]/20 p-3">
-                  <div className="font-[family-name:var(--mono)] text-[10px] uppercase tracking-wider text-[var(--violet)]">
+                <div className="rounded-[var(--radius)] border border-[var(--violet)]/30 bg-[var(--violet-bg)]/20 p-3">
+                  <div className="text-[12px] font-medium text-[var(--violet)]">
                     Self / Compute Time
                   </div>
-                  <div className="mt-1 font-[family-name:var(--mono)] text-[15px] font-bold text-[var(--violet)]">
+                  <div className="mt-1 font-[family-name:var(--mono)] text-[15px] font-semibold text-[var(--violet)]">
                     {formatDurationMs(span.selfDurationMs)}
                   </div>
                   <div className="mt-0.5 text-[10.5px] text-[var(--violet)]/80 font-medium">
@@ -262,11 +262,11 @@ export function SpanDetailDrawer({
                   </div>
                 </div>
 
-                <div className="rounded-xl border border-[var(--border)] bg-[var(--bg2)]/50 p-3">
-                  <div className="font-[family-name:var(--mono)] text-[10px] uppercase tracking-wider text-[var(--text3)]">
+                <div className="rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg2)]/50 p-3">
+                  <div className="text-[12px] font-medium text-[var(--text3)]">
                     Timeline Offset
                   </div>
-                  <div className="mt-1 font-[family-name:var(--mono)] text-[15px] font-bold text-[var(--text)]">
+                  <div className="mt-1 font-[family-name:var(--mono)] text-[15px] font-semibold text-[var(--text)]">
                     +{formatDurationMs(span.startOffsetMs)}
                   </div>
                   <div className="mt-0.5 text-[10.5px] text-[var(--text3)]">
@@ -277,7 +277,7 @@ export function SpanDetailDrawer({
 
               {/* Execution Attribution Card for Parent Spans */}
               {span.children.length > 0 && (
-                <div className="rounded-xl border border-[var(--border)] bg-[var(--bg2)]/40 p-4">
+                <div className="rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg2)]/40 p-4">
                   <div className="flex items-center justify-between text-[11px] mb-2 font-medium">
                     <span className="text-[var(--text3)]">Span Execution Breakdown</span>
                     <span className="font-[family-name:var(--mono)] text-[var(--text)]">
@@ -311,7 +311,7 @@ export function SpanDetailDrawer({
 
               {/* High Internal Calculation Notice */}
               {span.selfDurationMs > 100 && (span.selfDurationMs / span.durationMs) > 0.6 && (
-                <div className="flex items-start gap-2.5 rounded-xl border border-[var(--violet)]/35 bg-[var(--violet-bg)]/25 p-3.5 text-[12px]">
+                <div className="flex items-start gap-2.5 rounded-[var(--radius)] border border-[var(--violet)]/35 bg-[var(--violet-bg)]/25 p-3.5 text-[12px]">
                   <Cpu className="size-4 shrink-0 text-[var(--violet)] mt-0.5" />
                   <div className="flex flex-col gap-0.5 text-[var(--text2)]">
                     <strong className="text-[var(--text)]">
@@ -325,8 +325,8 @@ export function SpanDetailDrawer({
               )}
 
               {/* Execution Details Table */}
-              <div className="rounded-xl border border-[var(--border)] bg-[var(--bg2)]/30 overflow-hidden">
-                <div className="border-b border-[var(--border)] bg-[var(--bg2)] px-4 py-2 font-[family-name:var(--mono)] text-[10.5px] font-semibold uppercase tracking-wider text-[var(--text3)]">
+              <div className="rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg2)]/30 overflow-hidden">
+                <div className="border-b border-[var(--border)] bg-[var(--bg2)] px-4 py-2 text-[12px] font-medium text-[var(--text3)]">
                   Span Identity & Execution Context
                 </div>
                 <div className="divide-y divide-[var(--border)]">
@@ -414,16 +414,16 @@ export function SpanDetailDrawer({
           {/* TAB 2: DATABASE INTELLIGENCE */}
           {activeTab === "database" && isDb && (
             <div className="flex flex-col gap-4">
-              <div className="rounded-xl border border-[var(--border)] bg-[var(--bg2)]/50 p-4">
+              <div className="rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg2)]/50 p-4">
                 <div className="flex items-center justify-between border-b border-[var(--border)] pb-3">
                   <div className="flex items-center gap-2">
                     <Database className="size-4 text-[var(--amber)]" />
-                    <span className="font-[family-name:var(--mono)] text-[12px] font-bold uppercase tracking-wider text-[var(--text)]">
+                    <span className="font-[family-name:var(--mono)] text-[12px] font-semibold text-[var(--text)]">
                       {rawSpan.dbSystem || "Database"} Intelligence
                     </span>
                   </div>
                   {rawSpan.dbOperation && (
-                    <span className="rounded bg-[var(--amber-bg)] px-2 py-0.5 font-[family-name:var(--mono)] text-[11px] font-bold text-[var(--amber)] uppercase">
+                    <span className="rounded bg-[var(--amber-bg)] px-2 py-0.5 font-[family-name:var(--mono)] text-[11px] font-semibold text-[var(--amber)]">
                       {rawSpan.dbOperation}
                     </span>
                   )}
@@ -446,7 +446,7 @@ export function SpanDetailDrawer({
               </div>
 
               {/* Formatted Query Text Card */}
-              <div className="rounded-xl border border-[var(--border)] bg-[var(--bg)] overflow-hidden">
+              <div className="rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg)] overflow-hidden">
                 <div className="flex items-center justify-between border-b border-[var(--border)] bg-[var(--bg2)] px-4 py-2 text-[11px]">
                   <div className="flex items-center gap-2">
                     <Code2 className="size-3.5 text-[var(--brand)]" />
@@ -483,13 +483,13 @@ export function SpanDetailDrawer({
                     placeholder="Search attributes by key or value…"
                     value={attrSearch}
                     onChange={(e) => setAttrSearch(e.target.value)}
-                    className="h-8 w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] pl-8 pr-3 font-[family-name:var(--mono)] text-[11.5px] text-[var(--text)] placeholder-[var(--text3)] outline-none focus:border-[var(--brand)]"
+                    className="h-8 w-full rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg)] pl-8 pr-3 font-[family-name:var(--mono)] text-[11.5px] text-[var(--text)] placeholder-[var(--text3)] outline-none focus:border-[var(--brand)]"
                   />
                 </div>
                 <button
                   type="button"
                   onClick={() => navigator.clipboard.writeText(JSON.stringify(allAttributes, null, 2))}
-                  className="inline-flex h-8 items-center gap-1 rounded-lg border border-[var(--border)] bg-[var(--bg2)] px-2.5 text-[11.5px] font-medium text-[var(--text)] hover:bg-[var(--border)] cursor-pointer"
+                  className="inline-flex h-8 items-center gap-1 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg2)] px-2.5 text-[11.5px] font-medium text-[var(--text)] hover:bg-[var(--border)] cursor-pointer"
                 >
                   <Copy className="size-3" />
                   <span>Copy JSON</span>
@@ -501,7 +501,7 @@ export function SpanDetailDrawer({
                   No attributes match your search.
                 </div>
               ) : (
-                <div className="divide-y divide-[var(--border)] rounded-xl border border-[var(--border)] bg-[var(--bg2)]/20 overflow-hidden">
+                <div className="divide-y divide-[var(--border)] rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg2)]/20 overflow-hidden">
                   {filteredAttributes.map(([key, value]) => {
                     const isObj = typeof value === "object" && value !== null;
                     const displayValue = isObj ? JSON.stringify(value, null, 2) : String(value);
@@ -512,13 +512,13 @@ export function SpanDetailDrawer({
                           <span className="font-[family-name:var(--mono)] text-[11.5px] font-semibold text-[var(--text2)]">
                             {key}
                           </span>
-                          <span className="font-[family-name:var(--mono)] text-[9.5px] text-[var(--text3)] uppercase">
+                          <span className="font-[family-name:var(--mono)] text-[9.5px] text-[var(--text3)]">
                             {Array.isArray(value) ? "array" : typeof value}
                           </span>
                         </div>
                         <div className="mt-0.5">
                           {isObj ? (
-                            <pre className="rounded-md bg-[var(--bg)] p-2 font-[family-name:var(--mono)] text-[11px] text-[var(--text)] whitespace-pre-wrap break-all border border-[var(--border)]">
+                            <pre className="rounded-[4px] bg-[var(--bg)] p-2 font-[family-name:var(--mono)] text-[11px] text-[var(--text)] whitespace-pre-wrap break-all border border-[var(--border)]">
                               {displayValue}
                             </pre>
                           ) : (
@@ -539,7 +539,7 @@ export function SpanDetailDrawer({
           {activeTab === "events" && (
             <div className="flex flex-col gap-4">
               {span.hasError && (
-                <div className="rounded-xl border border-[var(--red)]/40 bg-[var(--red-bg)]/30 p-4">
+                <div className="rounded-[var(--radius)] border border-[var(--red)]/40 bg-[var(--red-bg)]/30 p-4">
                   <div className="flex items-center gap-2 text-[var(--red)] font-semibold text-[13px]">
                     <AlertCircle className="size-4 shrink-0" />
                     <span>Error Encountered in Span</span>
@@ -558,14 +558,14 @@ export function SpanDetailDrawer({
               {/* Timestamped events list */}
               {rawSpan.events && rawSpan.events.length > 0 ? (
                 <div className="flex flex-col gap-3">
-                  <span className="font-[family-name:var(--mono)] text-[11px] font-semibold uppercase tracking-wider text-[var(--text3)]">
+                  <span className="text-[12px] font-medium text-[var(--text3)]">
                     Recorded Span Events ({rawSpan.events.length})
                   </span>
-                  <div className="divide-y divide-[var(--border)] rounded-xl border border-[var(--border)] bg-[var(--bg2)]/20 overflow-hidden">
+                  <div className="divide-y divide-[var(--border)] rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg2)]/20 overflow-hidden">
                     {rawSpan.events.map((evt, idx) => (
                       <div key={idx} className="p-3">
                         <div className="flex items-center justify-between">
-                          <span className="font-[family-name:var(--mono)] text-[12px] font-bold text-[var(--text)]">
+                          <span className="font-[family-name:var(--mono)] text-[12px] font-semibold text-[var(--text)]">
                             {String(evt.name || "Event")}
                           </span>
                           <span className="font-[family-name:var(--mono)] text-[11px] text-[var(--text3)]">
@@ -582,7 +582,7 @@ export function SpanDetailDrawer({
                   </div>
                 </div>
               ) : (
-                <div className="rounded-xl border border-[var(--border)] bg-[var(--bg2)]/20 p-8 text-center text-[12.5px] text-[var(--text3)]">
+                <div className="rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg2)]/20 p-8 text-center text-[12.5px] text-[var(--text3)]">
                   No timestamped events or exceptions recorded for this span.
                 </div>
               )}
@@ -592,7 +592,7 @@ export function SpanDetailDrawer({
           {/* TAB 5: CORRELATIONS */}
           {activeTab === "correlations" && (
             <div className="flex flex-col gap-4">
-              <div className="rounded-xl border border-[var(--border)] bg-[var(--bg2)]/30 p-4">
+              <div className="rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg2)]/30 p-4">
                 <div className="font-semibold text-[13px] text-[var(--text)]">
                   Cross-Telemetry Navigation
                 </div>
@@ -604,10 +604,10 @@ export function SpanDetailDrawer({
                   {/* Related Logs */}
                   <Link
                     to={`/observability/logs?traceId=${encodeURIComponent(rawSpan.traceId || traceId || "")}`}
-                    className="flex items-center justify-between rounded-lg border border-[var(--border)] bg-[var(--bg)] p-3 text-[12.5px] font-medium text-[var(--text)] hover:border-[var(--brand)] transition-colors"
+                    className="flex items-center justify-between rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg)] p-3 text-[12.5px] font-medium text-[var(--text)] hover:border-[var(--brand)] transition-colors"
                   >
                     <div className="flex items-center gap-2.5">
-                      <FileText className="size-4 text-[var(--cyan)]" />
+                      <FileText className="size-4 text-[var(--text2)]" />
                       <span>View Correlated Logs for Trace</span>
                     </div>
                     <ExternalLink className="size-3.5 text-[var(--text3)]" />
@@ -618,7 +618,7 @@ export function SpanDetailDrawer({
                     <button
                       type="button"
                       onClick={() => onSelectSpanId(span.parentSpanId!)}
-                      className="flex items-center justify-between rounded-lg border border-[var(--border)] bg-[var(--bg)] p-3 text-[12.5px] font-medium text-[var(--text)] hover:border-[var(--brand)] transition-colors cursor-pointer"
+                      className="flex items-center justify-between rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg)] p-3 text-[12.5px] font-medium text-[var(--text)] hover:border-[var(--brand)] transition-colors cursor-pointer"
                     >
                       <div className="flex items-center gap-2.5">
                         <ArrowUpRight className="size-4 text-[var(--violet)]" />
@@ -631,7 +631,7 @@ export function SpanDetailDrawer({
                   {/* Child Spans */}
                   {span.children.length > 0 && (
                     <div className="mt-2 flex flex-col gap-1.5">
-                      <span className="font-[family-name:var(--mono)] text-[10.5px] font-semibold uppercase text-[var(--text3)]">
+                      <span className="font-[family-name:var(--mono)] text-[10.5px] font-semibold text-[var(--text3)]">
                         Child Spans ({span.children.length})
                       </span>
                       {span.children.map((child) => (
@@ -639,7 +639,7 @@ export function SpanDetailDrawer({
                           key={child.spanId}
                           type="button"
                           onClick={() => onSelectSpanId?.(child.spanId)}
-                          className="flex items-center justify-between rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-[12px] font-medium text-[var(--text)] hover:border-[var(--brand)] transition-colors cursor-pointer"
+                          className="flex items-center justify-between rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-[12px] font-medium text-[var(--text)] hover:border-[var(--brand)] transition-colors cursor-pointer"
                         >
                           <div className="flex items-center gap-2 truncate">
                             <CornerDownRight className="size-3 text-[var(--text3)] shrink-0" />
@@ -673,7 +673,7 @@ export function SpanDetailDrawer({
                   <span>{copiedRaw ? "Copied" : "Copy JSON"}</span>
                 </button>
               </div>
-              <pre className="rounded-xl border border-[var(--border)] bg-[var(--bg)] p-4 font-[family-name:var(--mono)] text-[11.5px] leading-relaxed text-[var(--text)] whitespace-pre-wrap break-all overflow-x-auto">
+              <pre className="rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg)] p-4 font-[family-name:var(--mono)] text-[11.5px] leading-relaxed text-[var(--text)] whitespace-pre-wrap break-all overflow-x-auto">
                 {JSON.stringify(rawSpan, null, 2)}
               </pre>
             </div>

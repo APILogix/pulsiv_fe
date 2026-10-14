@@ -110,19 +110,22 @@ export function SocialProviderButtons({
     <div className={cn('flex flex-col gap-2', className)}>
       {visible.map((provider) => {
         const isLinked = linked?.includes(provider) ?? false;
+        const isPending = pendingProvider === provider;
+
         return (
           <div key={provider} className="relative">
             <OAuthButton
               icon={PROVIDER_META[provider].icon}
               onClick={() => onSelect(provider)}
               disabled={disabled || (pendingProvider != null && pendingProvider !== provider)}
-              pending={pendingProvider === provider}
+              pending={isPending}
+              pendingText={`Connecting to ${PROVIDER_META[provider].label}…`}
             >
               {verb} {PROVIDER_META[provider].label}
             </OAuthButton>
             {isLinked && pendingProvider !== provider && (
               <span
-                className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 font-mono text-[9px] font-medium uppercase tracking-[0.09em] text-[var(--text3)]"
+                className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 rounded-[4px] border border-[var(--border2)] px-1.5 py-px text-[11px] text-[var(--text2)]"
                 aria-label={`You have signed in with ${PROVIDER_META[provider].label} before`}
               >
                 Used before

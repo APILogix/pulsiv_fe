@@ -3,6 +3,7 @@ import { authApi } from '../api/auth.api';
 import { authQueryKeys } from '../api/auth.query';
 import { useAuthStore } from '../store/auth.store';
 import { toast } from 'sonner';
+import { apiErrorMessage } from "@/infrastructure/api-client/api-error";
 
 export function useUpdateProfile() {
   const setAuth = useAuthStore((s) => s.setAuth);
@@ -17,7 +18,7 @@ export function useUpdateProfile() {
       toast.success('Profile updated successfully!');
     },
     onError: (error: any) => {
-      const message = error.response?.data?.error?.message || 'Failed to update profile';
+      const message = apiErrorMessage(error) || 'Failed to update profile';
       toast.error(message);
     }
   });

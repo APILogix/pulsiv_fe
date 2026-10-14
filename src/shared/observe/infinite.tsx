@@ -90,7 +90,7 @@ export function InfiniteTable<T>({
           <thead className="sticky top-0 z-10 bg-[var(--bg2)]">
             <tr className="border-b border-[var(--border)] text-left">
               {headers.map((h) => (
-                <th key={h} className="px-4 py-2.5 font-[family-name:var(--mono)] text-[10px] font-medium uppercase tracking-[0.09em] text-[var(--text3)]">{h}</th>
+                <th key={h} className="px-4 py-2.5 text-[12px] font-medium text-[var(--text3)]">{h}</th>
               ))}
             </tr>
           </thead>

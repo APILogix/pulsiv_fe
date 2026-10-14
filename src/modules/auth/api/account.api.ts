@@ -55,11 +55,19 @@ export interface UpdateAccountProfileInput {
   product_updates: boolean;
 }
 
+function unwrap<T>(res: any): T {
+  const body = res?.data;
+  if (body && typeof body === 'object' && 'success' in body && 'data' in body) {
+    return body.data as T;
+  }
+  return (body ?? res) as T;
+}
+
 export const accountApi = {
-  getOverview: () => apiClient.get('/user/account/overview').then((r) => r.data as AccountOverview),
-  getProfile: () => apiClient.get('/user/profile').then((r) => r.data as AccountProfile),
-  updateProfile: (data: UpdateAccountProfileInput) => apiClient.patch('/user/profile', data).then((r) => r.data as AccountProfile),
-  deleteAvatar: () => apiClient.delete('/user/avatar').then((r) => r.data as AccountProfile),
-  exportData: (data: { password?: string; mfa_code?: string }) => apiClient.post('/user/account/export-data', data).then((r) => r.data),
-  signOutAllDevices: () => apiClient.post('/user/sessions/sign-out-all-devices').then((r) => r.data),
+  getOverview: () => apiClient.get('/user/account/overview').then(unwrap<AccountOverview>),
+  getProfile: () => apiClient.get('/user/profile').then(unwrap<AccountProfile>),
+  updateProfile: (data: UpdateAccountProfileInput) => apiClient.patch('/user/profile', data).then(unwrap<AccountProfile>),
+  deleteAvatar: () => apiClient.delete('/user/avatar').then(unwrap<AccountProfile>),
+  exportData: (data: { password?: string; mfa_code?: string }) => apiClient.post('/user/account/export-data', data).then(unwrap),
+  signOutAllDevices: () => apiClient.post('/user/sessions/sign-out-all-devices').then(unwrap),
 };

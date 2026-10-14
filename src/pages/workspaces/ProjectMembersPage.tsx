@@ -1,32 +1,50 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Crown, MoreHorizontal, ShieldCheck, UserMinus, UserPlus, Users } from "lucide-react";
+import { Crown, UserPlus } from "lucide-react";
+
 import { useMemberMutations, useProjectMembers } from "@/modules/projects/hooks/useMembers";
-import { PROJECT_MEMBER_ROLES, type ProjectMember, type ProjectMemberRole } from "@/modules/projects/api/types";
+import {
+  PROJECT_MEMBER_ROLES,
+  type ProjectMember,
+  type ProjectMemberRole,
+  type ProjectMemberStatus,
+} from "@/modules/projects/api/types";
 import { orgApi } from "@/modules/organizations/api/org.api";
 import { orgQueryKeys } from "@/modules/organizations/hooks/useOrganizations";
 import { useOrgStore } from "@/modules/organizations/store/org.store";
-import { useCurrentProject } from "./ProjectShellPage";
-import { IconChip, Notice, Panel, Pill, SectionHeading, StatCard, Toolbar, fieldInputClass, type SurfaceTone } from "@/shared/ui/pulse";
-import { FilterSelect, Table, Td, Timestamp, Tr } from "@/shared/observe";
-import { Button as UiButton } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { ConfirmDialog, DialogField, FormDialog, apiErrorMessage } from "@/modules/projects/components/project-ui";
+import {
+  HIDE_BELOW_MD,
+  ProjectPageHeader,
+  Readouts,
+  RowActions,
+  RowTitle,
+  Sheet,
+  SheetCell,
+  SheetEmpty,
+  SheetError,
+  SheetLoading,
+  SheetRow,
+  SheetTable,
+  ToolbarCount,
+  WorkspacePage,
+  type Readout,
+  type SheetColumn,
+} from "@/modules/projects/components/project-page";
+import { Notice, Panel, Pill, fieldInputClass, type SurfaceTone } from "@/shared/ui/pulse";
+import { FilterSelect, Timestamp, formatNumber } from "@/shared/observe";
+import { Button as UiButton } from "@/components/ui/button";
+import { DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+import { useCurrentProject } from "./ProjectShellPage";
 
 // ── module-level constants (rules.md §1.2) ───────────────────
 
-const ROLE_TONE: Record<ProjectMemberRole, SurfaceTone> = {
-  owner: "violet",
-  admin: "brand",
-  developer: "blue",
-  qa: "amber",
-  viewer: "neutral",
+const ROLE_LABEL: Record<ProjectMemberRole, string> = {
+  owner: "Owner",
+  admin: "Admin",
+  developer: "Developer",
+  qa: "QA",
+  viewer: "Viewer",
 };
 
 const ROLE_DESCRIPTION: Record<ProjectMemberRole, string> = {
@@ -35,6 +53,14 @@ const ROLE_DESCRIPTION: Record<ProjectMemberRole, string> = {
   developer: "Manage keys and alerting; read all telemetry.",
   qa: "Read telemetry and acknowledge alerts.",
   viewer: "Read-only access to telemetry and dashboards.",
+};
+
+// Status is the only coloured reading. Roles are categories, so they stay neutral.
+const STATUS_TONE: Record<ProjectMemberStatus, SurfaceTone> = {
+  active: "green",
+  pending: "amber",
+  inactive: "neutral",
+  removed: "neutral",
 };
 
 const STATUS_FILTER_OPTIONS = [
@@ -47,10 +73,17 @@ const STATUS_FILTER_OPTIONS = [
 
 const ROLE_FILTER_OPTIONS = [
   { value: "", label: "All roles" },
-  ...PROJECT_MEMBER_ROLES.map((role) => ({ value: role, label: role })),
+  ...PROJECT_MEMBER_ROLES.map((role) => ({ value: role, label: ROLE_LABEL[role] })),
 ];
 
-const MEMBER_TABLE_HEADERS = ["Member", "Role", "Status", "Joined", ""];
+// The identity column takes the free width and truncates; the rest hug their content.
+const COLUMNS: SheetColumn[] = [
+  { key: "member", header: "Member", className: "w-full" },
+  { key: "role", header: "Role", className: "w-[120px]" },
+  { key: "status", header: "Status", className: "w-[112px]" },
+  { key: "joined", header: "Joined", className: `w-[120px] ${HIDE_BELOW_MD}` },
+  { key: "actions", header: "Actions", srOnly: true, align: "right", className: "w-px" },
+];
 
 function memberLabel(member: ProjectMember) {
   return member.user?.fullName || member.user?.email || member.userId;
@@ -64,11 +97,16 @@ export default function ProjectMembersPage() {
 
   const [status, setStatus] = useState("");
   const [role, setRole] = useState("");
-  const { data, isLoading, error } = useProjectMembers(projectId, {
-    ...(status ? { status: status as ProjectMember["status"] } : {}),
+  const { data, isLoading, error, refetch } = useProjectMembers(projectId, {
+    ...(status ? { status: status as ProjectMemberStatus } : {}),
     ...(role ? { role: role as ProjectMemberRole } : {}),
   });
   const members = data?.data ?? [];
+
+  // The table is filtered through the API, so the readings come from the whole
+  // roster. Without filters this is the same query and cache entry as the table.
+  const { data: roster, isLoading: rosterLoading } = useProjectMembers(projectId);
+  const everyone = roster?.data ?? [];
 
   const { addMember, updateMemberRole, removeMember, transferOwnership } = useMemberMutations(projectId);
 
@@ -89,126 +127,161 @@ export default function ProjectMembersPage() {
   const alreadyMember = new Set(members.map((member) => member.userId));
   const candidates = (orgMembers?.data ?? []).filter((orgMember) => !alreadyMember.has(orgMember.userId));
 
-  const owners = members.filter((member) => member.role === "owner");
-  const activeMembers = members.filter((member) => member.status === "active");
+  const owners = everyone.filter((member) => member.role === "owner");
+  const ownerNames = owners.map(memberLabel).join(", ");
+  const readouts: Readout[] = [
+    {
+      label: "Members",
+      value: formatNumber(roster?.total ?? everyone.length),
+      sub: `${formatNumber(everyone.filter((member) => member.status === "active").length)} active`,
+    },
+    {
+      label: "Owners",
+      value: formatNumber(owners.length),
+      sub: ownerNames || "No owner assigned",
+      title: ownerNames || undefined,
+    },
+    {
+      label: "Admins",
+      value: formatNumber(everyone.filter((member) => member.role === "admin").length),
+      sub: "Manage settings, keys, and members",
+    },
+    {
+      label: "Pending",
+      value: formatNumber(everyone.filter((member) => member.status === "pending").length),
+      sub: "Added but not active yet",
+    },
+  ];
+
+  const filtered = Boolean(status || role);
+  const clearFilters = () => {
+    setStatus("");
+    setRole("");
+  };
+
+  const addAction = (
+    <UiButton size="lg" onClick={() => setAdding(true)}>
+      <UserPlus className="size-4" aria-hidden="true" /> Add member
+    </UiButton>
+  );
+
+  let body: ReactNode;
+  if (isLoading) {
+    body = <SheetLoading rows={4} label="Loading members" />;
+  } else if (error) {
+    body = <SheetError title="Could not load members" message={asMessage(error)} onRetry={() => void refetch()} />;
+  } else if (members.length === 0) {
+    body = filtered ? (
+      <SheetEmpty
+        title="No members match"
+        description="Nobody in this project has that combination of status and role."
+        action={
+          <UiButton variant="outline" size="lg" onClick={clearFilters}>
+            Clear filters
+          </UiButton>
+        }
+      />
+    ) : (
+      <SheetEmpty
+        title="No members yet"
+        description="Add people from the organization roster. They get access to this project as soon as you add them."
+        action={addAction}
+      />
+    );
+  } else {
+    body = (
+      <SheetTable columns={COLUMNS} caption="Project members" minWidth={520}>
+        {members.map((member) => {
+          const label = memberLabel(member);
+          return (
+            <SheetRow key={member.id} muted={member.status === "removed" || member.status === "inactive"}>
+              <SheetCell className="w-full max-w-0">
+                <RowTitle
+                  title={label}
+                  subtitle={member.user?.fullName && member.user.email ? member.user.email : undefined}
+                />
+              </SheetCell>
+              <SheetCell>
+                <Pill>{ROLE_LABEL[member.role]}</Pill>
+              </SheetCell>
+              <SheetCell>
+                <Pill tone={STATUS_TONE[member.status]} dot>
+                  {member.status}
+                </Pill>
+              </SheetCell>
+              <SheetCell className={HIDE_BELOW_MD}>
+                <Timestamp value={member.joinedAt ?? member.createdAt} />
+              </SheetCell>
+              <SheetCell align="right">
+                <RowActions label={`Actions for ${label}`}>
+                  <DropdownMenuLabel className="text-[12px] font-normal text-[var(--text3)]">Change role</DropdownMenuLabel>
+                  {PROJECT_MEMBER_ROLES.filter((candidate) => candidate !== member.role).map((candidate) => (
+                    <DropdownMenuItem
+                      key={candidate}
+                      onSelect={() => updateMemberRole.mutate({ memberId: member.id, role: candidate })}
+                    >
+                      {ROLE_LABEL[candidate]}
+                    </DropdownMenuItem>
+                  ))}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem variant="destructive" onSelect={() => setRemovingMember(member)}>
+                    Remove from project
+                  </DropdownMenuItem>
+                </RowActions>
+              </SheetCell>
+            </SheetRow>
+          );
+        })}
+      </SheetTable>
+    );
+  }
 
   return (
-    <div className="flex flex-col gap-6">
-      <SectionHeading
-        title="Project members"
-        description="Members are added directly from the organization roster and gain access immediately. A user must belong to the organization before joining a project."
+    <WorkspacePage>
+      <ProjectPageHeader
+        title="Members"
+        description="Members come from the organization roster and get access as soon as they're added. A person must belong to the organization before they can join a project."
         actions={
-          <div className="flex items-center gap-2">
+          <>
             <UiButton variant="outline" size="lg" onClick={() => setTransferring(true)}>
-              <Crown className="mr-1.5 size-4" /> Transfer ownership
+              <Crown className="size-4" aria-hidden="true" /> Transfer ownership
             </UiButton>
-            <UiButton size="lg" onClick={() => setAdding(true)}>
-              <UserPlus className="mr-1.5 size-4" /> Add member
-            </UiButton>
-          </div>
+            {addAction}
+          </>
         }
       />
 
-      <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
-        <StatCard label="Members" value={data?.total ?? members.length} icon={Users} tone="brand" />
-        <StatCard label="Active" value={activeMembers.length} icon={ShieldCheck} tone="green" />
-        <StatCard label="Owners" value={owners.length} icon={Crown} tone="violet" />
-        <StatCard
-          label="Admins"
-          value={members.filter((member) => member.role === "admin").length}
-          icon={ShieldCheck}
-          tone="blue"
-        />
+      <Readouts cells={readouts} loading={rosterLoading} label="Members summary" />
+
+      <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
+        <Sheet
+          label="Member list"
+          toolbar={
+            <>
+              <FilterSelect label="Status" value={status} onChange={setStatus} options={STATUS_FILTER_OPTIONS} />
+              <FilterSelect label="Role" value={role} onChange={setRole} options={ROLE_FILTER_OPTIONS} />
+              {!isLoading && !error && (
+                <ToolbarCount>
+                  {formatNumber(data?.total ?? members.length)} {(data?.total ?? members.length) === 1 ? "member" : "members"}
+                </ToolbarCount>
+              )}
+            </>
+          }
+        >
+          {body}
+        </Sheet>
+
+        <Panel title="Roles" description="What each project role can do.">
+          <dl className="divide-y divide-[var(--border)]">
+            {PROJECT_MEMBER_ROLES.map((projectRole) => (
+              <div key={projectRole} className="flex flex-col gap-1 py-3 first:pt-0 last:pb-0">
+                <dt className="text-[13px] font-medium text-[var(--text)]">{ROLE_LABEL[projectRole]}</dt>
+                <dd className="text-[12px] leading-[1.55] text-[var(--text2)]">{ROLE_DESCRIPTION[projectRole]}</dd>
+              </div>
+            ))}
+          </dl>
+        </Panel>
       </div>
-
-      <Toolbar>
-        <FilterSelect label="Status" value={status} onChange={setStatus} options={STATUS_FILTER_OPTIONS} />
-        <FilterSelect label="Role" value={role} onChange={setRole} options={ROLE_FILTER_OPTIONS} />
-      </Toolbar>
-
-      <Panel bodyClassName="p-0">
-        {isLoading ? (
-          <div className="flex flex-col gap-2 p-5">
-            {[0, 1, 2].map((row) => (
-              <div key={row} className="h-10 animate-pulse rounded-[8px] bg-[var(--bg2)]" />
-            ))}
-          </div>
-        ) : error ? (
-          <div className="p-5">
-            <Notice tone="red">{asMessage(error)}</Notice>
-          </div>
-        ) : members.length === 0 ? (
-          <div className="flex flex-col items-center gap-3 py-12 text-center">
-            <IconChip icon={Users} size="lg" tone="brand" />
-            <p className="text-[13.5px] font-semibold text-[var(--text)]">No members match these filters</p>
-            <UiButton size="lg" onClick={() => setAdding(true)}>
-              <UserPlus className="mr-1.5 size-4" /> Add member
-            </UiButton>
-          </div>
-        ) : (
-          <Table headers={MEMBER_TABLE_HEADERS} maxHeight="32rem">
-            {members.map((member) => (
-              <Tr key={member.id}>
-                <Td>
-                  <div className="flex min-w-0 flex-col gap-0.5">
-                    <span className="truncate text-[13px] font-medium text-[var(--text)]">{memberLabel(member)}</span>
-                    {member.user?.email && (
-                      <span className="truncate text-[11.5px] text-[var(--text3)]">{member.user.email}</span>
-                    )}
-                  </div>
-                </Td>
-                <Td>
-                  <Pill tone={ROLE_TONE[member.role]}>{member.role}</Pill>
-                </Td>
-                <Td>
-                  <Pill tone={member.status === "active" ? "green" : member.status === "pending" ? "amber" : "neutral"} dot>
-                    {member.status}
-                  </Pill>
-                </Td>
-                <Td>
-                  <Timestamp value={member.joinedAt ?? member.createdAt} />
-                </Td>
-                <Td className="text-right">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <UiButton variant="ghost" size="icon-sm" aria-label={`Actions for ${memberLabel(member)}`}>
-                        <MoreHorizontal className="size-4" />
-                      </UiButton>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-56">
-                      {PROJECT_MEMBER_ROLES.filter((candidate) => candidate !== member.role).map((candidate) => (
-                        <DropdownMenuItem
-                          key={candidate}
-                          onClick={() => updateMemberRole.mutate({ memberId: member.id, role: candidate })}
-                        >
-                          <ShieldCheck className="mr-2 size-4" /> Set role: {candidate}
-                        </DropdownMenuItem>
-                      ))}
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => setRemovingMember(member)}>
-                        <UserMinus className="mr-2 size-4 text-[var(--red)]" /> Remove from project
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </Td>
-              </Tr>
-            ))}
-          </Table>
-        )}
-      </Panel>
-
-      <Panel title="Role reference" description="What each project role can do." icon={ShieldCheck}>
-        <ul className="flex flex-col divide-y divide-[var(--border)]">
-          {PROJECT_MEMBER_ROLES.map((projectRole) => (
-            <li key={projectRole} className="flex items-start gap-3 py-2.5 first:pt-0 last:pb-0">
-              <Pill tone={ROLE_TONE[projectRole]} className="mt-0.5 shrink-0">
-                {projectRole}
-              </Pill>
-              <p className="text-[12.5px] leading-relaxed text-[var(--text2)]">{ROLE_DESCRIPTION[projectRole]}</p>
-            </li>
-          ))}
-        </ul>
-      </Panel>
 
       {/* ── add member ── */}
       <FormDialog
@@ -254,11 +327,11 @@ export default function ProjectMembersPage() {
             </select>
           </DialogField>
         )}
-        <DialogField label="Project role" name="role">
+        <DialogField label="Project role" name="role" hint={ROLE_DESCRIPTION.viewer}>
           <select id="role" name="role" defaultValue="viewer" className={fieldInputClass}>
             {PROJECT_MEMBER_ROLES.map((projectRole) => (
               <option key={projectRole} value={projectRole}>
-                {projectRole}
+                {ROLE_LABEL[projectRole]}
               </option>
             ))}
           </select>
@@ -292,14 +365,14 @@ export default function ProjectMembersPage() {
         <Notice tone="amber" icon={Crown}>
           Ownership transfer takes effect immediately and is recorded in the organization audit log.
         </Notice>
-        <DialogField label="New owner" name="newOwnerUserId" required hint="Must already be a project member.">
+        <DialogField label="New owner" name="newOwnerUserId" required hint="Must already be an active project member.">
           <select id="newOwnerUserId" name="newOwnerUserId" required className={fieldInputClass}>
             <option value="">Select a project member…</option>
             {members
               .filter((member) => member.role !== "owner" && member.status === "active")
               .map((member) => (
                 <option key={member.userId} value={member.userId}>
-                  {memberLabel(member)} · {member.role}
+                  {memberLabel(member)} · {ROLE_LABEL[member.role]}
                 </option>
               ))}
           </select>
@@ -319,6 +392,6 @@ export default function ProjectMembersPage() {
           removeMember.mutate(removingMember.id, { onSuccess: () => setRemovingMember(null) });
         }}
       />
-    </div>
+    </WorkspacePage>
   );
 }

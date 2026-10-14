@@ -16,7 +16,10 @@ export function useLogout() {
       tokenService.clearTokens();
       clear();
       useBootstrapStore.getState().clearBootstrap();
-      queryClient.removeQueries({ queryKey: ['auth'] });
+      // Every cached response belongs to this user (orgs, members, billing,
+      // telemetry). Removing only ['auth'] left the rest for the next sign-in.
+      void queryClient.cancelQueries();
+      queryClient.clear();
       navigate('/auth/login', { replace: true });
     },
   });

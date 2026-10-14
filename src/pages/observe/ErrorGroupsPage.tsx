@@ -1,14 +1,16 @@
+import type { ExplorerPagination } from "./hooks/useObservabilityApi";
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router";
-import { AlertTriangle, GitBranch, ShieldCheck, ShieldAlert } from "lucide-react";
+import { GitBranch, Layers } from "lucide-react";
 import { useObservabilityList } from "./hooks/useObservabilityApi";
 import {
-  PageHeader, KpiCard, FillPage, TableToolbar, SearchInput, FilterSelect,
+  PageHeader, FillPage, TableToolbar, SearchInput, FilterSelect,
   SeverityBadge, StatusCodeBadge, EnvironmentBadge, AskAiModal, Timestamp,
   InfiniteTable, formatCompact, SelectionProvider, useSelection,
-  TimeRangePicker, useTimeRangeParams,
+  TimeRangePicker, useTimeRangeParams, SignalSheet, useSignalTimeline, useTimeWindow,
+  rangeParams, pct, TRACE_CHIP, GROUP_CHIP, MUTED_DASH, ENVIRONMENT_OPTIONS,
 } from "@/shared/observe";
-import type { Column } from "@/shared/observe";
+import type { Column, ReadoutCell } from "@/shared/observe";
 import { useOrgStore } from "@/modules/organizations/store/org.store";
 import { useCursorPagination } from "./hooks/useCursorPagination";
 
@@ -17,6 +19,7 @@ interface ErrorRow {
   publicId?: string;
   occurredAt?: string | number;
   message?: string;
+  errorName?: string;
   errorGroupId?: string;
   errorGroupPublicId?: string;
   errorGroup?: { publicId?: string };
@@ -28,13 +31,12 @@ interface ErrorRow {
   severity?: string;
   handled?: boolean;
   environment?: string;
-  projectName?: string;
-  projectSlug?: string;
-  project?: string;
+  release?: string;
+  service?: string;
 }
 
 const SEV_OPTS = [
-  { value: "", label: "All severities" },
+  { value: "", label: "Any severity" },
   { value: "fatal", label: "Fatal" },
   { value: "error", label: "Error" },
   { value: "warning", label: "Warning" },
@@ -42,60 +44,23 @@ const SEV_OPTS = [
 ];
 
 const HANDLED_OPTS = [
-  { value: "", label: "Handled & Unhandled" },
+  { value: "", label: "Handled or not" },
   { value: "true", label: "Handled" },
   { value: "false", label: "Unhandled" },
 ];
 
-const ENV_OPTS = [
-  { value: "", label: "All environments" },
-  { value: "production", label: "Production" },
-  { value: "staging", label: "Staging" },
-  { value: "development", label: "Development" },
-  { value: "pre_production", label: "Pre-production" },
-  { value: "pre_staging", label: "Pre-staging" },
-  { value: "testing", label: "Testing" },
-  { value: "preview", label: "Preview" },
-  { value: "pre_deployment", label: "Pre-deployment" },
-  { value: "custom", label: "Custom" },
-];
-
 const STATUS_OPTS = [
-  { value: "", label: "All HTTP statuses" },
-  { value: "5xx", label: "5xx Server Error" },
-  { value: "4xx", label: "4xx Client Error" },
-  { value: "500", label: "500 Internal Error" },
-  { value: "502", label: "502 Bad Gateway" },
-  { value: "503", label: "503 Service Unavailable" },
-  { value: "404", label: "404 Not Found" },
+  { value: "", label: "Any HTTP status" },
+  { value: "5xx", label: "5xx server error" },
+  { value: "4xx", label: "4xx client error" },
+  { value: "500", label: "500 Internal error" },
+  { value: "502", label: "502 Bad gateway" },
+  { value: "503", label: "503 Unavailable" },
+  { value: "404", label: "404 Not found" },
   { value: "401", label: "401 Unauthorized" },
 ];
 
-const getInitialFromDate = () => {
-  const d = new Date(Date.now() - 24 * 60 * 60 * 1000);
-  return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
-};
-const getInitialToDate = () => {
-  const d = new Date();
-  return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
-};
-
-const formatIsoBounds = (fromDate: string, toDate: string) => {
-  if (!fromDate) return { from: undefined, to: undefined };
-  const fromMs = new Date(fromDate).getTime();
-  if (isNaN(fromMs)) return { from: undefined, to: undefined };
-
-  let toMs = toDate ? new Date(toDate).getTime() : NaN;
-  if (isNaN(toMs) || toMs <= fromMs) {
-    toMs = fromMs + 24 * 60 * 60 * 1000;
-  }
-  return {
-    from: new Date(fromMs).toISOString(),
-    to: new Date(toMs).toISOString(),
-  };
-};
-
-function ErrorGroupsPageContent() {
+function ErrorsPageContent() {
   const navigate = useNavigate();
   const activeProjectSlug = useOrgStore((s) => s.activeProjectSlug);
   const [environment, setEnvironment] = useState("");
@@ -106,198 +71,155 @@ function ErrorGroupsPageContent() {
   const [isAiModalOpen, setIsAiModalOpen] = useState(false);
 
   const { timeRangeState } = useTimeRangeParams();
+  const window = useTimeWindow(timeRangeState);
   const { selectedKeys, toggleSelect, selectAll, clearSelection, selectedCount } = useSelection();
+  const [activePagination, setActivePagination] = useState<ExplorerPagination | undefined>(undefined);
 
-  const [activePagination, setActivePagination] = useState<any>(undefined);
-
-  const {
-    cursor: currentCursor,
-    paginationProps,
-    onNextPage,
-    onPreviousPage,
-  } = useCursorPagination(activePagination, {
+  const { cursor, paginationProps, onNextPage, onPreviousPage } = useCursorPagination(activePagination, {
     dependencies: [activeProjectSlug, environment, severity, statusClass, handled, timeRangeState, query],
   });
 
-  const { data, isLoading } = useObservabilityList<ErrorRow>("errors", {
+  const filters = {
     project: activeProjectSlug ?? undefined,
     environment: environment || undefined,
     severity: severity || undefined,
     status: statusClass || undefined,
     handled: handled || undefined,
-    range: timeRangeState.mode === "preset" ? timeRangeState.range : undefined,
-    from: timeRangeState.from,
-    to: timeRangeState.to,
+    ...rangeParams(timeRangeState),
     search: query,
-    cursor: currentCursor,
-  });
+  };
+
+  const { data, isLoading } = useObservabilityList<ErrorRow>("errors", { ...filters, cursor });
+  const timeline = useSignalTimeline("errors", filters, window);
 
   useEffect(() => {
-    if (data?.pagination) {
-      setActivePagination(data.pagination);
-    }
+    if (data?.pagination) setActivePagination(data.pagination);
   }, [data?.pagination]);
 
   const rows = data?.items ?? [];
   const summary = data?.summary ?? {};
-
   const total = Number(summary.total ?? rows.length);
-  const uniqueFingerprints = Number(summary.uniqueFingerprints ?? 0);
-  const affectedUsers = Number(summary.affectedUsers ?? 0);
+  const groups = Number(summary.uniqueFingerprints ?? 0);
+  const users = Number(summary.affectedUsers ?? 0);
   const fatal = Number(summary.fatal ?? rows.filter((e) => e.severity === "fatal").length);
+  const unhandled = rows.filter((e) => e.handled === false).length;
+
+  const cells: ReadoutCell[] = [
+    { label: "Error events", value: formatCompact(total), sub: `${formatCompact(total / Math.max(1, window.ms / 3_600_000))} per hour`, tone: total > 0 ? "bad" : "good" },
+    { label: "Distinct groups", value: formatCompact(groups), sub: groups ? `${(total / groups).toFixed(1)} events per group` : "no fingerprints yet" },
+    { label: "Affected users", value: formatCompact(users), sub: "unique user ids" },
+    { label: "Fatal", value: formatCompact(fatal), sub: `${pct(fatal, total)} of events`, tone: fatal > 0 ? "bad" : "neutral" },
+    { label: "Unhandled", value: formatCompact(unhandled), sub: `in the loaded ${rows.length} rows`, tone: unhandled > 0 ? "warn" : "neutral" },
+  ];
 
   const baseColumns: Column<ErrorRow>[] = [
-    {
-      key: "time",
-      header: "TIME",
-      width: "120px",
-      cell: (e) => <Timestamp value={e.occurredAt} />,
-    },
+    { key: "time", header: "Time", width: "104px", cell: (e) => <Timestamp value={e.occurredAt} /> },
+    { key: "severity", header: "Severity", width: "86px", cell: (e) => <SeverityBadge severity={e.severity ?? "error"} /> },
     {
       key: "error",
-      header: "ERROR",
-      width: "1fr",
+      header: "Error",
+      width: "minmax(240px, 1fr)",
       cell: (e) => (
-        <span className="truncate text-[12px] font-medium text-[var(--text)]" title={e.message}>
-          {e.message ?? "—"}
+        <span className="flex min-w-0 items-baseline gap-2" title={e.message}>
+          {e.errorName && <span className="shrink-0 text-[13px] font-medium text-[var(--text)]">{e.errorName}</span>}
+          <span className={e.errorName ? "truncate text-[12px] text-[var(--text2)]" : "truncate text-[13px] text-[var(--text)]"}>{e.message ?? "—"}</span>
         </span>
       ),
     },
     {
-      key: "errorGroup",
-      header: "ERROR GROUP",
-      width: "110px",
+      key: "route",
+      header: "Route",
+      width: "170px",
+      cell: (e) => (e.route ? <span className="truncate font-[family-name:var(--mono)] text-[12px] text-[var(--text2)]" title={e.route}>{e.route}</span> : MUTED_DASH),
+    },
+    { key: "statusCode", header: "HTTP", width: "64px", cell: (e) => (e.statusCode ? <StatusCodeBadge code={e.statusCode} /> : MUTED_DASH) },
+    {
+      key: "handled",
+      header: "Handled",
+      width: "80px",
+      cell: (e) =>
+        e.handled === undefined || e.handled === null ? MUTED_DASH : (
+          <span className={e.handled ? "text-[12px] text-[var(--text2)]" : "text-[12px] font-medium text-[var(--amber)]"}>{e.handled ? "Handled" : "Unhandled"}</span>
+        ),
+    },
+    {
+      key: "group",
+      header: "Group",
+      width: "112px",
       cell: (e) => {
-        const errorGroupPubId = e.errorGroupPublicId ?? e.errorGroup?.publicId;
-        const targetGroup = errorGroupPubId ?? e.errorGroupId;
-        const labelText = errorGroupPubId ?? (e.errorGroupId ? e.errorGroupId.slice(0, 6) : "Group");
-        return targetGroup ? (
-          <Link
-            to={`/observability/error-groups/${encodeURIComponent(targetGroup)}`}
-            onClick={(ev) => ev.stopPropagation()}
-            className="inline-flex items-center gap-1 rounded-full bg-[var(--red-bg)] px-2 py-0.5 font-[family-name:var(--mono)] text-[10px] font-medium text-[var(--red)] hover:underline"
-            title={errorGroupPubId ? `Error Group Public ID: ${errorGroupPubId}` : `Group: ${e.errorGroupId}`}
-          >
-            <AlertTriangle className="size-3 shrink-0" />
-            <span>{labelText}</span>
+        const pub = e.errorGroupPublicId ?? e.errorGroup?.publicId;
+        const target = pub ?? e.errorGroupId;
+        if (!target) return MUTED_DASH;
+        return (
+          <Link to={`/observability/error-groups/${encodeURIComponent(target)}`} onClick={(ev) => ev.stopPropagation()} className={GROUP_CHIP} title={`Open error group ${target}`}>
+            <Layers className="size-3 shrink-0" aria-hidden="true" />
+            <span className="truncate">{pub ?? target.slice(0, 8)}</span>
           </Link>
-        ) : (
-          <span className="font-[family-name:var(--mono)] text-[11px] text-[var(--text3)]">—</span>
         );
       },
     },
     {
       key: "trace",
-      header: "TRACE",
-      width: "115px",
+      header: "Trace",
+      width: "112px",
       cell: (e) => {
-        const tracePubId = e.tracePublicId ?? e.trace?.publicId;
-        const targetTrace = tracePubId ?? e.traceId;
-        const labelText = tracePubId ?? (e.traceId ? e.traceId.slice(0, 6) : "Trace");
-        return targetTrace ? (
-          <Link
-            to={`/observability/traces/${encodeURIComponent(targetTrace)}`}
-            onClick={(ev) => ev.stopPropagation()}
-            className="inline-flex items-center gap-1 rounded-full bg-[var(--violet-bg)] px-2 py-0.5 font-[family-name:var(--mono)] text-[10px] font-medium text-[var(--violet)] hover:underline"
-            title={tracePubId ? `Trace Public ID: ${tracePubId}` : `Trace: ${e.traceId}`}
-          >
-            <GitBranch className="size-3 shrink-0" />
-            <span>{labelText}</span>
+        const pub = e.tracePublicId ?? e.trace?.publicId;
+        const target = pub ?? e.traceId;
+        if (!target) return MUTED_DASH;
+        return (
+          <Link to={`/observability/traces/${encodeURIComponent(target)}`} onClick={(ev) => ev.stopPropagation()} className={TRACE_CHIP} title={`Open trace ${target}`}>
+            <GitBranch className="size-3 shrink-0" aria-hidden="true" />
+            <span className="truncate">{pub ?? target.slice(0, 8)}</span>
           </Link>
-        ) : (
-          <span className="font-[family-name:var(--mono)] text-[11px] text-[var(--text3)]">—</span>
         );
       },
-    },
-    {
-      key: "route",
-      header: "ROUTE",
-      width: "160px",
-      cell: (e) => (
-        <span className="truncate font-[family-name:var(--mono)] text-[12px] text-[var(--text2)]" title={e.route}>
-          {e.route ?? "—"}
-        </span>
-      ),
-    },
-    {
-      key: "statusCode",
-      header: "HTTP",
-      width: "75px",
-      cell: (e) => e.statusCode ? <StatusCodeBadge code={e.statusCode} /> : <span className="font-[family-name:var(--mono)] text-[11px] text-[var(--text3)]">—</span>,
-    },
-    {
-      key: "severity",
-      header: "SEVERITY",
-      width: "90px",
-      cell: (e) => <SeverityBadge severity={e.severity ?? "error"} />,
-    },
-    {
-      key: "handled",
-      header: "HANDLED",
-      width: "85px",
-      cell: (e) =>
-        e.handled ? (
-          <span className="inline-flex items-center gap-1 rounded-full bg-[var(--green-bg)] px-2 py-0.5 font-[family-name:var(--mono)] text-[10px] font-medium text-[var(--green)]">
-            <ShieldCheck className="size-3 shrink-0" />
-            Yes
-          </span>
-        ) : (
-          <span className="inline-flex items-center gap-1 rounded-full bg-[var(--red-bg)] px-2 py-0.5 font-[family-name:var(--mono)] text-[10px] font-medium text-[var(--red)]">
-            <ShieldAlert className="size-3 shrink-0" />
-            No
-          </span>
-        ),
     },
   ];
 
   const columns = environment
     ? baseColumns
-    : [
-        ...baseColumns,
-        {
-          key: "env",
-          header: "ENV",
-          width: "100px",
-          cell: (e: ErrorRow) => <EnvironmentBadge environment={e.environment ?? "production"} />,
-        },
-      ];
+    : [...baseColumns, { key: "env", header: "Environment", width: "118px", cell: (e: ErrorRow) => <EnvironmentBadge environment={e.environment} /> }];
 
   return (
     <FillPage>
       <PageHeader
         title="Errors"
-        description="Error events across monitored services."
-        actions={<TimeRangePicker />}
+        description="Every captured exception, newest first. Open one to read its stack, breadcrumbs, and the request it broke."
+        actions={
+          <>
+            <Link
+              to="/observability/error-groups"
+              className="inline-flex h-9 items-center gap-1.5 rounded-[var(--radius)] border border-[var(--border2)] px-3 text-[13px] text-[var(--text2)] transition-colors hover:border-[var(--text3)] hover:text-[var(--text)]"
+            >
+              <Layers className="size-3.5" aria-hidden="true" />
+              View groups
+            </Link>
+            <TimeRangePicker />
+          </>
+        }
       />
 
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <KpiCard label="Total errors" value={formatCompact(total)} icon={AlertTriangle} />
-        <KpiCard label="Unique groups" value={uniqueFingerprints} />
-        <KpiCard label="Affected users" value={affectedUsers} />
-        <KpiCard label="Fatal" value={fatal} trend="down" />
-      </div>
+      <SignalSheet cells={cells} loading={isLoading && !data} bars={timeline.bars} timelineLoading={timeline.isLoading} countLabel="Errors" errorLabel="Fatal or 5xx" />
 
-      <TableToolbar
-        selectedCount={selectedCount}
-        onClearSelection={clearSelection}
-        onAskAi={() => setIsAiModalOpen(true)}
-        resourceName="errors"
-      >
-        <SearchInput placeholder="Search errors, routes…" onSearch={setQuery} defaultValue={query} />
-        <FilterSelect value={environment} onChange={setEnvironment} options={ENV_OPTS} />
+      <TableToolbar selectedCount={selectedCount} onClearSelection={clearSelection} onAskAi={() => setIsAiModalOpen(true)} resourceName="errors">
+        <SearchInput placeholder="Search message, error:TypeError, route:/api…" onSearch={setQuery} defaultValue={query} />
+        <FilterSelect value={environment} onChange={setEnvironment} options={ENVIRONMENT_OPTIONS} />
         <FilterSelect value={severity} onChange={setSeverity} options={SEV_OPTS} />
         <FilterSelect value={statusClass} onChange={setStatusClass} options={STATUS_OPTS} />
         <FilterSelect value={handled} onChange={setHandled} options={HANDLED_OPTS} />
       </TableToolbar>
 
       <InfiniteTable
-        className="flex-1"
+        className="min-h-[320px] flex-1"
         loading={isLoading}
         items={rows}
-        queryKey={["errors", activeProjectSlug, environment, severity, statusClass, handled, timeRangeState, query, currentCursor]}
+        queryKey={["errors", activeProjectSlug, environment, severity, statusClass, handled, timeRangeState, query, cursor]}
         columns={columns}
         getKey={(e) => e.publicId ?? e.id}
         onRowClick={(e) => navigate(`/observability/errors/${encodeURIComponent(e.publicId ?? e.id)}`)}
+        emptyTitle="No errors in this window"
+        emptyMessage="Nothing was captured for these filters. Widen the time range to compare against earlier traffic."
+        emptyIllustration="inbox"
         selectable
         selectedKeys={selectedKeys}
         onSelectToggle={toggleSelect}
@@ -322,7 +244,7 @@ function ErrorGroupsPageContent() {
 export default function ErrorGroupsPage() {
   return (
     <SelectionProvider>
-      <ErrorGroupsPageContent />
+      <ErrorsPageContent />
     </SelectionProvider>
   );
 }

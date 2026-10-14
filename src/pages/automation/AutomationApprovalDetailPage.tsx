@@ -1,32 +1,23 @@
 /**
- * Approval detail — `GET /approvals/:approvalId` plus the approve/reject
- * decisions. Shows the request payload the action will receive on resume.
+ * Approval detail: `GET /approvals/:approvalId` plus the approve and reject
+ * decisions. The held action sits on the sequence spine as the stage in focus.
  */
 import { useState } from "react";
 import { Link, useParams } from "react-router";
 import { toast } from "sonner";
-import {
-  AlertTriangle,
-  Check,
-  ClipboardCheck,
-  Clock,
-  Play,
-  ShieldAlert,
-  Workflow as WorkflowIcon,
-  X,
-} from "lucide-react";
-import {
-  HeroFacts,
-  Notice,
-  PageHero,
-  Panel,
-  Row,
-  RowStack,
-  fieldTextareaClass,
-} from "@/shared/ui/pulse";
+import { Check, Clock, ShieldAlert, X } from "lucide-react";
+import { Notice, Panel, fieldTextareaClass } from "@/shared/ui/pulse";
 import { JsonViewer, Timestamp } from "@/shared/observe";
 import { Button as UiButton } from "@/components/ui/button";
 import { DialogField, FormDialog, apiErrorMessage } from "@/modules/projects/components/project-ui";
+import {
+  ProjectPageHeader,
+  Readouts,
+  Sheet,
+  SheetError,
+  WorkspacePage,
+  type Readout,
+} from "@/modules/projects/components/project-page";
 import {
   useApproval,
   useApprovalMutations,
@@ -35,15 +26,20 @@ import {
 import {
   ApprovalStatusPill,
   CodeChip,
-  MetaCell,
+  DetailLoading,
+  FactGrid,
+  NoOrgNotice,
   RiskPill,
+  Sequence,
+  SequenceStage,
   labelize,
+  stageToneForStatus,
 } from "@/modules/automation/components/automation-ui";
 
 // ── module-level constants (rules.md §1.2) ───────────────────
 
-const BREADCRUMBS = [
-  { label: "Automation", to: "/automation" },
+const CRUMBS_BASE = [
+  { label: "Workflows", to: "/automation" },
   { label: "Approvals", to: "/automation/approvals" },
 ];
 const monoTextarea = `${fieldTextareaClass} min-h-[72px] font-[family-name:var(--mono)] text-[12px]`;
@@ -57,6 +53,11 @@ function parseDecisionPayload(raw: FormDataEntryValue | null): Record<string, un
   return parsed as Record<string, unknown>;
 }
 
+/** Actor ids render short and mono; a missing requester is the system. */
+function shortActor(id: string | null, fallback: string) {
+  return id ? id.slice(0, 8) : fallback;
+}
+
 export default function AutomationApprovalDetailPage() {
   const { approvalId } = useParams<{ approvalId: string }>();
   const { activeOrgId } = useAutomationScope();
@@ -67,28 +68,25 @@ export default function AutomationApprovalDetailPage() {
   const [dialogError, setDialogError] = useState<string | null>(null);
 
   if (!activeOrgId) {
-    return (
-      <Notice tone="amber" icon={AlertTriangle} title="No organization selected">
-        Pick an organization to review this approval.
-      </Notice>
-    );
+    return <NoOrgNotice>Pick an organization to review this approval.</NoOrgNotice>;
   }
 
   if (approvalQuery.isLoading) {
-    return (
-      <div className="flex flex-col gap-4">
-        {[0, 1].map((block) => (
-          <div key={block} className="h-40 animate-pulse rounded-[14px] bg-[var(--bg2)]" />
-        ))}
-      </div>
-    );
+    return <DetailLoading label="Loading approval" />;
   }
 
   if (approvalQuery.isError || !approvalQuery.data) {
     return (
-      <Notice tone="red" icon={AlertTriangle} title="Could not load this approval">
-        {apiErrorMessage(approvalQuery.error)}
-      </Notice>
+      <WorkspacePage>
+        <ProjectPageHeader title="Approval" crumbs={[...CRUMBS_BASE, { label: "Approval" }]} />
+        <Sheet label="Approval">
+          <SheetError
+            title="Could not load this approval"
+            message={apiErrorMessage(approvalQuery.error, "The request may have been removed or belong to another organization.")}
+            onRetry={() => void approvalQuery.refetch()}
+          />
+        </Sheet>
+      </WorkspacePage>
     );
   }
 
@@ -96,6 +94,9 @@ export default function AutomationApprovalDetailPage() {
   const expired = new Date(approval.expiresAt).getTime() < Date.now();
   const decidable = approval.status === "pending" && !expired;
   const pending = approve.isPending || reject.isPending;
+  const actionLabel = approval.actionType ? labelize(approval.actionType) : "Held action";
+  const highRisk = approval.riskLevel === "high" || approval.riskLevel === "critical";
+  const stageTone = expired && approval.status === "pending" ? "bad" : stageToneForStatus(approval.status);
 
   const handleDecision = (form: FormData) => {
     if (!kind) return;
@@ -141,52 +142,69 @@ export default function AutomationApprovalDetailPage() {
     );
   };
 
+  const readouts: Readout[] = [
+    {
+      label: "Status",
+      value: <span className="font-[family-name:var(--sans)]">{expired && approval.status === "pending" ? "Expired" : labelize(approval.status)}</span>,
+      sub: approval.decidedAt ? "Decision recorded" : decidable ? "Waiting for a decision" : "No decision possible",
+      tone: stageTone === "good" ? "good" : stageTone === "bad" ? "bad" : stageTone === "warn" ? "warn" : "neutral",
+    },
+    {
+      label: "Risk",
+      value: <span className="font-[family-name:var(--sans)]">{labelize(approval.riskLevel)}</span>,
+      sub: highRisk ? "Always needs an approver" : "Gated by the workflow",
+      tone: highRisk ? "bad" : approval.riskLevel === "medium" ? "warn" : "neutral",
+    },
+    {
+      label: "Requested",
+      value: <Timestamp value={approval.createdAt} />,
+      sub: `By ${approval.requestedBy ? "a member" : "the system"}`,
+    },
+    {
+      label: "Expires",
+      value: <Timestamp value={approval.expiresAt} />,
+      sub: expired ? "Past the decision window" : "Decisions close after this",
+      tone: expired && approval.status === "pending" ? "bad" : "neutral",
+    },
+  ];
+
   return (
-    <div className="flex flex-col gap-6">
-      <PageHero
-        eyebrow="Approval"
+    <WorkspacePage>
+      <ProjectPageHeader
+        crumbs={[...CRUMBS_BASE, { label: approval.workflowName || approval.id.slice(0, 8) }]}
         title={approval.workflowName || "Approval request"}
-        description={
-          approval.actionType
-            ? `${labelize(approval.actionType)} is held at ${approval.riskLevel} risk until a decision is recorded.`
-            : "This action is held until a decision is recorded."
+        badges={
+          <>
+            <ApprovalStatusPill status={approval.status} />
+            <RiskPill risk={approval.riskLevel} />
+          </>
         }
-        icon={ClipboardCheck}
-        breadcrumbs={[...BREADCRUMBS, { label: approval.id.slice(0, 8) }]}
+        description={`${actionLabel} is held at ${approval.riskLevel} risk until someone approves or rejects it.`}
+        meta={[
+          { label: "Approval", value: approval.id.slice(0, 8), mono: true },
+          { label: "Run", value: approval.runId.slice(0, 8), mono: true },
+          approval.decidedAt ? { label: "Decided", value: <Timestamp value={approval.decidedAt} /> } : null,
+        ]}
         actions={
           <>
             <UiButton asChild variant="outline" size="lg">
-              <Link to={`/automation/runs/${approval.runId}`}>
-                <Play className="size-4" /> View run
-              </Link>
+              <Link to={`/automation/runs/${approval.runId}`}>View run</Link>
             </UiButton>
-            <UiButton asChild variant="outline" size="lg">
-              <Link to={`/automation/workflows/${approval.workflowId}`}>
-                <WorkflowIcon className="size-4" /> Workflow
-              </Link>
-            </UiButton>
-            <UiButton variant="outline" size="lg" disabled={!decidable || pending} onClick={() => setKind("reject")}>
-              <X className="size-4 text-[var(--red)]" /> Reject
-            </UiButton>
-            <UiButton size="lg" disabled={!decidable || pending} onClick={() => setKind("approve")}>
-              <Check className="size-4" /> Approve
-            </UiButton>
+            {decidable && (
+              <>
+                <UiButton variant="destructive" size="lg" disabled={pending} onClick={() => setKind("reject")}>
+                  <X className="size-4" aria-hidden="true" /> Reject
+                </UiButton>
+                <UiButton size="lg" disabled={pending} onClick={() => setKind("approve")}>
+                  <Check className="size-4" aria-hidden="true" /> Approve
+                </UiButton>
+              </>
+            )}
           </>
         }
-      >
-        <HeroFacts
-          facts={[
-            { label: "Status", value: labelize(approval.status) },
-            {
-              label: "Risk",
-              value: labelize(approval.riskLevel),
-              tone: approval.riskLevel === "low" ? "green" : approval.riskLevel === "medium" ? "amber" : "red",
-            },
-            { label: "Requested", value: <Timestamp value={approval.createdAt} /> },
-            { label: "Expires", value: <Timestamp value={approval.expiresAt} />, tone: expired ? "red" : "neutral" },
-          ]}
-        />
-      </PageHero>
+      />
+
+      <Readouts cells={readouts} label="Approval summary" />
 
       {expired && approval.status === "pending" && (
         <Notice tone="red" icon={Clock} title="This request has expired">
@@ -194,58 +212,75 @@ export default function AutomationApprovalDetailPage() {
         </Notice>
       )}
 
-      {approval.status === "pending" && !expired && (
-        <Notice tone="amber" icon={ShieldAlert} title="Action held">
-          Nothing has executed yet. Approving resumes the run from this step.
+      {decidable && (
+        <Notice tone="amber" icon={ShieldAlert} title="Nothing has executed yet">
+          Approving resumes the run from this step. Rejecting stops the run here and records your reason.
         </Notice>
       )}
 
-      <Panel title="Decision record" description="Who asked, who decided, and why." icon={ClipboardCheck} bodyClassName="p-0">
-        <RowStack>
-          <Row>
-            <div className="grid gap-4 sm:grid-cols-4">
-              <MetaCell label="Status">
-                <ApprovalStatusPill status={approval.status} />
-              </MetaCell>
-              <MetaCell label="Risk">
+      <Sheet
+        title="What will run"
+        description="The run is paused at this action. Everything before it has finished."
+        actions={
+          <UiButton asChild variant="ghost" size="sm">
+            <Link to={`/automation/workflows/${approval.workflowId}`}>Open workflow definition</Link>
+          </UiButton>
+        }
+      >
+        <Sequence label="Held action">
+          <SequenceStage
+            marker={stageTone === "good" ? <Check className="size-3.5" aria-hidden="true" /> : stageTone === "bad" ? <X className="size-3.5" aria-hidden="true" /> : "!"}
+            tone={stageTone}
+            highlighted
+            title={
+              <span className="flex min-w-0 flex-wrap items-center gap-2">
+                <span>{actionLabel}</span>
+                {approval.actionType && <CodeChip>{approval.actionType}</CodeChip>}
+              </span>
+            }
+            meta={
+              <>
                 <RiskPill risk={approval.riskLevel} />
-              </MetaCell>
-              <MetaCell label="Action">
-                {approval.actionType ? <CodeChip>{approval.actionType}</CodeChip> : "—"}
-              </MetaCell>
-              <MetaCell label="Decided">
-                {approval.decidedAt ? <Timestamp value={approval.decidedAt} /> : "Not yet"}
-              </MetaCell>
-            </div>
-          </Row>
-          <Row>
-            <div className="grid gap-4 sm:grid-cols-3">
-              <MetaCell label="Requested by">
-                {approval.requestedBy ? <CodeChip>{approval.requestedBy.slice(0, 8)}</CodeChip> : "System"}
-              </MetaCell>
-              <MetaCell label="Approved by">
-                {approval.approvedBy ? <CodeChip>{approval.approvedBy.slice(0, 8)}</CodeChip> : "—"}
-              </MetaCell>
-              <MetaCell label="Rejected by">
-                {approval.rejectedBy ? <CodeChip>{approval.rejectedBy.slice(0, 8)}</CodeChip> : "—"}
-              </MetaCell>
-            </div>
-          </Row>
+                <ApprovalStatusPill status={approval.status} />
+              </>
+            }
+          >
+            {approval.status === "pending"
+              ? "Waiting for a decision. The action receives the request payload below plus any decision payload you add."
+              : approval.status === "approved"
+                ? "Approved. The run resumed from this action."
+                : approval.status === "rejected"
+                  ? "Rejected. The run stopped at this action."
+                  : `${labelize(approval.status)}. No decision was applied.`}
+          </SequenceStage>
+        </Sequence>
+      </Sheet>
+
+      <Panel title="Decision record" description="Who asked, who decided, and why.">
+        <div className="flex flex-col gap-5">
+          <FactGrid
+            facts={[
+              { label: "Requested by", value: shortActor(approval.requestedBy, "System"), mono: Boolean(approval.requestedBy) },
+              { label: "Approved by", value: shortActor(approval.approvedBy, "No one"), mono: Boolean(approval.approvedBy) },
+              { label: "Rejected by", value: shortActor(approval.rejectedBy, "No one"), mono: Boolean(approval.rejectedBy) },
+              { label: "Decided", value: approval.decidedAt ? <Timestamp value={approval.decidedAt} /> : "Not yet" },
+            ]}
+          />
           {(approval.approvalReason || approval.rejectionReason) && (
-            <Row>
-              <div className="flex flex-col gap-2">
-                {approval.approvalReason && (
-                  <MetaCell label="Approval reason">{approval.approvalReason}</MetaCell>
-                )}
-                {approval.rejectionReason && (
-                  <MetaCell label="Rejection reason">
-                    <span className="text-[var(--red)]">{approval.rejectionReason}</span>
-                  </MetaCell>
-                )}
-              </div>
-            </Row>
+            <FactGrid
+              columns={2}
+              className="border-t border-[var(--border)] pt-5"
+              facts={[
+                approval.approvalReason && { label: "Approval reason", value: approval.approvalReason, wide: true },
+                approval.rejectionReason && {
+                  label: "Rejection reason",
+                  value: <span className="text-[var(--red)]">{approval.rejectionReason}</span>,
+                  wide: true,
+                },
+              ]}
+            />
           )}
-        </RowStack>
+        </div>
       </Panel>
 
       <div className="grid gap-6 lg:grid-cols-2">
@@ -294,6 +329,6 @@ export default function AutomationApprovalDetailPage() {
           />
         </DialogField>
       </FormDialog>
-    </div>
+    </WorkspacePage>
   );
 }

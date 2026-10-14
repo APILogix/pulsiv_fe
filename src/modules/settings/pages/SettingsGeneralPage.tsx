@@ -6,6 +6,7 @@ import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Field, SubmitButton, inputClass } from "@/shared/observe";
 import { SettingsSkeleton } from "@/shared/skeletons";
+import { apiErrorMessage } from "@/infrastructure/api-client/api-error";
 
 export default function SettingsGeneralPage() {
   const { activeOrgId } = useOrganizations();
@@ -18,7 +19,7 @@ export default function SettingsGeneralPage() {
   });
 
   const [state, saveAction] = useActionState(
-    async (_prevState: any, formData: FormData) => {
+    async (_prevState: { ok: boolean; error?: string | null }, formData: FormData): Promise<{ ok: boolean; error?: string | null }> => {
       if (!activeOrgId) return { ok: false, error: "No active org" };
       try {
         await orgApi.updateSettings(activeOrgId, {
@@ -30,7 +31,7 @@ export default function SettingsGeneralPage() {
         queryClient.invalidateQueries({ queryKey: orgQueryKeys.settings(activeOrgId) });
         return { ok: true };
       } catch (err: any) {
-        return { ok: false, error: err?.response?.data?.message || "Failed to update settings" };
+        return { ok: false, error: apiErrorMessage(err) || "Failed to update settings" };
       }
     },
     { ok: false, error: null }

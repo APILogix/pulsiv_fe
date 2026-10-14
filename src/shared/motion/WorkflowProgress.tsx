@@ -433,7 +433,7 @@ export function WorkflowOverlay({
                     <button
                       type="button"
                       onClick={onRetry}
-                      className="h-8 rounded-lg bg-emerald-500 px-3 text-[12px] font-semibold text-zinc-950 transition-colors hover:bg-emerald-400 cursor-pointer"
+                      className="h-8 rounded-lg bg-emerald-500 px-3 text-[12px] font-semibold text-emerald-950 transition-colors hover:bg-emerald-400 cursor-pointer"
                     >
                       Try again
                     </button>

@@ -1,31 +1,37 @@
-import { useMemo, useState } from "react";
-import { Link } from "react-router";
+import { useMemo, useState, type ReactNode } from "react";
+import { AlertTriangle, RefreshCcw } from "lucide-react";
+
 import { projectPath } from "@/modules/projects/navigation/project-routes";
-import {
-  Activity,
-  ArrowRight,
-  Database,
-  Gauge,
-  HardDrive,
-  KeyRound,
-  LineChart as LineChartIcon,
-  Layers,
-  RefreshCcw,
-  Sigma,
-} from "lucide-react";
 import { useProjectStats, useProjectUsageCounters } from "@/modules/projects/hooks/useProjects";
 import { useMonthlyUsage, useUsageAnalytics } from "@/modules/projects/hooks/useProjectAnalytics";
 import type { UsageGranularity } from "@/modules/projects/api/types";
 import { UsageTrendChart } from "@/modules/projects/components/UsageTrendChart";
-import { useCurrentProject } from "./ProjectShellPage";
-import { Meter, Notice, Panel, SectionHeading, SegmentedControl, StatCard, Toolbar, type SegmentOption } from "@/shared/ui/pulse";
-import { FilterSelect, Table, Td, Timestamp, Tr, formatBytes, formatCompact, formatNumber } from "@/shared/observe";
-import { Button as UiButton } from "@/components/ui/button";
 import { apiErrorMessage } from "@/modules/projects/components/project-ui";
+import {
+  HIDE_BELOW_MD,
+  HIDE_BELOW_SM,
+  ProjectPageHeader,
+  Readouts,
+  RowTitle,
+  Sheet,
+  SheetCell,
+  SheetEmpty,
+  SheetError,
+  SheetLoading,
+  SheetRow,
+  SheetTable,
+  TextLink,
+  WorkspacePage,
+  type Readout,
+  type SheetColumn,
+} from "@/modules/projects/components/project-page";
+import { Meter, Notice, Panel, SegmentedControl, type SegmentOption } from "@/shared/ui/pulse";
+import { FilterSelect, Timestamp, formatBytes, formatCompact, formatNumber } from "@/shared/observe";
+import { Button as UiButton } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { useCurrentProject } from "./ProjectShellPage";
 
 // ── module-level constants (rules.md §1.2) ───────────────────
-
-const COUNTER_HEADERS = ["Counter", "Total", "Period", "Last flushed"];
 
 type UsageRangeKey = "30d" | "90d" | "180d" | "1y";
 const USAGE_RANGE_OPTIONS: SegmentOption<UsageRangeKey>[] = [
@@ -36,8 +42,15 @@ const USAGE_RANGE_OPTIONS: SegmentOption<UsageRangeKey>[] = [
 ];
 const USAGE_RANGE_DAYS: Record<UsageRangeKey, number> = { "30d": 30, "90d": 90, "180d": 180, "1y": 365 };
 const USAGE_GRANULARITY_OPTIONS = [
-  { value: "daily", label: "Daily usage" },
-  { value: "monthly", label: "Monthly usage" },
+  { value: "daily", label: "Daily" },
+  { value: "monthly", label: "Monthly" },
+];
+
+// The product's own volume in white and blue; errors are state, so red.
+const TREND_SERIES = [
+  { key: "totalEvents", label: "Events", color: "var(--text)" },
+  { key: "requests", label: "Requests", color: "var(--blue)" },
+  { key: "errors", label: "Errors", color: "var(--red)" },
 ];
 
 /** Human labels for the known `project_usage_counters.counter_type` values. */
@@ -56,8 +69,16 @@ const COUNTER_LABELS: Record<string, string> = {
 
 const BYTE_COUNTERS = new Set(["bytes", "bytes_total", "event_bytes", "storage_bytes"]);
 
+const COLUMNS: SheetColumn[] = [
+  { key: "counter", header: "Counter", className: "w-full" },
+  { key: "total", header: "Total", align: "right", className: "w-[140px]" },
+  { key: "period", header: "Last period", className: `w-[260px] ${HIDE_BELOW_MD}` },
+  { key: "flushed", header: "Last flushed", className: `w-[120px] ${HIDE_BELOW_SM}` },
+];
+
 function counterLabel(counterType: string) {
-  return COUNTER_LABELS[counterType] ?? counterType.replace(/_/g, " ");
+  const label = COUNTER_LABELS[counterType] ?? counterType.replace(/_/g, " ");
+  return label.charAt(0).toUpperCase() + label.slice(1);
 }
 
 // ── page ─────────────────────────────────────────────────────
@@ -88,56 +109,99 @@ export default function ProjectUsagePage() {
   const totalEvents = findCounter(["events", "events_total"]);
   const totalBytes = findCounter(["bytes", "bytes_total", "event_bytes"]);
 
+  const readouts: Readout[] = [
+    { label: "Events", value: formatCompact(totalEvents), sub: "Lifetime total" },
+    { label: "Ingested", value: formatBytes(totalBytes), sub: "Lifetime total" },
+    { label: "Requests", value: formatCompact(stats?.stats.totalRequests ?? 0), sub: "Recorded for this project" },
+    {
+      label: "Active keys",
+      value: formatNumber(stats?.stats.activeKeysCount ?? 0),
+      sub: `of ${formatNumber(stats?.stats.apiKeysCount ?? 0)} keys`,
+    },
+    { label: "Environments", value: formatNumber(stats?.stats.environmentCount ?? 0), sub: "Configured" },
+  ];
+
+  let countersBody: ReactNode;
+  if (isLoading) {
+    countersBody = <SheetLoading rows={4} label="Loading counters" />;
+  } else if (error) {
+    countersBody = (
+      <SheetError title="Could not load usage counters" message={asMessage(error)} onRetry={() => void refetch()} />
+    );
+  } else if (counters.length === 0) {
+    countersBody = (
+      <SheetEmpty
+        title="No usage recorded yet"
+        description="Counters appear after the first telemetry batch is accepted for this project."
+      />
+    );
+  } else {
+    countersBody = (
+      <SheetTable columns={COLUMNS} caption="Usage counters" minWidth={420}>
+        {counters.map((counter) => (
+          <SheetRow key={counter.counterType}>
+            <SheetCell className="w-full max-w-0">
+              <RowTitle title={counterLabel(counter.counterType)} subtitle={counter.counterType} subtitleMono />
+            </SheetCell>
+            <SheetCell align="right" className="max-sm:pr-5">
+              <span className="font-[family-name:var(--mono)] text-[13px] tabular-nums text-[var(--text)]">
+                {BYTE_COUNTERS.has(counter.counterType) ? formatBytes(counter.totalValue) : formatNumber(counter.totalValue)}
+              </span>
+            </SheetCell>
+            <SheetCell className={HIDE_BELOW_MD}>
+              {counter.lastPeriodStart && counter.lastPeriodEnd ? (
+                <span className="flex flex-wrap items-center gap-x-1.5 text-[12px] text-[var(--text3)]">
+                  <Timestamp value={counter.lastPeriodStart} />
+                  <span>to</span>
+                  <Timestamp value={counter.lastPeriodEnd} />
+                </span>
+              ) : (
+                <span className="text-[12px] text-[var(--text3)]">—</span>
+              )}
+            </SheetCell>
+            <SheetCell className={HIDE_BELOW_SM}>
+              {counter.lastFlushedAt ? (
+                <Timestamp value={counter.lastFlushedAt} />
+              ) : (
+                <span className="text-[12px] text-[var(--text3)]">Never</span>
+              )}
+            </SheetCell>
+          </SheetRow>
+        ))}
+      </SheetTable>
+    );
+  }
+
   return (
-    <div className="flex flex-col gap-6">
-      <SectionHeading
-        title="Usage counters"
-        description="Durable lifetime counters maintained by the ingestion pipeline, plus the current plan position. For time-sliced breakdowns use Analytics."
+    <WorkspacePage>
+      <ProjectPageHeader
+        title="Usage"
+        description={
+          <>
+            Lifetime counters kept by the ingestion pipeline, and this month's position against the plan. For
+            time-sliced breakdowns, open <TextLink to={projectPath(orgSlug, publicId, "analytics")}>Analytics</TextLink>.
+          </>
+        }
         actions={
-          <div className="flex items-center gap-2">
-            <UiButton variant="outline" size="lg" onClick={() => refetch()} disabled={isFetching}>
-              <RefreshCcw className="mr-1.5 size-4" /> Refresh
-            </UiButton>
-            <Link to={projectPath(orgSlug, publicId, "analytics")}>
-              <UiButton size="lg">
-                Analytics <ArrowRight className="ml-1.5 size-4" />
-              </UiButton>
-            </Link>
-          </div>
+          <UiButton variant="outline" size="lg" onClick={() => void refetch()} disabled={isFetching}>
+            <RefreshCcw className={cn("size-4", isFetching && "animate-spin")} aria-hidden="true" />
+            {isFetching ? "Refreshing" : "Refresh"}
+          </UiButton>
         }
       />
 
-      {error && <Notice tone="red">{asMessage(error)}</Notice>}
-
-      <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
-        <StatCard label="Events (lifetime)" value={formatCompact(totalEvents)} icon={Activity} tone="brand" />
-        <StatCard label="Ingested (lifetime)" value={formatBytes(totalBytes)} icon={HardDrive} tone="blue" />
-        <StatCard
-          label="Total requests"
-          value={formatCompact(stats?.stats.totalRequests ?? 0)}
-          icon={Gauge}
-          tone="violet"
-        />
-        <StatCard
-          label="Keys / environments"
-          value={`${formatNumber(stats?.stats.activeKeysCount ?? 0)} / ${formatNumber(stats?.stats.environmentCount ?? 0)}`}
-          icon={KeyRound}
-          tone="green"
-          footnote={`${formatNumber(stats?.stats.apiKeysCount ?? 0)} keys total`}
-        />
-      </div>
+      <Readouts cells={readouts} loading={isLoading} label="Lifetime usage" />
 
       <Panel
-        title="Project usage trend"
-        description="Accepted telemetry volume and errors across the selected range."
-        icon={LineChartIcon}
+        title="Usage trend"
+        description="Accepted events, requests, and errors across the selected range."
         actions={
-          <Toolbar>
+          <div className="flex flex-wrap items-center gap-2">
             <SegmentedControl
               value={usageRange}
               onChange={setUsageRange}
               options={USAGE_RANGE_OPTIONS}
-              ariaLabel="Project usage range"
+              ariaLabel="Usage range"
             />
             <FilterSelect
               label="Bucket"
@@ -145,13 +209,19 @@ export default function ProjectUsagePage() {
               onChange={(value) => setUsageGranularity(value as Extract<UsageGranularity, "daily" | "monthly">)}
               options={USAGE_GRANULARITY_OPTIONS}
             />
-          </Toolbar>
+          </div>
         }
       >
         {analytics.isLoading ? (
-          <div className="h-64 animate-pulse rounded-[12px] bg-[var(--bg2)]" />
+          <div role="status" aria-label="Loading usage trend">
+            <div aria-hidden="true" className="loading-skeleton h-[296px] rounded-[var(--radius)]" />
+          </div>
         ) : analytics.error ? (
-          <Notice tone="red">{asMessage(analytics.error)}</Notice>
+          <div role="alert">
+            <Notice tone="red" icon={AlertTriangle} title="Could not load the usage trend">
+              {asMessage(analytics.error)}
+            </Notice>
+          </div>
         ) : (
           <UsageTrendChart
             ariaLabel="Project event, request, and error usage over time"
@@ -161,18 +231,14 @@ export default function ProjectUsagePage() {
               requests: point.requests,
               errors: point.errors,
             }))}
-            series={[
-              { key: "totalEvents", label: "Events", color: "var(--brand)" },
-              { key: "requests", label: "Requests", color: "var(--blue)" },
-              { key: "errors", label: "Errors", color: "var(--red)" },
-            ]}
+            series={TREND_SERIES}
             emptyMessage="No project usage was recorded in this range."
           />
         )}
       </Panel>
 
       {monthly && (
-        <Panel title="Plan consumption" description={`Billing month ${monthly.yearMonth}.`} icon={Sigma}>
+        <Panel title="Plan consumption" description={`Billing month ${monthly.yearMonth}.`}>
           <div className="flex flex-col gap-5">
             <Meter
               label="Events against plan allowance"
@@ -185,18 +251,18 @@ export default function ProjectUsagePage() {
                   : "This project has no explicit plan limit"
               }
             />
-            <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-[12px] border border-[var(--border)] bg-[var(--border)] sm:grid-cols-4">
+            <dl className="grid grid-cols-2 gap-x-6 gap-y-4 border-t border-[var(--border)] pt-5 sm:grid-cols-4">
               {[
                 { label: "Ingested", value: formatBytes(monthly.totalBytes) },
                 { label: "Key requests", value: formatCompact(monthly.apiKeyRequests) },
                 { label: "Rate-limited", value: formatCompact(monthly.rateLimitedEvents) },
                 { label: "Notifications", value: formatCompact(monthly.alertNotifications) },
               ].map((item) => (
-                <div key={item.label} className="flex flex-col gap-1 bg-[var(--bg1)] px-3.5 py-3">
-                  <dt className="text-[10.5px] font-medium uppercase tracking-[0.1em] text-[var(--text3)]">
-                    {item.label}
-                  </dt>
-                  <dd className="text-[15px] font-semibold tabular-nums text-[var(--text)]">{item.value}</dd>
+                <div key={item.label} className="flex min-w-0 flex-col gap-1">
+                  <dt className="truncate text-[12px] text-[var(--text3)]">{item.label}</dt>
+                  <dd className="font-[family-name:var(--mono)] text-[15px] font-medium tabular-nums text-[var(--text)]">
+                    {item.value}
+                  </dd>
                 </div>
               ))}
             </dl>
@@ -204,68 +270,12 @@ export default function ProjectUsagePage() {
         </Panel>
       )}
 
-      <Panel
+      <Sheet
         title="Raw counters"
         description="Aggregated by the ingestion flush worker. Values may lag real time by one flush interval."
-        icon={Database}
-        bodyClassName="p-0"
       >
-        {isLoading ? (
-          <div className="flex flex-col gap-2 p-5">
-            {[0, 1, 2, 3].map((row) => (
-              <div key={row} className="h-9 animate-pulse rounded-[8px] bg-[var(--bg2)]" />
-            ))}
-          </div>
-        ) : counters.length === 0 ? (
-          <div className="flex flex-col items-center gap-2 py-12 text-center">
-            <Layers className="size-8 text-[var(--text3)]" aria-hidden="true" />
-            <p className="text-[13.5px] font-semibold text-[var(--text)]">No usage recorded yet</p>
-            <p className="max-w-[46ch] text-[12.5px] text-[var(--text2)]">
-              Counters appear after the first telemetry batch is accepted for this project.
-            </p>
-          </div>
-        ) : (
-          <Table headers={COUNTER_HEADERS} maxHeight="30rem">
-            {counters.map((counter) => (
-              <Tr key={counter.counterType}>
-                <Td>
-                  <div className="flex flex-col gap-0.5">
-                    <span className="text-[13px] font-medium capitalize text-[var(--text)]">
-                      {counterLabel(counter.counterType)}
-                    </span>
-                    <code className="font-[family-name:var(--mono)] text-[10.5px] text-[var(--text3)]">
-                      {counter.counterType}
-                    </code>
-                  </div>
-                </Td>
-                <Td>
-                  <span className="text-[13px] font-semibold tabular-nums text-[var(--text)]">
-                    {BYTE_COUNTERS.has(counter.counterType)
-                      ? formatBytes(counter.totalValue)
-                      : formatNumber(counter.totalValue)}
-                  </span>
-                </Td>
-                <Td>
-                  {counter.lastPeriodStart && counter.lastPeriodEnd ? (
-                    <span className="text-[12px] text-[var(--text2)]">
-                      <Timestamp value={counter.lastPeriodStart} /> → <Timestamp value={counter.lastPeriodEnd} />
-                    </span>
-                  ) : (
-                    <span className="text-[12px] text-[var(--text3)]">—</span>
-                  )}
-                </Td>
-                <Td>
-                  {counter.lastFlushedAt ? (
-                    <Timestamp value={counter.lastFlushedAt} />
-                  ) : (
-                    <span className="text-[12px] text-[var(--text3)]">Never</span>
-                  )}
-                </Td>
-              </Tr>
-            ))}
-          </Table>
-        )}
-      </Panel>
-    </div>
+        {countersBody}
+      </Sheet>
+    </WorkspacePage>
   );
 }

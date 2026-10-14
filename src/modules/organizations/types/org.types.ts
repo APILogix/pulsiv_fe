@@ -10,15 +10,8 @@ export interface Organization {
   id: string;
   name: string;
   slug: string;
-  description: string | null;
   logoUrl: string | null;
-  websiteUrl: string | null;
-  industry: string | null;
-  companySize: string | null;
-  country: string | null;
   timezone: string;
-  billingEmail: string | null;
-  supportEmail: string | null;
   ownerUserId: string;
   status: OrgStatus;
   createdAt: string;
@@ -331,25 +324,13 @@ export interface Promotion {
 export interface CreateOrganizationBody {
   name: string;
   slug?: string;
-  description?: string;
-  industry?: string;
-  companySize?: string;
-  country?: string;
   timezone?: string;
-  billingEmail?: string;
 }
 
 export interface UpdateOrganizationBody {
   name?: string;
-  description?: string | null;
   logoUrl?: string | null;
-  websiteUrl?: string | null;
-  industry?: string | null;
-  companySize?: string | null;
-  country?: string | null;
   timezone?: string;
-  billingEmail?: string;
-  supportEmail?: string | null;
 }
 
 export interface TransferOwnershipBody {

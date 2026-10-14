@@ -28,14 +28,14 @@ export function ChartTooltip({ state, className }: { state: ChartTooltipState | 
     <div
       role="status"
       className={cn(
-        "pointer-events-none absolute z-30 rounded-[10px] border border-[var(--border)] bg-[var(--bg1)]/95 px-3 py-2 shadow-[var(--shadow-card)] backdrop-blur-sm",
+        "pointer-events-none absolute z-30 rounded-[var(--radius)] border border-[var(--border2)] bg-[var(--bg2)] px-3 py-2 shadow-[var(--shadow-toast)]",
         "animate-in fade-in-0 zoom-in-95 duration-100",
         className,
       )}
       style={{ left: state.x, top: state.y, transform: "translate(-50%, calc(-100% - 10px))" }}
     >
       {state.title && (
-        <p className="mb-1 whitespace-nowrap font-[family-name:var(--mono)] text-[10px] font-medium uppercase tracking-[0.07em] text-[var(--text3)]">
+        <p className="mb-1 whitespace-nowrap font-[family-name:var(--mono)] text-[11px] text-[var(--text3)]">
           {state.title}
         </p>
       )}
@@ -44,7 +44,7 @@ export function ChartTooltip({ state, className }: { state: ChartTooltipState | 
           <div key={`${row.label}-${index}`} className="flex items-center gap-2 whitespace-nowrap text-[12px]">
             {row.color && <span className="size-1.5 shrink-0 rounded-full" style={{ background: row.color }} aria-hidden="true" />}
             <span className="text-[var(--text2)]">{row.label}</span>
-            <span className="ml-auto font-semibold tabular-nums text-[var(--text)]">{row.value}</span>
+            <span className="ml-auto pl-3 font-[family-name:var(--mono)] font-medium tabular-nums text-[var(--text)]">{row.value}</span>
           </div>
         ))}
       </div>

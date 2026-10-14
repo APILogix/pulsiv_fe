@@ -1,9 +1,14 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useState, lazy, Suspense } from 'react';
 import { toast } from 'sonner';
 import { Building2, KeyRound, Loader2 } from 'lucide-react';
 import { LoginForm } from '../components/LoginForm';
-import { LoginMfaForm } from '../components/LoginMfaForm';
-import { LoginBackupCodeForm } from '../components/LoginBackupCodeForm';
+
+const LoginMfaForm = lazy(() =>
+  import('../components/LoginMfaForm').then((m) => ({ default: m.LoginMfaForm }))
+);
+const LoginBackupCodeForm = lazy(() =>
+  import('../components/LoginBackupCodeForm').then((m) => ({ default: m.LoginBackupCodeForm }))
+);
 import {
   SOCIAL_PROVIDERS,
   SocialProviderButtons,
@@ -13,16 +18,14 @@ import { useLogin } from '../hooks/useLogin';
 import { authApi } from '../api/auth.api';
 import type { SsoDiscoveryResult } from '../types/auth.types';
 import { getErrorMessage } from '@/infrastructure/api-client/error.interceptor';
-import {
-  AuthCard,
-  AuthDivider,
-  AuthFooter,
-  AuthHeading,
-  AuthLink,
-} from '@/shared/ui/pulse';
+import { Link } from 'react-router';
+import { AuthDivider, AuthLink } from '@/shared/ui/pulse';
+import { useAuthFocus } from '@/app/layouts/auth-shell';
 
 export default function LoginPage() {
   const { loginState, challengeData, login, loginMfa, loginBackup, isPending, resetState } = useLogin();
+  // The inline second factor is a mid-flow step: same focused shell as /auth/login/mfa.
+  useAuthFocus(loginState === 'mfa_required' && Boolean(challengeData));
   const [showBackupCodes, setShowBackupCodes] = useState(false);
   const [socialProvider, setSocialProvider] = useState<SocialProvider | null>(null);
 
@@ -36,15 +39,17 @@ export default function LoginPage() {
     setShowBackupCodes(false);
   };
 
-  const startSocialLogin = useCallback(async (provider: SocialProvider) => {
+  const startSocialLogin = useCallback((provider: SocialProvider) => {
     setSocialProvider(provider);
-    try {
-      const result = await authApi.socialLogin(provider);
-      window.location.assign(result.authorization_url);
-    } catch (error) {
-      toast.error(getErrorMessage(error));
-      setSocialProvider(null);
-    }
+    authApi
+      .socialLogin(provider)
+      .then((result) => {
+        window.location.assign(result.authorization_url);
+      })
+      .catch((error) => {
+        toast.error(getErrorMessage(error));
+        setSocialProvider(null);
+      });
   }, []);
 
   /**
@@ -67,23 +72,27 @@ export default function LoginPage() {
   if (loginState === 'mfa_required' && challengeData) {
     if (showBackupCodes) {
       return (
-        <LoginBackupCodeForm
-          challengeId={challengeData.challengeId}
-          loginBackupCode={loginBackup}
-          isPending={isPending}
-          onCancel={() => setShowBackupCodes(false)}
-        />
+        <Suspense fallback={null}>
+          <LoginBackupCodeForm
+            challengeId={challengeData.challengeId}
+            loginBackupCode={loginBackup}
+            isPending={isPending}
+            onCancel={() => setShowBackupCodes(false)}
+          />
+        </Suspense>
       );
     }
 
     return (
-      <LoginMfaForm
-        challengeData={challengeData}
-        loginMfa={loginMfa}
-        isPending={isPending}
-        onSelectBackupCodes={() => setShowBackupCodes(true)}
-        onCancel={handleCancelMfa}
-      />
+      <Suspense fallback={null}>
+        <LoginMfaForm
+          challengeData={challengeData}
+          loginMfa={loginMfa}
+          isPending={isPending}
+          onSelectBackupCodes={() => setShowBackupCodes(true)}
+          onCancel={handleCancelMfa}
+        />
+      </Suspense>
     );
   }
 
@@ -99,13 +108,33 @@ export default function LoginPage() {
 
   return (
     <div className="w-full">
-      <AuthHeading
-        eyebrow="Welcome back"
-        title="Sign in"
-        description="Continue with a linked provider, or sign in with your work email."
+      <header className="mb-8">
+        <h1 className="text-[28px] font-semibold leading-[1.15] tracking-[-0.03em] text-[var(--text)]">
+          Sign in to Sentinel
+        </h1>
+        <p className="mt-2 text-[14px] leading-[1.55] text-[var(--text2)]">
+          New here? <AuthLink to="/auth/register">Create an account</AuthLink>
+        </p>
+      </header>
+
+      <LoginForm
+        login={login}
+        isPending={isPending}
+        onEmailResolved={resolveWorkspace}
+        isResolving={isResolving}
+        passwordStepSlot={
+          <WorkspaceHint
+            isResolving={isResolving}
+            domain={discovery?.domain}
+            ssoReady={ssoReady}
+            ssoOrgName={ssoOrgName}
+          />
+        }
       />
 
-      <AuthCard>
+      <AuthDivider>or</AuthDivider>
+
+      <div className="flex flex-col gap-2">
         <SocialProviderButtons
           onSelect={startSocialLogin}
           pendingProvider={socialProvider}
@@ -113,36 +142,18 @@ export default function LoginPage() {
           available={availableProviders}
           linked={linkedProviders}
         />
+        <Link
+          to="/auth/login/sso"
+          className="flex h-11 w-full items-center justify-center gap-2.5 rounded-[var(--radius)] border border-[var(--border2)] text-[13px] font-medium text-[var(--text)] transition-colors duration-150 hover:border-[var(--text3)] hover:bg-[var(--bg2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--text)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg)]"
+        >
+          <Building2 className="size-[18px]" aria-hidden="true" />
+          Continue with SSO
+        </Link>
+      </div>
 
-        <AuthDivider>or continue with email</AuthDivider>
-
-        <LoginForm
-          login={login}
-          isPending={isPending}
-          onEmailResolved={resolveWorkspace}
-          isResolving={isResolving}
-          passwordStepSlot={
-            <WorkspaceHint
-              isResolving={isResolving}
-              domain={discovery?.domain}
-              ssoReady={ssoReady}
-              ssoOrgName={ssoOrgName}
-            />
-          }
-        />
-
-        <div className="mt-5 flex items-center justify-between gap-3 border-t border-[var(--border)] pt-4">
-          <span className="flex items-center gap-2 text-[12px] text-[var(--text3)]">
-            <Building2 className="size-3.5" aria-hidden="true" />
-            Enterprise access
-          </span>
-          <AuthLink to="/auth/login/sso">Sign in with SSO</AuthLink>
-        </div>
-      </AuthCard>
-
-      <AuthFooter>
-        Don&apos;t have an account? <AuthLink to="/auth/register">Create one</AuthLink>
-      </AuthFooter>
+      <p className="mt-8 text-[12px] leading-[1.6] text-[var(--text3)]">
+        By continuing, you agree to Sentinel&apos;s Terms and Conditions and Privacy Policy.
+      </p>
     </div>
   );
 }
@@ -167,9 +178,9 @@ function WorkspaceHint({
 }) {
   if (isResolving) {
     return (
-      <p className="flex items-center gap-2 font-mono text-[10px] font-medium uppercase tracking-[0.09em] text-[var(--text3)]">
-        <Loader2 className="size-3 animate-spin" aria-hidden="true" />
-        Finding your workspace
+      <p className="flex items-center gap-2 text-[12px] text-[var(--text3)]" role="status">
+        <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
+        Finding your workspace…
       </p>
     );
   }
@@ -180,8 +191,8 @@ function WorkspaceHint({
   }
 
   return (
-    <div className="flex items-start gap-2.5 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--brand-bg)] px-3 py-2.5">
-      <KeyRound className="mt-0.5 size-3.5 shrink-0 text-[var(--brand)]" aria-hidden="true" />
+    <div className="flex items-start gap-3 rounded-[var(--radius)] border border-[var(--border2)] bg-[var(--bg1)] px-3.5 py-3" role="status">
+      <KeyRound className="mt-0.5 size-4 shrink-0 text-[var(--text)]" aria-hidden="true" />
       <div className="min-w-0 flex-1">
         <p className="text-[12px] font-medium leading-[1.5] text-[var(--text)]">
           {ssoOrgName ? `${ssoOrgName} uses single sign-on` : 'This domain uses single sign-on'}

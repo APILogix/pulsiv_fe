@@ -1,41 +1,39 @@
 /**
- * Workflow detail — the full definition plus every lifecycle control.
+ * Workflow detail: the definition as one sequence (trigger, conditions,
+ * actions) plus every lifecycle control.
  *
  * Covers `GET /workflows/:id`, `PATCH`, `DELETE`, `enable`, `disable`,
  * `publish`, `test` (dry run and live), `run`, and `GET /workflows/:id/runs`.
  */
-import { useState } from "react";
-import { Link, useNavigate, useParams } from "react-router";
+import { useState, type ReactNode } from "react";
+import { useNavigate, useParams } from "react-router";
 import { toast } from "sonner";
-import {
-  AlertTriangle,
-  Ban,
-  CheckCircle2,
-  Clock,
-  FlaskConical,
-  History,
-  ListChecks,
-  Pencil,
-  Rocket,
-  ShieldAlert,
-  Trash2,
-  Workflow as WorkflowIcon,
-  Zap,
-} from "lucide-react";
-import {
-  EmptyPanel,
-  HeroFacts,
-  Notice,
-  PageHero,
-  Panel,
-  Pill,
-  Row,
-  RowStack,
-  SettingRow,
-  fieldTextareaClass,
-} from "@/shared/ui/pulse";
-import { JsonViewer, Timestamp } from "@/shared/observe";
+import { AlertTriangle, Ban, FlaskConical, Pencil, Rocket, Trash2, Zap } from "lucide-react";
+
 import { Button as UiButton } from "@/components/ui/button";
+import { DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+import { Notice, Panel, Pill, SettingRow, fieldTextareaClass } from "@/shared/ui/pulse";
+import { JsonViewer, Timestamp } from "@/shared/observe";
+import {
+  HIDE_BELOW_MD,
+  HIDE_BELOW_SM,
+  ProjectPageHeader,
+  Readouts,
+  RowActions,
+  RowTitle,
+  Sheet,
+  SheetCell,
+  SheetEmpty,
+  SheetError,
+  SheetLoading,
+  SheetRow,
+  SheetTable,
+  TextLink,
+  WorkspacePage,
+  type HeaderCrumb,
+  type Readout,
+  type SheetColumn,
+} from "@/modules/projects/components/project-page";
 import {
   ConfirmDialog,
   FormDialog,
@@ -55,22 +53,42 @@ import {
 } from "@/modules/automation/api/types";
 import {
   CodeChip,
-  MetaCell,
+  ConditionText,
+  DetailLoading,
+  EnabledPill,
+  FactGrid,
+  MONO,
+  NoOrgNotice,
   PowerToggle,
   RiskPill,
   RunStatusPill,
+  Sequence,
+  SequenceGroup,
+  SequenceStage,
   WorkflowStatusPill,
   elapsed,
+  formatValue,
   labelize,
+  plural,
 } from "@/modules/automation/components/automation-ui";
 import { WorkflowFormDialog } from "@/modules/automation/components/WorkflowFormDialog";
+import { cn } from "@/lib/utils";
 
 // ── module-level constants (rules.md §1.2) ───────────────────
 
 const RUNS_QUERY = { limit: 10, offset: 0 } as const;
-const BREADCRUMBS = [
-  { label: "Automation", to: "/automation" },
-  { label: "Workflows", to: "/automation/workflows" },
+
+const LIST_CRUMBS: HeaderCrumb[] = [
+  { label: "Workflows", to: "/automation" },
+  { label: "All workflows", to: "/automation/workflows" },
+];
+
+const RUN_COLUMNS: SheetColumn[] = [
+  { key: "trigger", header: "Trigger" },
+  { key: "steps", header: "Steps", className: `w-[130px] ${HIDE_BELOW_SM}` },
+  { key: "duration", header: "Duration", className: `w-[110px] ${HIDE_BELOW_MD}` },
+  { key: "status", header: "Status", className: "w-[140px]" },
+  { key: "time", header: "Started", className: "w-[130px]", align: "right" },
 ];
 
 function parsePayload(raw: FormDataEntryValue | null): Record<string, unknown> {
@@ -80,6 +98,20 @@ function parsePayload(raw: FormDataEntryValue | null): Record<string, unknown> {
     throw new Error("Payload must be a JSON object.");
   }
   return parsed as Record<string, unknown>;
+}
+
+/** Inline label/value pairs under a sequence stage. */
+function StageFacts({ facts }: { facts: Array<{ label: string; value: ReactNode; mono?: boolean }> }) {
+  return (
+    <dl className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+      {facts.map((fact) => (
+        <div key={fact.label} className="flex min-w-0 items-baseline gap-1.5">
+          <dt className="shrink-0">{fact.label}</dt>
+          <dd className={cn("min-w-0 text-[var(--text2)] [overflow-wrap:anywhere]", fact.mono && MONO)}>{fact.value}</dd>
+        </div>
+      ))}
+    </dl>
+  );
 }
 
 export default function AutomationWorkflowDetailPage() {
@@ -107,28 +139,25 @@ export default function AutomationWorkflowDetailPage() {
   const [matched, setMatched] = useState<boolean | null>(null);
 
   if (!activeOrgId) {
-    return (
-      <Notice tone="amber" icon={AlertTriangle} title="No organization selected">
-        Pick an organization to view this workflow.
-      </Notice>
-    );
+    return <NoOrgNotice>Pick an organization to view this workflow.</NoOrgNotice>;
   }
 
   if (detailQuery.isLoading) {
-    return (
-      <div className="flex flex-col gap-4">
-        {[0, 1, 2].map((block) => (
-          <div key={block} className="h-40 animate-pulse rounded-[14px] bg-[var(--bg2)]" />
-        ))}
-      </div>
-    );
+    return <DetailLoading label="Loading workflow" />;
   }
 
   if (detailQuery.isError || !detailQuery.data) {
     return (
-      <Notice tone="red" icon={AlertTriangle} title="Could not load this workflow">
-        {apiErrorMessage(detailQuery.error, "The workflow may have been archived.")}
-      </Notice>
+      <WorkspacePage>
+        <ProjectPageHeader title="Workflow" crumbs={[...LIST_CRUMBS, { label: "Workflow" }]} />
+        <Sheet label="Workflow">
+          <SheetError
+            title="Could not load this workflow"
+            message={apiErrorMessage(detailQuery.error, "The workflow may have been archived.")}
+            onRetry={() => void detailQuery.refetch()}
+          />
+        </Sheet>
+      </WorkspacePage>
     );
   }
 
@@ -137,12 +166,15 @@ export default function AutomationWorkflowDetailPage() {
   const trigger = triggers[0];
   const runs = runsQuery.data?.data ?? [];
   const approvalActions = actions.filter((action) => action.requiresApproval);
+  const listening = workflow.status === "active" && workflow.isEnabled;
 
   const blockedReason = detail.entitlementUnavailable
     ? (detail.unavailableReason ?? "Plan upgrade required")
     : !activeVersion
       ? "Publish a version before switching this on"
       : null;
+
+  const runBlockedReason = workflow.isEnabled ? undefined : "Switch the workflow on to run it";
 
   const handleToggle = (next: boolean) => {
     toggleWorkflow.mutate(
@@ -236,49 +268,161 @@ export default function AutomationWorkflowDetailPage() {
     );
   };
 
+  // ── Readouts ───────────────────────────────────────────────
+
+  const statusTone: Readout["tone"] =
+    workflow.status === "active" ? "good" : workflow.status === "draft" || workflow.status === "paused" ? "warn" : "neutral";
+
+  const readouts: Readout[] = [
+    {
+      label: "Status",
+      value: <span className="font-[family-name:var(--sans)]">{labelize(workflow.status)}</span>,
+      sub: workflow.isEnabled ? "Switched on" : "Switched off",
+      tone: statusTone,
+    },
+    {
+      label: "Published version",
+      value: activeVersion ? `v${activeVersion.version}` : "None",
+      sub: activeVersion ? `Draft is v${workflow.currentVersion}` : "Publish to make it runnable",
+      tone: activeVersion ? "neutral" : "warn",
+    },
+    {
+      label: "Actions",
+      value: actions.length,
+      sub: `${approvalActions.length} need approval`,
+      tone: approvalActions.length > 0 ? "warn" : "neutral",
+    },
+    {
+      label: "Last run",
+      value: workflow.lastRunAt ? <Timestamp value={workflow.lastRunAt} /> : "Never",
+      sub: workflow.nextRunAt ? (
+        <>
+          Next <Timestamp value={workflow.nextRunAt} />
+        </>
+      ) : (
+        "No run scheduled"
+      ),
+    },
+  ];
+
+  // ── Recent runs body ───────────────────────────────────────
+
+  let runsBody: ReactNode;
+  if (runsQuery.isLoading) {
+    runsBody = <SheetLoading rows={4} label="Loading recent runs" />;
+  } else if (runsQuery.isError) {
+    runsBody = (
+      <SheetError
+        title="Could not load recent runs"
+        message={apiErrorMessage(runsQuery.error, "The runs request failed.")}
+        onRetry={() => void runsQuery.refetch()}
+      />
+    );
+  } else if (runs.length === 0) {
+    runsBody = (
+      <SheetEmpty
+        title="No runs yet"
+        description="A run appears here each time a trigger matches or you run the workflow by hand."
+        action={
+          workflow.isEnabled ? (
+            <UiButton variant="outline" size="sm" onClick={() => setRunOpen(true)}>
+              Run now
+            </UiButton>
+          ) : undefined
+        }
+      />
+    );
+  } else {
+    runsBody = (
+      <SheetTable columns={RUN_COLUMNS} caption={`Recent runs of ${workflow.name}, newest first`} minWidth={360}>
+        {runs.map((run) => (
+          <SheetRow key={run.runId} onActivate={() => navigate(`/automation/runs/${run.runId}`)}>
+            <SheetCell>
+              <RowTitle
+                title={run.triggerType}
+                to={`/automation/runs/${run.runId}`}
+                subtitle={run.runId}
+                subtitleMono
+              />
+            </SheetCell>
+            <SheetCell className={HIDE_BELOW_SM}>
+              <span className={cn("text-[12px] text-[var(--text2)]", MONO)}>{run.stepCount}</span>
+              {run.failedStepCount > 0 && (
+                <span className={cn("ml-1.5 text-[12px] text-[var(--red)]", MONO)}>{run.failedStepCount} failed</span>
+              )}
+            </SheetCell>
+            <SheetCell className={HIDE_BELOW_MD}>
+              <span className={cn("text-[12px] text-[var(--text2)]", MONO)}>{elapsed(run.startedAt, run.completedAt)}</span>
+            </SheetCell>
+            <SheetCell>
+              <RunStatusPill status={run.status} />
+            </SheetCell>
+            <SheetCell align="right">
+              <span className={cn("whitespace-nowrap text-[12px] text-[var(--text2)]", MONO)}>
+                <Timestamp value={run.createdAt} />
+              </span>
+            </SheetCell>
+          </SheetRow>
+        ))}
+      </SheetTable>
+    );
+  }
+
   return (
-    <div className="flex flex-col gap-6">
-      <PageHero
-        eyebrow={labelize(workflow.workflowType)}
+    <WorkspacePage>
+      <ProjectPageHeader
+        crumbs={[...LIST_CRUMBS, { label: workflow.name }]}
         title={workflow.name}
-        description={workflow.description ?? "No description set for this workflow."}
-        icon={WorkflowIcon}
-        breadcrumbs={[...BREADCRUMBS, { label: workflow.name }]}
+        description={workflow.description || "No description yet."}
+        badges={
+          <>
+            <WorkflowStatusPill status={workflow.status} />
+            <EnabledPill enabled={workflow.isEnabled} />
+          </>
+        }
+        meta={[
+          { label: "Type", value: labelize(workflow.workflowType) },
+          { label: "Version", value: `v${workflow.currentVersion}`, mono: true },
+          { label: "Timezone", value: workflow.timezone, mono: true },
+          { label: "Updated", value: <Timestamp value={workflow.updatedAt} />, mono: true },
+        ]}
         actions={
           <>
             <UiButton variant="outline" size="lg" onClick={() => setTestOpen(true)}>
-              <FlaskConical className="size-4" /> Test
+              <FlaskConical className="size-4" aria-hidden="true" />
+              Test
             </UiButton>
-            <UiButton
-              variant="outline"
-              size="lg"
-              onClick={() => setRunOpen(true)}
-              disabled={!workflow.isEnabled}
-              title={workflow.isEnabled ? undefined : "Switch the workflow on to run it"}
-            >
-              <Zap className="size-4" /> Run now
-            </UiButton>
-            <UiButton variant="outline" size="lg" onClick={() => setEditOpen(true)}>
-              <Pencil className="size-4" /> Edit
-            </UiButton>
+            {/* Disabled buttons swallow pointer events; the wrapper carries the reason. */}
+            <span title={runBlockedReason} className="inline-flex">
+              <UiButton
+                variant="outline"
+                size="lg"
+                onClick={() => setRunOpen(true)}
+                disabled={!workflow.isEnabled}
+                aria-label={runBlockedReason ? `Run now. ${runBlockedReason}.` : undefined}
+              >
+                <Zap className="size-4" aria-hidden="true" />
+                Run now
+              </UiButton>
+            </span>
             <UiButton size="lg" onClick={() => handlePublish(true)} disabled={publishWorkflow.isPending}>
-              <Rocket className="size-4" /> Publish
+              <Rocket className="size-4" aria-hidden="true" />
+              {publishWorkflow.isPending ? "Publishing…" : "Publish"}
             </UiButton>
+            <RowActions label="More actions">
+              <DropdownMenuItem onSelect={() => setEditOpen(true)}>
+                <Pencil aria-hidden="true" /> Edit workflow
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem variant="destructive" onSelect={() => setDeleteOpen(true)}>
+                <Trash2 aria-hidden="true" /> Archive workflow
+              </DropdownMenuItem>
+            </RowActions>
           </>
         }
-      >
-        <HeroFacts
-          facts={[
-            { label: "Status", value: labelize(workflow.status), tone: workflow.status === "active" ? "green" : "neutral" },
-            { label: "Version", value: `v${workflow.currentVersion}` },
-            { label: "Actions", value: actions.length },
-            {
-              label: "Last run",
-              value: workflow.lastRunAt ? <Timestamp value={workflow.lastRunAt} /> : "Never",
-            },
-          ]}
-        />
-      </PageHero>
+      />
+
+      <Readouts cells={readouts} label="Workflow summary" />
 
       {detail.entitlementUnavailable && (
         <Notice tone="amber" icon={AlertTriangle} title="Plan upgrade required">
@@ -287,8 +431,15 @@ export default function AutomationWorkflowDetailPage() {
         </Notice>
       )}
 
-      <Panel title="State" description="Turn the workflow on to let its published version react to events." icon={ListChecks}>
-        <div className="flex flex-col gap-4">
+      <Panel
+        title="State"
+        description={
+          listening
+            ? `Live and listening for ${trigger?.triggerType ?? "its trigger"}.`
+            : "Turn the workflow on to let its published version react to events."
+        }
+      >
+        <div className="flex flex-col gap-5">
           <SettingRow
             label={workflow.isEnabled ? "Automation is on" : "Automation is off"}
             description={
@@ -298,48 +449,133 @@ export default function AutomationWorkflowDetailPage() {
                 : "Triggers are ignored while the workflow is off.")
             }
           >
-            <div className="flex items-center gap-3">
-              <WorkflowStatusPill status={workflow.status} />
-              <PowerToggle
-                checked={workflow.isEnabled}
-                onChange={handleToggle}
-                label={`Switch ${workflow.name} ${workflow.isEnabled ? "off" : "on"}`}
-                pending={toggleWorkflow.isPending}
-                blockedReason={blockedReason}
-              />
-            </div>
+            <PowerToggle
+              checked={workflow.isEnabled}
+              onChange={handleToggle}
+              label={`Switch ${workflow.name} ${workflow.isEnabled ? "off" : "on"}`}
+              pending={toggleWorkflow.isPending}
+              blockedReason={blockedReason}
+            />
           </SettingRow>
 
-          <div className="grid gap-4 border-t border-[var(--border)] pt-4 sm:grid-cols-4">
-            <MetaCell label="Scope">{labelize(workflow.scope)}</MetaCell>
-            <MetaCell label="Timezone">{workflow.timezone}</MetaCell>
-            <MetaCell label="Created">
-              <Timestamp value={workflow.createdAt} />
-            </MetaCell>
-            <MetaCell label="Updated">
-              <Timestamp value={workflow.updatedAt} />
-            </MetaCell>
-          </div>
-
-          {workflow.tags.length > 0 && (
-            <div className="flex flex-wrap items-center gap-2 border-t border-[var(--border)] pt-4">
-              {workflow.tags.map((tag) => (
-                <Pill key={tag} tone="neutral">
-                  {tag}
-                </Pill>
-              ))}
-            </div>
-          )}
+          <FactGrid
+            className="border-t border-[var(--border)] pt-5"
+            facts={[
+              { label: "Scope", value: labelize(workflow.scope) },
+              { label: "Timezone", value: workflow.timezone, mono: true },
+              { label: "Created", value: <Timestamp value={workflow.createdAt} />, mono: true },
+              { label: "Updated", value: <Timestamp value={workflow.updatedAt} />, mono: true },
+              workflow.tags.length > 0 && {
+                label: "Tags",
+                wide: true,
+                value: (
+                  <span className="flex flex-wrap items-center gap-1.5">
+                    {workflow.tags.map((tag) => (
+                      <Pill key={tag} tone="neutral">
+                        {tag}
+                      </Pill>
+                    ))}
+                  </span>
+                ),
+              },
+            ]}
+          />
         </div>
       </Panel>
 
+      <Sheet
+        title="Definition"
+        description="Runs top to bottom. Every required condition must pass before actions run."
+        actions={
+          <UiButton variant="outline" size="sm" onClick={() => setEditOpen(true)}>
+            <Pencil className="size-3.5" aria-hidden="true" />
+            Edit definition
+          </UiButton>
+        }
+      >
+        <Sequence label={`Definition of ${workflow.name}`}>
+          <SequenceGroup title="Trigger" />
+          {trigger ? (
+            <SequenceStage marker="T" title={labelize(trigger.triggerKind)} meta={<CodeChip>{trigger.triggerType}</CodeChip>}>
+              <StageFacts
+                facts={[
+                  { label: "Module", value: labelize(trigger.sourceModule) },
+                  { label: "Event", value: trigger.sourceEvent ?? "Any", mono: Boolean(trigger.sourceEvent) },
+                  ...(trigger.scheduleCron ? [{ label: "Cron", value: trigger.scheduleCron, mono: true }] : []),
+                  { label: "Cooldown", value: `${trigger.cooldownSeconds}s`, mono: true },
+                  {
+                    label: "Dedupe key",
+                    value: trigger.dedupeKeyTemplate ?? "Not set",
+                    mono: Boolean(trigger.dedupeKeyTemplate),
+                  },
+                ]}
+              />
+            </SequenceStage>
+          ) : (
+            <SequenceStage marker="T" title="No trigger">
+              Edit the workflow to add a trigger.
+            </SequenceStage>
+          )}
+
+          <SequenceGroup
+            title="Conditions"
+            description={conditions.length > 0 ? plural(conditions.length, "condition") : "None, every trigger matches"}
+          />
+          {conditions.map((condition, index) => (
+            <SequenceStage
+              key={condition.id}
+              marker={`C${index + 1}`}
+              title={<ConditionText path={condition.leftPath} operator={condition.operator} value={condition.rightValue} />}
+              meta={<Pill tone="neutral">{condition.isRequired ? "Required" : "Optional"}</Pill>}
+            />
+          ))}
+
+          <SequenceGroup
+            title="Actions"
+            description={
+              actions.length > 0
+                ? `${plural(actions.length, "action")}${approvalActions.length > 0 ? `, ${approvalActions.length} gated` : ""}`
+                : undefined
+            }
+          />
+          {actions.length === 0 ? (
+            <SequenceStage marker="A" title="No actions">
+              Edit the workflow to add actions.
+            </SequenceStage>
+          ) : (
+            actions.map((action, index) => (
+              <SequenceStage
+                key={action.id}
+                marker={index + 1}
+                tone={action.requiresApproval ? "warn" : "neutral"}
+                title={<span className={cn(MONO, "text-[12.5px]", !action.isEnabled && "text-[var(--text3)]")}>{action.actionKey}</span>}
+                meta={
+                  <>
+                    <CodeChip>{action.actionType}</CodeChip>
+                    <RiskPill risk={action.riskLevel} />
+                    {action.requiresApproval && <Pill tone="amber">Needs approval</Pill>}
+                    {!action.isEnabled && <Pill tone="neutral">Disabled</Pill>}
+                  </>
+                }
+              >
+                <StageFacts
+                  facts={[
+                    { label: "Timeout", value: `${action.timeoutSeconds}s`, mono: true },
+                    { label: "Attempts", value: action.maxAttempts, mono: true },
+                    { label: "Backoff", value: `${action.retryBackoffSeconds}s`, mono: true },
+                    ...(action.integrationKey ? [{ label: "Integration", value: action.integrationKey, mono: true }] : []),
+                  ]}
+                />
+              </SequenceStage>
+            ))
+          )}
+        </Sequence>
+      </Sheet>
+
       {conditionResults && (
-        <Panel
+        <Sheet
           title="Last dry run"
-          description="Condition evaluation against the payload you supplied. Nothing was executed."
-          icon={FlaskConical}
-          tone={matched ? "green" : "amber"}
-          bodyClassName="p-0"
+          description="Conditions evaluated against the payload you supplied. Nothing was executed."
           actions={
             <Pill tone={matched ? "green" : "amber"} dot>
               {matched ? "Matched" : "Not matched"}
@@ -347,202 +583,86 @@ export default function AutomationWorkflowDetailPage() {
           }
         >
           {conditionResults.length === 0 ? (
-            <div className="px-5 py-4 text-[12.5px] text-[var(--text3)]">
+            <p className="px-5 py-4 text-[13px] text-[var(--text2)]">
               This workflow has no conditions, so every trigger matches.
-            </div>
-          ) : (
-            <RowStack>
-              {conditionResults.map((result, index) => (
-                <Row key={`${result.leftPath}-${index}`} className="flex items-center justify-between gap-4">
-                  <div className="min-w-0 text-[12.5px]">
-                    <CodeChip>{result.leftPath}</CodeChip>{" "}
-                    <span className="text-[var(--text3)]">{result.operator}</span>{" "}
-                    <CodeChip>{JSON.stringify(result.expected ?? null)}</CodeChip>
-                    <p className="mt-1 text-[11.5px] text-[var(--text3)]">
-                      actual: {JSON.stringify(result.actual ?? null)}
-                    </p>
-                  </div>
-                  <Pill tone={result.passed ? "green" : "red"} dot>
-                    {result.passed ? "Pass" : "Fail"}
-                  </Pill>
-                </Row>
-              ))}
-            </RowStack>
-          )}
-        </Panel>
-      )}
-
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Panel title="Trigger" description="What starts this workflow." icon={Zap}>
-          {trigger ? (
-            <div className="grid gap-4 sm:grid-cols-2">
-              <MetaCell label="Kind">{labelize(trigger.triggerKind)}</MetaCell>
-              <MetaCell label="Type">
-                <CodeChip>{trigger.triggerType}</CodeChip>
-              </MetaCell>
-              <MetaCell label="Source module">{trigger.sourceModule}</MetaCell>
-              <MetaCell label="Source event">
-                {trigger.sourceEvent ? <CodeChip>{trigger.sourceEvent}</CodeChip> : "—"}
-              </MetaCell>
-              <MetaCell label="Cron">
-                {trigger.scheduleCron ? <CodeChip>{trigger.scheduleCron}</CodeChip> : "—"}
-              </MetaCell>
-              <MetaCell label="Cooldown">{trigger.cooldownSeconds}s</MetaCell>
-              <MetaCell label="Dedupe key" className="sm:col-span-2">
-                {trigger.dedupeKeyTemplate ? <CodeChip>{trigger.dedupeKeyTemplate}</CodeChip> : "Not set"}
-              </MetaCell>
-            </div>
-          ) : (
-            <EmptyPanel icon={Zap} title="No trigger" description="Edit the workflow to attach a trigger." />
-          )}
-        </Panel>
-
-        <Panel
-          title={`Conditions (${conditions.length})`}
-          description="All required conditions must pass before actions run."
-          icon={ListChecks}
-          bodyClassName={conditions.length === 0 ? undefined : "p-0"}
-        >
-          {conditions.length === 0 ? (
-            <p className="text-[12.5px] text-[var(--text3)]">
-              No conditions — every matching trigger runs the actions.
             </p>
           ) : (
-            <RowStack>
-              {conditions.map((condition) => (
-                <Row key={condition.id} className="flex items-center justify-between gap-3">
-                  <span className="min-w-0 truncate text-[12.5px]">
-                    <CodeChip>{condition.leftPath}</CodeChip>{" "}
-                    <span className="text-[var(--text3)]">{condition.operator}</span>{" "}
-                    <CodeChip>{JSON.stringify(condition.rightValue ?? null)}</CodeChip>
-                  </span>
-                  <Pill tone={condition.isRequired ? "brand" : "neutral"}>
-                    {condition.isRequired ? "Required" : "Optional"}
-                  </Pill>
-                </Row>
+            <Sequence label="Dry run condition results">
+              {conditionResults.map((result, index) => (
+                <SequenceStage
+                  key={`${result.leftPath}-${index}`}
+                  marker={`C${index + 1}`}
+                  tone={result.passed ? "good" : "bad"}
+                  title={<ConditionText path={result.leftPath} operator={result.operator} value={result.expected} />}
+                  meta={<Pill tone={result.passed ? "green" : "red"}>{result.passed ? "Passed" : "Failed"}</Pill>}
+                >
+                  Actual: <span className={cn("text-[var(--text2)]", MONO)}>{formatValue(result.actual)}</span>
+                </SequenceStage>
               ))}
-            </RowStack>
+            </Sequence>
           )}
-        </Panel>
-      </div>
+        </Sheet>
+      )}
 
-      <Panel
-        title={`Actions (${actions.length})`}
-        description="Executed in order. Approval-gated actions pause the run until a decision lands."
-        icon={ShieldAlert}
-        bodyClassName="p-0"
+      <Sheet
+        title="Recent runs"
+        description="Executions of this workflow, newest first."
         actions={
-          approvalActions.length > 0 ? (
-            <Pill tone="amber">{approvalActions.length} gated</Pill>
+          <TextLink to={`/automation/runs?workflowId=${workflow.id}`} size="sm" arrow>
+            All runs for this workflow
+          </TextLink>
+        }
+        footer={
+          !runsQuery.isLoading && !runsQuery.isError && runs.length > 0 ? (
+            <span>Showing the {plural(runs.length, "most recent run")}.</span>
           ) : undefined
         }
       >
-        {actions.length === 0 ? (
-          <div className="p-5">
-            <EmptyPanel icon={ShieldAlert} title="No actions" description="Edit the workflow to add actions." />
-          </div>
-        ) : (
-          <RowStack>
-            {actions.map((action) => (
-              <Row key={action.id} className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-[13.5px] font-medium text-[var(--text)]">{action.actionKey}</span>
-                    <CodeChip>{action.actionType}</CodeChip>
-                    {!action.isEnabled && <Pill tone="neutral">Disabled</Pill>}
-                  </div>
-                  <p className="mt-1 text-[12px] text-[var(--text3)]">
-                    timeout {action.timeoutSeconds}s · {action.maxAttempts} attempts · backoff{" "}
-                    {action.retryBackoffSeconds}s
-                    {action.integrationKey ? ` · ${action.integrationKey}` : ""}
-                  </p>
-                </div>
-                <div className="flex shrink-0 items-center gap-2">
-                  <RiskPill risk={action.riskLevel} />
-                  {action.requiresApproval && <Pill tone="amber">Approval</Pill>}
-                </div>
-              </Row>
-            ))}
-          </RowStack>
-        )}
-      </Panel>
-
-      <Panel
-        title="Recent runs"
-        description="Executions of this workflow, newest first."
-        icon={History}
-        bodyClassName="p-0"
-        actions={
-          <UiButton asChild variant="outline" size="sm">
-            <Link to={`/automation/runs?workflowId=${workflow.id}`}>All runs</Link>
-          </UiButton>
-        }
-      >
-        {runs.length === 0 ? (
-          <div className="p-5">
-            <EmptyPanel icon={History} title="No runs yet" description="Run the workflow manually to try it out." />
-          </div>
-        ) : (
-          <RowStack>
-            {runs.map((run) => (
-              <Row key={run.runId} className="flex items-center justify-between gap-4">
-                <div className="min-w-0">
-                  <Link
-                    to={`/automation/runs/${run.runId}`}
-                    className="block truncate text-[13px] font-medium text-[var(--text)] hover:text-[var(--brand)]"
-                  >
-                    {run.triggerType}
-                  </Link>
-                  <p className="mt-0.5 text-[12px] text-[var(--text3)]">
-                    {run.stepCount} steps · {run.failedStepCount} failed · {elapsed(run.startedAt, run.completedAt)} ·{" "}
-                    <Timestamp value={run.createdAt} />
-                  </p>
-                </div>
-                <RunStatusPill status={run.status} />
-              </Row>
-            ))}
-          </RowStack>
-        )}
-      </Panel>
+        {runsBody}
+      </Sheet>
 
       <Panel
         title="Published version"
         description={
           activeVersion
-            ? `Version ${activeVersion.version} · checksum ${activeVersion.checksum.slice(0, 12)}`
+            ? "The immutable snapshot that runs when a trigger matches."
             : "Nothing published yet. Publish the draft to make it runnable."
         }
-        icon={Rocket}
       >
         {activeVersion ? (
-          <div className="flex flex-col gap-4">
-            <div className="grid gap-4 sm:grid-cols-3">
-              <MetaCell label="Status">{labelize(activeVersion.status)}</MetaCell>
-              <MetaCell label="Published">
-                {activeVersion.publishedAt ? <Timestamp value={activeVersion.publishedAt} /> : "—"}
-              </MetaCell>
-              <MetaCell label="Version">v{activeVersion.version}</MetaCell>
-            </div>
+          <div className="flex flex-col gap-5">
+            <FactGrid
+              facts={[
+                { label: "Status", value: labelize(activeVersion.status) },
+                {
+                  label: "Published",
+                  value: activeVersion.publishedAt ? <Timestamp value={activeVersion.publishedAt} /> : "—",
+                  mono: true,
+                },
+                { label: "Version", value: `v${activeVersion.version}`, mono: true },
+                { label: "Checksum", value: activeVersion.checksum.slice(0, 12), mono: true },
+              ]}
+            />
             <JsonViewer data={activeVersion.definition} maxHeight={320} />
           </div>
         ) : (
-          <EmptyPanel
-            icon={Rocket}
-            title="Draft only"
-            description="Publishing snapshots the trigger, conditions, and actions into an immutable version."
-            action={
-              <UiButton size="lg" onClick={() => handlePublish(true)} disabled={publishWorkflow.isPending}>
-                <Rocket className="size-4" /> Publish and activate
-              </UiButton>
-            }
-          />
+          <div className="flex flex-col items-start gap-3">
+            <p className="max-w-[60ch] text-[13px] leading-[1.6] text-[var(--text2)]">
+              Publishing snapshots the trigger, conditions, and actions into an immutable version.
+            </p>
+            <UiButton onClick={() => handlePublish(true)} disabled={publishWorkflow.isPending}>
+              <Rocket className="size-4" aria-hidden="true" />
+              Publish and activate
+            </UiButton>
+          </div>
         )}
       </Panel>
 
       <Panel title="Danger zone" description="Archiving hides the workflow and stops all triggers." icon={Trash2} danger>
         <SettingRow label="Archive workflow" description="Soft delete. Run history is preserved.">
-          <UiButton variant="destructive" size="lg" onClick={() => setDeleteOpen(true)}>
-            <Trash2 className="size-4" /> Archive
+          <UiButton variant="destructive" onClick={() => setDeleteOpen(true)}>
+            <Trash2 className="size-4" aria-hidden="true" />
+            Archive
           </UiButton>
         </SettingRow>
       </Panel>
@@ -575,7 +695,7 @@ export default function AutomationWorkflowDetailPage() {
           <textarea
             id="simulatedPayload"
             name="simulatedPayload"
-            className={`${fieldTextareaClass} font-[family-name:var(--mono)] text-[12px]`}
+            className={cn(fieldTextareaClass, "font-[family-name:var(--mono)] text-[12px]")}
             defaultValue={'{\n  "severity": "critical"\n}'}
             spellCheck={false}
           />
@@ -599,7 +719,7 @@ export default function AutomationWorkflowDetailPage() {
           <textarea
             id="inputPayload"
             name="inputPayload"
-            className={`${fieldTextareaClass} font-[family-name:var(--mono)] text-[12px]`}
+            className={cn(fieldTextareaClass, "font-[family-name:var(--mono)] text-[12px]")}
             defaultValue="{}"
             spellCheck={false}
           />
@@ -619,17 +739,6 @@ export default function AutomationWorkflowDetailPage() {
           Pending runs keep executing until they finish or you cancel them.
         </Notice>
       </ConfirmDialog>
-
-      {runsQuery.isFetching && (
-        <p className="flex items-center gap-1.5 text-[11.5px] text-[var(--text3)]">
-          <Clock className="size-3" aria-hidden="true" /> Refreshing runs…
-        </p>
-      )}
-      {workflow.status === "active" && workflow.isEnabled && (
-        <p className="flex items-center gap-1.5 text-[11.5px] text-[var(--green)]">
-          <CheckCircle2 className="size-3" aria-hidden="true" /> Live and listening for {trigger?.triggerType}.
-        </p>
-      )}
-    </div>
+    </WorkspacePage>
   );
 }

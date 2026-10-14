@@ -14,6 +14,7 @@ import {
 } from "@/shared/ui/pulse";
 import { Button, Field, SubmitButton, Timestamp, demoSuccess } from "@/shared/observe";
 import { TableLoadingRows } from "@/shared/ui/loading";
+import { apiErrorMessage } from "@/infrastructure/api-client/api-error";
 
 // ── module-level constants (rules.md §1.2) ──
 
@@ -80,7 +81,7 @@ export function IntegrationRoutes({ integrationId, type }: IntegrationRoutesProp
       demoSuccess("Route created successfully");
       return INITIAL_ROUTE_STATE;
     } catch (err: any) {
-      return { error: err?.response?.data?.message || err?.message || "Failed to create route." };
+      return { error: apiErrorMessage(err) || err?.message || "Failed to create route." };
     }
   }, INITIAL_ROUTE_STATE);
 

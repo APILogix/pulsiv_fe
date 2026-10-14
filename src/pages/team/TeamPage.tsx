@@ -1,68 +1,48 @@
-import { useActionState, useEffect, useState } from "react";
+import { startTransition, useActionState, useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  Clock,
-  MailPlus,
-  MoreHorizontal,
-  RefreshCw,
-  ShieldCheck,
-  Trash2,
-  UserCog,
-  UserPlus,
-  Users,
-  UserX,
-} from "lucide-react";
 import { toast } from "sonner";
 
+import { Button as UiButton } from "@/components/ui/button";
+import { DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { orgApi } from "@/modules/organizations/api/org.api";
+import { useAdminHref } from "@/modules/organizations/components/org-page";
 import { orgQueryKeys, useOrganizations } from "@/modules/organizations/hooks/useOrganizations";
-import type { Invitation, Member, OrgRole } from "@/modules/organizations/types/org.types";
+import type { Invitation, Member, MemberStatus, OrgRole } from "@/modules/organizations/types/org.types";
 import {
-  Button,
-  CardSkeleton,
-  Field,
-  FilterSelect,
-  SearchInput,
-  StatusBadge,
-  SubmitButton,
-  Table,
-  Td,
-  Timestamp,
-  Tr,
-  formatNumber,
-  inputClass,
-} from "@/shared/observe";
-import {
-  EmptyPanel,
-  HeroFacts,
-  PageHero,
-  Panel,
-  Pill,
-  SegmentedControl,
-  Toolbar,
-  type HeroFact,
-  type SegmentOption,
-  type SurfaceTone,
-} from "@/shared/ui/pulse";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+  HIDE_BELOW_MD,
+  HIDE_BELOW_SM,
+  PageTabs,
+  ProjectPageHeader,
+  Readouts,
+  RowActions,
+  RowTitle,
+  SearchField,
+  Sheet,
+  SheetCell,
+  SheetEmpty,
+  SheetError,
+  SheetLoading,
+  SheetRow,
+  SheetTable,
+  ToolbarCount,
+  WorkspacePage,
+  pageTabPanelProps,
+  type PageTab,
+  type Readout,
+  type SheetColumn,
+} from "@/modules/projects/components/project-page";
+import { ConfirmDialog, DialogField, FormDialog, apiErrorMessage } from "@/modules/projects/components/project-ui";
+import { FilterSelect, Timestamp, formatNumber } from "@/shared/observe";
+import { Pill, fieldInputClass, type SurfaceTone } from "@/shared/ui/pulse";
+
+// ── Vocabulary ───────────────────────────────────────────────
 
 type TabKey = "members" | "invitations";
+
+type InviteState = { ok: boolean; error: string | null; email?: string };
+
+const TAB_ID = "team-view";
 
 const roleOptions: OrgRole[] = ["owner", "admin", "member", "viewer"];
 
@@ -70,14 +50,13 @@ const INVITE_ROLE_OPTIONS = roleOptions.filter((role) => role !== "owner");
 
 const PRIVILEGED_ROLES: OrgRole[] = ["owner", "admin"];
 
-const MEMBER_HEADERS = ["Member", "Role", "MFA", "Last active", "Status", "Actions"];
-
-const INVITATION_HEADERS = ["Invitation", "Role", "Invited by", "Sent", "Actions"];
-
 const ROLE_FILTER_OPTIONS = [
   { value: "all", label: "All roles" },
   { value: "owner", label: "Owner" },
   { value: "admin", label: "Admin" },
+  { value: "security", label: "Security" },
+  { value: "billing", label: "Billing" },
+  { value: "developer", label: "Developer" },
   { value: "member", label: "Member" },
   { value: "viewer", label: "Viewer" },
 ];
@@ -88,61 +67,60 @@ const MFA_FILTER_OPTIONS = [
   { value: "disabled", label: "MFA missing" },
 ];
 
-const ROLE_TONES: Record<string, SurfaceTone> = {
-  owner: "brand",
-  admin: "violet",
-  security: "violet",
-  billing: "blue",
-  developer: "ai",
+const MEMBER_STATUS_TONE: Record<MemberStatus, SurfaceTone> = {
+  active: "green",
+  invited: "amber",
+  suspended: "red",
+  locked: "red",
+  removed: "neutral",
 };
 
-function roleTone(role: string): SurfaceTone {
-  return ROLE_TONES[role] ?? "neutral";
-}
+const MEMBER_COLUMNS: SheetColumn[] = [
+  { key: "member", header: "Member" },
+  { key: "role", header: "Role", className: "w-[120px]" },
+  { key: "mfa", header: "MFA", className: `w-[130px] ${HIDE_BELOW_SM}` },
+  { key: "active", header: "Last active", className: `w-[160px] ${HIDE_BELOW_MD}` },
+  { key: "status", header: "Status", className: "w-[120px]" },
+  { key: "actions", header: "Actions", srOnly: true, className: "w-[56px]", align: "right" },
+];
+
+const INVITATION_COLUMNS: SheetColumn[] = [
+  { key: "invitation", header: "Invitation" },
+  { key: "role", header: "Role", className: "w-[120px]" },
+  { key: "status", header: "Status", className: "w-[120px]" },
+  { key: "sent", header: "Sent", className: `w-[180px] ${HIDE_BELOW_MD}` },
+  { key: "actions", header: "Actions", srOnly: true, className: "w-[140px]", align: "right" },
+];
+
+const capitalize = (value: string) => value.charAt(0).toUpperCase() + value.slice(1);
 
 function daysUntil(date: string) {
   const ms = new Date(date).getTime() - Date.now();
   return Math.max(0, Math.ceil(ms / 86_400_000));
 }
 
-// ── one-off local component: initial avatar used in the member table ──
+function isExpired(invite: Invitation) {
+  return new Date(invite.expiresAt).getTime() < Date.now();
+}
+
+/** Initial avatar in neutral tones: identity, not state. */
 function MemberAvatar({ name }: { name: string }) {
   return (
     <span
       aria-hidden="true"
-      className="inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-[var(--brand-bg)] font-[family-name:var(--display)] text-[12.5px] font-semibold text-[var(--brand)] ring-1 ring-inset ring-[var(--brand)]/25"
+      className="inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-[var(--bg2)] text-[12.5px] font-semibold text-[var(--text2)] ring-1 ring-inset ring-[var(--border)]"
     >
       {name.charAt(0).toUpperCase()}
     </span>
   );
 }
 
-// ── one-off local component: stops row navigation for inline controls ──
-function RowActions({ children }: { children: React.ReactNode }) {
-  return (
-    <div
-      className="flex items-center justify-end gap-2"
-      onClick={(event) => event.stopPropagation()}
-      onKeyDown={(event) => event.stopPropagation()}
-    >
-      {children}
-    </div>
-  );
-}
-
-// ── one-off local component: skeleton body for the list panels ──
-function ListSkeleton() {
-  return (
-    <div className="grid gap-3">
-      <CardSkeleton />
-      <CardSkeleton />
-    </div>
-  );
-}
+// ── Page ─────────────────────────────────────────────────────
 
 export default function TeamPage() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const href = useAdminHref();
   const { activeOrgId } = useOrganizations();
   const [tab, setTab] = useState<TabKey>("members");
   const [search, setSearch] = useState("");
@@ -150,6 +128,7 @@ export default function TeamPage() {
   const [mfaFilter, setMfaFilter] = useState("all");
   const [removeTarget, setRemoveTarget] = useState<Member | null>(null);
   const [revokeTarget, setRevokeTarget] = useState<Invitation | null>(null);
+  const [inviteOpen, setInviteOpen] = useState(false);
 
   const { data: me } = useQuery({
     queryKey: [...orgQueryKeys.members(activeOrgId!), "me"],
@@ -157,15 +136,34 @@ export default function TeamPage() {
     enabled: !!activeOrgId,
   });
 
-  const { data: membersData, isLoading: membersLoading } = useQuery({
+  const {
+    data: membersData,
+    isLoading: membersLoading,
+    isError: membersFailed,
+    error: membersError,
+    refetch: refetchMembers,
+  } = useQuery({
     queryKey: [...orgQueryKeys.members(activeOrgId!), "team"],
     queryFn: () => orgApi.listMembers(activeOrgId!, { limit: 100, status: "active" }),
     enabled: !!activeOrgId,
   });
 
-  const { data: invitationsData, isLoading: invitationsLoading } = useQuery({
+  const {
+    data: invitationsData,
+    isLoading: invitationsLoading,
+    isError: invitationsFailed,
+    error: invitationsError,
+    refetch: refetchInvitations,
+  } = useQuery({
     queryKey: [...orgQueryKeys.invitations(activeOrgId!), "pending"],
     queryFn: () => orgApi.listInvitations(activeOrgId!, { limit: 100, status: "pending" }),
+    enabled: !!activeOrgId,
+  });
+
+  // Same key as the organization dashboard, so the seat limit comes from one cache entry.
+  const { data: limits } = useQuery({
+    queryKey: [...orgQueryKeys.billing(activeOrgId!), "usageLimits"],
+    queryFn: () => orgApi.getUsageLimits(activeOrgId!),
     enabled: !!activeOrgId,
   });
 
@@ -185,7 +183,7 @@ export default function TeamPage() {
       toast.success("Role updated");
       invalidateTeam();
     },
-    onError: (err: any) => toast.error(err.response?.data?.message || "Failed to update role"),
+    onError: (err: unknown) => toast.error(apiErrorMessage(err, "Failed to update role")),
   });
 
   const removeMember = useMutation({
@@ -195,7 +193,7 @@ export default function TeamPage() {
       setRemoveTarget(null);
       invalidateTeam();
     },
-    onError: (err: any) => toast.error(err.response?.data?.message || "Failed to remove member"),
+    onError: (err: unknown) => toast.error(apiErrorMessage(err, "Failed to remove member")),
   });
 
   const resendInvitation = useMutation({
@@ -204,7 +202,7 @@ export default function TeamPage() {
       toast.success("Invitation resent");
       invalidateTeam();
     },
-    onError: (err: any) => toast.error(err.response?.data?.message || "Failed to resend invitation"),
+    onError: (err: unknown) => toast.error(apiErrorMessage(err, "Failed to resend invitation")),
   });
 
   const revokeInvitation = useMutation({
@@ -214,20 +212,21 @@ export default function TeamPage() {
       setRevokeTarget(null);
       invalidateTeam();
     },
-    onError: (err: any) => toast.error(err.response?.data?.message || "Failed to revoke invitation"),
+    onError: (err: unknown) => toast.error(apiErrorMessage(err, "Failed to revoke invitation")),
   });
 
-  const [state, inviteAction] = useActionState(
-    async (_prev: any, form: FormData) => {
+  const [state, inviteAction, invitePending] = useActionState(
+    async (_prev: InviteState, form: FormData): Promise<InviteState> => {
       if (!activeOrgId) return { ok: false, error: "No active organization" };
       try {
         const email = String(form.get("email") || "").trim();
         const role = String(form.get("role") || "member") as OrgRole;
         await orgApi.createInvitation(activeOrgId, { email, role });
         invalidateTeam();
-        return { ok: true, email };
-      } catch (err: any) {
-        return { ok: false, error: err.response?.data?.message || "Failed to send invitation" };
+        setInviteOpen(false);
+        return { ok: true, error: null, email };
+      } catch (err: unknown) {
+        return { ok: false, error: apiErrorMessage(err, "Failed to send invitation") };
       }
     },
     { ok: false, error: null, email: undefined },
@@ -238,7 +237,12 @@ export default function TeamPage() {
     if (state.error) toast.error(state.error);
   }, [state]);
 
+  // ── Derived views ──
+
   const term = search.trim().toLowerCase();
+  const filtersActive = term.length > 0 || roleFilter !== "all" || mfaFilter !== "all";
+  const inviteFiltersActive = term.length > 0 || roleFilter !== "all";
+
   const visibleMembers = members.filter((member) => {
     const matchesTerm =
       term.length === 0 ||
@@ -250,306 +254,425 @@ export default function TeamPage() {
     return matchesTerm && matchesRole && matchesMfa;
   });
 
+  const visibleInvites = pendingInvites.filter((invite) => {
+    const matchesTerm = term.length === 0 || invite.email.toLowerCase().includes(term);
+    const matchesRole = roleFilter === "all" || invite.role === roleFilter;
+    return matchesTerm && matchesRole;
+  });
+
+  const clearFilters = () => {
+    setSearch("");
+    setRoleFilter("all");
+    setMfaFilter("all");
+  };
+
+  // ── Summary (whole collection, never the filtered view) ──
+
+  const membersMore = membersData?.meta?.hasMore ?? false;
+  const invitesMore = invitationsData?.meta?.hasMore ?? false;
   const activeCount = members.filter((member) => member.status === "active").length;
   const privilegedCount = members.filter((member) => PRIVILEGED_ROLES.includes(member.role)).length;
   const mfaCount = members.filter((member) => member.mfaEnabled).length;
+  const withoutMfa = members.length - mfaCount;
+  const seatBucket = limits?.limits?.members;
+  const seatLimit = seatBucket?.limit ?? null;
+  const seatsUsed = seatBucket?.used ?? activeCount;
+  const hasSeatLimit = seatLimit !== null && seatLimit > 0;
 
-  const facts: HeroFact[] = [
-    { label: "Members", value: formatNumber(members.length), icon: Users },
-    { label: "Active", value: formatNumber(activeCount), tone: activeCount > 0 ? "green" : "neutral", icon: ShieldCheck },
+  const countLabel = (count: number, more: boolean) => `${formatNumber(count)}${more ? "+" : ""}`;
+
+  const readouts: Readout[] = [
+    {
+      label: "Active members",
+      value: countLabel(activeCount, membersMore),
+      sub: membersMore ? "Showing the first 100" : "With access to this organization",
+    },
     {
       label: "Pending invitations",
-      value: formatNumber(pendingInvites.length),
-      tone: pendingInvites.length > 0 ? "amber" : "neutral",
-      icon: MailPlus,
+      value: countLabel(pendingInvites.length, invitesMore),
+      sub: pendingInvites.length > 0 ? "Waiting to be accepted" : "None outstanding",
     },
-    { label: "Admins and owners", value: formatNumber(privilegedCount), tone: "violet", icon: UserCog },
+    ...(hasSeatLimit
+      ? [
+          {
+            label: "Seat limit",
+            value: formatNumber(seatLimit),
+            sub: `${formatNumber(Math.max(0, seatLimit - seatsUsed))} seats open`,
+            tone: seatsUsed >= seatLimit ? ("warn" as const) : ("neutral" as const),
+          },
+        ]
+      : []),
+    {
+      label: "Without MFA",
+      value: formatNumber(withoutMfa),
+      sub: `${formatNumber(mfaCount)} of ${formatNumber(members.length)} have MFA`,
+      tone: members.length === 0 ? "neutral" : withoutMfa > 0 ? "warn" : "good",
+    },
+    {
+      label: "Admins and owners",
+      value: formatNumber(privilegedCount),
+      sub: "Owner and admin roles",
+    },
   ];
 
-  const tabOptions: SegmentOption<TabKey>[] = [
-    { value: "members", label: "Members", icon: Users, count: members.length },
-    { value: "invitations", label: "Invitations", icon: MailPlus, count: pendingInvites.length },
+  const tabs: PageTab<TabKey>[] = [
+    { value: "members", label: "Members", count: members.length },
+    { value: "invitations", label: "Invitations", count: pendingInvites.length },
   ];
 
   const canManage = (member: Member) => member.role !== "owner" && member.userId !== me?.userId;
 
+  const lockedReason = (member: Member) =>
+    member.userId === me?.userId
+      ? "You can't change your own access here."
+      : member.role === "owner"
+        ? "The owner's access changes through ownership transfer."
+        : null;
+
+  const openInvite = () => setInviteOpen(true);
+
+  const roleFilterSelect = (
+    <FilterSelect label="Role" value={roleFilter} onChange={setRoleFilter} options={ROLE_FILTER_OPTIONS} />
+  );
+
+  // ── Members view ──
+
+  const membersSheet = (
+    <Sheet
+      label="Members"
+      toolbar={
+        <>
+          <SearchField value={search} onChange={setSearch} placeholder="Search name or email" label="Search members" />
+          {roleFilterSelect}
+          <FilterSelect label="MFA" value={mfaFilter} onChange={setMfaFilter} options={MFA_FILTER_OPTIONS} />
+          <ToolbarCount>
+            {filtersActive
+              ? `${formatNumber(visibleMembers.length)} of ${formatNumber(members.length)}`
+              : `${countLabel(members.length, membersMore)} members`}
+          </ToolbarCount>
+        </>
+      }
+      footer={
+        members.length > 0 ? (
+          <span>
+            Open a member to change their role, suspend, or remove them.
+            {membersMore ? " Showing the first 100 members." : ""}
+          </span>
+        ) : undefined
+      }
+    >
+      {membersLoading ? (
+        <SheetLoading rows={5} label="Loading members" />
+      ) : membersFailed ? (
+        <SheetError
+          title="Could not load members"
+          message={apiErrorMessage(membersError, "The members request failed. Try again in a moment.")}
+          onRetry={() => void refetchMembers()}
+        />
+      ) : members.length === 0 ? (
+        <SheetEmpty
+          title="No members yet"
+          description="Everyone who accepts an invitation appears here with their role, MFA state, and last activity."
+          action={
+            <UiButton size="lg" onClick={openInvite}>
+              Invite member
+            </UiButton>
+          }
+        />
+      ) : visibleMembers.length === 0 ? (
+        <SheetEmpty
+          title="No members match these filters"
+          description="Nobody matches the current search, role, and MFA filters."
+          action={
+            <UiButton variant="outline" size="lg" onClick={clearFilters}>
+              Clear filters
+            </UiButton>
+          }
+        />
+      ) : (
+        <SheetTable columns={MEMBER_COLUMNS} caption="Organization members" minWidth={420}>
+          {visibleMembers.map((member) => {
+            const name = member.fullName || member.email;
+            const reason = lockedReason(member);
+            const manageable = canManage(member);
+            const memberHref = href(`members/${member.userId}`);
+            return (
+              <SheetRow key={member.id} onActivate={() => navigate(memberHref)}>
+                <SheetCell>
+                  <RowTitle
+                    title={member.fullName || "Unnamed member"}
+                    to={memberHref}
+                    subtitle={member.email}
+                    leading={<MemberAvatar name={name} />}
+                  />
+                </SheetCell>
+                <SheetCell>
+                  <Pill>{member.role}</Pill>
+                </SheetCell>
+                <SheetCell className={HIDE_BELOW_SM}>
+                  {member.mfaEnabled ? (
+                    <Pill tone="green" dot>
+                      Enabled
+                    </Pill>
+                  ) : (
+                    <Pill tone="amber" dot>
+                      Missing
+                    </Pill>
+                  )}
+                </SheetCell>
+                <SheetCell className={HIDE_BELOW_MD}>
+                  {member.lastActiveAt ? (
+                    <span className="font-[family-name:var(--mono)] text-[12px] tabular-nums text-[var(--text2)]">
+                      <Timestamp value={member.lastActiveAt} />
+                    </span>
+                  ) : (
+                    <span className="text-[12px] text-[var(--text3)]">No activity</span>
+                  )}
+                </SheetCell>
+                <SheetCell>
+                  <Pill tone={MEMBER_STATUS_TONE[member.status] ?? "neutral"} dot={member.status === "active"}>
+                    {member.status}
+                  </Pill>
+                </SheetCell>
+                <SheetCell align="right">
+                  <RowActions label={`Actions for ${name}`}>
+                    <DropdownMenuItem onSelect={() => navigate(memberHref)}>Open member</DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuLabel className="text-[12px] font-normal text-[var(--text3)]">
+                      Change role
+                      {reason && <span className="mt-0.5 block text-[11.5px] leading-snug">{reason}</span>}
+                    </DropdownMenuLabel>
+                    {roleOptions.map((role) => (
+                      <DropdownMenuItem
+                        key={role}
+                        disabled={!manageable || role === member.role || updateRole.isPending}
+                        onSelect={() => updateRole.mutate({ userId: member.userId, role })}
+                      >
+                        {capitalize(role)}
+                        {role === member.role && (
+                          <span className="ml-auto text-[11.5px] text-[var(--text3)]">Current</span>
+                        )}
+                      </DropdownMenuItem>
+                    ))}
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      variant="destructive"
+                      disabled={!manageable || removeMember.isPending}
+                      onSelect={() => setRemoveTarget(member)}
+                    >
+                      Remove member
+                    </DropdownMenuItem>
+                  </RowActions>
+                </SheetCell>
+              </SheetRow>
+            );
+          })}
+        </SheetTable>
+      )}
+    </Sheet>
+  );
+
+  // ── Invitations view ──
+
+  const invitationsSheet = (
+    <Sheet
+      label="Pending invitations"
+      toolbar={
+        <>
+          <SearchField value={search} onChange={setSearch} placeholder="Search email" label="Search invitations" />
+          {roleFilterSelect}
+          <ToolbarCount>
+            {inviteFiltersActive
+              ? `${formatNumber(visibleInvites.length)} of ${formatNumber(pendingInvites.length)}`
+              : `${countLabel(pendingInvites.length, invitesMore)} pending`}
+          </ToolbarCount>
+        </>
+      }
+      footer={
+        pendingInvites.length > 0 ? (
+          <span>Resend delivers a fresh email. Revoke cancels the invitation link.</span>
+        ) : undefined
+      }
+    >
+      {invitationsLoading ? (
+        <SheetLoading rows={3} label="Loading invitations" />
+      ) : invitationsFailed ? (
+        <SheetError
+          title="Could not load invitations"
+          message={apiErrorMessage(invitationsError, "The invitations request failed. Try again in a moment.")}
+          onRetry={() => void refetchInvitations()}
+        />
+      ) : pendingInvites.length === 0 ? (
+        <SheetEmpty
+          title="No pending invitations"
+          description="Everyone who was invited has either joined or had their invitation revoked. New invitations wait here until they are accepted."
+          action={
+            <UiButton size="lg" onClick={openInvite}>
+              Invite member
+            </UiButton>
+          }
+        />
+      ) : visibleInvites.length === 0 ? (
+        <SheetEmpty
+          title="No invitations match these filters"
+          description="No pending invitation matches the current search and role filter."
+          action={
+            <UiButton variant="outline" size="lg" onClick={clearFilters}>
+              Clear filters
+            </UiButton>
+          }
+        />
+      ) : (
+        <SheetTable columns={INVITATION_COLUMNS} caption="Pending invitations" minWidth={480}>
+          {visibleInvites.map((invite) => {
+            const expired = isExpired(invite);
+            const inviter = invite.invitedBy?.name || invite.invitedBy?.email;
+            return (
+              <SheetRow key={invite.id}>
+                <SheetCell>
+                  <RowTitle
+                    title={invite.email}
+                    subtitle={inviter ? `Invited by ${inviter}` : "Inviter not recorded"}
+                  />
+                </SheetCell>
+                <SheetCell>
+                  <Pill>{invite.role}</Pill>
+                </SheetCell>
+                <SheetCell>
+                  <Pill tone={expired ? "red" : "amber"}>{expired ? "Expired" : "Pending"}</Pill>
+                </SheetCell>
+                <SheetCell className={HIDE_BELOW_MD}>
+                  <span className="flex flex-col">
+                    <span className="font-[family-name:var(--mono)] text-[12px] tabular-nums text-[var(--text2)]">
+                      <Timestamp value={invite.invitedAt} />
+                    </span>
+                    <span className="text-[11.5px] tabular-nums text-[var(--text3)]">
+                      {expired ? "Link no longer works" : `Expires in ${daysUntil(invite.expiresAt)} days`}
+                    </span>
+                  </span>
+                </SheetCell>
+                <SheetCell align="right">
+                  <div className="flex items-center justify-end gap-1.5">
+                    <UiButton
+                      variant="outline"
+                      size="sm"
+                      disabled={resendInvitation.isPending}
+                      onClick={() => resendInvitation.mutate(invite.id)}
+                    >
+                      Resend
+                      <span className="sr-only"> invitation to {invite.email}</span>
+                    </UiButton>
+                    <RowActions label={`Actions for ${invite.email}`}>
+                      <DropdownMenuItem
+                        variant="destructive"
+                        disabled={revokeInvitation.isPending}
+                        onSelect={() => setRevokeTarget(invite)}
+                      >
+                        Revoke invitation
+                      </DropdownMenuItem>
+                    </RowActions>
+                  </div>
+                </SheetCell>
+              </SheetRow>
+            );
+          })}
+        </SheetTable>
+      )}
+    </Sheet>
+  );
+
   return (
-    <div className="flex flex-col gap-6">
-      <PageHero
-        eyebrow="Access"
+    <WorkspacePage>
+      <ProjectPageHeader
         title="Team"
         description="Members with access to this organization, plus invitations that have not been accepted yet."
-        icon={Users}
-        actions={<Pill tone="ai" dot>{`${formatNumber(mfaCount)} of ${formatNumber(members.length)} with MFA`}</Pill>}
-      >
-        <HeroFacts facts={facts} />
-      </PageHero>
+        meta={[
+          membersLoading
+            ? null
+            : { label: "MFA enabled", value: `${formatNumber(mfaCount)} of ${formatNumber(members.length)}`, mono: true },
+          me?.role ? { label: "Your role", value: <span className="first-letter:uppercase">{me.role}</span> } : null,
+        ]}
+        actions={
+          <UiButton size="lg" onClick={openInvite}>
+            Invite member
+          </UiButton>
+        }
+      />
 
-      <Panel
-        title="Invite a member"
+      <Readouts cells={readouts} loading={membersLoading} label="Team summary" />
+
+      <div className="flex min-w-0 flex-col gap-4">
+        <PageTabs tabs={tabs} value={tab} onChange={setTab} label="Team view" idBase={TAB_ID} />
+        <div {...pageTabPanelProps(TAB_ID, tab)} className="min-w-0">
+          {tab === "members" ? membersSheet : invitationsSheet}
+        </div>
+      </div>
+
+      <FormDialog
+        open={inviteOpen}
+        onOpenChange={setInviteOpen}
+        title="Invite member"
         description="Invitations expire automatically. Roles can be changed after the member joins."
-        icon={UserPlus}
-        tone="brand"
+        submitLabel="Send invitation"
+        pending={invitePending}
+        onSubmit={(form) => startTransition(() => inviteAction(form))}
       >
-        <form action={inviteAction} className="flex flex-wrap items-end gap-3">
-          <div className="min-w-[260px] flex-1">
-            <Field label="Email">
-              <input
-                name="email"
-                type="email"
-                required
-                placeholder="teammate@company.com"
-                className={`${inputClass} font-[family-name:var(--mono)] text-[12.5px]`}
-              />
-            </Field>
-          </div>
-          <div className="w-44">
-            <Field label="Role">
-              <select name="role" className={inputClass} defaultValue="member">
-                {INVITE_ROLE_OPTIONS.map((role) => (
-                  <option key={role} value={role}>
-                    {role.charAt(0).toUpperCase() + role.slice(1)}
-                  </option>
-                ))}
-              </select>
-            </Field>
-          </div>
-          <SubmitButton>
-            <MailPlus className="size-4" aria-hidden="true" />
-            Send invite
-          </SubmitButton>
-        </form>
-      </Panel>
+        <DialogField label="Email" name="invite-email" required>
+          <input
+            id="invite-email"
+            name="email"
+            type="email"
+            required
+            autoComplete="off"
+            placeholder="teammate@company.com"
+            className={fieldInputClass}
+          />
+        </DialogField>
+        <DialogField label="Role" name="invite-role">
+          <select id="invite-role" name="role" className={fieldInputClass} defaultValue="member">
+            {INVITE_ROLE_OPTIONS.map((role) => (
+              <option key={role} value={role}>
+                {capitalize(role)}
+              </option>
+            ))}
+          </select>
+        </DialogField>
+      </FormDialog>
 
-      <Toolbar
-        trailing={<SegmentedControl value={tab} onChange={setTab} options={tabOptions} ariaLabel="Team view" />}
+      <ConfirmDialog
+        open={removeTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setRemoveTarget(null);
+        }}
+        title="Remove member"
+        description="The member loses access to every project and resource in this organization immediately."
+        confirmLabel="Remove member"
+        pending={removeMember.isPending}
+        onConfirm={() => {
+          if (removeTarget) removeMember.mutate(removeTarget.userId);
+        }}
       >
-        <SearchInput placeholder="Search name or email…" defaultValue={search} onSearch={setSearch} />
-        <FilterSelect label="Role" value={roleFilter} onChange={setRoleFilter} options={ROLE_FILTER_OPTIONS} />
-        <FilterSelect label="MFA" value={mfaFilter} onChange={setMfaFilter} options={MFA_FILTER_OPTIONS} />
-      </Toolbar>
+        <p className="text-[13px] text-[var(--text2)]">
+          {removeTarget?.fullName || removeTarget?.email}{" "}
+          <span className="text-[12px] text-[var(--text3)]">{removeTarget?.email}</span>
+        </p>
+      </ConfirmDialog>
 
-      {tab === "members" ? (
-        <Panel
-          title="Members"
-          description="Select a row to open the full membership record."
-          icon={Users}
-          tone="brand"
-          bodyClassName={membersLoading ? undefined : "p-0"}
-        >
-          {membersLoading ? (
-            <ListSkeleton />
-          ) : visibleMembers.length === 0 ? (
-            <EmptyPanel
-              className="rounded-none border-0 border-t border-dashed"
-              icon={Users}
-              title={members.length === 0 ? "No members yet" : "No members match these filters"}
-              description={
-                members.length === 0
-                  ? "Invite a teammate above to start building the organization."
-                  : "Clear the search or filter selections to see the full member list."
-              }
-            />
-          ) : (
-            <Table headers={MEMBER_HEADERS} maxHeight="34rem">
-              {visibleMembers.map((member) => (
-                <Tr key={member.id} onClick={() => navigate(`/admin/members/${member.userId}`)}>
-                  <Td>
-                    <span className="flex min-w-0 items-center gap-2.5">
-                      <MemberAvatar name={member.fullName || member.email} />
-                      <span className="flex min-w-0 flex-col">
-                        <span className="truncate text-[13px] font-medium text-[var(--text)]">
-                          {member.fullName || "Unnamed member"}
-                        </span>
-                        <span className="truncate font-[family-name:var(--mono)] text-[11.5px] text-[var(--text3)]">
-                          {member.email}
-                        </span>
-                      </span>
-                    </span>
-                  </Td>
-                  <Td>
-                    <Pill tone={roleTone(member.role)}>{member.role}</Pill>
-                  </Td>
-                  <Td>
-                    {member.mfaEnabled ? (
-                      <Pill tone="green" dot>Enabled</Pill>
-                    ) : (
-                      <Pill tone="amber" dot>Missing</Pill>
-                    )}
-                  </Td>
-                  <Td className="text-[12.5px]">
-                    {member.lastActiveAt ? (
-                      <Timestamp value={member.lastActiveAt} />
-                    ) : (
-                      <span className="text-[var(--text3)]">No activity</span>
-                    )}
-                  </Td>
-                  <Td>
-                    <StatusBadge status={member.status} />
-                  </Td>
-                  <Td>
-                    <RowActions>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="w-9 px-0">
-                            <span className="sr-only">{`Actions for ${member.fullName || member.email}`}</span>
-                            <MoreHorizontal className="size-4" aria-hidden="true" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-[196px]">
-                          <DropdownMenuItem onClick={() => navigate(`/admin/members/${member.userId}`)}>
-                            <UserCog className="mr-2 size-4" aria-hidden="true" />
-                            Open member
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuLabel>Assign role</DropdownMenuLabel>
-                          {roleOptions.map((role) => (
-                            <DropdownMenuItem
-                              key={role}
-                              disabled={!canManage(member) || role === member.role || updateRole.isPending}
-                              onClick={() => updateRole.mutate({ userId: member.userId, role })}
-                            >
-                              {role.charAt(0).toUpperCase() + role.slice(1)}
-                            </DropdownMenuItem>
-                          ))}
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            disabled={!canManage(member) || removeMember.isPending}
-                            onClick={() => setRemoveTarget(member)}
-                            className="text-[var(--red)] focus:bg-[var(--red-bg)] focus:text-[var(--red)]"
-                          >
-                            <Trash2 className="mr-2 size-4" aria-hidden="true" />
-                            Remove member
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </RowActions>
-                  </Td>
-                </Tr>
-              ))}
-            </Table>
-          )}
-        </Panel>
-      ) : (
-        <Panel
-          title="Pending invitations"
-          description="Invitations waiting to be accepted. Resend to deliver a fresh email, revoke to cancel access."
-          icon={MailPlus}
-          tone="amber"
-          bodyClassName={invitationsLoading ? undefined : "p-0"}
-        >
-          {invitationsLoading ? (
-            <ListSkeleton />
-          ) : pendingInvites.length === 0 ? (
-            <EmptyPanel
-              className="rounded-none border-0 border-t border-dashed"
-              icon={MailPlus}
-              title="No pending invitations"
-              description="Everyone who was invited has either joined or had their invitation revoked."
-            />
-          ) : (
-            <Table headers={INVITATION_HEADERS} maxHeight="34rem">
-              {pendingInvites.map((invite) => (
-                <Tr key={invite.id}>
-                  <Td className="font-[family-name:var(--mono)] text-[12.5px]">{invite.email}</Td>
-                  <Td>
-                    <Pill tone={roleTone(invite.role)}>{invite.role}</Pill>
-                  </Td>
-                  <Td className="text-[12.5px] text-[var(--text2)]">
-                    {invite.invitedBy?.name || invite.invitedBy?.email || "—"}
-                  </Td>
-                  <Td className="text-[12.5px]">
-                    <span className="flex flex-col">
-                      <Timestamp value={invite.invitedAt} />
-                      <span className="flex items-center gap-1 text-[11.5px] tabular-nums text-[var(--text3)]">
-                        <Clock className="size-3" aria-hidden="true" />
-                        {`Expires in ${daysUntil(invite.expiresAt)} days`}
-                      </span>
-                    </span>
-                  </Td>
-                  <Td>
-                    <RowActions>
-                      <Button
-                        variant="secondary"
-                        disabled={resendInvitation.isPending}
-                        onClick={() => resendInvitation.mutate(invite.id)}
-                      >
-                        <RefreshCw className="size-3.5" aria-hidden="true" />
-                        Resend
-                      </Button>
-                      <Button
-                        variant="danger"
-                        disabled={revokeInvitation.isPending}
-                        onClick={() => setRevokeTarget(invite)}
-                      >
-                        <UserX className="size-3.5" aria-hidden="true" />
-                        Revoke
-                      </Button>
-                    </RowActions>
-                  </Td>
-                </Tr>
-              ))}
-            </Table>
-          )}
-        </Panel>
-      )}
-
-      <Dialog open={removeTarget !== null} onOpenChange={(open) => { if (!open) setRemoveTarget(null); }}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Remove member</DialogTitle>
-            <DialogDescription>
-              The member loses access to every project and resource in this organization immediately.
-            </DialogDescription>
-          </DialogHeader>
-          <p className="text-[13px] text-[var(--text2)]">
-            {removeTarget?.fullName || removeTarget?.email}{" "}
-            <span className="font-[family-name:var(--mono)] text-[12px] text-[var(--text3)]">
-              {removeTarget?.email}
-            </span>
-          </p>
-          <DialogFooter>
-            <Button variant="secondary" onClick={() => setRemoveTarget(null)}>
-              Cancel
-            </Button>
-            <Button
-              variant="danger"
-              disabled={removeMember.isPending}
-              onClick={() => {
-                if (removeTarget) removeMember.mutate(removeTarget.userId);
-              }}
-            >
-              Remove member
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={revokeTarget !== null} onOpenChange={(open) => { if (!open) setRevokeTarget(null); }}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Revoke invitation</DialogTitle>
-            <DialogDescription>
-              The invitation link stops working right away. You can invite the same address again later.
-            </DialogDescription>
-          </DialogHeader>
-          <p className="font-[family-name:var(--mono)] text-[13px] text-[var(--text)]">{revokeTarget?.email}</p>
-          <DialogFooter>
-            <Button variant="secondary" onClick={() => setRevokeTarget(null)}>
-              Cancel
-            </Button>
-            <Button
-              variant="danger"
-              disabled={revokeInvitation.isPending}
-              onClick={() => {
-                if (revokeTarget) revokeInvitation.mutate(revokeTarget.id);
-              }}
-            >
-              Revoke invitation
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
+      <ConfirmDialog
+        open={revokeTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setRevokeTarget(null);
+        }}
+        title="Revoke invitation"
+        description="The invitation link stops working right away. You can invite the same address again later."
+        confirmLabel="Revoke invitation"
+        pending={revokeInvitation.isPending}
+        onConfirm={() => {
+          if (revokeTarget) revokeInvitation.mutate(revokeTarget.id);
+        }}
+      >
+        <p className="text-[13px] text-[var(--text)]">{revokeTarget?.email}</p>
+      </ConfirmDialog>
+    </WorkspacePage>
   );
 }

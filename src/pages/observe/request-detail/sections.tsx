@@ -1,16 +1,16 @@
 import { Link } from "react-router";
-import { Brain, ExternalLink, GitBranch, RefreshCw, ShieldCheck, Zap, Globe, Server, User, Tag } from "lucide-react";
+import { Bug, GitBranch, RefreshCw, ScrollText, Sparkles } from "lucide-react";
 import {
-  Button,
+  CopyButton,
   MethodBadge,
-  StatusCodeBadge,
   Timestamp,
   formatAbsoluteTime,
   formatBytes,
   formatLatency,
 } from "@/shared/observe";
+import { aiButtonClass, ghostButtonClass } from "@/shared/observe/form";
 import { cn } from "@/lib/utils";
-import { hasJsonValue, normalizeAiResponse, sectionDomId } from "./helpers";
+import { normalizeAiResponse, sectionDomId } from "./helpers";
 import { EmptyInline, KeyValueGrid, SectionShell } from "./ui";
 import type {
   RequestContextDetail,
@@ -25,181 +25,73 @@ import type {
 
 export function OverviewSection({ header, http }: { header: RequestDetailHeader; http: RequestHttpDetail }) {
   return (
-    <SectionShell
-      id={sectionDomId("overview")}
-      title="Request Overview"
-      description="Identity, routing pattern, and runtime context for this HTTP transaction."
-    >
+    <SectionShell id={sectionDomId("overview")} title="Overview" description="Identity, routing, and where this request ran.">
       <KeyValueGrid
-        columns={3}
+        columns={2}
         items={[
-          { label: "HTTP Method", value: header.method, mono: true },
-          { label: "Target URL", value: http.url ?? header.endpoint, mono: true, copyable: true },
-          { label: "Route Pattern", value: header.endpoint, mono: true, copyable: true },
-          { label: "Occurred At", value: header.timestamp ? formatAbsoluteTime(header.timestamp) : null, mono: true },
+          { label: "Method", value: header.method, mono: true },
+          { label: "URL", value: http.url ?? header.endpoint, mono: true, copyable: true },
+          { label: "Route", value: header.endpoint, mono: true, copyable: true },
+          { label: "Occurred", value: header.timestamp ? formatAbsoluteTime(header.timestamp) : null, mono: true },
           { label: "Environment", value: header.environment },
-          { label: "Target Service", value: header.service, copyable: true },
-          { label: "Release Version", value: header.release, copyable: true },
+          { label: "Service", value: header.service, copyable: true },
+          { label: "Release", value: header.release, mono: true, copyable: true },
           { label: "Project", value: header.project },
-          { label: "Request Public ID", value: header.publicId, mono: true, copyable: true },
-          { label: "Correlated Trace", value: header.tracePublicId, mono: true, copyable: true },
+          { label: "Request ID", value: header.publicId, mono: true, copyable: true },
+          { label: "Trace", value: header.tracePublicId, mono: true, copyable: true },
         ]}
       />
     </SectionShell>
   );
 }
 
-function parseHeaders(raw: unknown): Array<{ name: string; value: string }> {
-  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return [];
-  return Object.entries(raw as Record<string, unknown>).map(([name, value]) => ({
-    name,
-    value: typeof value === "string" ? value : String(value),
-  }));
-}
-
-function parseQueryParams(raw: unknown): Array<{ key: string; value: string }> {
+function entries(raw: unknown): Array<{ key: string; value: string }> {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return [];
   return Object.entries(raw as Record<string, unknown>).map(([key, value]) => ({
     key,
-    value: typeof value === "string" ? value : String(value),
+    value: typeof value === "string" ? value : JSON.stringify(value),
   }));
 }
 
-export function HttpSection({ http }: { http: RequestHttpDetail }) {
-  const reqHeaders = parseHeaders(http.requestHeaders);
-  const resHeaders = parseHeaders(http.responseHeaders);
-  const queryParams = parseQueryParams(http.queryParameters);
-
+function PairTable({ title, rows, empty }: { title: string; rows: { key: string; value: string }[]; empty: string }) {
   return (
-    <SectionShell
-      id={sectionDomId("http")}
-      title="HTTP Transaction & Parameters"
-      description="Structured HTTP transport attributes, query parameters, and negotiated headers."
-      action={
-        <div className="flex items-center gap-2">
-          <MethodBadge method={http.method} />
-          {http.endpoint && (
-            <span className="max-w-[280px] truncate font-[family-name:var(--mono)] text-[12px] text-[var(--text2)]">
-              {http.endpoint}
-            </span>
-          )}
-        </div>
-      }
-    >
+    <div className="min-w-0">
+      <div className="mb-1.5 flex items-baseline justify-between gap-3">
+        <h3 className="text-[13px] font-medium text-[var(--text)]">
+          {title} <span className="font-[family-name:var(--mono)] text-[11px] text-[var(--text3)]">{rows.length}</span>
+        </h3>
+      </div>
+      {rows.length === 0 ? (
+        <p className="border-t border-[var(--border)] py-2.5 text-[12px] text-[var(--text3)]">{empty}</p>
+      ) : (
+        <dl className="sidebar-scroll max-h-72 overflow-y-auto border-t border-[var(--border)]">
+          {rows.map((r) => (
+            <div key={r.key} className="group grid grid-cols-[minmax(0,200px)_minmax(0,1fr)_20px] items-baseline gap-3 border-b border-[var(--border)] py-2">
+              <dt className="truncate font-[family-name:var(--mono)] text-[12px] text-[var(--text3)]" title={r.key}>{r.key}</dt>
+              <dd className="break-all font-[family-name:var(--mono)] text-[12px] text-[var(--text)]">{r.value}</dd>
+              <CopyButton value={r.value} label="" className="h-5 w-5 justify-center border-0 p-0 text-[var(--text3)] opacity-0 group-hover:opacity-100 focus-visible:opacity-100" />
+            </div>
+          ))}
+        </dl>
+      )}
+    </div>
+  );
+}
+
+export function HttpSection({ http }: { http: RequestHttpDetail }) {
+  const url = http.url ?? http.endpoint ?? "—";
+  return (
+    <SectionShell id={sectionDomId("http")} title="HTTP" description="Request line, query string, and headers as captured by the SDK.">
       <div className="flex flex-col gap-6">
-        {/* Request line callout */}
-        <div className="rounded-xl border border-[var(--border)] bg-[var(--bg2)]/60 p-4">
-          <div className="flex items-center justify-between gap-2 border-b border-[var(--border)] pb-2.5">
-            <span className="font-[family-name:var(--mono)] text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[var(--text3)]">
-              HTTP Target Endpoint
-            </span>
-            <span className="text-[11.5px] text-[var(--text3)]">Standard HTTP Protocol</span>
-          </div>
-          <div className="mt-3 flex flex-wrap items-center gap-2.5">
-            <MethodBadge method={http.method} />
-            <span className="min-w-0 break-all font-[family-name:var(--mono)] text-[13.5px] font-semibold text-[var(--text)]">
-              {http.url ?? http.endpoint ?? "—"}
-            </span>
-          </div>
+        <div className="flex min-w-0 items-center gap-2.5 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg)] px-3.5 py-3">
+          <MethodBadge method={http.method} />
+          <code className="min-w-0 flex-1 break-all font-[family-name:var(--mono)] text-[13px] text-[var(--text)]">{url}</code>
+          {url !== "—" && <CopyButton value={url} label="" className="h-6 w-6 justify-center border-0 p-0 text-[var(--text3)]" />}
         </div>
-
-        {/* Query Parameters (Structured) */}
-        <div className="rounded-xl border border-[var(--border)] bg-[var(--bg)] p-5">
-          <div className="flex items-center justify-between border-b border-[var(--border)] pb-3">
-            <span className="font-[family-name:var(--mono)] text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--text2)]">
-              Query Parameters ({queryParams.length})
-            </span>
-            <span className="text-[11px] text-[var(--text3)]">URL Query String</span>
-          </div>
-
-          {queryParams.length === 0 ? (
-            <p className="mt-3 text-[12.5px] text-[var(--text3)]">No query parameters attached to this request.</p>
-          ) : (
-            <div className="mt-3 grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
-              {queryParams.map((param) => (
-                <div
-                  key={param.key}
-                  className="flex items-center justify-between gap-2 rounded-lg border border-[var(--border)] bg-[var(--bg1)] px-3 py-2 text-[12px]"
-                >
-                  <span className="font-[family-name:var(--mono)] font-semibold text-[var(--text2)]">
-                    {param.key}
-                  </span>
-                  <span className="truncate font-[family-name:var(--mono)] text-[var(--text)]" title={param.value}>
-                    {param.value}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Headers Summary & Structured Grid */}
-        <div className="grid gap-4 lg:grid-cols-2">
-          {/* Request Headers */}
-          <div className="rounded-xl border border-[var(--border)] bg-[var(--bg)] p-5">
-            <div className="flex items-center justify-between border-b border-[var(--border)] pb-3">
-              <span className="font-[family-name:var(--mono)] text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--text2)]">
-                Inbound Headers ({reqHeaders.length})
-              </span>
-              <span className="text-[11px] text-[var(--text3)]">Client Headers</span>
-            </div>
-            {reqHeaders.length === 0 ? (
-              <p className="mt-3 text-[12.5px] text-[var(--text3)]">Standard headers recorded.</p>
-            ) : (
-              <div className="mt-3 space-y-2 max-h-56 overflow-y-auto pr-1">
-                {reqHeaders.map((h) => (
-                  <div
-                    key={h.name}
-                    className="flex items-baseline justify-between gap-3 border-b border-[var(--border)]/50 pb-1.5 text-[12px] last:border-0"
-                  >
-                    <span className="font-[family-name:var(--mono)] text-[11.5px] font-medium text-[var(--text3)] shrink-0">
-                      {h.name}
-                    </span>
-                    <span className="truncate font-[family-name:var(--mono)] text-[12px] text-[var(--text)]" title={h.value}>
-                      {h.value}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Response Headers */}
-          <div className="rounded-xl border border-[var(--border)] bg-[var(--bg)] p-5">
-            <div className="flex items-center justify-between border-b border-[var(--border)] pb-3">
-              <span className="font-[family-name:var(--mono)] text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--text2)]">
-                Outbound Headers ({resHeaders.length})
-              </span>
-              <span className="text-[11px] text-[var(--text3)]">Server Headers</span>
-            </div>
-            {resHeaders.length === 0 ? (
-              <p className="mt-3 text-[12.5px] text-[var(--text3)]">Standard response headers recorded.</p>
-            ) : (
-              <div className="mt-3 space-y-2 max-h-56 overflow-y-auto pr-1">
-                {resHeaders.map((h) => (
-                  <div
-                    key={h.name}
-                    className="flex items-baseline justify-between gap-3 border-b border-[var(--border)]/50 pb-1.5 text-[12px] last:border-0"
-                  >
-                    <span className="font-[family-name:var(--mono)] text-[11.5px] font-medium text-[var(--text3)] shrink-0">
-                      {h.name}
-                    </span>
-                    <span className="truncate font-[family-name:var(--mono)] text-[12px] text-[var(--text)]" title={h.value}>
-                      {h.value}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Telemetry Payload Privacy Notice */}
-        <div className="flex items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--bg1)] px-4 py-3 text-[12px] text-[var(--text3)]">
-          <ShieldCheck className="size-4 shrink-0 text-[var(--green)]" />
-          <span>
-            Telemetry metadata and parameter schemas are captured securely. Raw request/response bodies are sanitized to protect sensitive user credentials and privacy.
-          </span>
+        <PairTable title="Query parameters" rows={entries(http.queryParameters)} empty="No query string on this request." />
+        <div className="grid gap-6 lg:grid-cols-2">
+          <PairTable title="Request headers" rows={entries(http.requestHeaders)} empty="No request headers were captured." />
+          <PairTable title="Response headers" rows={entries(http.responseHeaders)} empty="No response headers were captured." />
         </div>
       </div>
     </SectionShell>
@@ -215,69 +107,52 @@ export function PerformanceSection({
   summary: RequestDetailResponse["summaryCards"];
   tracePublicId: string | null;
 }) {
+  const total = performance.totalDuration;
   return (
     <SectionShell
       id={sectionDomId("performance")}
-      title="Performance & Timing Analysis"
-      description="Request duration, transmission size, and direct link to distributed trace waterfall."
+      title="Performance"
+      description="Where the time went. The span waterfall lives on the trace."
       action={
         performance.isSlow ? (
-          <span className="rounded-full bg-[var(--amber-bg)] px-3 py-1 font-[family-name:var(--mono)] text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--amber)]">
-            Slow Request
-          </span>
-        ) : (
-          <span className="rounded-full bg-[var(--green-bg)] px-3 py-1 font-[family-name:var(--mono)] text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--green)]">
-            Optimal Latency
-          </span>
-        )
+          <span className="rounded-[4px] bg-[var(--amber-bg)] px-1.5 py-0.5 text-[11px] font-medium text-[var(--amber)]">Flagged slow</span>
+        ) : undefined
       }
     >
-      <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-5">
+        {total != null && (
+          <div>
+            <div className="flex items-baseline justify-between text-[12px] text-[var(--text3)]">
+              <span>Duration against a 1 s budget</span>
+              <span className={cn("font-[family-name:var(--mono)] tabular-nums", total >= 1000 ? "text-[var(--red)]" : total >= 500 ? "text-[var(--amber)]" : "text-[var(--text)]")}>
+                {formatLatency(total)}
+              </span>
+            </div>
+            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[var(--bg3)]" aria-hidden="true">
+              <div
+                className="h-full rounded-full"
+                style={{ width: `${Math.min(100, (total / 1000) * 100)}%`, background: total >= 1000 ? "var(--red)" : total >= 500 ? "var(--amber)" : "var(--text2)" }}
+              />
+            </div>
+          </div>
+        )}
         <KeyValueGrid
           columns={3}
           items={[
-            {
-              label: "Roundtrip Duration",
-              value: performance.totalDuration == null ? null : formatLatency(performance.totalDuration),
-              mono: true,
-            },
-            {
-              label: "Inbound Payload Size",
-              value: summary.requestSize == null ? null : formatBytes(summary.requestSize),
-              mono: true,
-            },
-            {
-              label: "Outbound Response Size",
-              value: summary.responseSize == null ? null : formatBytes(summary.responseSize),
-              mono: true,
-            },
+            { label: "Duration", value: total == null ? null : formatLatency(total), mono: true },
+            { label: "Request body", value: summary.requestSize == null ? null : formatBytes(summary.requestSize), mono: true },
+            { label: "Response body", value: summary.responseSize == null ? null : formatBytes(summary.responseSize), mono: true },
           ]}
         />
-
-        {/* Trace Waterfall Banner */}
-        <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-[var(--violet)]/30 bg-[var(--violet-bg)]/20 p-5">
-          <div className="flex items-center gap-3.5">
-            <div className="flex size-9 items-center justify-center rounded-xl bg-[var(--violet-bg)] text-[var(--violet)]">
-              <GitBranch className="size-5" />
-            </div>
-            <div>
-              <div className="text-[14px] font-semibold text-[var(--text)]">Distributed Span Waterfall</div>
-              <div className="mt-0.5 text-[12.5px] text-[var(--text3)]">
-                Inspect database queries, microservice RPCs, and internal spans for this request.
-              </div>
-            </div>
-          </div>
-
-          {tracePublicId ? (
-            <Link
-              to={`/observability/traces/${encodeURIComponent(tracePublicId)}`}
-              className="inline-flex h-9 items-center gap-2 rounded-xl bg-[var(--violet)] px-4 text-[13px] font-semibold text-[var(--violet-fg)] transition-opacity hover:opacity-90 cursor-pointer"
-            >
-              Open Trace Execution
-              <ExternalLink className="size-3.5" />
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--border)] pt-4">
+          <p className="text-[13px] text-[var(--text2)]">
+            {tracePublicId ? "Database queries, outbound calls, and internal spans for this request are on its trace." : "No distributed trace was correlated with this request."}
+          </p>
+          {tracePublicId && (
+            <Link to={`/observability/traces/${encodeURIComponent(tracePublicId)}`} className={ghostButtonClass}>
+              <GitBranch className="size-3.5 text-[var(--violet)]" aria-hidden="true" />
+              Open span waterfall
             </Link>
-          ) : (
-            <span className="text-[12px] text-[var(--text3)]">No distributed trace correlated</span>
           )}
         </div>
       </div>
@@ -291,24 +166,20 @@ export function ContextSection({ context }: { context: RequestContextDetail }) {
     .join(" · ");
 
   return (
-    <SectionShell
-      id={sectionDomId("context")}
-      title="Client & Environment Context"
-      description="Origin, caller identity, browser platform, and client device properties."
-    >
+    <SectionShell id={sectionDomId("context")} title="Client and runtime" description="Who called, from where, and what served it.">
       <KeyValueGrid
-        columns={3}
+        columns={2}
         items={[
-          { label: "Authenticated User", value: context.user, mono: true, copyable: true },
-          { label: "Session ID", value: context.session, mono: true, copyable: true },
-          { label: "Tenant Organization", value: context.tenant, mono: true, copyable: true },
-          { label: "SDK Telemetry Client", value: context.sdk },
-          { label: "Release / Tag", value: context.release },
-          { label: "Server Node", value: context.server, mono: true },
-          { label: "Browser Family", value: context.browser },
-          { label: "Operating System", value: context.os },
-          { label: "Device Classification", value: context.device },
-          { label: "Geo Location", value: geo || null },
+          { label: "User", value: context.user, mono: true, copyable: true },
+          { label: "Session", value: context.session, mono: true, copyable: true },
+          { label: "Tenant", value: context.tenant, mono: true, copyable: true },
+          { label: "SDK", value: context.sdk, mono: true },
+          { label: "Release", value: context.release, mono: true },
+          { label: "Server", value: context.server, mono: true },
+          { label: "Browser", value: context.browser },
+          { label: "Operating system", value: context.os },
+          { label: "Device", value: context.device },
+          { label: "Location", value: geo || null },
         ]}
       />
     </SectionShell>
@@ -316,77 +187,19 @@ export function ContextSection({ context }: { context: RequestContextDetail }) {
 }
 
 export function MetadataSection({ metadata }: { metadata: RequestMetadataDetail }) {
-  const attributes = metadata?.attributes ?? {};
-  const sdkMeta = metadata?.metadata ?? {};
-
-  const attrEntries = Object.entries(attributes);
-  const metaEntries = Object.entries(sdkMeta);
-
-  if (attrEntries.length === 0 && metaEntries.length === 0) {
-    return (
-      <SectionShell
-        id={sectionDomId("metadata")}
-        title="Custom Attributes & Metadata"
-        description="Application-specific key-value telemetry attributes attached to this event."
-      >
-        <EmptyInline message="No custom metadata or telemetry tags were attached to this request." />
-      </SectionShell>
-    );
-  }
+  const attrs = entries(metadata?.attributes ?? {});
+  const meta = entries(metadata?.metadata ?? {});
 
   return (
-    <SectionShell
-      id={sectionDomId("metadata")}
-      title="Custom Attributes & Metadata"
-      description="Application-specific key-value telemetry attributes attached to this event."
-    >
-      <div className="grid gap-6 lg:grid-cols-2">
-        {attrEntries.length > 0 && (
-          <div className="rounded-xl border border-[var(--border)] bg-[var(--bg)] p-5">
-            <div className="flex items-center justify-between border-b border-[var(--border)] pb-3">
-              <span className="font-[family-name:var(--mono)] text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--text2)]">
-                Custom Attributes ({attrEntries.length})
-              </span>
-              <Tag className="size-3.5 text-[var(--text3)]" />
-            </div>
-            <dl className="mt-3 space-y-2.5">
-              {attrEntries.map(([key, val]) => (
-                <div key={key} className="flex items-baseline justify-between gap-3 text-[12.5px]">
-                  <dt className="font-[family-name:var(--mono)] text-[11.5px] font-medium text-[var(--text3)]">
-                    {key}
-                  </dt>
-                  <dd className="font-[family-name:var(--mono)] font-medium text-[var(--text)] truncate" title={String(val)}>
-                    {String(val)}
-                  </dd>
-                </div>
-              ))}
-            </dl>
-          </div>
-        )}
-
-        {metaEntries.length > 0 && (
-          <div className="rounded-xl border border-[var(--border)] bg-[var(--bg)] p-5">
-            <div className="flex items-center justify-between border-b border-[var(--border)] pb-3">
-              <span className="font-[family-name:var(--mono)] text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--text2)]">
-                SDK Metadata ({metaEntries.length})
-              </span>
-              <Server className="size-3.5 text-[var(--text3)]" />
-            </div>
-            <dl className="mt-3 space-y-2.5">
-              {metaEntries.map(([key, val]) => (
-                <div key={key} className="flex items-baseline justify-between gap-3 text-[12.5px]">
-                  <dt className="font-[family-name:var(--mono)] text-[11.5px] font-medium text-[var(--text3)]">
-                    {key}
-                  </dt>
-                  <dd className="font-[family-name:var(--mono)] font-medium text-[var(--text)] truncate" title={String(val)}>
-                    {String(val)}
-                  </dd>
-                </div>
-              ))}
-            </dl>
-          </div>
-        )}
-      </div>
+    <SectionShell id={sectionDomId("metadata")} title="Attributes" description="Custom key-value attributes and SDK metadata attached to this event.">
+      {attrs.length === 0 && meta.length === 0 ? (
+        <EmptyInline message="No custom attributes or SDK metadata were attached to this request." />
+      ) : (
+        <div className="grid gap-6 lg:grid-cols-2">
+          <PairTable title="Custom attributes" rows={attrs} empty="None attached." />
+          <PairTable title="SDK metadata" rows={meta} empty="None attached." />
+        </div>
+      )}
     </SectionShell>
   );
 }
@@ -405,227 +218,151 @@ export function AISection({
   return (
     <SectionShell
       id={sectionDomId("ai")}
-      title="AI Root Cause & Diagnostic Insights"
-      description="Automated root cause analysis, latency diagnosis, and architectural optimization."
+      title="AI analysis"
+      description="Root cause and next steps from the request, its trace, and correlated telemetry."
       action={
         parsed ? (
-          <Button variant="secondary" className="h-8 gap-1.5" onClick={onAnalyze} disabled={analyzing}>
-            <RefreshCw className={cn("size-3.5", analyzing && "animate-spin")} />
-            Re-run Analysis
-          </Button>
+          <button type="button" className={ghostButtonClass} onClick={onAnalyze} disabled={analyzing}>
+            <RefreshCw className={cn("size-3.5", analyzing && "animate-spin")} aria-hidden="true" />
+            {analyzing ? "Analyzing…" : "Run again"}
+          </button>
         ) : undefined
       }
     >
       {!parsed ? (
-        <div className="flex min-h-[200px] flex-col items-center justify-center gap-4 rounded-xl border border-dashed border-[var(--border)] bg-[var(--bg)] p-8 text-center">
-          <div className="flex size-12 items-center justify-center rounded-2xl bg-[var(--ai-bg)] text-[var(--ai)]">
-            <Brain className="size-6" />
-          </div>
-          <div>
-            <div className="text-[15px] font-semibold text-[var(--text)]">No AI Analysis Run Yet</div>
-            <p className="mt-1 max-w-md text-[13px] leading-relaxed text-[var(--text3)]">
-              Evaluate request timing, payload size, server status, and correlated telemetry to generate diagnostic findings.
-            </p>
-          </div>
-          <Button
-            variant="primary"
-            className="gap-2 bg-[var(--ai)] text-[var(--ai-fg)] hover:opacity-90"
-            onClick={onAnalyze}
-            disabled={analyzing}
-          >
-            <Brain className="size-4" />
-            {analyzing ? "Analyzing Telemetry…" : "Analyze with AI"}
-          </Button>
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <p className="max-w-[60ch] text-[13px] leading-[1.6] text-[var(--text2)]">
+            No analysis yet. The model reads timing, status, payload sizes, and the correlated trace, then suggests a likely cause.
+          </p>
+          <button type="button" className={aiButtonClass} onClick={onAnalyze} disabled={analyzing}>
+            <Sparkles className="size-3.5" aria-hidden="true" />
+            {analyzing ? "Analyzing…" : "Analyze request"}
+          </button>
         </div>
       ) : (
-        <div className="flex flex-col gap-5 rounded-xl border border-[var(--ai)]/30 bg-[var(--ai-bg)]/20 p-6">
-          {/* Summary */}
-          {parsed.summary && (
-            <div>
-              <div className="font-[family-name:var(--mono)] text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--text3)]">
-                Executive Summary
-              </div>
-              <p className="mt-2 text-[14px] leading-relaxed text-[var(--text)]">{parsed.summary}</p>
-            </div>
-          )}
-
-          {/* Root Cause Hypothesis */}
+        <div className="flex flex-col gap-5">
+          {parsed.summary && <p className="max-w-[80ch] text-[14px] leading-[1.65] text-[var(--text)]">{parsed.summary}</p>}
           {parsed.rootCause && (
-            <div className="rounded-xl border border-[var(--amber)]/30 bg-[var(--amber-bg)]/30 p-4">
-              <div className="font-[family-name:var(--mono)] text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--amber)]">
-                Likely Root Cause / Latency Driver
-              </div>
-              <p className="mt-1.5 text-[13.5px] leading-relaxed text-[var(--text)] font-medium font-[family-name:var(--mono)]">
-                {parsed.rootCause}
-              </p>
+            <div className="rounded-[var(--radius)] bg-[var(--amber-bg)] px-4 py-3">
+              <h3 className="text-[12px] font-medium text-[var(--amber)]">Likely cause</h3>
+              <p className="mt-1 text-[13px] leading-[1.6] text-[var(--text)]">{parsed.rootCause}</p>
             </div>
           )}
-
-          {/* Recommendations */}
           {parsed.recommendations.length > 0 && (
             <div>
-              <div className="font-[family-name:var(--mono)] text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--text3)]">
-                Actionable Recommendations
-              </div>
-              <ul className="mt-2 space-y-2 pl-5 text-[13.5px] leading-relaxed text-[var(--text)] list-disc">
-                {parsed.recommendations.map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
+              <h3 className="text-[13px] font-medium text-[var(--text)]">Recommendations</h3>
+              <ol className="mt-2 flex list-decimal flex-col gap-1.5 pl-5 text-[13px] leading-[1.6] text-[var(--text2)] marker:font-[family-name:var(--mono)] marker:text-[var(--text3)]">
+                {parsed.recommendations.map((item) => <li key={item}>{item}</li>)}
+              </ol>
             </div>
           )}
-
-          {/* Confidence & Timing footer */}
-          <div className="flex flex-wrap items-center gap-4 border-t border-[var(--ai)]/20 pt-4 text-[12px] text-[var(--text3)]">
+          <div className="flex flex-wrap items-center gap-4 border-t border-[var(--border)] pt-3 text-[12px] text-[var(--text3)]">
             {parsed.confidence != null && (
               <span>
-                Model Confidence:{" "}
-                <span className="font-[family-name:var(--mono)] font-semibold text-[var(--brand)]">
+                Confidence{" "}
+                <span className="font-[family-name:var(--mono)] tabular-nums text-[var(--ai)]">
                   {Math.round(parsed.confidence <= 1 ? parsed.confidence * 100 : parsed.confidence)}%
                 </span>
               </span>
             )}
-            {parsed.generatedAt && (
-              <span>
-                Analyzed at <Timestamp value={parsed.generatedAt} />
-              </span>
-            )}
+            {parsed.generatedAt && <span>Generated <Timestamp value={parsed.generatedAt} /></span>}
           </div>
         </div>
       )}
     </SectionShell>
+  );
+}
+
+function RelatedRow({ icon: Icon, tone, label, primary, secondary, href }: {
+  icon: typeof GitBranch;
+  tone: string;
+  label: string;
+  primary: string;
+  secondary?: string | null;
+  href: string | null;
+}) {
+  const body = (
+    <>
+      <Icon className={cn("size-3.5 shrink-0", tone)} aria-hidden="true" />
+      <span className="w-24 shrink-0 text-[12px] text-[var(--text3)]">{label}</span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate font-[family-name:var(--mono)] text-[12px] text-[var(--text)]">{primary}</span>
+        {secondary && <span className="block truncate text-[12px] text-[var(--text3)]">{secondary}</span>}
+      </span>
+    </>
+  );
+  return href ? (
+    <Link to={href} className="flex items-center gap-3 px-5 py-2.5 transition-colors hover:bg-[var(--bg2)] focus-visible:bg-[var(--bg2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--brand)]">{body}</Link>
+  ) : (
+    <div className="flex items-center gap-3 px-5 py-2.5">{body}</div>
   );
 }
 
 export function RelatedSection({ related }: { related: RequestRelatedDetail }) {
   return (
-    <SectionShell
-      id={sectionDomId("related")}
-      title="Correlated Telemetry Resources"
-      description="Direct linkages to correlated distributed traces, thrown exception groups, and application logs."
-    >
-      <div className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
-        <RelatedCard
-          label="Correlated Trace"
+    <section id={sectionDomId("related")} className="min-w-0 scroll-mt-16 rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)]">
+      <div className="border-b border-[var(--border)] px-5 py-3.5">
+        <h2 className="text-[14px] font-semibold tracking-[-0.01em] text-[var(--text)]">Related</h2>
+        <p className="mt-0.5 text-[12px] text-[var(--text3)]">The trace, errors, and logs from the same execution.</p>
+      </div>
+      <div className="divide-y divide-[var(--border)]">
+        <RelatedRow
           icon={GitBranch}
+          tone="text-[var(--violet)]"
+          label="Trace"
+          primary={related.trace.publicId ?? "None correlated"}
           href={related.trace.publicId ? `/observability/traces/${encodeURIComponent(related.trace.publicId)}` : null}
-          primary={related.trace.publicId ?? "No correlated trace"}
-          secondary="Full span execution waterfall"
-          accent="text-[var(--violet)]"
         />
-
         {related.errors.length === 0 ? (
-          <RelatedCard
-            label="Related Errors"
-            icon={Zap}
-            href={null}
-            primary="0 Errors Thrown"
-            secondary="Request executed without unhandled errors"
-            accent="text-[var(--green)]"
-          />
+          <RelatedRow icon={Bug} tone="text-[var(--green)]" label="Errors" primary="None thrown" href={null} />
         ) : (
           related.errors.map((error) => (
-            <RelatedCard
+            <RelatedRow
               key={error.publicId}
-              label="Correlated Error"
-              icon={Zap}
-              href={`/observability/errors/${encodeURIComponent(error.publicId)}`}
+              icon={Bug}
+              tone="text-[var(--red)]"
+              label="Error"
               primary={error.publicId}
               secondary={error.message}
-              accent="text-[var(--red)]"
+              href={`/observability/errors/${encodeURIComponent(error.publicId)}`}
             />
           ))
         )}
-
-        <RelatedCard
-          label="Correlated Logs"
-          icon={Server}
-          href={related.trace.publicId ? `/observability/logs?trace=${encodeURIComponent(related.trace.publicId)}` : null}
-          primary={related.logs.count === 1 ? "1 Correlated Log" : `${related.logs.count} Correlated Logs`}
-          secondary="Log records in same execution context"
-          accent="text-[var(--blue)]"
+        <RelatedRow
+          icon={ScrollText}
+          tone="text-[var(--text2)]"
+          label="Logs"
+          primary={`${related.logs.count.toLocaleString()} ${related.logs.count === 1 ? "line" : "lines"}`}
+          secondary={related.logs.count ? "in the same execution context" : null}
+          href={related.logs.count ? "/observability/logs" : null}
         />
       </div>
-    </SectionShell>
-  );
-}
-
-function RelatedCard({
-  label,
-  icon: Icon,
-  primary,
-  secondary,
-  href,
-  accent,
-}: {
-  label: string;
-  icon: typeof GitBranch;
-  primary: string;
-  secondary?: string;
-  href: string | null;
-  accent?: string;
-}) {
-  const content = (
-    <div className="flex flex-col justify-between h-full p-4">
-      <div className="flex items-center justify-between gap-2">
-        <span className="font-[family-name:var(--mono)] text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[var(--text3)]">
-          {label}
-        </span>
-        <Icon className={cn("size-4", accent ?? "text-[var(--text3)]")} />
-      </div>
-      <div className="mt-3">
-        <div className="truncate font-[family-name:var(--mono)] text-[13.5px] font-semibold text-[var(--text)]">
-          {primary}
-        </div>
-        {secondary && <div className="mt-1 truncate text-[12px] text-[var(--text3)]">{secondary}</div>}
-      </div>
-    </div>
-  );
-
-  if (!href) {
-    return (
-      <div className="rounded-xl border border-[var(--border)] bg-[var(--bg)]/70">
-        {content}
-      </div>
-    );
-  }
-
-  return (
-    <Link
-      to={href}
-      className="rounded-xl border border-[var(--border)] bg-[var(--bg1)] transition-all hover:border-[var(--brand)] hover:shadow-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)] cursor-pointer"
-    >
-      {content}
-    </Link>
+    </section>
   );
 }
 
 export function TagsSection({ tags }: { tags: RequestTag[] }) {
   return (
-    <SectionShell
-      id={sectionDomId("tags")}
-      title="Categorization Tags"
-      description="Filterable attribute chips and telemetry indexing keys."
-    >
+    <SectionShell id={sectionDomId("tags")} title="Tags" description="Indexed tags. Select one to copy it as a search term.">
       {tags.length === 0 ? (
-        <EmptyInline message="No tags recorded for this request." />
+        <EmptyInline message="No tags were recorded for this request." />
       ) : (
-        <div className="flex flex-wrap gap-2.5">
+        <div className="flex flex-wrap gap-1.5">
           {tags.map((tag) => (
             <button
               key={`${tag.key}:${tag.value}`}
               type="button"
-              title={`Copy ${tag.label}`}
+              title={`Copy ${tag.key}:${tag.value}`}
               onClick={() => navigator.clipboard?.writeText(`${tag.key}:${tag.value}`)}
-              className="inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--bg)] px-3.5 py-1.5 text-[12.5px] transition-all hover:border-[var(--brand)] hover:bg-[var(--bg2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)] cursor-pointer"
+              className="inline-flex cursor-pointer items-center gap-1.5 rounded-[4px] border border-[var(--border)] bg-[var(--bg)] px-2 py-1 text-[12px] transition-colors hover:border-[var(--border2)] hover:bg-[var(--bg2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--text3)]"
             >
               <span className="text-[var(--text3)]">{tag.label}</span>
-              <span className="font-[family-name:var(--mono)] font-semibold text-[var(--text)]">{tag.value}</span>
+              <span className="font-[family-name:var(--mono)] text-[var(--text)]">{tag.value}</span>
             </button>
           ))}
         </div>
       )}
-      <p className="mt-4 text-[11.5px] text-[var(--text3)]">Click any tag to copy its key:value pair to clipboard.</p>
     </SectionShell>
   );
 }
+

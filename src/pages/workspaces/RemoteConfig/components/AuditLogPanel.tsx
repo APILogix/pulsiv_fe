@@ -1,6 +1,14 @@
-import React from "react";
-import { FileText, History, User, Globe, Shield, Clock } from "lucide-react";
-import { SectionCard, StatusBadge } from "@/shared/observe";
+import {
+  HIDE_BELOW_LG,
+  HIDE_BELOW_MD,
+  HIDE_BELOW_XL,
+  Sheet,
+  SheetCell,
+  SheetRow,
+  SheetTable,
+  type SheetColumn,
+} from "@/modules/projects/components/project-page";
+import { Notice } from "@/shared/ui/pulse";
 
 interface AuditEntry {
   id: string;
@@ -13,97 +21,102 @@ interface AuditEntry {
   ip: string;
 }
 
-const MOCK_AUDIT_LOGS: AuditEntry[] = [
+// Illustrative entries only: nothing here is read from this project's history.
+const SAMPLE_AUDIT_LOGS: AuditEntry[] = [
   {
     id: "aud-109",
     timestamp: "2026-08-04 20:15:22",
-    actor: "vikas@sentinel.io (Platform Admin)",
-    action: "PUBLISH_REVISION",
+    actor: "platform-admin@example.com",
+    action: "publish_revision",
     environment: "Production (prod)",
     revision: 14,
     summary: "Updated trace sampling rate to 100% and enabled profiling.",
-    ip: "192.168.1.104",
+    ip: "192.0.2.104",
   },
   {
     id: "aud-108",
     timestamp: "2026-08-04 18:40:01",
     actor: "system-auto-governance",
-    action: "RATE_LIMIT_ADAPT",
+    action: "rate_limit_adapt",
     environment: "Production (prod)",
     revision: 13,
     summary: "Automated adjustment of max payload size during traffic peak.",
-    ip: "10.0.4.12",
+    ip: "198.51.100.12",
   },
   {
     id: "aud-107",
     timestamp: "2026-08-04 14:10:05",
-    actor: "alex.dev@sentinel.io (DevOps Lead)",
-    action: "ROLLBACK_REVISION",
+    actor: "devops-lead@example.com",
+    action: "rollback_revision",
     environment: "Staging (staging)",
     revision: 12,
-    summary: "Rolled back to Revision 10 due to high memory overhead on worker nodes.",
-    ip: "172.16.2.88",
+    summary: "Rolled back to revision 10 due to high memory overhead on worker nodes.",
+    ip: "203.0.113.88",
   },
   {
     id: "aud-106",
     timestamp: "2026-08-03 22:00:19",
-    actor: "vikas@sentinel.io (Platform Admin)",
-    action: "PUBLISH_REVISION",
+    actor: "platform-admin@example.com",
+    action: "publish_revision",
     environment: "Development (dev)",
     revision: 11,
     summary: "Provisioned initial SDK configuration for node and web services.",
-    ip: "192.168.1.104",
+    ip: "192.0.2.104",
   },
+];
+
+const COLUMNS: SheetColumn[] = [
+  { key: "time", header: "Time", className: "w-[168px]" },
+  { key: "actor", header: "Actor", className: `w-[220px] ${HIDE_BELOW_MD}` },
+  { key: "action", header: "Action", className: "w-[160px]" },
+  { key: "environment", header: "Environment", className: `w-[160px] ${HIDE_BELOW_LG}` },
+  { key: "revision", header: "Revision", align: "right", className: "w-[88px]" },
+  { key: "summary", header: "Change", className: `w-full ${HIDE_BELOW_XL}` },
 ];
 
 export function AuditLogPanel() {
   return (
-    <SectionCard
-      title="Enterprise Audit Trail & Configuration Log"
-      description="Immutable log of all published revisions, rollbacks, automated governance actions, and operator details."
-    >
-      <div className="flex flex-col gap-3 py-2">
-        <div className="overflow-x-auto rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg2)]/40">
-          <table className="w-full text-left text-xs text-[var(--text2)]">
-            <thead className="border-b border-[var(--border)] bg-[var(--bg2)] text-[10px] uppercase font-bold text-[var(--text3)]">
-              <tr>
-                <th className="p-3">Timestamp</th>
-                <th className="p-3">Operator / Actor</th>
-                <th className="p-3">Action</th>
-                <th className="p-3">Environment</th>
-                <th className="p-3">Revision</th>
-                <th className="p-3">Change Details</th>
-                <th className="p-3 text-right">IP Address</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[var(--border)]/60">
-              {MOCK_AUDIT_LOGS.map((log) => (
-                <tr key={log.id} className="hover:bg-[var(--bg1)] transition-colors">
-                  <td className="p-3 font-mono text-[11px] text-[var(--text3)] whitespace-nowrap">
-                    <span className="flex items-center gap-1.5">
-                      <Clock className="size-3 text-[var(--blue)]" />
-                      {log.timestamp}
-                    </span>
-                  </td>
-                  <td className="p-3 font-semibold text-[var(--text)] whitespace-nowrap">
-                    <span className="flex items-center gap-1.5">
-                      <User className="size-3 text-[var(--brand)]" />
-                      {log.actor}
-                    </span>
-                  </td>
-                  <td className="p-3">
-                    <StatusBadge status={log.action} />
-                  </td>
-                  <td className="p-3 font-medium text-[var(--text)] whitespace-nowrap">{log.environment}</td>
-                  <td className="p-3 font-bold font-mono text-[var(--brand)]">#{log.revision}</td>
-                  <td className="p-3 max-w-[320px] truncate text-[var(--text)]">{log.summary}</td>
-                  <td className="p-3 text-right font-mono text-[11px] text-[var(--text3)]">{log.ip}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </SectionCard>
+    <div className="flex flex-col gap-6">
+      <Notice tone="neutral" title="Preview with sample data">
+        These entries are examples that show how the audit trail will read. They aren't this project's history;
+        Revision history lists every revision that was actually published.
+      </Notice>
+
+      <Sheet
+        title="Audit trail"
+        description="Who published, rolled back, or changed this configuration, and when."
+      >
+        <SheetTable columns={COLUMNS} caption="Sample audit entries" minWidth={480}>
+          {SAMPLE_AUDIT_LOGS.map((log) => (
+            <SheetRow key={log.id}>
+              <SheetCell>
+                <span className="whitespace-nowrap font-[family-name:var(--mono)] text-[12px] tabular-nums text-[var(--text3)]">
+                  {log.timestamp}
+                </span>
+              </SheetCell>
+              <SheetCell className={`max-w-0 ${HIDE_BELOW_MD}`}>
+                <span className="block truncate text-[13px] text-[var(--text)]" title={log.actor}>
+                  {log.actor}
+                </span>
+              </SheetCell>
+              <SheetCell>
+                <code className="font-[family-name:var(--mono)] text-[12px] text-[var(--text2)]">{log.action}</code>
+              </SheetCell>
+              <SheetCell className={HIDE_BELOW_LG}>
+                <span className="whitespace-nowrap text-[13px] text-[var(--text2)]">{log.environment}</span>
+              </SheetCell>
+              <SheetCell align="right">
+                <span className="font-[family-name:var(--mono)] text-[12px] tabular-nums text-[var(--text)]">#{log.revision}</span>
+              </SheetCell>
+              <SheetCell className={`max-w-0 ${HIDE_BELOW_XL}`}>
+                <span className="block truncate text-[13px] text-[var(--text2)]" title={`${log.summary} (from ${log.ip})`}>
+                  {log.summary}
+                </span>
+              </SheetCell>
+            </SheetRow>
+          ))}
+        </SheetTable>
+      </Sheet>
+    </div>
   );
 }

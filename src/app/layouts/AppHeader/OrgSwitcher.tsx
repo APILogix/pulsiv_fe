@@ -10,13 +10,14 @@ import {
 import { Button } from '@/components/ui/button';
 import { ChevronsUpDown, Check, Plus, Loader2, Building2 } from 'lucide-react';
 import { useOrganizations } from '@/modules/organizations/hooks/useOrganizations';
-import { orgApi } from '@/modules/organizations/api/org.api';
+import { useOrganizationCreation } from '@/modules/organizations/hooks/useOrganizationCreation';
 import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { orgRoutes } from '@/app/router/org-routes';
 
 export function OrgSwitcher() {
-  const { organizations, activeOrgId, setActiveOrgId, setActiveOrgSlug, isLoading } = useOrganizations();
+  const { organizations, activeOrgId, setActiveOrgId, setActiveOrgSlug, isLoading, switchOrganization } = useOrganizations();
+  const creation = useOrganizationCreation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [switchingOrgId, setSwitchingOrgId] = useState<string | null>(null);
@@ -26,14 +27,22 @@ export function OrgSwitcher() {
     if (orgId === activeOrgId) return;
     setSwitchingOrgId(orgId);
     try {
-      await orgApi.switchOrganization(orgId);
+      // Through the bootstrap service, not orgApi directly: it switches the
+      // session and refreshes the bootstrap snapshot (projects, billing,
+      // quotas) for the new org. Calling orgApi alone left the old org's
+      // projects in the bootstrap store.
+      await switchOrganization(orgId);
       const targetOrg = organizations.find((o) => o.id === orgId);
       setActiveOrgId(orgId);
       if (targetOrg) {
         setActiveOrgSlug(targetOrg.slug);
       }
-      // Invalidate all organization and project scoped queries so no stale data leaks
-      await queryClient.invalidateQueries();
+      // Org-scoped keys already change with the org, so nothing needs a
+      // refetch here. Mark everything stale without fetching: any key that is
+      // not org-scoped refreshes in the background when its page mounts.
+      // (The old `await invalidateQueries()` refetched every active query for
+      // the org being left, and made navigation wait for all of it.)
+      void queryClient.invalidateQueries({ refetchType: 'none' });
       setSwitchingOrgId(null);
       if (targetOrg?.slug) {
         navigate(orgRoutes.dashboard(targetOrg.slug), { replace: true });
@@ -103,13 +112,32 @@ export function OrgSwitcher() {
         </div>
 
         <DropdownMenuSeparator className="bg-[var(--border)] -mx-1 my-1" />
-        <DropdownMenuItem 
-          onClick={() => navigate('/onboarding/organization')} 
-          className="flex items-center gap-2 px-2 py-1.5 rounded-[var(--radius-sm)] cursor-pointer text-[12px] sm:text-[13px] font-medium text-[var(--text2)] hover:text-[var(--text)] hover:bg-[var(--bg2)] group transition-colors"
-        >
-          <Plus className="size-3.5 text-[var(--text3)] group-hover:text-[var(--brand)] shrink-0 transition-colors" />
-          <span>Create organization</span>
-        </DropdownMenuItem>
+        {creation.allowed ? (
+          <DropdownMenuItem
+            onClick={() => navigate('/onboarding/organization')}
+            className="flex items-center gap-2 px-2 py-1.5 rounded-[var(--radius-sm)] cursor-pointer text-[12px] sm:text-[13px] font-medium text-[var(--text2)] hover:text-[var(--text)] hover:bg-[var(--bg2)] group transition-colors"
+          >
+            <Plus className="size-3.5 text-[var(--text3)] group-hover:text-[var(--text)] shrink-0 transition-colors" />
+            <span>Create organization</span>
+          </DropdownMenuItem>
+        ) : (
+          // Disabled, not hidden: the reason sits in the item, so owners are not left
+          // wondering where the option went.
+          <DropdownMenuItem
+            disabled
+            className="flex items-start gap-2 px-2 py-1.5 rounded-[var(--radius-sm)] text-[12px] sm:text-[13px] data-disabled:opacity-100"
+          >
+            <Plus className="mt-0.5 size-3.5 text-[var(--text3)] shrink-0" aria-hidden="true" />
+            <span className="flex min-w-0 flex-col">
+              <span className="font-medium text-[var(--text3)]">Create organization</span>
+              <span className="text-[11.5px] leading-[1.45] text-[var(--text3)]">
+                {creation.ownedOrganization
+                  ? `You already own ${creation.ownedOrganization.name}. Each account can own one organization.`
+                  : 'Each account can own one organization.'}
+              </span>
+            </span>
+          </DropdownMenuItem>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );

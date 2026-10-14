@@ -26,11 +26,20 @@ const WIDTH = 900;
 const HEIGHT = 260;
 const PLOT = { left: 58, right: 18, top: 14, bottom: 38 };
 
+// Below this many buckets every point is marked; above it only the hovered one,
+// so a 90-day series reads as a line rather than a string of beads.
+const MARK_ALL_POINTS_BELOW = 13;
+
 function bucketLabel(value: string) {
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? value : date.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
 }
 
+/**
+ * Multi-series usage line chart (design/dashboards/DESIGN.md): hairline grid,
+ * 11px mono axis labels, callers pass series colours (neutral data first,
+ * state colours explicitly), a flat low-alpha fill under the lead series only.
+ */
 export function UsageTrendChart({
   points,
   series,
@@ -54,13 +63,14 @@ export function UsageTrendChart({
   }, [points, series]);
 
   if (chart.ordered.length === 0) {
-    return <p className="py-12 text-center text-[12.5px] text-[var(--text3)]">{emptyMessage}</p>;
+    return <p className="py-12 text-center text-[13px] text-[var(--text3)]">{emptyMessage}</p>;
   }
 
   const firstSeries = series[0];
   const firstPoints = firstSeries
     ? chart.ordered.map((point, index) => `${chart.x(index)},${chart.y(Number(point[firstSeries.key] ?? 0))}`).join(" ")
     : "";
+  const markAllPoints = chart.ordered.length < MARK_ALL_POINTS_BELOW;
 
   const handleMove = (event: React.PointerEvent<SVGSVGElement>) => {
     if (!svgRef.current) return;
@@ -98,19 +108,19 @@ export function UsageTrendChart({
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-center gap-4" aria-label="Chart legend">
+      <ul className="flex flex-wrap items-center gap-x-4 gap-y-1" aria-label="Chart legend">
         {series.map((item) => (
-          <span key={item.key} className="inline-flex items-center gap-1.5 text-[11.5px] text-[var(--text2)]">
-            <span className="size-2 rounded-full" style={{ background: item.color }} aria-hidden="true" />
+          <li key={item.key} className="inline-flex items-center gap-1.5 text-[12px] text-[var(--text2)]">
+            <span className="h-0.5 w-3 rounded-full" style={{ background: item.color }} aria-hidden="true" />
             {item.label}
-          </span>
+          </li>
         ))}
-      </div>
-      <div className="relative overflow-x-auto">
+      </ul>
+      <div className="sidebar-scroll relative overflow-x-auto">
         <svg
           ref={svgRef}
           viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
-          className="h-[260px] min-w-[640px] w-full cursor-crosshair"
+          className="h-[260px] w-full min-w-[640px] cursor-crosshair font-[family-name:var(--mono)]"
           role="img"
           aria-label={ariaLabel}
           onPointerMove={handleMove}
@@ -122,7 +132,7 @@ export function UsageTrendChart({
             return (
               <g key={ratio}>
                 <line x1={PLOT.left} x2={WIDTH - PLOT.right} y1={y} y2={y} stroke="var(--border)" />
-                <text x={PLOT.left - 8} y={y + 4} textAnchor="end" fill="var(--text3)" fontSize="10">
+                <text x={PLOT.left - 8} y={y + 4} textAnchor="end" fill="var(--text3)" fontSize="11">
                   {formatCompact(Math.round(chart.max * (1 - ratio)))}
                 </text>
               </g>
@@ -132,7 +142,7 @@ export function UsageTrendChart({
             <polygon
               points={`${PLOT.left},${PLOT.top + chart.plotHeight} ${firstPoints} ${WIDTH - PLOT.right},${PLOT.top + chart.plotHeight}`}
               fill={firstSeries.color}
-              opacity="0.1"
+              opacity="0.06"
             />
           )}
           {hoverIndex !== null && (
@@ -153,49 +163,71 @@ export function UsageTrendChart({
                 points={chart.ordered.map((point, index) => `${chart.x(index)},${chart.y(Number(point[item.key] ?? 0))}`).join(" ")}
                 fill="none"
                 stroke={item.color}
-                strokeWidth="2"
+                strokeWidth="1.75"
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 vectorEffect="non-scaling-stroke"
               />
               {chart.ordered.map((point, index) => {
                 const isHovered = hoverIndex === index;
+                if (!isHovered && !markAllPoints) return null;
                 return (
                   <circle
                     key={point.bucket}
                     cx={chart.x(index)}
                     cy={chart.y(Number(point[item.key] ?? 0))}
-                    r={isHovered ? 4.5 : 3}
+                    r={isHovered ? 4 : 2.5}
                     fill={item.color}
                     stroke={isHovered ? "var(--bg1)" : "none"}
                     strokeWidth={isHovered ? 1.5 : 0}
-                    className="transition-[r] duration-150"
                   />
                 );
               })}
             </g>
           ))}
-          <text x={PLOT.left} y={HEIGHT - 10} fill="var(--text3)" fontSize="10">{bucketLabel(chart.ordered[0].bucket)}</text>
-          <text x={WIDTH - PLOT.right} y={HEIGHT - 10} textAnchor="end" fill="var(--text3)" fontSize="10">
+          <text x={PLOT.left} y={HEIGHT - 10} fill="var(--text3)" fontSize="11">
+            {bucketLabel(chart.ordered[0].bucket)}
+          </text>
+          <text x={WIDTH - PLOT.right} y={HEIGHT - 10} textAnchor="end" fill="var(--text3)" fontSize="11">
             {bucketLabel(chart.ordered[chart.ordered.length - 1].bucket)}
           </text>
         </svg>
         <ChartTooltip state={tooltip} />
       </div>
       {showTable && (
-        <details className="rounded-[10px] border border-[var(--border)] bg-[var(--bg2)]">
-          <summary className="cursor-pointer px-3 py-2 text-[12px] font-medium text-[var(--text2)]">View chart data as a table</summary>
-          <div className="max-h-64 overflow-auto border-t border-[var(--border)]">
-            <table className="w-full text-left text-[11.5px]">
+        <details className="group rounded-[var(--radius-lg)] border border-[var(--border)]">
+          <summary className="cursor-pointer rounded-[var(--radius-lg)] px-4 py-2.5 text-[12px] text-[var(--text2)] transition-colors hover:text-[var(--text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--border2)]">
+            View chart data as a table
+          </summary>
+          <div className="sidebar-scroll max-h-64 overflow-auto border-t border-[var(--border)]">
+            <table className="w-full text-left text-[12px]">
               <caption className="sr-only">{ariaLabel} data</caption>
-              <thead className="sticky top-0 bg-[var(--bg1)] text-[var(--text3)]">
-                <tr><th className="px-3 py-2 font-medium">Bucket</th>{fallbackSeries.map((item) => <th key={item.key} className="px-3 py-2 text-right font-medium">{item.label}</th>)}</tr>
+              <thead className="sticky top-0 bg-[var(--bg1)]">
+                <tr className="border-b border-[var(--border)]">
+                  <th scope="col" className="px-4 py-2 font-normal text-[var(--text3)]">
+                    Bucket
+                  </th>
+                  {fallbackSeries.map((item) => (
+                    <th key={item.key} scope="col" className="px-4 py-2 text-right font-normal text-[var(--text3)]">
+                      {item.label}
+                    </th>
+                  ))}
+                </tr>
               </thead>
               <tbody>
                 {chart.ordered.map((point) => (
-                  <tr key={point.bucket} className="border-t border-[var(--border)]">
-                    <td className="whitespace-nowrap px-3 py-2 text-[var(--text2)]">{bucketLabel(point.bucket)}</td>
-                    {fallbackSeries.map((item) => <td key={item.key} className="px-3 py-2 text-right tabular-nums text-[var(--text)]">{formatCompact(Number(point[item.key] ?? 0))}</td>)}
+                  <tr key={point.bucket} className="border-b border-[var(--border)] last:border-b-0">
+                    <td className="whitespace-nowrap px-4 py-2 font-[family-name:var(--mono)] text-[11.5px] text-[var(--text2)]">
+                      {bucketLabel(point.bucket)}
+                    </td>
+                    {fallbackSeries.map((item) => (
+                      <td
+                        key={item.key}
+                        className="px-4 py-2 text-right font-[family-name:var(--mono)] text-[11.5px] tabular-nums text-[var(--text)]"
+                      >
+                        {formatCompact(Number(point[item.key] ?? 0))}
+                      </td>
+                    ))}
                   </tr>
                 ))}
               </tbody>

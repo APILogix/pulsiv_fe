@@ -16,6 +16,7 @@ export function HelpMenu() {
         <Button
           variant="ghost"
           size="icon"
+          aria-label="Help and resources"
           className="text-muted-foreground hover:text-foreground hover:bg-accent focus-visible:ring-0 focus-visible:ring-offset-0"
         >
           <HelpCircle className="h-5 w-5" />

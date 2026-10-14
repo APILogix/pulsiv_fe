@@ -9,6 +9,7 @@ import { RouteLoadingRegion } from '@/shared/ui/loading';
 import { RemoteConfigPanel } from '../workspaces/RemoteConfig/RemoteConfigPanel';
 import { DEFAULT_SDK_CONFIG } from '../workspaces/RemoteConfig/schema';
 import { buildEditableConfig } from '../workspaces/RemoteConfig/mapping';
+import { apiErrorMessage } from "@/infrastructure/api-client/api-error";
 
 export default function SdkConfigPage() {
   const { activeOrgId } = useOrganizations();
@@ -46,7 +47,7 @@ export default function SdkConfigPage() {
       setIsCreating(false);
       setConfigKey('');
     } catch (error: any) {
-      toast.error(error?.response?.data?.error?.message ?? 'Unable to publish configuration');
+      toast.error(apiErrorMessage(error) ?? 'Unable to publish configuration');
     } finally {
       setIsSaving(false);
     }

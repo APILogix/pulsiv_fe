@@ -1,404 +1,368 @@
-import { useMemo } from "react";
-import { ArrowLeft, Terminal, ShieldAlert, Sparkles, Clock, Globe, GitBranch } from "lucide-react";
-import { useNavigate } from "react-router";
-import { Button, DetailSkeleton, SectionCard, Tabs, VirtualList } from "@/shared/observe";
+import { useState } from "react";
+import { Link } from "react-router";
+import { BarChart3, GitBranch } from "lucide-react";
+import {
+  CodeBlock, DetailHeader, DetailNotFound, DetailPage, DetailSkeleton, EmptyNote, EnvironmentBadge,
+  Panel, ReadoutBand, SectionTabs, SeverityBadge, SignalHistogram, StatusBadge, Timestamp,
+  formatAbsoluteTime, formatDuration, formatCompact, TRACE_CHIP,
+} from "@/shared/observe";
+import type { HistogramBar, ReadoutCell } from "@/shared/observe";
+import { ghostButtonClass } from "@/shared/observe/form";
 import { useOrgStore } from "@/modules/organizations/store/org.store";
+import { cn } from "@/lib/utils";
 import { askObservabilityEvent, useObservabilityDetail, type AIIntent, type ObservabilityEventDetail } from "../hooks/useObservabilityApi";
-import { DETAIL_RESOURCES, RESOURCE_FIELDS, asRecord, arrayValue, detailId, hasValue, pick, stringValue, type DetailResource, type JsonRecord } from "./detail-contract";
-import { DETAIL_CONFIG } from "./detail-config";
-import { AIInvestigationPanel, FieldGrid, InvestigationHeader, MetadataSidebar, OverviewCards, RelatedResources, SpanTreePanel, StructuredSections, TimelinePanel } from "./detail-panels";
-import { EmptyState } from "./EmptyState";
-import { StructuredDataSection } from "./StructuredDataSection";
+import {
+  COMMON_FIELDS, DETAIL_RESOURCES, RESOURCE_FIELDS, arrayValue, asRecord, detailId, hasValue, numberValue, pick, stringValue,
+  type DetailResource, type JsonRecord,
+} from "./detail-contract";
+import { AIInvestigationPanel, AttributesPanels, CorrelationList, FieldList, RelatedResources } from "./detail-panels";
 
-function normalize(value: unknown): string {
-  return typeof value === "string" ? value : value === null || value === undefined ? "" : String(value);
-}
+const LIST: Record<DetailResource, { label: string; to: string; noun: string }> = {
+  errors: { label: "Errors", to: "/observability/errors", noun: "Error" },
+  requests: { label: "Requests", to: "/observability/requests", noun: "Request" },
+  traces: { label: "Traces", to: "/observability/traces", noun: "Trace" },
+  spans: { label: "Traces", to: "/observability/traces", noun: "Span" },
+  logs: { label: "Logs", to: "/observability/logs", noun: "Log line" },
+  metrics: { label: "Metrics", to: "/observability/metrics", noun: "Metric sample" },
+  profiles: { label: "Profiling", to: "/observability/profiling", noun: "Profile" },
+  crons: { label: "Cron check-ins", to: "/observability/crons", noun: "Check-in" },
+};
 
-function JsonPayloadSection({ title, value }: { title: string; value: unknown }) {
-  return hasValue(value) ? <StructuredDataSection title={title} data={value} /> : null;
-}
+const s = (e: JsonRecord, keys: string[]) => stringValue(pick(e, keys));
+const n = (e: JsonRecord, keys: string[]) => numberValue(pick(e, keys));
+const fmtNum = (v: number | null) => (v === null ? "—" : Math.abs(v) >= 10_000 ? formatCompact(v) : v.toLocaleString(undefined, { maximumFractionDigits: 3 }));
 
-function StackTraceSection({ value }: { value: unknown }) {
-  if (!hasValue(value)) {
-    return <EmptyState title="No Stack Trace" description="This event did not record stack frames in the telemetry context." />;
+function titleFor(resource: DetailResource, e: JsonRecord): string {
+  switch (resource) {
+    case "logs": return s(e, ["loggerName", "logger", "name"]) ?? "Log line";
+    case "metrics": return s(e, ["metricName", "metric_name"]) ?? "Metric sample";
+    case "profiles": return `${s(e, ["profileType", "profile_type"]) ?? "CPU"} profile`;
+    case "crons": return s(e, ["monitorSlug", "monitor_slug", "monitorName"]) ?? "Check-in";
+    case "spans": return s(e, ["name"]) ?? "Span";
+    default: return s(e, ["name", "message"]) ?? LIST[resource].noun;
   }
-  if (typeof value === "string") {
+}
+
+function cellsFor(resource: DetailResource, e: JsonRecord, profile: ProfileSummary | null): ReadoutCell[] {
+  const dur = n(e, ["durationMs", "duration_ms"]);
+  switch (resource) {
+    case "logs":
+      return [
+        { label: "Level", value: s(e, ["level", "severity"]) ?? "info", tone: /error|fatal/.test(s(e, ["level", "severity"]) ?? "") ? "bad" : /warn/.test(s(e, ["level", "severity"]) ?? "") ? "warn" : "neutral" },
+        { label: "Category", value: s(e, ["logCategory", "log_category"]) ?? "—", sub: s(e, ["logSource", "log_source"]) ?? undefined },
+        { label: "Status", value: s(e, ["statusCode", "status_code"]) ?? "—", tone: (n(e, ["statusCode"]) ?? 0) >= 500 ? "bad" : (n(e, ["statusCode"]) ?? 0) >= 400 ? "warn" : "neutral" },
+        { label: "Duration", value: dur !== null ? formatDuration(dur) : "—" },
+        { label: "Service", value: s(e, ["service"]) ?? "—" },
+      ];
+    case "metrics": {
+      const unit = s(e, ["metricUnit", "metric_unit", "unit"]);
+      return [
+        { label: "Value", value: fmtNum(n(e, ["value"])), sub: unit ?? "no unit" },
+        { label: "Type", value: s(e, ["metricType", "metric_type"]) ?? "—", sub: s(e, ["aggregationType"]) ?? undefined },
+        { label: "p50", value: fmtNum(n(e, ["p50"])) },
+        { label: "p95", value: fmtNum(n(e, ["p95"])) },
+        { label: "p99", value: fmtNum(n(e, ["p99"])) },
+        { label: "Samples", value: fmtNum(n(e, ["count"])), sub: n(e, ["sum"]) !== null ? `sum ${fmtNum(n(e, ["sum"]))}` : undefined },
+      ];
+    }
+    case "profiles":
+      return [
+        { label: "Type", value: s(e, ["profileType", "profile_type"]) ?? "—" },
+        { label: "Capture window", value: dur !== null ? formatDuration(dur) : "—" },
+        { label: "Samples", value: profile ? fmtNum(profile.totalSamples) : "—" },
+        { label: "Functions", value: profile ? fmtNum(profile.functions.length) : "—" },
+        { label: "Hottest function", value: profile?.functions[0]?.name ?? "—", sub: profile?.functions[0] ? `${profile.functions[0].selfPct.toFixed(1)}% self time` : undefined },
+      ];
+    case "crons": {
+      const status = s(e, ["status"]) ?? "unknown";
+      return [
+        { label: "Status", value: status.replace(/_/g, " "), tone: status === "ok" ? "good" : status === "in_progress" ? "neutral" : "bad" },
+        { label: "Runtime", value: dur !== null ? formatDuration(dur) : "—" },
+        { label: "Check-in type", value: s(e, ["checkinType", "checkin_type"]) ?? "—", sub: s(e, ["scheduleType", "schedule_type"]) ?? undefined },
+        { label: "Started", value: hasValue(pick(e, ["startedAt", "started_at"])) ? <Timestamp value={pick(e, ["startedAt", "started_at"]) as string} /> : "—" },
+        { label: "Finished", value: hasValue(pick(e, ["finishedAt", "finished_at"])) ? <Timestamp value={pick(e, ["finishedAt", "finished_at"]) as string} /> : "—" },
+      ];
+    }
+    case "spans": {
+      const self = n(e, ["exclusiveDurationMs", "exclusive_duration_ms"]);
+      return [
+        { label: "Duration", value: dur !== null ? formatDuration(dur) : "—", tone: (dur ?? 0) >= 1000 ? "bad" : (dur ?? 0) >= 500 ? "warn" : "neutral" },
+        { label: "Self time", value: self !== null ? formatDuration(self) : "—", sub: self !== null && dur ? `${((self / dur) * 100).toFixed(0)}% of span` : undefined },
+        { label: "Kind", value: s(e, ["spanKind", "span_kind", "kind"]) ?? "—", sub: s(e, ["spanType", "span_type"]) ?? undefined },
+        { label: "Status", value: s(e, ["spanStatus", "span_status", "status"]) ?? "—", tone: /error/.test(s(e, ["spanStatus", "status"]) ?? "") ? "bad" : "neutral" },
+        { label: "Depth", value: s(e, ["depth"]) ?? "—", sub: "in the span tree" },
+      ];
+    }
+    default:
+      return [];
+  }
+}
+
+// ── Profiles: V8 cpuprofile summary ─────────────────────────
+
+interface ProfileFunction { name: string; file: string; selfSamples: number; selfPct: number }
+interface ProfileSummary { totalSamples: number; functions: ProfileFunction[] }
+
+function summarizeProfile(detail: ObservabilityEventDetail): ProfileSummary | null {
+  const payload = asRecord(detail.payload) ?? {};
+  const profile = asRecord(pick(payload, ["profile", "profileData", "profile_data"])) ?? asRecord(pick(asRecord(detail.attributes) ?? {}, ["profile"]));
+  if (!profile) return null;
+  const nodes = arrayValue(profile.nodes).map(asRecord).filter((x): x is JsonRecord => x !== null);
+  if (nodes.length === 0) return null;
+  const counts = new Map<number, number>();
+  for (const sample of arrayValue(profile.samples)) {
+    const id = typeof sample === "number" ? sample : numberValue(asRecord(sample)?.nodeId ?? asRecord(sample)?.node_id);
+    if (id !== null) counts.set(id, (counts.get(id) ?? 0) + 1);
+  }
+  const byFn = new Map<string, ProfileFunction>();
+  let total = 0;
+  for (const node of nodes) {
+    const id = numberValue(node.id);
+    const hits = numberValue(node.hitCount) ?? (id !== null ? counts.get(id) ?? 0 : 0);
+    if (!hits) continue;
+    const frame = asRecord(node.callFrame) ?? node;
+    const name = stringValue(frame.functionName) || "(anonymous)";
+    total += hits;
+    const file = [stringValue(frame.url), numberValue(frame.lineNumber) !== null ? Number(frame.lineNumber) + 1 : null].filter(Boolean).join(":");
+    const key = `${name}@${file}`;
+    const entry = byFn.get(key) ?? { name, file, selfSamples: 0, selfPct: 0 };
+    entry.selfSamples += hits;
+    byFn.set(key, entry);
+  }
+  if (total === 0) return null;
+  const functions = [...byFn.values()]
+    .map((f) => ({ ...f, selfPct: (f.selfSamples / total) * 100 }))
+    .sort((a, b) => b.selfSamples - a.selfSamples);
+  return { totalSamples: total, functions };
+}
+
+function ProfileFunctions({ summary }: { summary: ProfileSummary | null }) {
+  if (!summary) {
     return (
-      <SectionCard title="Stack Trace">
-        <pre className="sidebar-scroll max-h-[560px] overflow-auto rounded-xl bg-[var(--bg)] p-4 font-[family-name:var(--mono)] text-[12px] leading-relaxed text-[var(--text)]">
-          {value}
-        </pre>
-      </SectionCard>
+      <Panel title="Hot functions">
+        <EmptyNote>This profile did not include call-frame data the console can read. Profiles in V8 cpuprofile format (nodes, samples) show a function breakdown here.</EmptyNote>
+      </Panel>
     );
   }
-  const frames = arrayValue(value).map(asRecord).filter((frame): frame is JsonRecord => frame !== null);
-  if (frames.length === 0) return <StructuredDataSection title="Stack Trace" data={value} />;
-
-  const renderCompactFrame = (frame: JsonRecord) => (
-    <div className="flex min-w-0 items-center justify-between gap-3 border-b border-[var(--border)] px-4 py-3 last:border-0">
-      <div className="flex items-center gap-2.5 min-w-0">
-        <span className="font-[family-name:var(--mono)] text-[12.5px] font-semibold text-[var(--brand)]">
-          {normalize(pick(frame, ["function", "functionName", "function_name"])) || "anonymous"}
-        </span>
-        <span className="min-w-0 flex-1 truncate font-[family-name:var(--mono)] text-[11.5px] text-[var(--text3)]">
-          {normalize(pick(frame, ["filename", "file", "module"]))}
-        </span>
-      </div>
-      <span className="font-[family-name:var(--mono)] text-[11px] text-[var(--text3)]">
-        Line {normalize(pick(frame, ["lineno", "lineNumber", "line_number"]))}
-      </span>
-    </div>
-  );
-
+  const top = summary.functions.slice(0, 20);
+  const max = Math.max(1, ...top.map((f) => f.selfPct));
   return (
-    <SectionCard title="Stack Trace">
-      <div className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--bg2)]/60">
-        {frames.length > 100 ? (
-          <VirtualList
-            items={frames}
-            rowHeight={48}
-            height={520}
-            getKey={(frame, index) => stringValue(pick(frame, ["filename", "file"])) ?? `frame-${index}`}
-            renderRow={renderCompactFrame}
-          />
-        ) : (
-          frames.map((frame, index) => (
-            <div key={`${normalize(pick(frame, ["filename", "file"]))}-${index}`} className="border-b border-[var(--border)] last:border-0">
-              <div className="flex items-center justify-between gap-3 px-4 py-3">
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <span className="font-[family-name:var(--mono)] text-[12.5px] font-semibold text-[var(--brand)]">
-                    {normalize(pick(frame, ["function", "functionName", "function_name"])) || "anonymous"}
-                  </span>
-                  <span className="min-w-0 flex-1 truncate font-[family-name:var(--mono)] text-[11.5px] text-[var(--text3)]">
-                    {normalize(pick(frame, ["filename", "file", "module"]))}
-                  </span>
-                </div>
-                <span className="font-[family-name:var(--mono)] text-[11px] text-[var(--text3)]">
-                  {normalize(pick(frame, ["lineno", "lineNumber", "line_number"]))}:{normalize(pick(frame, ["colno", "columnNumber", "column_number"]))}
-                </span>
-              </div>
-            </div>
-          ))
-        )}
+    <Panel title="Hot functions" description={`Self time across ${summary.totalSamples.toLocaleString()} samples. Idle and GC frames are listed as the runtime reports them.`} flush>
+      <div className="grid grid-cols-[minmax(0,1fr)_200px_72px] gap-4 border-b border-[var(--border)] px-5 py-2.5 text-[12px] font-medium text-[var(--text3)]">
+        <span>Function</span><span>Self time</span><span className="text-right">Samples</span>
       </div>
-    </SectionCard>
-  );
-}
-
-function ResourceSpecificSections({ resource, entity, detail }: { resource: DetailResource; entity: JsonRecord; detail: ObservabilityEventDetail }) {
-  const attributes = asRecord(detail.attributes);
-  const metadata = asRecord(detail.metadata);
-  const payload = asRecord(detail.payload);
-  const context = { ...metadata, ...attributes, ...payload, ...entity };
-
-  if (resource === "errors") {
-    const stack = pick(context, ["stack", "stacktrace", "stackTrace"]);
-    const breadcrumbs = arrayValue(pick(context, ["breadcrumbs"]));
-    return (
-      <div className="flex flex-col gap-6">
-        <SectionCard title="Exception Details">
-          <FieldGrid fields={RESOURCE_FIELDS.errors.slice(0, 9)} entity={entity} columns={2} />
-        </SectionCard>
-        <StackTraceSection value={stack} />
-        {breadcrumbs.length > 0 ? (
-          <SectionCard title="Breadcrumbs Timeline">
-            <div className="relative ml-2 border-l border-[var(--border2)] pl-5 space-y-3">
-              {breadcrumbs.map((item, index) => {
-                const record = asRecord(item);
-                return (
-                  <div key={index} className="relative pb-3 last:pb-0">
-                    <span className="absolute -left-[25px] top-1.5 size-2.5 rounded-full bg-[var(--red)]" />
-                    <div className="text-[13px] font-medium text-[var(--text)]">{normalize(pick(record, ["message", "name", "category"]))}</div>
-                    <div className="mt-1 font-[family-name:var(--mono)] text-[11px] text-[var(--text3)]">{normalize(pick(record, ["timestamp", "occurredAt"]))}</div>
-                  </div>
-                );
-              })}
-            </div>
-          </SectionCard>
-        ) : (
-          <EmptyState title="No Breadcrumbs" description="No breadcrumb timeline was recorded for this error." />
-        )}
-      </div>
-    );
-  }
-
-  if (resource === "requests") {
-    return (
-      <div className="flex flex-col gap-6">
-        <SectionCard title="HTTP Transaction">
-          <FieldGrid fields={RESOURCE_FIELDS.requests.slice(0, 5)} entity={entity} columns={2} />
-        </SectionCard>
-        <SectionCard title="Client & Device Context">
-          <FieldGrid fields={RESOURCE_FIELDS.requests.slice(9)} entity={entity} columns={3} />
-        </SectionCard>
-      </div>
-    );
-  }
-
-  if (resource === "traces") {
-    return (
-      <div className="flex flex-col gap-6">
-        <SectionCard title="Trace Overview">
-          <FieldGrid fields={RESOURCE_FIELDS.traces} entity={entity} columns={3} />
-        </SectionCard>
-        <SpanTreePanel detail={detail} />
-      </div>
-    );
-  }
-
-  if (resource === "spans") {
-    return (
-      <div className="flex flex-col gap-6">
-        <SectionCard title="Span Attributes">
-          <FieldGrid fields={RESOURCE_FIELDS.spans} entity={entity} columns={3} />
-        </SectionCard>
-        <SpanTreePanel detail={detail} />
-      </div>
-    );
-  }
-
-  if (resource === "logs") {
-    const logLevel = stringValue(pick(entity, ["level", "severity"])) ?? "info";
-    const logMsg = stringValue(pick(entity, ["message", "msg"])) ?? "No message text attached.";
-    const isErr = logLevel.toLowerCase() === "error" || logLevel.toLowerCase() === "fatal";
-
-    return (
-      <div className="flex flex-col gap-6">
-        {/* Log Hero Card */}
-        <div className={`rounded-2xl border p-6 shadow-xs ${isErr ? "border-[var(--red)]/30 bg-[var(--red-bg)]/30" : "border-[var(--border)] bg-[var(--bg1)]"}`}>
-          <div className="flex items-center justify-between gap-3 border-b border-[var(--border)] pb-3">
-            <div className="flex items-center gap-2">
-              <Terminal className="size-4 text-[var(--brand)]" />
-              <span className="font-[family-name:var(--mono)] text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--text2)]">
-                Log Message
-              </span>
-            </div>
-            <span className={`rounded-md px-2.5 py-0.5 font-[family-name:var(--mono)] text-[11px] font-semibold uppercase ${isErr ? "bg-[var(--red)] text-[var(--red-fg)]" : "bg-[var(--bg2)] text-[var(--text)]"}`}>
-              {logLevel}
+      <ol className="divide-y divide-[var(--border)]">
+        {top.map((f) => (
+          <li key={`${f.name}@${f.file}`} className="grid grid-cols-[minmax(0,1fr)_200px_72px] items-center gap-4 px-5 py-2">
+            <span className="min-w-0">
+              <span className="block truncate font-[family-name:var(--mono)] text-[12px] text-[var(--text)]">{f.name}</span>
+              {f.file && <span className="block truncate font-[family-name:var(--mono)] text-[11px] text-[var(--text3)]" title={f.file}>{f.file}</span>}
             </span>
-          </div>
-          <div className="mt-4 whitespace-pre-wrap break-words font-[family-name:var(--mono)] text-[14px] leading-relaxed text-[var(--text)] font-medium">
-            {logMsg}
-          </div>
-        </div>
-
-        <SectionCard title="Log Telemetry Context">
-          <FieldGrid fields={RESOURCE_FIELDS.logs} entity={entity} columns={3} />
-        </SectionCard>
-      </div>
-    );
-  }
-
-  if (resource === "metrics") {
-    return (
-      <div className="flex flex-col gap-6">
-        <SectionCard title="Metric Statistics">
-          <FieldGrid fields={RESOURCE_FIELDS.metrics} entity={entity} columns={3} />
-        </SectionCard>
-      </div>
-    );
-  }
-
-  if (resource === "profiles") {
-    return (
-      <div className="flex flex-col gap-6">
-        <SectionCard title="Profile Summary">
-          <FieldGrid fields={RESOURCE_FIELDS.profiles} entity={entity} columns={3} />
-        </SectionCard>
-        <ProfileSamples detail={detail} />
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex flex-col gap-6">
-      <SectionCard title="Cron Execution Details">
-        <FieldGrid fields={RESOURCE_FIELDS.crons} entity={entity} columns={3} />
-      </SectionCard>
-      <CronTimeline entity={entity} />
-    </div>
-  );
-}
-
-function ProfileSamples({ detail }: { detail: ObservabilityEventDetail }) {
-  const data = asRecord(detail.payload) ?? asRecord(detail.attributes) ?? {};
-  const profile = asRecord(pick(data, ["profile"]));
-  const samples = arrayValue(pick(profile, ["samples"]));
-  const nodes = arrayValue(pick(profile, ["nodes"]));
-  if (samples.length === 0 && nodes.length === 0) {
-    return <EmptyState title="No Profile Samples" description="The profile event returned no sample or node data." />;
-  }
-  const sampleRows = samples.map(asRecord).filter((sample): sample is JsonRecord => sample !== null);
-  return (
-    <SectionCard title="Profile Telemetry Statistics">
-      <div className="grid gap-4 sm:grid-cols-3">
-        <div className="rounded-xl border border-[var(--border)] bg-[var(--bg)] p-4">
-          <div className="font-[family-name:var(--mono)] text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[var(--text3)]">Samples</div>
-          <div className="mt-1 font-[family-name:var(--mono)] text-[20px] font-semibold text-[var(--text)]">{samples.length.toLocaleString()}</div>
-        </div>
-        <div className="rounded-xl border border-[var(--border)] bg-[var(--bg)] p-4">
-          <div className="font-[family-name:var(--mono)] text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[var(--text3)]">Nodes</div>
-          <div className="mt-1 font-[family-name:var(--mono)] text-[20px] font-semibold text-[var(--text)]">{nodes.length.toLocaleString()}</div>
-        </div>
-        <div className="rounded-xl border border-[var(--border)] bg-[var(--bg)] p-4">
-          <div className="font-[family-name:var(--mono)] text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[var(--text3)]">Flamegraph</div>
-          <div className="mt-1 text-[13px] font-medium text-[var(--text2)]">{nodes.length > 0 ? "Node telemetry recorded" : "Unavailable"}</div>
-        </div>
-      </div>
-      {sampleRows.length > 0 && (
-        <div className="mt-4 overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--bg2)]/60">
-          {sampleRows.length > 100 ? (
-            <VirtualList
-              items={sampleRows}
-              rowHeight={42}
-              height={360}
-              getKey={(sample, index) => `${normalize(pick(sample, ["timestamp"]))}-${index}`}
-              renderRow={(sample) => (
-                <div className="flex items-center gap-3 border-b border-[var(--border)] px-4 py-2.5 last:border-0 font-[family-name:var(--mono)] text-[11.5px] text-[var(--text2)]">
-                  <span>{normalize(pick(sample, ["timestamp"]))}</span>
-                  <span className="ml-auto">node {normalize(pick(sample, ["nodeId", "node_id"]))}</span>
-                </div>
-              )}
-            />
-          ) : (
-            sampleRows.map((sample, index) => (
-              <div key={index} className="flex items-center gap-3 border-b border-[var(--border)] px-4 py-2.5 last:border-0 font-[family-name:var(--mono)] text-[11.5px] text-[var(--text2)]">
-                <span>{normalize(pick(sample, ["timestamp"]))}</span>
-                <span className="ml-auto">node {normalize(pick(sample, ["nodeId", "node_id"]))}</span>
-              </div>
-            ))
-          )}
-        </div>
-      )}
-    </SectionCard>
-  );
-}
-
-function CronTimeline({ entity }: { entity: JsonRecord }) {
-  const points = [
-    ["Started", pick(entity, ["startedAt", "started_at"])],
-    ["Occurred", pick(entity, ["occurredAt", "occurred_at", "timestamp"])],
-    ["Finished", pick(entity, ["finishedAt", "finished_at"])],
-  ] as const;
-  const visible = points.filter(([, value]) => hasValue(value));
-  if (visible.length === 0) return <EmptyState title="No Execution Timeline" description="Started, occurred, and finished timestamps were not returned." />;
-
-  return (
-    <SectionCard title="Execution Timeline">
-      <div className="flex flex-col gap-4">
-        {visible.map(([label, value], index) => (
-          <div key={label} className="flex items-center gap-3.5">
-            <div className="flex size-8 items-center justify-center rounded-xl bg-[var(--green-bg)] text-[var(--green)]">
-              <span className="size-2 rounded-full bg-current" />
-            </div>
-            <div>
-              <div className="text-[13px] font-semibold text-[var(--text)]">{label}</div>
-              <div className="font-[family-name:var(--mono)] text-[12px] text-[var(--text3)]">{normalize(value)}</div>
-            </div>
-            {index < visible.length - 1 && <div className="ml-[-30px] mt-10 h-4 border-l border-[var(--border2)]" />}
-          </div>
+            <span className="flex items-center gap-2">
+              <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-[var(--bg3)]" aria-hidden="true">
+                <span className={cn("block h-full rounded-full", f.selfPct >= 20 ? "bg-[var(--amber)]" : "bg-[var(--text2)]")} style={{ width: `${(f.selfPct / max) * 100}%` }} />
+              </span>
+              <span className="w-12 text-right font-[family-name:var(--mono)] text-[12px] tabular-nums text-[var(--text)]">{f.selfPct.toFixed(1)}%</span>
+            </span>
+            <span className="text-right font-[family-name:var(--mono)] text-[12px] tabular-nums text-[var(--text2)]">{f.selfSamples.toLocaleString()}</span>
+          </li>
         ))}
-      </div>
-    </SectionCard>
+      </ol>
+    </Panel>
   );
 }
+
+// ── Crons: execution + monitor history ──────────────────────
+
+function CronExecution({ entity, detail }: { entity: JsonRecord; detail: ObservabilityEventDetail }) {
+  const started = pick(entity, ["startedAt", "started_at"]);
+  const finished = pick(entity, ["finishedAt", "finished_at"]);
+  const occurred = pick(entity, ["occurredAt", "occurred_at"]);
+  const timeline = detail.timeline ?? [];
+  const bars: HistogramBar[] = timeline.map((b, i) => {
+    const start = new Date(b.bucket).getTime();
+    const next = timeline[i + 1] ? new Date(timeline[i + 1].bucket).getTime() : start + 3_600_000;
+    return { start, end: next, count: Number(b.count) || 0, errorCount: Number(b.errorCount) || 0 };
+  });
+  return (
+    <>
+      <Panel title="Execution" description="When the job started, reported in, and finished.">
+        <ol className="grid gap-4 sm:grid-cols-3">
+          {[["Started", started], ["Checked in", occurred], ["Finished", finished]].map(([label, value]) => (
+            <li key={label as string} className="flex flex-col gap-1 border-t border-[var(--border)] pt-3">
+              <span className="text-[12px] text-[var(--text3)]">{label as string}</span>
+              <span className="font-[family-name:var(--mono)] text-[13px] text-[var(--text)]">{hasValue(value) ? formatAbsoluteTime(value as string) : "—"}</span>
+            </li>
+          ))}
+        </ol>
+      </Panel>
+      {bars.length > 1 && (
+        <Panel title="Monitor history" description="Every check-in from this monitor around this run, failures in red." flush>
+          <SignalHistogram bars={bars} countLabel="Check-ins" errorLabel="Failed" height={72} className="px-5 pb-4 pt-4" />
+        </Panel>
+      )}
+    </>
+  );
+}
+
+// ── Page ────────────────────────────────────────────────────
+
+type TabId = "details" | "related" | "ai";
 
 export default function ResourceDetailPage({ resource, id }: { resource: DetailResource; id: string }) {
-  const navigate = useNavigate();
   const activeOrgId = useOrgStore((state) => state.activeOrgId);
-  const { data: detail, isLoading, error } = useObservabilityDetail<ObservabilityEventDetail>(resource, decodeURIComponent(id));
-  const entity = detail?.entity ?? null;
-  const canonicalId = detailId(detail, decodeURIComponent(id));
-  const config = DETAIL_CONFIG[resource];
-  const title = `${config.singular} Details`;
-
-  const tabs = useMemo(() => (detail && entity ? [
-    {
-      id: "investigation",
-      label: "Overview & Telemetry",
-      content: (
-        <div className="flex flex-col gap-6">
-          <ResourceSpecificSections resource={resource} entity={entity} detail={detail} />
-          <TimelinePanel timeline={detail.timeline} />
-          <StructuredSections detail={detail} />
-        </div>
-      ),
-    },
-    {
-      id: "related",
-      label: `Correlated (${Object.values(detail.counts ?? {}).reduce((sum, count) => sum + (typeof count === "number" ? count : 0), 0)})`,
-      content: <RelatedResources detail={detail} />,
-    },
-    {
-      id: "ai",
-      label: "AI Investigation",
-      content: (
-        <AIInvestigationPanel
-          detail={detail}
-          resource={resource}
-          id={canonicalId}
-          ask={(intent: AIIntent, question?: string) => {
-            if (!activeOrgId) throw new Error("No active organization.");
-            return askObservabilityEvent(activeOrgId, resource, canonicalId, intent, question);
-          }}
-        />
-      ),
-    },
-  ] : []), [activeOrgId, canonicalId, detail, entity, resource]);
+  const decoded = decodeURIComponent(id);
+  const { data: detail, isLoading, error } = useObservabilityDetail<ObservabilityEventDetail>(resource, decoded);
+  const [tab, setTab] = useState<TabId>("details");
+  const [showRaw, setShowRaw] = useState(false);
+  const list = LIST[resource];
 
   if (isLoading) {
     return (
-      <div className="mx-auto flex w-full max-w-[1360px] flex-col gap-6 px-6 py-8">
+      <DetailPage>
         <DetailSkeleton />
-      </div>
+      </DetailPage>
     );
   }
 
-  if (error) {
-    return (
-      <div className="mx-auto flex w-full max-w-[1360px] flex-col gap-6 px-6 py-8">
-        <Button variant="ghost" className="w-fit gap-2" onClick={() => navigate(-1)}>
-          <ArrowLeft className="size-4" />
-          Back
-        </Button>
-        <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg1)] px-8 py-16 text-center shadow-xs">
-          <EmptyState title={`${title} Failed`} description="The event could not be loaded from the observability detail endpoint." />
-        </div>
-      </div>
-    );
+  const entity = detail?.entity ?? null;
+  if (error || !detail || !entity) {
+    return <DetailNotFound kind={list.noun} id={decoded} backTo={list.to} backLabel={list.label} />;
   }
 
-  if (!detail || !entity) {
-    return (
-      <div className="mx-auto flex w-full max-w-[1360px] flex-col gap-6 px-6 py-8">
-        <Button variant="ghost" className="w-fit gap-2" onClick={() => navigate(-1)}>
-          <ArrowLeft className="size-4" />
-          Back
-        </Button>
-        <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg1)] px-8 py-16 text-center shadow-xs">
-          <EmptyState title={`${title} Not Found`} description={`No ${resource} event was returned for this ID.`} />
-        </div>
-      </div>
-    );
-  }
+  const canonicalId = detailId(detail, decoded);
+  const publicId = s(entity, ["publicId", "public_id"]) ?? canonicalId;
+  const profile = resource === "profiles" ? summarizeProfile(detail) : null;
+  const relatedCount = Object.values(detail.counts ?? {}).reduce((sum, c) => sum + (typeof c === "number" ? c : 0), 0) + (detail.trace ? 1 : 0);
+  const traceRef = s(entity, ["tracePublicId", "traceId", "trace_id"]) ?? stringValue(detail.correlations?.traceId);
+  const level = s(entity, ["level", "severity"]);
+  const status = s(entity, ["status", "spanStatus", "span_status"]);
+  const message = s(entity, ["message", "msg"]);
+  const statement = s(entity, ["dbStatement", "db_statement"]);
+  const metricName = resource === "metrics" ? s(entity, ["metricName", "metric_name"]) : null;
+
+  const crumbs = [
+    { label: "Observe", to: "/observability" },
+    { label: list.label, to: list.to },
+    ...(resource === "spans" && traceRef ? [{ label: traceRef, to: `/observability/traces/${encodeURIComponent(traceRef)}`, mono: true }] : []),
+    { label: publicId, mono: true },
+  ];
 
   return (
-    <main className="mx-auto flex w-full max-w-[1360px] flex-col gap-8 px-6 py-6 pb-28">
-      <Button variant="ghost" className="w-fit gap-2" onClick={() => navigate(-1)}>
-        <ArrowLeft className="size-4" />
-        Back to {config.label.toLowerCase()}
-      </Button>
-      <InvestigationHeader resource={resource} entity={entity} detail={detail} id={canonicalId} />
-      <OverviewCards entity={entity} />
-      <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_340px]">
-        <article className="min-w-0">
-          <Tabs tabs={tabs} />
-        </article>
-        <MetadataSidebar resource={resource} entity={entity} detail={detail} />
+    <DetailPage>
+      <DetailHeader
+        crumbs={crumbs}
+        copyId={publicId}
+        title={<span className={cn(resource !== "profiles" && "font-[family-name:var(--mono)] text-[20px] tracking-[-0.01em]")}>{titleFor(resource, entity)}</span>}
+        badges={
+          <>
+            {level && <SeverityBadge severity={level} />}
+            {status && resource !== "logs" && <StatusBadge status={status.toLowerCase()} />}
+            {s(entity, ["environment"]) && <EnvironmentBadge environment={s(entity, ["environment"])} />}
+            {traceRef && resource !== "spans" && (
+              <Link to={`/observability/traces/${encodeURIComponent(traceRef)}`} className={TRACE_CHIP}>
+                <GitBranch className="size-3" aria-hidden="true" />
+                {traceRef.length > 16 ? `${traceRef.slice(0, 16)}…` : traceRef}
+              </Link>
+            )}
+          </>
+        }
+        meta={[
+          hasValue(pick(entity, ["occurredAt", "occurred_at"])) ? { label: "At", value: <span title={formatAbsoluteTime(pick(entity, ["occurredAt"]) as string)}><Timestamp value={pick(entity, ["occurredAt", "occurred_at"]) as string} /></span> } : null,
+          s(entity, ["service"]) ? { label: "Service", value: s(entity, ["service"]) } : null,
+          s(entity, ["endpoint", "route"]) ? { label: "Endpoint", value: s(entity, ["endpoint", "route"]), mono: true } : null,
+          s(entity, ["release"]) ? { label: "Release", value: s(entity, ["release"]), mono: true } : null,
+        ]}
+        actions={
+          <>
+            {metricName && (
+              <Link to={`/observability/metrics?metric=${encodeURIComponent(metricName)}`} className={ghostButtonClass}>
+                <BarChart3 className="size-3.5" aria-hidden="true" />
+                Chart this metric
+              </Link>
+            )}
+            {resource === "spans" && traceRef && (
+              <Link to={`/observability/traces/${encodeURIComponent(traceRef)}`} className={ghostButtonClass}>
+                <GitBranch className="size-3.5" aria-hidden="true" />
+                Open waterfall
+              </Link>
+            )}
+          </>
+        }
+      />
+
+      <ReadoutBand cells={cellsFor(resource, entity, profile)} />
+
+      <SectionTabs<TabId>
+        label={`${list.noun} sections`}
+        items={[
+          { id: "details", label: "Details" },
+          { id: "related", label: "Related", count: relatedCount },
+          { id: "ai", label: "AI analysis" },
+        ]}
+        activeId={tab}
+        onSelect={setTab}
+      />
+
+      <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
+        <div className="flex min-w-0 flex-col gap-4">
+          {tab === "details" && (
+            <>
+              {resource === "logs" && (
+                <Panel title="Message" action={message ? <button type="button" className={ghostButtonClass} onClick={() => navigator.clipboard?.writeText(message)}>Copy</button> : undefined}>
+                  {message ? <CodeBlock className="whitespace-pre-wrap break-words">{message}</CodeBlock> : <EmptyNote>This log line has no message text.</EmptyNote>}
+                </Panel>
+              )}
+              {resource === "spans" && statement && (
+                <Panel title="Statement" description={s(entity, ["dbSystem", "db_system"]) ?? undefined}>
+                  <CodeBlock className="whitespace-pre-wrap break-words">{statement}</CodeBlock>
+                </Panel>
+              )}
+              {resource === "profiles" && <ProfileFunctions summary={profile} />}
+              {resource === "crons" && <CronExecution entity={entity} detail={detail} />}
+
+              <Panel title={resource === "metrics" ? "Values" : "Fields"}>
+                {FieldList({ fields: RESOURCE_FIELDS[resource].filter((f) => f.label !== "Message"), entity, columns: 2 }) ?? <EmptyNote>No structured fields were recorded.</EmptyNote>}
+              </Panel>
+
+              <AttributesPanels detail={detail} />
+
+              <Panel
+                title="Raw event"
+                description="The payload as stored, for debugging SDK output."
+                action={<button type="button" className={ghostButtonClass} onClick={() => setShowRaw((v) => !v)} aria-expanded={showRaw}>{showRaw ? "Hide" : "Show"}</button>}
+              >
+                {showRaw ? (
+                  <CodeBlock maxHeight={520}>{JSON.stringify(detail.payload ?? entity, null, 2)}</CodeBlock>
+                ) : (
+                  <p className="text-[12px] text-[var(--text3)]">Hidden. Show it to inspect every field the SDK sent.</p>
+                )}
+              </Panel>
+            </>
+          )}
+          {tab === "related" && <RelatedResources detail={detail} />}
+          {tab === "ai" && (
+            <AIInvestigationPanel
+              detail={detail}
+              resource={resource}
+              id={canonicalId}
+              ask={(intent: AIIntent, question?: string) => {
+                if (!activeOrgId) throw new Error("No active organization.");
+                return askObservabilityEvent(activeOrgId, resource, canonicalId, intent, question);
+              }}
+            />
+          )}
+        </div>
+
+        <aside className="flex min-w-0 flex-col gap-4 xl:sticky xl:top-14">
+          <Panel title="Context">
+            {FieldList({ fields: COMMON_FIELDS.filter((f) => !["Organization", "Project", "Tenant", "API key", "Ingested", "Created"].includes(f.label)), entity, columns: 1 }) ?? <EmptyNote>No context fields.</EmptyNote>}
+          </Panel>
+          <CorrelationList entity={entity} detail={detail} />
+        </aside>
       </div>
-    </main>
+    </DetailPage>
   );
 }
 
 export { DETAIL_RESOURCES };
-

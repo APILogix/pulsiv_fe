@@ -58,7 +58,7 @@ export function ResolveDialog({
                 key={st}
                 type="button"
                 onClick={() => setStatus(st)}
-                className={`rounded-lg border px-3 py-2 text-center capitalize transition-colors cursor-pointer ${
+                className={`rounded-[var(--radius)] border px-3 py-2 text-center capitalize transition-colors cursor-pointer ${
                   status === st
                     ? "border-[var(--brand)] bg-[var(--brand)]/10 text-[var(--brand)] font-semibold"
                     : "border-[var(--border)] bg-[var(--bg2)] text-[var(--text2)] hover:text-[var(--text)]"
@@ -77,7 +77,7 @@ export function ResolveDialog({
             onChange={(e) => setReason(e.target.value)}
             placeholder="Add note for audit log (e.g. Fixed null check in PR #412)..."
             rows={3}
-            className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg2)] p-2.5 text-[13px] text-[var(--text)] outline-none resize-none"
+            className="w-full rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg2)] p-2.5 text-[13px] text-[var(--text)] outline-none resize-none"
           />
         </div>
 
@@ -85,7 +85,7 @@ export function ResolveDialog({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg border border-[var(--border)] px-4 py-2 text-[13px] font-medium text-[var(--text2)] hover:bg-[var(--bg2)] cursor-pointer"
+            className="rounded-[var(--radius)] border border-[var(--border)] px-4 py-2 text-[13px] font-medium text-[var(--text2)] hover:bg-[var(--bg2)] cursor-pointer"
           >
             Cancel
           </button>
@@ -93,7 +93,7 @@ export function ResolveDialog({
             type="button"
             disabled={isSubmitting}
             onClick={handleConfirm}
-            className="rounded-lg bg-[var(--green)] px-4 py-2 text-[13px] font-medium text-[var(--bg)] hover:opacity-90 cursor-pointer"
+            className="rounded-[var(--radius)] bg-[var(--green)] px-4 py-2 text-[13px] font-medium text-[var(--bg)] hover:opacity-90 cursor-pointer"
           >
             Confirm Status Update
           </button>

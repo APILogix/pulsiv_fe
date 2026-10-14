@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 import { useAuthStore } from '@/modules/auth/store/auth.store';
 import { tokenService } from '@/modules/auth/services/token.service';
 import { useBootstrapStore } from '@/modules/bootstrap';
+import { queryClient } from '@/lib/query-client';
 
 /**
  * 401 → refresh → retry interceptor.
@@ -58,6 +59,8 @@ function handleRefreshSessionExpired(): void {
   tokenService.clearTokens();
   useAuthStore.getState().clearAuth();
   useBootstrapStore.getState().clearBootstrap();
+  // Drop every cached response: the next session may be a different user.
+  queryClient.clear();
 
   if (!signedOutToastShown) {
     signedOutToastShown = true;

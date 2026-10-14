@@ -104,7 +104,8 @@ export function RemoteConfigPanel({
   const updateKillswitch = (key: keyof SdkConfigState['killswitches'], value: boolean) =>
     setDraft((prev) => ({ ...prev, killswitches: { ...prev.killswitches, [key]: value } }));
 
-  const updateSampling = (key: keyof SdkConfigState['sampling'], value: number) =>
+  // Rates are numbers; `routes` carries the per-route override map.
+  const updateSampling = <K extends keyof SdkConfigState['sampling']>(key: K, value: SdkConfigState['sampling'][K]) =>
     setDraft((prev) => ({ ...prev, sampling: { ...prev.sampling, [key]: value } }));
 
   const updateInstrumentation = (key: keyof SdkConfigState['instrumentation'], value: boolean) =>

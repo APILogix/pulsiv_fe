@@ -1,7 +1,3 @@
-@import "@fontsource/jetbrains-mono/400.css";
-@import "@fontsource/jetbrains-mono/500.css";
-@import "@fontsource/jetbrains-mono/600.css";
-
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "../styles/toast.css";
@@ -56,7 +52,8 @@
 
   /* type & radii (§4, §6) */
   --display:'Space Grotesk',sans-serif;
-  --sans:'Inter',sans-serif;
+  /* Inter first; the platform UI face renders instantly while it loads. */
+  --sans:'Inter',ui-sans-serif,system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
   --mono:'JetBrains Mono',monospace;
   --radius:6px; --radius-lg:10px;
 
@@ -247,14 +244,10 @@
     radial-gradient(900px 500px at -10% 110%, var(--ai-bg) 0%, transparent 55%);
 }
 
-/* AI insight panel glow — top-right inner radial, never a gradient border. */
+/* AI insight panel: retired its radial glow (design/dashboards/DESIGN.md).
+   The class stays as a hook so existing markup keeps compiling. */
 .ai-glow::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  border-radius: inherit;
-  background: radial-gradient(circle at 100% 0%, var(--ai-bg) 0%, transparent 45%);
+  content: none;
 }
 
 /* Landing / auth hero glow. */
@@ -395,13 +388,19 @@
 .rail-item::after {
   content: attr(data-title);
   position: absolute;
-  left: 56px;
-  background: var(--bg1);
-  border: 1px solid var(--border);
-  padding: 6px 10px;
-  border-radius: var(--radius-sm);
+  /* Clear the rail's own gutter so the label sits just past its border. */
+  left: calc(100% + (var(--rail-width) - 40px) / 2 + 6px);
+  top: 50%;
+  translate: 0 -50%;
+  background: var(--bg2);
+  color: var(--text);
+  border: 1px solid var(--border2);
+  padding: 5px 9px;
+  border-radius: var(--radius);
+  font-family: var(--sans);
   font-size: 12px;
   font-weight: 500;
+  line-height: 16px;
   white-space: nowrap;
   opacity: 0;
   transform: translateX(-4px);
@@ -486,18 +485,13 @@ body.flyout-overlay-active #main-content {
    All values derive from theme tokens so both themes stay in sync.
    ══════════════════════════════════════════════════════════════ */
 
-/* Faint blueprint grid — used behind page heroes and auth panels. */
+/* Atmospheric vignette — clean product depth without synthetic grid-lines */
 .pulse-grid::before {
   content: "";
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background-image:
-    linear-gradient(to right, color-mix(in srgb, var(--border) 55%, transparent) 1px, transparent 1px),
-    linear-gradient(to bottom, color-mix(in srgb, var(--border) 55%, transparent) 1px, transparent 1px);
-  background-size: 32px 32px;
-  mask-image: radial-gradient(120% 100% at 0% 0%, #000 0%, transparent 72%);
-  -webkit-mask-image: radial-gradient(120% 100% at 0% 0%, #000 0%, transparent 72%);
+  background: radial-gradient(ellipse 80% 60% at 50% -10%, color-mix(in srgb, var(--brand-bg) 50%, transparent), transparent 70%);
 }
 
 /* Brand → AI aurora wash. Sits above the grid, below content. */
@@ -516,14 +510,13 @@ body.flyout-overlay-active #main-content {
   box-shadow: inset 0 1px 0 0 color-mix(in srgb, var(--text) 6%, transparent);
 }
 
-/* Hoverable card lift. Transform-only so it stays on the compositor. */
+/* Hoverable card: a border step only. No lift, no brand shadow
+   (design/dashboards/DESIGN.md). */
 .pulse-lift {
-  transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+  transition: border-color 160ms ease;
 }
 .pulse-lift:hover {
-  transform: translateY(-2px);
   border-color: var(--border2);
-  box-shadow: 0 10px 30px -12px color-mix(in srgb, var(--brand) 28%, transparent);
 }
 
 /* Scanning sweep for "live"/streaming affordances. */
@@ -551,11 +544,11 @@ body.flyout-overlay-active #main-content {
 
 /* Staggered entrance for grids of cards. */
 @keyframes pulse-rise {
-  0% { opacity: 0; transform: translateY(6px); }
+  0% { opacity: 0.96; transform: translateY(4px); }
   100% { opacity: 1; transform: translateY(0); }
 }
 .pulse-rise {
-  animation: pulse-rise 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: pulse-rise 240ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -575,12 +568,8 @@ body.flyout-overlay-active #main-content {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background-image:
-    linear-gradient(to right, color-mix(in srgb, var(--border) 42%, transparent) 1px, transparent 1px),
-    linear-gradient(to bottom, color-mix(in srgb, var(--border) 42%, transparent) 1px, transparent 1px),
-    radial-gradient(60% 70% at 50% 35%, var(--brand-bg), transparent 72%);
-  background-size: 40px 40px, 40px 40px, 100% 100%;
-  mask-image: linear-gradient(to bottom, #000, transparent 88%);
+  background: radial-gradient(ellipse 70% 60% at 50% 35%, color-mix(in srgb, var(--brand-bg) 65%, transparent), transparent 75%);
+  mask-image: linear-gradient(to bottom, #000, transparent 90%);
 }
 
 @keyframes app-loader-scan {
@@ -615,6 +604,64 @@ body.flyout-overlay-active #main-content {
   animation:
     skeleton-rise 160ms cubic-bezier(0.16, 1, 0.3, 1) both,
     loading-skeleton-shift 1.2s ease-in-out infinite;
+  /* Shimmer runs on the shared phase set by RouteSkeleton (0 elsewhere). */
+  animation-delay: 0ms, var(--sk-phase, 0ms);
+}
+
+/* A route skeleton that takes over from another one on screen does not
+   replay the entrance: the handoff must be invisible (RouteSkeleton.tsx). */
+[data-sk-continue] .skeleton-block {
+  animation-name: none, loading-skeleton-shift;
+}
+[data-sk-continue] .skeleton-rise {
+  animation: none;
+}
+
+/* ── One skeleton per page (shared/motion/LoadingBoundary.tsx) ────────────
+   The route skeleton is an overlay that outlives the Suspense fallback; the
+   mounted page waits underneath, hidden and inert, until its first data
+   settles. Then the skeleton fades out slightly faster than the page fades
+   in, so the two overlap and read as the data filling in. */
+.route-skeleton-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+.route-skeleton-overlay[data-state="leaving"] {
+  animation: route-skeleton-out 140ms cubic-bezier(0.4, 0, 1, 1) both;
+}
+@keyframes route-skeleton-out {
+  to { opacity: 0; }
+}
+
+.route-gate[data-gate="hidden"] {
+  opacity: 0;
+}
+/* Nothing in a hidden page animates: saves the work and lets its own
+   entrance animations (chart draw, card rise) play once it is visible. */
+.route-gate[data-gate="hidden"] *,
+.route-gate[data-gate="hidden"] *::before,
+.route-gate[data-gate="hidden"] *::after {
+  animation-play-state: paused !important;
+}
+.route-gate[data-gate="revealing"] {
+  animation: route-gate-in 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.route-gate[data-gate="entering"] {
+  animation: route-gate-enter 160ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes route-gate-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes route-gate-enter {
+  from { opacity: 0; transform: translateY(3px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes route-gate-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 
@@ -640,6 +687,26 @@ body.flyout-overlay-active #main-content {
 }
 @keyframes auth-transition-fill { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 
+/* Auth instrument panel: the trace is drawn once, then the alert lands. The
+   single authored motion moment of the auth shell. */
+.auth-trace-line {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 0;
+  animation: auth-trace-draw 1.8s cubic-bezier(0.16, 1, 0.3, 1) 120ms both;
+}
+.auth-trace-mark {
+  animation: auth-trace-mark 420ms cubic-bezier(0.16, 1, 0.3, 1) 1.25s both;
+}
+@keyframes auth-trace-draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+@keyframes auth-trace-mark { from { opacity: 0; } to { opacity: 1; } }
+/* Register panel: the setup rail draws down stop by stop (delays set inline).
+   The SSO panel reuses auth-trace-line/mark with inline timing. */
+.auth-rail-segment {
+  transform-origin: top;
+  animation: auth-rail-draw 520ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes auth-rail-draw { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+
 @media (prefers-reduced-motion: reduce) {
   .app-loader-scan,
   .loading-skeleton,
@@ -648,7 +715,10 @@ body.flyout-overlay-active #main-content {
   .metric-loader-trace,
   .metric-loader-node,
   .metric-loader-bar,
-  .auth-transition-progress {
+  .auth-transition-progress,
+  .auth-trace-line,
+  .auth-trace-mark,
+  .auth-rail-segment {
     animation: none !important;
   }
   /* `skeleton-rise` uses fill-mode `both`; without the animation the element
@@ -657,6 +727,11 @@ body.flyout-overlay-active #main-content {
   .skeleton-rise {
     opacity: 1 !important;
     transform: none !important;
+  }
+  /* Skeleton → content stays a crossfade, with no movement. */
+  .route-gate[data-gate="revealing"],
+  .route-gate[data-gate="entering"] {
+    animation-name: route-gate-fade;
   }
 }
 
@@ -686,3 +761,47 @@ body.flyout-overlay-active #main-content {
   scrollbar-gutter: stable;
 }
 
+
+/* ══════════════════════════════════════════════════════════════
+   Dashboards — departure-board ledger (design/dashboards/DESIGN.md).
+   The one authored motion: a reading's characters flip into place when the
+   value first appears or changes, like a split-flap cell. Every character is
+   visible at rest; reduced motion shows the value with no flip.
+   ══════════════════════════════════════════════════════════════ */
+.board ::selection {
+  background: color-mix(in oklab, var(--text) 22%, transparent);
+  color: var(--text);
+}
+.board {
+  scrollbar-color: var(--border2) transparent;
+  font-variant-numeric: tabular-nums;
+}
+.board-flap {
+  display: inline-block;
+  transform-origin: 50% 60%;
+  animation: board-flap 380ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: calc(var(--flap-i, 0) * 22ms);
+}
+@keyframes board-flap {
+  0% { transform: perspective(240px) rotateX(-78deg); opacity: 0.35; filter: blur(0.6px); }
+  60% { opacity: 1; filter: none; }
+  100% { transform: perspective(240px) rotateX(0deg); opacity: 1; }
+}
+/* Row expansion unfolds downward from the row it belongs to. */
+.board-unfold {
+  animation: board-unfold 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes board-unfold {
+  from { clip-path: inset(0 0 100% 0); opacity: 0.4; }
+  to { clip-path: inset(0 0 0 0); opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .board-flap,
+  .board-unfold {
+    animation: none !important;
+    transform: none !important;
+    opacity: 1 !important;
+    clip-path: none !important;
+    filter: none !important;
+  }
+}

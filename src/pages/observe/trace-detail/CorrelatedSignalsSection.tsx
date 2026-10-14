@@ -29,8 +29,8 @@ export function CorrelatedSignalsSection({ detail }: { detail: TraceDetailData }
   return (
     <SectionShell
       id={sectionDomId("correlations")}
-      title="Correlated Telemetry Signals"
-      description="Linked HTTP requests, exception events, application logs, and authenticated session attributes."
+      title="Related"
+      description="The request, errors, and logs that share this trace."
     >
       <div className="flex flex-col gap-6">
         {/* Core identity & context */}
@@ -52,9 +52,9 @@ export function CorrelatedSignalsSection({ detail }: { detail: TraceDetailData }
 
         {/* Linked Request Card */}
         {requestId && (
-          <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-[var(--blue)]/30 bg-[var(--blue-bg)]/20 p-5">
+          <div className="flex flex-wrap items-center justify-between gap-4 rounded-[var(--radius)] border border-[var(--blue)]/30 bg-[var(--blue-bg)]/20 p-5">
             <div className="flex items-center gap-3.5">
-              <div className="flex size-9 items-center justify-center rounded-xl bg-[var(--blue-bg)] text-[var(--blue)]">
+              <div className="flex size-9 items-center justify-center rounded-[var(--radius)] bg-[var(--blue-bg)] text-[var(--blue)]">
                 <Globe className="size-4.5" />
               </div>
               <div>
@@ -71,7 +71,7 @@ export function CorrelatedSignalsSection({ detail }: { detail: TraceDetailData }
               <CopyButton value={requestId} label="Copy ID" className="h-9 px-3 text-[12px]" />
               <Link
                 to={`/observability/requests/${encodeURIComponent(requestId)}`}
-                className="inline-flex h-9 items-center gap-2 rounded-xl bg-[var(--blue)] px-4 text-[13px] font-semibold text-[var(--blue-fg)] hover:opacity-90 transition-opacity cursor-pointer"
+                className="inline-flex h-9 items-center gap-2 rounded-[var(--radius)] bg-[var(--blue)] px-4 text-[13px] font-semibold text-[var(--bg)] hover:opacity-90 transition-opacity cursor-pointer"
               >
                 View Request
                 <ExternalLink className="size-3.5" />
@@ -83,7 +83,7 @@ export function CorrelatedSignalsSection({ detail }: { detail: TraceDetailData }
         {/* Related Errors & Logs Cards */}
         <div className="grid gap-6 lg:grid-cols-2">
           {/* Related Errors */}
-          <div className="rounded-xl border border-[var(--border)] bg-[var(--bg)] p-5">
+          <div className="rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg)] p-5">
             <div className="flex items-center justify-between border-b border-[var(--border)] pb-3">
               <div className="flex items-center gap-2 text-[13px] font-semibold text-[var(--red)]">
                 <AlertTriangle className="size-4" />
@@ -103,7 +103,7 @@ export function CorrelatedSignalsSection({ detail }: { detail: TraceDetailData }
                     {err.publicId && (
                       <Link
                         to={`/observability/errors/${encodeURIComponent(err.publicId)}`}
-                        className="font-[family-name:var(--mono)] text-[12px] text-[var(--brand)] hover:underline shrink-0"
+                        className="font-[family-name:var(--mono)] text-[12px] text-[var(--text)] underline-offset-2 hover:underline shrink-0"
                       >
                         {err.publicId}
                       </Link>
@@ -115,7 +115,7 @@ export function CorrelatedSignalsSection({ detail }: { detail: TraceDetailData }
           </div>
 
           {/* Related Logs */}
-          <div className="rounded-xl border border-[var(--border)] bg-[var(--bg)] p-5">
+          <div className="rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg)] p-5">
             <div className="flex items-center justify-between border-b border-[var(--border)] pb-3">
               <div className="flex items-center gap-2 text-[13px] font-semibold text-[var(--text)]">
                 <FileText className="size-4 text-[var(--blue)]" />
@@ -132,7 +132,7 @@ export function CorrelatedSignalsSection({ detail }: { detail: TraceDetailData }
                     <span className="truncate font-[family-name:var(--mono)] text-[var(--text2)] pr-3" title={log.message || log.name}>
                       {log.message || log.name}
                     </span>
-                    <span className="rounded bg-[var(--bg2)] px-1.5 py-0.5 font-[family-name:var(--mono)] text-[10.5px] uppercase text-[var(--text3)] shrink-0">
+                    <span className="rounded bg-[var(--bg2)] px-1.5 py-0.5 font-[family-name:var(--mono)] text-[10.5px] text-[var(--text3)] shrink-0">
                       {log.level || "info"}
                     </span>
                   </div>

@@ -1,0 +1,1 @@
+function s(r){const e=r?.trim();return e&&e.split(/\s+/).slice(0,2).map(t=>t[0]?.toUpperCase()).join("")||"?"}function c(r){const e=["#0f766e","#2563eb","#7c3aed","#be123c","#b45309","#047857"],t=r||"user";let o=0;for(let n=0;n<t.length;n+=1)o=o*31+t.charCodeAt(n)>>>0;return e[o%e.length]}export{c,s as i};

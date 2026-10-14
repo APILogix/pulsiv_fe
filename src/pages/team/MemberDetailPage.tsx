@@ -1,45 +1,32 @@
 import { useActionState, useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router";
+import { Link, useNavigate, useParams } from "react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  Activity,
-  KeyRound,
-  ScrollText,
-  ShieldAlert,
-  ShieldCheck,
-  UserCog,
-  UserMinus,
-  UserX,
-} from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
+import { Button as UiButton } from "@/components/ui/button";
 import { orgApi } from "@/modules/organizations/api/org.api";
+import { useAdminHref } from "@/modules/organizations/components/org-page";
 import { orgQueryKeys, useOrganizations } from "@/modules/organizations/hooks/useOrganizations";
-import type { OrgRole } from "@/modules/organizations/types/org.types";
+import type { MemberStatus, OrgRole } from "@/modules/organizations/types/org.types";
 import {
-  Breadcrumbs,
-  EmptyPanel,
-  KeyValueGrid,
-  PageHero,
-  Panel,
-  Pill,
-  Row,
-  RowStack,
-  SettingRow,
-  type Crumb,
-  type KeyValueItem,
-} from "@/shared/ui/pulse";
-import { Button, DetailSkeleton, Field, SubmitButton, Timestamp, inputClass } from "@/shared/observe";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  ProjectPageHeader,
+  SETTINGS_COLUMN,
+  Sheet,
+  SheetEmpty,
+  SheetError,
+  SheetLoading,
+  WorkspacePage,
+} from "@/modules/projects/components/project-page";
+import { ConfirmDialog, DialogField, apiErrorMessage } from "@/modules/projects/components/project-ui";
+import { Timestamp } from "@/shared/observe";
+import { Panel, Pill, Row, RowStack, SettingRow, fieldInputClass, type SurfaceTone } from "@/shared/ui/pulse";
+
+// ── Vocabulary ───────────────────────────────────────────────
 
 type ConfirmKind = "remove" | "suspend" | "reactivate";
+
+type RoleState = { ok: boolean; error: string | null };
 
 const ROLE_OPTIONS: OrgRole[] = ["viewer", "member", "developer", "billing", "security", "admin", "owner"];
 
@@ -53,41 +40,52 @@ const ROLE_SCOPES: Record<string, string> = {
   viewer: "Read-only access to dashboards and reports.",
 };
 
-const CONFIRM_COPY: Record<ConfirmKind, { title: string; description: string; confirm: string }> = {
+const CONFIRM_COPY: Record<ConfirmKind, { title: string; description: string; confirm: string; destructive: boolean }> = {
   remove: {
     title: "Remove member",
     description: "The member loses access to every project and resource in this organization immediately.",
     confirm: "Remove member",
+    destructive: true,
   },
   suspend: {
     title: "Suspend member",
     description: "Sessions are revoked and sign-in is blocked until the member is reactivated.",
     confirm: "Suspend member",
+    destructive: true,
   },
   reactivate: {
     title: "Reactivate member",
     description: "The member regains access with their current role.",
     confirm: "Reactivate member",
+    destructive: false,
   },
 };
 
-function roleTone(role: string) {
-  if (role === "owner") return "brand" as const;
-  if (role === "admin" || role === "security") return "violet" as const;
-  if (role === "billing") return "blue" as const;
-  return "neutral" as const;
-}
+const MEMBER_STATUS_TONE: Record<MemberStatus, SurfaceTone> = {
+  active: "green",
+  invited: "amber",
+  suspended: "red",
+  locked: "red",
+  removed: "neutral",
+};
+
+const PAGE_DESCRIPTION = "Role, sign-in state, and access for this membership.";
+
+const capitalize = (value: string) => value.charAt(0).toUpperCase() + value.slice(1);
+
+// ── Page ─────────────────────────────────────────────────────
 
 export default function MemberDetailPage() {
   const { userId = "" } = useParams();
   const navigate = useNavigate();
+  const href = useAdminHref();
   const queryClient = useQueryClient();
   const { activeOrgId } = useOrganizations();
   const [confirmKind, setConfirmKind] = useState<ConfirmKind | null>(null);
 
   const memberQueryKey = orgQueryKeys.detail(activeOrgId!).concat(["member", userId]);
 
-  const { data: member, isLoading } = useQuery({
+  const { data: member, isLoading, isError, error, refetch } = useQuery({
     queryKey: memberQueryKey,
     queryFn: () => orgApi.getMember(activeOrgId!, userId),
     enabled: !!activeOrgId && !!userId,
@@ -105,9 +103,9 @@ export default function MemberDetailPage() {
       toast.success("Member removed");
       setConfirmKind(null);
       if (activeOrgId) queryClient.invalidateQueries({ queryKey: orgQueryKeys.members(activeOrgId) });
-      navigate("/admin/team");
+      navigate(href("team"));
     },
-    onError: (err: any) => toast.error(err.response?.data?.message || "Failed to remove member"),
+    onError: (err: unknown) => toast.error(apiErrorMessage(err, "Failed to remove member")),
   });
 
   const suspendMutation = useMutation({
@@ -117,7 +115,7 @@ export default function MemberDetailPage() {
       setConfirmKind(null);
       invalidateMember();
     },
-    onError: (err: any) => toast.error(err.response?.data?.message || "Failed to suspend member"),
+    onError: (err: unknown) => toast.error(apiErrorMessage(err, "Failed to suspend member")),
   });
 
   const reactivateMutation = useMutation({
@@ -127,18 +125,18 @@ export default function MemberDetailPage() {
       setConfirmKind(null);
       invalidateMember();
     },
-    onError: (err: any) => toast.error(err.response?.data?.message || "Failed to reactivate member"),
+    onError: (err: unknown) => toast.error(apiErrorMessage(err, "Failed to reactivate member")),
   });
 
-  const [roleState, saveRole] = useActionState(
-    async (_prev: { ok: boolean; error: string | null }, formData: FormData) => {
+  const [roleState, saveRole, rolePending] = useActionState(
+    async (_prev: RoleState, formData: FormData): Promise<RoleState> => {
       if (!activeOrgId) return { ok: false, error: "No active organization" };
       try {
         await orgApi.updateMemberRole(activeOrgId, userId, String(formData.get("role") || ""));
         invalidateMember();
         return { ok: true, error: null };
-      } catch (err: any) {
-        return { ok: false, error: err.response?.data?.message || "Failed to update role" };
+      } catch (err: unknown) {
+        return { ok: false, error: apiErrorMessage(err, "Failed to update role") };
       }
     },
     { ok: false, error: null },
@@ -149,55 +147,58 @@ export default function MemberDetailPage() {
     if (roleState.error) toast.error(roleState.error);
   }, [roleState]);
 
-  if (isLoading) return <DetailSkeleton />;
+  const teamCrumb = { label: "Team", to: href("team") };
+
+  const backToTeam = (
+    <UiButton asChild variant="outline" size="lg">
+      <Link to={href("team")}>Back to team</Link>
+    </UiButton>
+  );
+
+  if (isLoading) {
+    return (
+      <WorkspacePage>
+        <ProjectPageHeader crumbs={[teamCrumb, { label: "Member" }]} title="Member" description={PAGE_DESCRIPTION} />
+        <Sheet label="Member record" className={SETTINGS_COLUMN}>
+          <SheetLoading rows={4} label="Loading member" />
+        </Sheet>
+      </WorkspacePage>
+    );
+  }
+
+  if (isError && !member) {
+    return (
+      <WorkspacePage>
+        <ProjectPageHeader crumbs={[teamCrumb, { label: "Member" }]} title="Member" description={PAGE_DESCRIPTION} />
+        <Sheet label="Member record" className={SETTINGS_COLUMN}>
+          <SheetError
+            title="Could not load this member"
+            message={apiErrorMessage(error, "The member request failed. Try again, or go back to the team list.")}
+            onRetry={() => void refetch()}
+          />
+        </Sheet>
+      </WorkspacePage>
+    );
+  }
 
   if (!member) {
-    const crumbs: Crumb[] = [{ label: "Organization", to: "/admin" }, { label: "Team", to: "/admin/team" }, { label: "Member" }];
     return (
-      <div className="flex flex-col gap-6">
-        <Breadcrumbs items={crumbs} />
-        <EmptyPanel
-          icon={UserX}
-          title="Member not found"
-          description="This member is no longer part of the organization, or the link is out of date."
-          action={<Button variant="secondary" onClick={() => navigate("/admin/team")}>Back to team</Button>}
-        />
-      </div>
+      <WorkspacePage>
+        <ProjectPageHeader crumbs={[teamCrumb, { label: "Member" }]} title="Member not found" />
+        <Sheet label="Member record" className={SETTINGS_COLUMN}>
+          <SheetEmpty
+            title="This member is not in the organization"
+            description="They may have been removed, or the link is out of date. The team list shows everyone with access."
+            action={backToTeam}
+          />
+        </Sheet>
+      </WorkspacePage>
     );
   }
 
   const displayName = member.fullName || member.email || "Unknown user";
-  const initial = displayName.charAt(0).toUpperCase();
-  const breadcrumbs: Crumb[] = [
-    { label: "Organization", to: "/admin" },
-    { label: "Team", to: "/admin/team" },
-    { label: displayName },
-  ];
-
-  const identity: KeyValueItem[] = [
-    { label: "Email", value: member.email || "—" },
-    {
-      label: "User ID",
-      value: <span className="font-[family-name:var(--mono)] text-[12px] text-[var(--text2)]">{member.userId}</span>,
-    },
-    { label: "Joined", value: member.joinedAt ? <Timestamp value={member.joinedAt} /> : "—" },
-    { label: "Last active", value: member.lastActiveAt ? <Timestamp value={member.lastActiveAt} /> : "—" },
-    {
-      label: "MFA",
-      value: member.mfaEnabled ? <Pill tone="green" dot>Enabled</Pill> : <Pill tone="amber" dot>Not enabled</Pill>,
-    },
-    {
-      label: "Membership",
-      value:
-        member.status === "active" ? (
-          <Pill tone="green" dot>Active</Pill>
-        ) : member.status === "suspended" ? (
-          <Pill tone="red" dot>Suspended</Pill>
-        ) : (
-          <Pill tone="amber" dot>{member.status}</Pill>
-        ),
-    },
-  ];
+  const isOwner = member.role === "owner";
+  const isSuspended = member.status === "suspended";
 
   const confirm = confirmKind ? CONFIRM_COPY[confirmKind] : null;
   const confirmPending =
@@ -214,160 +215,146 @@ export default function MemberDetailPage() {
   };
 
   return (
-    <div className="flex flex-col gap-6">
-      <PageHero
-        eyebrow="Team member"
+    <WorkspacePage>
+      <ProjectPageHeader
+        crumbs={[teamCrumb, { label: displayName }]}
         title={displayName}
-        description={member.email}
-        breadcrumbs={breadcrumbs}
-        actions={
+        badges={
           <>
-            <Pill tone={roleTone(member.role)}>{member.role}</Pill>
-            <Button variant="secondary" onClick={() => navigate("/admin/team")}>
-              Back to team
-            </Button>
+            <Pill>{member.role}</Pill>
+            <Pill tone={MEMBER_STATUS_TONE[member.status] ?? "neutral"} dot={member.status === "active"}>
+              {member.status}
+            </Pill>
           </>
         }
-      >
-        <div className="flex items-center gap-4 rounded-[12px] border border-[var(--border)] bg-[var(--bg1)] px-4 py-3">
-          <span
-            aria-hidden="true"
-            className="inline-flex size-11 shrink-0 items-center justify-center rounded-full bg-[var(--brand-bg)] font-[family-name:var(--display)] text-[17px] font-semibold text-[var(--brand)] ring-1 ring-inset ring-[var(--brand)]/25"
-          >
-            {initial}
-          </span>
-          <div className="min-w-0">
-            <p className="truncate text-[13.5px] font-medium text-[var(--text)]">{displayName}</p>
-            <p className="truncate font-[family-name:var(--mono)] text-[12px] text-[var(--text3)]">{member.userId}</p>
-          </div>
-        </div>
-      </PageHero>
+        description={PAGE_DESCRIPTION}
+        meta={[
+          { label: "Email", value: member.email || "—" },
+          { label: "Joined", value: member.joinedAt ? <Timestamp value={member.joinedAt} /> : "—" },
+          {
+            label: "Last active",
+            value: member.lastActiveAt ? <Timestamp value={member.lastActiveAt} /> : "No activity recorded",
+          },
+          { label: "MFA", value: member.mfaEnabled ? "Enabled" : "Not enabled" },
+          { label: "User ID", value: member.userId, mono: true },
+        ]}
+        actions={
+          <UiButton asChild variant="outline" size="lg">
+            <Link to={href("audit-logs")}>Open audit logs</Link>
+          </UiButton>
+        }
+      />
 
-      <Panel title="Identity" description="Directory record for this membership." icon={UserCog} tone="brand">
-        <KeyValueGrid items={identity} columns={3} />
-      </Panel>
-
-      <Panel
-        title="Role and permissions"
-        description="The role determines which organization surfaces this member can reach."
-        icon={KeyRound}
-        tone="violet"
-        bodyClassName="p-0"
-      >
-        <RowStack>
-          <Row>
-            <SettingRow label={`Current role: ${member.role}`} description={ROLE_SCOPES[member.role] ?? "Scoped organization access."}>
-              <Pill tone={roleTone(member.role)}>{member.role}</Pill>
-            </SettingRow>
-          </Row>
-          <Row>
-            <form action={saveRole} className="flex flex-wrap items-end gap-3">
-              <div className="min-w-[220px] flex-1">
-                <Field label="Assign role" hint="Owner transfer is handled from organization settings.">
-                  <select name="role" defaultValue={member.role} className={inputClass}>
+      <div className={`${SETTINGS_COLUMN} flex flex-col gap-6`}>
+        <Panel
+          title="Role and permissions"
+          description="The role determines which organization surfaces this member can reach."
+          bodyClassName="p-0"
+          footer={
+            <UiButton type="submit" form="member-role-form" size="lg" disabled={rolePending}>
+              {rolePending && <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />}
+              Update role
+            </UiButton>
+          }
+        >
+          <RowStack>
+            <Row>
+              <SettingRow
+                label="Current role"
+                description={ROLE_SCOPES[member.role] ?? "Scoped organization access."}
+              >
+                <Pill>{member.role}</Pill>
+              </SettingRow>
+            </Row>
+            <Row>
+              {/* Keyed on the role so the select resets after a save. */}
+              <form key={member.role} id="member-role-form" action={saveRole}>
+                <DialogField
+                  label="Assign role"
+                  name="member-role"
+                  hint="Owner transfer is handled from organization settings."
+                >
+                  <select id="member-role" name="role" defaultValue={member.role} className={fieldInputClass}>
                     {ROLE_OPTIONS.map((role) => (
                       <option key={role} value={role}>
-                        {role.charAt(0).toUpperCase() + role.slice(1)}
+                        {capitalize(role)}
                       </option>
                     ))}
                   </select>
-                </Field>
-              </div>
-              <SubmitButton>Update role</SubmitButton>
-            </form>
-          </Row>
-        </RowStack>
-      </Panel>
+                </DialogField>
+              </form>
+            </Row>
+          </RowStack>
+        </Panel>
 
-      <Panel title="Sessions and activity" description="Signals recorded for this member." icon={Activity} tone="ai">
-        <RowStack className="-my-1">
-          <Row className="px-0">
-            <SettingRow label="Last active" description="Most recent authenticated request seen for this member.">
-              {member.lastActiveAt ? (
-                <Timestamp value={member.lastActiveAt} />
-              ) : (
-                <span className="text-[13px] text-[var(--text3)]">No activity recorded</span>
-              )}
-            </SettingRow>
-          </Row>
-          <Row className="px-0">
-            <SettingRow
-              label="Action history"
-              description="Per-member action history lives in the organization audit log."
-            >
-              <Button variant="secondary" onClick={() => navigate("/admin/audit-logs")}>
-                <ScrollText className="size-4" aria-hidden="true" />
-                Open audit logs
-              </Button>
-            </SettingRow>
-          </Row>
-        </RowStack>
-      </Panel>
-
-      <Panel
-        title="Danger zone"
-        description="Access changes take effect immediately and are recorded in the audit log."
-        icon={ShieldAlert}
-        danger
-        bodyClassName="p-0"
-      >
-        <RowStack>
-          <Row>
-            <SettingRow
-              label={member.status === "suspended" ? "Reactivate member" : "Suspend member"}
-              description={
-                member.status === "suspended"
-                  ? "Restore sign-in for this member with their current role."
-                  : "Revoke sessions and block sign-in without removing the membership."
-              }
-            >
-              <Button
-                variant="danger"
-                disabled={member.role === "owner" || suspendMutation.isPending || reactivateMutation.isPending}
-                onClick={() => setConfirmKind(member.status === "suspended" ? "reactivate" : "suspend")}
+        <Panel
+          title="Danger zone"
+          description="Access changes take effect immediately and are recorded in the audit log."
+          danger
+          bodyClassName="p-0"
+        >
+          <RowStack>
+            <Row>
+              <SettingRow
+                label={isSuspended ? "Reactivate member" : "Suspend member"}
+                description={
+                  isOwner
+                    ? "Not available for the owner."
+                    : isSuspended
+                      ? "Restore sign-in for this member with their current role."
+                      : "Revoke sessions and block sign-in without removing the membership."
+                }
               >
-                {member.status === "suspended" ? (
-                  <ShieldCheck className="size-4" aria-hidden="true" />
-                ) : (
-                  <UserX className="size-4" aria-hidden="true" />
-                )}
-                {member.status === "suspended" ? "Reactivate" : "Suspend"}
-              </Button>
-            </SettingRow>
-          </Row>
-          <Row>
-            <SettingRow
-              label="Remove from organization"
-              description="Deletes the membership. Project data created by this member is retained."
-            >
-              <Button variant="danger" disabled={member.role === "owner" || removeMutation.isPending} onClick={() => setConfirmKind("remove")}>
-                <UserMinus className="size-4" aria-hidden="true" />
-                Remove
-              </Button>
-            </SettingRow>
-          </Row>
-        </RowStack>
-      </Panel>
+                <UiButton
+                  variant={isSuspended ? "outline" : "destructive"}
+                  size="lg"
+                  disabled={isOwner || suspendMutation.isPending || reactivateMutation.isPending}
+                  onClick={() => setConfirmKind(isSuspended ? "reactivate" : "suspend")}
+                >
+                  {isSuspended ? "Reactivate member" : "Suspend member"}
+                </UiButton>
+              </SettingRow>
+            </Row>
+            <Row>
+              <SettingRow
+                label="Remove from organization"
+                description={
+                  isOwner
+                    ? "Not available for the owner."
+                    : "Deletes the membership. Project data created by this member is retained."
+                }
+              >
+                <UiButton
+                  variant="destructive"
+                  size="lg"
+                  disabled={isOwner || removeMutation.isPending}
+                  onClick={() => setConfirmKind("remove")}
+                >
+                  Remove member
+                </UiButton>
+              </SettingRow>
+            </Row>
+          </RowStack>
+        </Panel>
+      </div>
 
-      <Dialog open={confirmKind !== null} onOpenChange={(open) => { if (!open) setConfirmKind(null); }}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>{confirm?.title}</DialogTitle>
-            <DialogDescription>{confirm?.description}</DialogDescription>
-          </DialogHeader>
-          <p className="text-[13px] text-[var(--text2)]">
-            {displayName} <span className="font-[family-name:var(--mono)] text-[12px] text-[var(--text3)]">({member.userId})</span>
-          </p>
-          <DialogFooter>
-            <Button variant="secondary" onClick={() => setConfirmKind(null)}>
-              Cancel
-            </Button>
-            <Button variant="danger" disabled={confirmPending} onClick={runConfirm}>
-              {confirm?.confirm}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
+      <ConfirmDialog
+        open={confirmKind !== null}
+        onOpenChange={(open) => {
+          if (!open) setConfirmKind(null);
+        }}
+        title={confirm?.title ?? ""}
+        description={confirm?.description}
+        confirmLabel={confirm?.confirm}
+        destructive={confirm?.destructive ?? true}
+        pending={confirmPending}
+        onConfirm={runConfirm}
+      >
+        <p className="text-[13px] text-[var(--text2)]">
+          {displayName}{" "}
+          <span className="font-[family-name:var(--mono)] text-[12px] text-[var(--text3)]">({member.userId})</span>
+        </p>
+      </ConfirmDialog>
+    </WorkspacePage>
   );
 }

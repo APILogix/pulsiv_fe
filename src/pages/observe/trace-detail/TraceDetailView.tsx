@@ -1,7 +1,5 @@
-import React, { useState, useCallback, useMemo } from "react";
-import { useNavigate } from "react-router";
-import { ArrowLeft, GitBranch } from "lucide-react";
-import { Button, DetailSkeleton } from "@/shared/observe";
+import { useState, useCallback, useMemo } from "react";
+import { DetailNotFound, DetailPage, DetailSkeleton, StatusBadge } from "@/shared/observe";
 import { useOrgStore } from "@/modules/organizations/store/org.store";
 import {
   useObservabilityDetail,
@@ -20,7 +18,6 @@ import { SectionShell, KeyValueGrid } from "./ui";
 import type { TraceDetailData } from "./types";
 
 export function TraceDetailView({ traceId }: { traceId: string }) {
-  const navigate = useNavigate();
   const activeOrgId = useOrgStore((state) => state.activeOrgId);
   const id = decodeURIComponent(traceId);
 
@@ -64,42 +61,20 @@ export function TraceDetailView({ traceId }: { traceId: string }) {
 
   if (isLoading) {
     return (
-      <div className="mx-auto flex w-full max-w-[1360px] flex-col gap-6 px-6 py-8">
+      <DetailPage>
         <DetailSkeleton />
-      </div>
+      </DetailPage>
     );
   }
 
   if (error || !data?.entity) {
-    return (
-      <div className="mx-auto flex w-full max-w-[1360px] flex-col gap-6 px-6 py-8">
-        <Button variant="ghost" className="w-fit gap-2" onClick={() => navigate("/observability/traces")}>
-          <ArrowLeft className="size-4" />
-          Back to Traces
-        </Button>
-        <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg1)] px-8 py-16 text-center shadow-xs">
-          <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-[var(--bg2)] text-[var(--text3)]">
-            <GitBranch className="size-6" />
-          </div>
-          <h1 className="mt-4 text-[18px] font-semibold text-[var(--text)]">Trace Not Found</h1>
-          <p className="mt-2 max-w-md mx-auto text-[13.5px] leading-relaxed text-[var(--text3)]">
-            Could not find trace record for ID: <code className="font-[family-name:var(--mono)] font-semibold text-[var(--text2)]">{id}</code>. Check the ID or return to the trace explorer.
-          </p>
-          <div className="mt-6">
-            <Button variant="primary" onClick={() => navigate("/observability/traces")}>
-              View All Traces
-            </Button>
-          </div>
-        </div>
-      </div>
-    );
+    return <DetailNotFound kind="Trace" id={id} backTo="/observability/traces" backLabel="Traces" />;
   }
-
   const aiResult = aiOverride !== undefined ? aiOverride : data.ai?.aiResponse;
   const totalDurationMs = data.entity?.totalDurationMs ?? data.entity?.durationMs ?? 0;
 
   return (
-    <div className="mx-auto flex w-full max-w-[1360px] flex-col gap-8 px-6 py-6 pb-28">
+    <DetailPage>
       {/* Sticky Header */}
       <StickyTraceHeader
         detail={data}
@@ -117,37 +92,37 @@ export function TraceDetailView({ traceId }: { traceId: string }) {
       />
 
       {/* Sticky Section Navigation */}
-      <SectionNavigation activeId={activeId} onSelect={scrollTo} />
+      <SectionNavigation activeId={activeId} onSelect={scrollTo} trailing={<span className="flex max-w-[360px] items-center gap-2 text-[12px]"><StatusBadge status={String(data.entity?.rootSpanStatus || data.entity?.status || "ok").toLowerCase()} /><span className="truncate font-[family-name:var(--mono)] text-[var(--text2)]">{data.entity?.rootSpanName || data.entity?.name}</span><span className="font-[family-name:var(--mono)] tabular-nums text-[var(--text3)]">{formatDurationMs(totalDurationMs)}</span></span>} />
 
       {/* Section Content */}
-      <div className="flex flex-col gap-8">
+      <div className="flex flex-col gap-4">
         {/* Overview Section */}
         <SectionShell
           id={sectionDomId("overview")}
-          title="Trace Overview & Topology"
-          description="High-level identity, root execution profile, and telemetry environment."
+          title="Overview"
+          description="Identity of the trace and where its time went."
         >
           <KeyValueGrid
-            columns={3}
+            columns={2}
             items={[
-              { label: "Root Span Operation", value: data.entity?.rootSpanName || data.entity?.name, mono: true },
+              { label: "Root operation", value: data.entity?.rootSpanName || data.entity?.name, mono: true },
               { label: "Trace ID", value: data.entity?.traceId, mono: true, copyable: true },
               { label: "Public ID", value: data.publicId || data.entity?.publicId, mono: true, copyable: true },
-              { label: "Internal Calculation Time", value: executionBreakdown ? `${formatDurationMs(executionBreakdown.internalComputeMs)} (${formatPercent(executionBreakdown.internalComputePercent)})` : "—", mono: true },
-              { label: "Database Calls Duration", value: executionBreakdown ? `${formatDurationMs(executionBreakdown.databaseMs)} (${executionBreakdown.databaseCount} ${executionBreakdown.databaseCount === 1 ? 'call' : 'calls'})` : "—", mono: true },
-              { label: "External HTTP Duration", value: executionBreakdown ? `${formatDurationMs(executionBreakdown.httpMs)} (${executionBreakdown.httpCount} ${executionBreakdown.httpCount === 1 ? 'call' : 'calls'})` : "0 ms", mono: true },
+              { label: "In-process time", value: executionBreakdown ? `${formatDurationMs(executionBreakdown.internalComputeMs)} (${formatPercent(executionBreakdown.internalComputePercent)})` : "—", mono: true },
+              { label: "Database time", value: executionBreakdown ? `${formatDurationMs(executionBreakdown.databaseMs)} (${executionBreakdown.databaseCount} ${executionBreakdown.databaseCount === 1 ? 'call' : 'calls'})` : "—", mono: true },
+              { label: "Outbound HTTP time", value: executionBreakdown ? `${formatDurationMs(executionBreakdown.httpMs)} (${executionBreakdown.httpCount} ${executionBreakdown.httpCount === 1 ? 'call' : 'calls'})` : "0 ms", mono: true },
               { label: "Environment", value: data.entity?.environment },
               { label: "Project", value: data.entity?.projectName || data.entity?.project },
-              { label: "Total Spans in Tree", value: flatList.length },
-              { label: "Origin Service", value: data.entity?.service || "—", copyable: true },
-              { label: "Release Version", value: data.entity?.release || "—", copyable: true },
-              { label: "Root Execution Status", value: (data.entity?.rootSpanStatus || data.entity?.status || "ok").toUpperCase(), mono: true },
+              { label: "Spans", value: flatList.length },
+              { label: "Service", value: data.entity?.service, copyable: true },
+              { label: "Release", value: data.entity?.release, copyable: true },
+              { label: "Root status", value: data.entity?.rootSpanStatus || data.entity?.status || "ok", mono: true },
             ]}
           />
         </SectionShell>
 
         {/* Visual Span Waterfall */}
-        <div id={sectionDomId("waterfall")} className="scroll-mt-36">
+        <div id={sectionDomId("waterfall")} className="scroll-mt-16">
           <SpanTreeWaterfall
             tree={tree}
             flatList={flatList}
@@ -173,6 +148,6 @@ export function TraceDetailView({ traceId }: { traceId: string }) {
         {/* Correlated Signals Section */}
         <CorrelatedSignalsSection detail={data} />
       </div>
-    </div>
+    </DetailPage>
   );
 }

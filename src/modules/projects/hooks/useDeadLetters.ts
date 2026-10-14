@@ -2,6 +2,20 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/infrastructure/api-client/axios";
 import { useOrgStore } from "@/modules/organizations/store/org.store";
 
+/** Mirrors `DeadLetterDto` in pulse/src/modules/projects/alerts/deliveries/delivery-log.service.ts. */
+export interface DeadLetter {
+  id: string;
+  /** Epoch milliseconds. */
+  timestamp: number;
+  /** Connector name, or the notification type when the connector is gone. */
+  routeName: string;
+  /** Connector provider, e.g. "slack" or "webhook". */
+  target: string;
+  reason: string;
+  /** Pre-formatted by the API, e.g. "2.4kb". */
+  payloadSize: string;
+}
+
 export const dlqKeys = {
   all: ["dead-letter-queue"] as const,
   lists: (projectId: string) => [...dlqKeys.all, "list", projectId] as const,
@@ -11,17 +25,11 @@ export const useDeadLetterQueue = (projectId: string) => {
   const activeOrgId = useOrgStore((state) => state.activeOrgId);
   return useQuery({
     queryKey: [...dlqKeys.lists(projectId), activeOrgId],
-    queryFn: async () => {
-      try {
-        const { data } = await apiClient.get(`/organizations/${activeOrgId}/projects/${projectId}/dead-letters`);
-        return data.data ?? [];
-      } catch (err) {
-        console.warn("Backend endpoint missing, using mock data for dead letter queue.");
-        return [
-          { id: "dlq_1", timestamp: Date.now() - 3600000, reason: "Connector webhook returned 500", payloadSize: "2.4kb", target: "webhook", routeName: "Production Criticals" },
-          { id: "dlq_2", timestamp: Date.now() - 86400000, reason: "Slack rate limit exceeded", payloadSize: "1.1kb", target: "slack", routeName: "High Latency Warnings" },
-        ];
-      }
+    // Failures surface as errors. The queue never falls back to sample rows,
+    // which would read as real failed notifications.
+    queryFn: async (): Promise<DeadLetter[]> => {
+      const { data } = await apiClient.get(`/organizations/${activeOrgId}/projects/${projectId}/dead-letters`);
+      return (data.data ?? []) as DeadLetter[];
     },
     enabled: !!activeOrgId && !!projectId,
   });

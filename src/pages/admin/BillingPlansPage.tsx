@@ -71,7 +71,7 @@ export default function BillingPlansPage() {
           return (
             <div 
               key={plan.id} 
-              className={`relative flex flex-col rounded-2xl border bg-[var(--bg1)] p-8 transition-all hover:-translate-y-1 hover:shadow-xl ${
+              className={`relative flex flex-col rounded-2xl border bg-[var(--bg1)] p-8 transition-[translate,box-shadow] duration-200 ease-out motion-reduce:hover:translate-y-0 hover:-translate-y-1 hover:shadow-xl ${
                 plan.popular 
                   ? "border-[var(--brand)] shadow-[0_0_20px_rgba(var(--brand-rgb),0.1)]" 
                   : "border-[var(--border)]"

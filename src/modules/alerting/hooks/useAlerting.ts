@@ -117,6 +117,7 @@ export function useOrganizationAlertPolicies(query: { limit?: number; offset?: n
     queryKey: alertingKeys.orgPolicies(activeOrgId, query),
     queryFn: () => orgPoliciesApi.list(activeOrgId!, query),
     enabled: !!activeOrgId,
+    placeholderData: (previous) => previous,
   });
 }
 
@@ -290,6 +291,7 @@ export function useAlertRules(query: RuleListQuery = {}) {
     queryKey: alertingKeys.rules(activeOrgId, query),
     queryFn: () => rulesApi.list(activeOrgId!, query),
     enabled: !!activeOrgId,
+    placeholderData: (previous) => previous,
   });
 }
 
@@ -486,6 +488,7 @@ export function useAlertEvents(query: EventListQuery = {}) {
     queryFn: () => eventsApi.list(activeOrgId!, query),
     enabled: !!activeOrgId,
     refetchInterval: LIVE_REFETCH_MS,
+    placeholderData: (previous) => previous,
   });
 }
 
@@ -559,6 +562,7 @@ export function useDeadLetters(query: DeadLetterListQuery = {}) {
     queryFn: () => deadLettersApi.list(activeOrgId!, query),
     enabled: !!activeOrgId,
     refetchInterval: LIVE_REFETCH_MS,
+    placeholderData: (previous) => previous,
   });
 }
 
@@ -586,6 +590,7 @@ export function useSilences(query: SilenceListQuery = {}) {
     queryKey: alertingKeys.silences(activeOrgId, query),
     queryFn: () => silencesApi.list(activeOrgId!, query),
     enabled: !!activeOrgId,
+    placeholderData: (previous) => previous,
   });
 }
 

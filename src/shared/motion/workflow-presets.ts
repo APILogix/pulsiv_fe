@@ -11,23 +11,31 @@ export interface WorkflowStepDef {
   label: string;
   /** Optional past-tense label shown once the step completes. */
   doneLabel?: string;
+  /** One quiet line of what the step sets up. Shown when the step is hovered. */
+  detail?: string;
+  /** Short name for tight layouts, e.g. the nodes of `CreationTransition`. */
+  short?: string;
+  /** Present-tense line shown while the step is in flight. */
+  activity?: string;
 }
 
+/** Mirrors CoreService.createOrganization: one transaction, in this order. */
 export const ORGANIZATION_WORKFLOW: readonly WorkflowStepDef[] = [
-  { id: "workspace", label: "Creating workspace", doneLabel: "Workspace created" },
-  { id: "resources", label: "Provisioning resources", doneLabel: "Resources provisioned" },
-  { id: "permissions", label: "Configuring permissions", doneLabel: "Permissions configured" },
-  { id: "keys", label: "Creating API keys", doneLabel: "API keys created" },
-  { id: "dashboard", label: "Preparing dashboard", doneLabel: "Dashboard ready" },
-  { id: "finalize", label: "Finalizing setup", doneLabel: "Setup complete" },
+  { id: "organization", label: "Workspace", short: "Workspace", activity: "Reserving your workspace URL", detail: "Name, workspace URL, and profile" },
+  { id: "owner", label: "Owner membership", short: "Owner", activity: "Adding you as the owner", detail: "You join as owner, with default settings" },
+  { id: "billing", label: "Trial subscription", short: "Plan", activity: "Starting your trial", detail: "Default plan and the first usage period" },
+  { id: "alerting", label: "Alerting workspace", short: "Alerting", activity: "Setting up alerting defaults", detail: "Default alerting configuration" },
+  { id: "audit", label: "Audit log", short: "Audit log", activity: "Opening the audit log", detail: "Every change from here on is recorded" },
 ] as const;
 
+/** Mirrors ProjectService.createProject: one transaction, in this order. */
 export const PROJECT_WORKFLOW: readonly WorkflowStepDef[] = [
-  { id: "project", label: "Creating project", doneLabel: "Project created" },
-  { id: "environment", label: "Generating environment", doneLabel: "Environment generated" },
-  { id: "sdk", label: "Creating SDK config", doneLabel: "SDK config created" },
-  { id: "monitoring", label: "Preparing monitoring", doneLabel: "Monitoring ready" },
-  { id: "key", label: "Generating API key", doneLabel: "API key generated" },
+  { id: "project", label: "Project details", short: "Details", activity: "Saving the project details", detail: "Name, slug, timezone, and tags" },
+  { id: "owner", label: "Owner and settings", short: "Settings", activity: "Applying default settings", detail: "Default retention, sampling, and privacy" },
+  { id: "environment", label: "Production environment", short: "Production", activity: "Creating the Production environment", detail: "The default environment for this project" },
+  { id: "sdk", label: "SDK configuration", short: "SDK config", activity: "Publishing the SDK configuration", detail: "The first revision, published to Production" },
+  { id: "key", label: "Ingestion key", short: "Ingestion key", activity: "Issuing an ingestion key", detail: "Stored as a hash; manage it under API keys" },
+  { id: "counters", label: "Usage and notifications", short: "Usage", activity: "Starting usage tracking", detail: "Usage counters and notification defaults" },
 ] as const;
 
 export const CONNECTOR_WORKFLOW: readonly WorkflowStepDef[] = [

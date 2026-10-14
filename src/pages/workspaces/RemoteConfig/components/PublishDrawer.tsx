@@ -1,7 +1,18 @@
-import { useState, useEffect } from 'react';
-import { AlertTriangle, ArrowRight, Rocket, ShieldAlert, X } from 'lucide-react';
+import { useId, useState } from 'react';
+import { AlertTriangle, ArrowRight, Loader2, ShieldAlert } from 'lucide-react';
+
+import {
+  Sheet as Drawer,
+  SheetContent as DrawerContent,
+  SheetDescription as DrawerDescription,
+  SheetHeader as DrawerHeader,
+  SheetTitle as DrawerTitle,
+} from '@/components/ui/sheet';
+import { Button as UiButton } from '@/components/ui/button';
+import { DialogField, dialogTextareaClass } from '@/modules/projects/components/project-ui';
+import { Notice } from '@/shared/ui/pulse';
 import { cn } from '@/lib/utils';
-import { Button } from '@/shared/observe';
+
 import { formatDiffValue, SECTION_LABELS, type DiffEntry } from '../mapping';
 import type { FieldError } from '../bounds';
 
@@ -27,138 +38,116 @@ export function PublishDrawer({
   currentRevision,
 }: PublishDrawerProps) {
   const [summary, setSummary] = useState('');
+  const summaryId = useId();
+  const changesId = useId();
   const hasErrors = errors.length > 0;
-  const grouped = groupBySection(diff);
-
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && open) onClose();
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [open, onClose]);
-
-  if (!open) return null;
+  const grouped = Object.entries(groupBySection(diff));
+  const nextRevision = currentRevision + 1;
+  const canPublish = !hasErrors && diff.length > 0 && !isSaving;
 
   return (
-    <div className="fixed inset-0 z-[100] flex justify-end bg-[var(--overlay)] animate-in fade-in duration-150">
-      <div className="flex h-full w-full max-w-[560px] flex-col border-l border-[var(--border)] bg-[var(--bg1)] shadow-[var(--shadow-modal)] animate-in slide-in-from-right duration-200">
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-[var(--border)] px-6 py-5">
-          <div className="flex items-center gap-3">
-            <span className="flex size-9 items-center justify-center rounded-[var(--radius)] bg-[var(--brand)] text-[var(--brand-fg)] shadow-xs">
-              <Rocket className="size-4.5" />
-            </span>
-            <div>
-              <h2 className="text-[16px] font-semibold text-[var(--text)] font-[family-name:var(--display)]">
-                Review & Publish Configuration
-              </h2>
-              <p className="text-[12px] text-[var(--text3)]">
-                Scope: <strong className="text-[var(--text)]">{environmentName}</strong> · will deploy as Revision #{currentRevision + 1}
-              </p>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close publish review"
-            className="rounded p-1 text-[var(--text3)] hover:text-[var(--text)] hover:bg-[var(--bg2)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--brand)] transition-colors"
-          >
-            <X className="size-5" />
-          </button>
-        </div>
+    <Drawer
+      open={open}
+      onOpenChange={(next) => {
+        if (!next) onClose();
+      }}
+    >
+      <DrawerContent className="gap-0 p-0 data-[side=right]:w-full data-[side=right]:sm:max-w-[560px]">
+        <DrawerHeader className="gap-1.5 border-b border-[var(--border)] px-5 py-4 pr-12">
+          <DrawerTitle className="text-[16px] font-semibold tracking-[-0.01em] text-[var(--text)]">Review and publish</DrawerTitle>
+          <DrawerDescription className="text-[12px] text-[var(--text2)]">
+            {environmentName} · publishes as revision{' '}
+            <span className="font-[family-name:var(--mono)] tabular-nums text-[var(--text)]">{nextRevision}</span>
+          </DrawerDescription>
+        </DrawerHeader>
 
-        {/* Scrollable Diff Body */}
-        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
+        <div className="sidebar-scroll flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto p-5">
           {hasErrors ? (
-            <div className="flex items-start gap-3 rounded-[var(--radius-lg)] border border-[var(--red)]/40 bg-[var(--red-bg)] p-4">
-              <ShieldAlert className="mt-0.5 size-4.5 shrink-0 text-[var(--red)]" />
-              <div>
-                <p className="text-[13px] font-bold text-[var(--red)]">
-                  {errors.length} validation {errors.length === 1 ? 'error' : 'errors'} blocking publication
-                </p>
-                <p className="mt-1 text-[12px] text-[var(--text2)] leading-relaxed">
-                  Review the highlighted invalid fields in the editor. Values exceeding bounds or failing cross-field validation rules will be rejected by the server compiler.
-                </p>
-              </div>
-            </div>
+            <Notice
+              tone="red"
+              icon={ShieldAlert}
+              title={`${errors.length} validation ${errors.length === 1 ? 'error blocks' : 'errors block'} publishing`}
+            >
+              Fix the highlighted fields in the editor. The server rejects values outside their bounds or that fail
+              cross-field rules.
+            </Notice>
           ) : diff.length === 0 ? (
-            <div className="rounded-[var(--radius-lg)] border border-dashed border-[var(--border)] bg-[var(--bg2)]/60 p-8 text-center text-[13px] text-[var(--text3)]">
-              No changes detected in the local buffer.
-            </div>
+            <p className="text-[13px] leading-[1.6] text-[var(--text2)]">
+              No changes to publish. Edit a section, then review it here.
+            </p>
           ) : (
-            <div className="flex items-start gap-3 rounded-[var(--radius-lg)] border border-[var(--amber)]/40 bg-[var(--amber-bg)] p-4">
-              <AlertTriangle className="mt-0.5 size-4 shrink-0 text-[var(--amber)]" />
-              <p className="text-[12px] leading-relaxed text-[var(--text2)]">
-                This revision will immediately deploy to connected SDK instances running in <strong>{environmentName}</strong>. Connected clients pick up updates automatically upon their next config TTL refresh.
-              </p>
-            </div>
+            <Notice tone="amber" icon={AlertTriangle}>
+              Publishing deploys to every connected SDK in{' '}
+              <strong className="font-medium text-[var(--text)]">{environmentName}</strong>. Clients pick it up on their
+              next configuration refresh.
+            </Notice>
           )}
 
           {diff.length > 0 && (
-            <div className="flex flex-col gap-3.5 pt-2">
-              <span className="eyebrow text-[var(--text3)]">Summary of Modified Properties ({diff.length})</span>
-              {Object.entries(grouped).map(([section, entries]) => (
-                <div key={section} className="rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg2)]/50 overflow-hidden">
-                  <div className="border-b border-[var(--border)] px-4 py-2 font-mono text-[11px] font-bold uppercase tracking-wider text-[var(--text3)] bg-[var(--bg2)]">
-                    {SECTION_LABELS[section] ?? section} ({entries.length})
-                  </div>
-                  <div className="divide-y divide-[var(--border)]">
+            <section aria-labelledby={changesId} className="flex flex-col gap-4">
+              <h3 id={changesId} className="flex items-baseline gap-2 text-[13px] font-medium text-[var(--text)]">
+                Changes
+                <span className="font-[family-name:var(--mono)] text-[11.5px] tabular-nums text-[var(--text3)]">{diff.length}</span>
+              </h3>
+
+              {grouped.map(([section, entries]) => (
+                <div key={section} className="flex flex-col gap-1.5">
+                  <h4 className="text-[12px] text-[var(--text3)]">
+                    {SECTION_LABELS[section] ?? section} · {entries.length}
+                  </h4>
+                  <dl className="divide-y divide-[var(--border)] overflow-hidden rounded-[var(--radius-lg)] border border-[var(--border)]">
                     {entries.map((entry) => (
-                      <div key={entry.path} className="flex items-center justify-between gap-3 px-4 py-2.5 text-[12.5px]">
-                        <span className="min-w-0 truncate font-medium text-[var(--text2)]">{entry.label}</span>
-                        <div className="flex shrink-0 items-center gap-2 font-mono text-[11.5px]">
-                          <span className="rounded bg-[var(--bg3)] px-2 py-0.5 text-[var(--text3)] line-through">
+                      <div
+                        key={entry.path}
+                        className="flex flex-col gap-1 px-4 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
+                      >
+                        <dt className="min-w-0 truncate text-[13px] text-[var(--text2)]" title={entry.path}>
+                          {entry.label}
+                        </dt>
+                        <dd className="flex min-w-0 shrink-0 items-center gap-2 font-[family-name:var(--mono)] text-[12px] tabular-nums">
+                          <span className="text-[var(--text3)] line-through decoration-[var(--text3)]">
+                            <span className="sr-only">From </span>
                             {formatDiffValue(entry.path, entry.oldValue)}
                           </span>
-                          <ArrowRight className="size-3 text-[var(--text3)]" />
-                          <span className="rounded bg-[var(--brand)]/15 px-2 py-0.5 font-bold text-[var(--brand)]">
+                          <ArrowRight className="size-3 shrink-0 text-[var(--text3)]" aria-hidden="true" />
+                          <span className="text-[var(--text)]">
+                            <span className="sr-only">to </span>
                             {formatDiffValue(entry.path, entry.newValue)}
                           </span>
-                        </div>
+                        </dd>
                       </div>
                     ))}
-                  </div>
+                  </dl>
                 </div>
               ))}
-            </div>
+            </section>
           )}
         </div>
 
-        {/* Footer with Change Summary & Actions */}
-        <div className="border-t border-[var(--border)] bg-[var(--bg1)] px-6 py-5">
-          <label className="mb-2 block text-[12px] font-medium text-[var(--text2)]">
-            Change Summary <span className="text-[var(--text3)] font-normal">(stored in immutable revision log)</span>
-          </label>
-          <textarea
-            value={summary}
-            onChange={(e) => setSummary(e.target.value)}
-            placeholder={`e.g. "Adjusted sampling rates for high-traffic payment endpoints"`}
-            rows={2}
-            maxLength={2000}
-            className="w-full resize-none rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg2)] px-3 py-2 text-[12.5px] text-[var(--text)] outline-none transition-colors placeholder:text-[var(--text3)] focus:border-[var(--brand)] focus:ring-1 focus:ring-[var(--brand)]"
-          />
-          <div className="mt-4 flex items-center justify-end gap-2.5">
-            <Button variant="ghost" onClick={onClose} disabled={isSaving} className="h-8.5 px-3.5 text-xs text-[var(--text2)] hover:text-[var(--text)]">
+        <div className="flex flex-col gap-4 border-t border-[var(--border)] px-5 py-4">
+          <DialogField label="Change summary" name={summaryId} hint="Saved with the revision in its history.">
+            <textarea
+              id={summaryId}
+              value={summary}
+              onChange={(e) => setSummary(e.target.value)}
+              placeholder="Lowered trace sampling for checkout endpoints"
+              rows={2}
+              maxLength={2000}
+              className={cn(dialogTextareaClass, 'min-h-[64px] resize-none')}
+            />
+          </DialogField>
+          <div className="flex items-center justify-end gap-2">
+            <UiButton variant="ghost" size="lg" onClick={onClose} disabled={isSaving}>
               Cancel
-            </Button>
-            <Button
-              onClick={() => onConfirm(summary.trim())}
-              disabled={hasErrors || diff.length === 0 || isSaving}
-              className={cn(
-                'h-8.5 gap-1.5 px-4 text-xs font-semibold shadow-xs',
-                hasErrors || diff.length === 0
-                  ? 'bg-[var(--bg2)] text-[var(--text3)] cursor-not-allowed border border-[var(--border)]'
-                  : 'bg-[var(--brand)] text-[var(--brand-fg)] hover:bg-[var(--brand-d)]'
-              )}
-            >
-              <Rocket className="size-3.5" />
-              {isSaving ? 'Deploying Revision…' : `Publish Revision #${currentRevision + 1}`}
-            </Button>
+            </UiButton>
+            <UiButton size="lg" onClick={() => onConfirm(summary.trim())} disabled={!canPublish}>
+              {isSaving && <Loader2 className="mr-1.5 size-3.5 animate-spin" aria-hidden="true" />}
+              {isSaving ? 'Publishing…' : `Publish revision ${nextRevision}`}
+            </UiButton>
           </div>
         </div>
-      </div>
-    </div>
+      </DrawerContent>
+    </Drawer>
   );
 }
 

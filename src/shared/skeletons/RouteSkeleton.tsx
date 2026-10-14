@@ -1,5 +1,7 @@
-import type { ComponentType } from "react";
+import { useLayoutEffect, useState, type ComponentType, type CSSProperties, type ReactNode } from "react";
 import { useLocation } from "react-router";
+
+import { Block } from "./primitives";
 
 import {
   AiConversationSkeleton,
@@ -21,9 +23,6 @@ import {
   LogsSkeleton,
   MembersSkeleton,
   MetricsSkeleton,
-  ProjectOverviewSkeleton,
-  ProjectsSkeleton,
-  RemoteConfigSkeleton,
   RulesSkeleton,
   ServiceHealthSkeleton,
   SettingsSkeleton,
@@ -31,6 +30,28 @@ import {
   WizardSkeleton,
   WorkflowsSkeleton,
 } from "./pages";
+import {
+  ProjectActivitySkeleton,
+  ProjectAlertChannelsSkeleton,
+  ProjectAlertRulesSkeleton,
+  ProjectAnalyticsSkeleton,
+  ProjectApiKeysSkeleton,
+  ProjectConnectorsSkeleton,
+  ProjectCreateSkeleton,
+  ProjectDeadLettersSkeleton,
+  ProjectDeliveriesSkeleton,
+  ProjectEnvironmentsSkeleton,
+  ProjectIncidentsSkeleton,
+  ProjectMembersSkeleton,
+  ProjectOverviewSkeleton,
+  ProjectPreferencesSkeleton,
+  ProjectRouteEditorSkeleton,
+  ProjectRoutesSkeleton,
+  ProjectSettingsSkeleton,
+  ProjectsSkeleton,
+  ProjectUsageSkeleton,
+  RemoteConfigSkeleton,
+} from "./workspace";
 
 type Rule = readonly [RegExp, ComponentType];
 
@@ -41,44 +62,46 @@ const RULES: readonly Rule[] = [
   /* ── project shell: (matches /p/:publicId and /:orgSlug/p/:publicId) ── */
   [/^\/p\/[^/]+\/overview$/, ProjectOverviewSkeleton],
   [/^\/[^/]+\/p\/[^/]+\/overview$/, ProjectOverviewSkeleton],
-  [/^\/p\/[^/]+\/analytics$/, MetricsSkeleton],
-  [/^\/[^/]+\/p\/[^/]+\/analytics$/, MetricsSkeleton],
-  [/^\/p\/[^/]+\/usage$/, MetricsSkeleton],
-  [/^\/[^/]+\/p\/[^/]+\/usage$/, MetricsSkeleton],
-  [/^\/p\/[^/]+\/activity$/, AuditSkeleton],
-  [/^\/[^/]+\/p\/[^/]+\/activity$/, AuditSkeleton],
-  [/^\/p\/[^/]+\/environments$/, KeysSkeleton],
-  [/^\/[^/]+\/p\/[^/]+\/environments$/, KeysSkeleton],
-  [/^\/p\/[^/]+\/api-keys$/, KeysSkeleton],
-  [/^\/[^/]+\/p\/[^/]+\/api-keys$/, KeysSkeleton],
+  [/^\/p\/[^/]+\/analytics$/, ProjectAnalyticsSkeleton],
+  [/^\/[^/]+\/p\/[^/]+\/analytics$/, ProjectAnalyticsSkeleton],
+  [/^\/p\/[^/]+\/usage$/, ProjectUsageSkeleton],
+  [/^\/[^/]+\/p\/[^/]+\/usage$/, ProjectUsageSkeleton],
+  [/^\/p\/[^/]+\/activity$/, ProjectActivitySkeleton],
+  [/^\/[^/]+\/p\/[^/]+\/activity$/, ProjectActivitySkeleton],
+  [/^\/p\/[^/]+\/environments$/, ProjectEnvironmentsSkeleton],
+  [/^\/[^/]+\/p\/[^/]+\/environments$/, ProjectEnvironmentsSkeleton],
+  [/^\/p\/[^/]+\/api-keys$/, ProjectApiKeysSkeleton],
+  [/^\/[^/]+\/p\/[^/]+\/api-keys$/, ProjectApiKeysSkeleton],
   [/^\/p\/[^/]+\/remote-config$/, RemoteConfigSkeleton],
   [/^\/[^/]+\/p\/[^/]+\/remote-config$/, RemoteConfigSkeleton],
-  [/^\/p\/[^/]+\/alert-rules$/, RulesSkeleton],
-  [/^\/[^/]+\/p\/[^/]+\/alert-rules$/, RulesSkeleton],
-  [/^\/p\/[^/]+\/alert-channels$/, IntegrationsSkeleton],
-  [/^\/[^/]+\/p\/[^/]+\/alert-channels$/, IntegrationsSkeleton],
-  [new RegExp(`^/p/[^/]+/routes/${ID}$`), WizardSkeleton],
-  [new RegExp(`^/[^/]+/p/[^/]+/routes/${ID}$`), WizardSkeleton],
-  [/^\/p\/[^/]+\/routes$/, RulesSkeleton],
-  [/^\/[^/]+\/p\/[^/]+\/routes$/, RulesSkeleton],
-  [/^\/p\/[^/]+\/connectors$/, IntegrationsSkeleton],
-  [/^\/[^/]+\/p\/[^/]+\/connectors$/, IntegrationsSkeleton],
-  [/^\/p\/[^/]+\/deliveries$/, AuditSkeleton],
-  [/^\/[^/]+\/p\/[^/]+\/deliveries$/, AuditSkeleton],
-  [/^\/p\/[^/]+\/dlq$/, ListSkeleton],
-  [/^\/[^/]+\/p\/[^/]+\/dlq$/, ListSkeleton],
-  [/^\/p\/[^/]+\/preferences$/, SettingsSkeleton],
-  [/^\/[^/]+\/p\/[^/]+\/preferences$/, SettingsSkeleton],
-  [/^\/p\/[^/]+\/members$/, MembersSkeleton],
-  [/^\/[^/]+\/p\/[^/]+\/members$/, MembersSkeleton],
-  [/^\/p\/[^/]+\/settings(\/.*)?$/, SettingsSkeleton],
-  [/^\/[^/]+\/p\/[^/]+\/settings(\/.*)?$/, SettingsSkeleton],
+  [/^\/p\/[^/]+\/alerts$/, ProjectIncidentsSkeleton],
+  [/^\/[^/]+\/p\/[^/]+\/alerts$/, ProjectIncidentsSkeleton],
+  [/^\/p\/[^/]+\/alert-rules$/, ProjectAlertRulesSkeleton],
+  [/^\/[^/]+\/p\/[^/]+\/alert-rules$/, ProjectAlertRulesSkeleton],
+  [/^\/p\/[^/]+\/alert-channels$/, ProjectAlertChannelsSkeleton],
+  [/^\/[^/]+\/p\/[^/]+\/alert-channels$/, ProjectAlertChannelsSkeleton],
+  [new RegExp(`^/p/[^/]+/routes/${ID}$`), ProjectRouteEditorSkeleton],
+  [new RegExp(`^/[^/]+/p/[^/]+/routes/${ID}$`), ProjectRouteEditorSkeleton],
+  [/^\/p\/[^/]+\/routes$/, ProjectRoutesSkeleton],
+  [/^\/[^/]+\/p\/[^/]+\/routes$/, ProjectRoutesSkeleton],
+  [/^\/p\/[^/]+\/connectors$/, ProjectConnectorsSkeleton],
+  [/^\/[^/]+\/p\/[^/]+\/connectors$/, ProjectConnectorsSkeleton],
+  [/^\/p\/[^/]+\/deliveries$/, ProjectDeliveriesSkeleton],
+  [/^\/[^/]+\/p\/[^/]+\/deliveries$/, ProjectDeliveriesSkeleton],
+  [/^\/p\/[^/]+\/dlq$/, ProjectDeadLettersSkeleton],
+  [/^\/[^/]+\/p\/[^/]+\/dlq$/, ProjectDeadLettersSkeleton],
+  [/^\/p\/[^/]+\/preferences$/, ProjectPreferencesSkeleton],
+  [/^\/[^/]+\/p\/[^/]+\/preferences$/, ProjectPreferencesSkeleton],
+  [/^\/p\/[^/]+\/members$/, ProjectMembersSkeleton],
+  [/^\/[^/]+\/p\/[^/]+\/members$/, ProjectMembersSkeleton],
+  [/^\/p\/[^/]+\/settings(\/.*)?$/, ProjectSettingsSkeleton],
+  [/^\/[^/]+\/p\/[^/]+\/settings(\/.*)?$/, ProjectSettingsSkeleton],
   [/^\/p\/[^/]+$/, ProjectOverviewSkeleton],
   [/^\/[^/]+\/p\/[^/]+$/, ProjectOverviewSkeleton],
 
   /* ── workspaces & project creation ───────────────────────────────────── */
-  [/^\/projects\/new$/, WizardSkeleton],
-  [/^\/[^/]+\/projects\/new$/, WizardSkeleton],
+  [/^\/projects\/new$/, ProjectCreateSkeleton],
+  [/^\/[^/]+\/projects\/new$/, ProjectCreateSkeleton],
   [/^\/projects$/, ProjectsSkeleton],
   [/^\/[^/]+\/projects$/, ProjectsSkeleton],
 
@@ -200,72 +223,8 @@ const RULES: readonly Rule[] = [
   [/^\/onboarding(\/.*)?$/, WizardSkeleton],
 ];
 
-/** Strip the trailing slash so `/alerts/` and `/alerts` resolve identically. */
-function normalize(pathname: string) {
-  if (pathname.length > 1 && pathname.endsWith("/")) return pathname.slice(0, -1);
-  return pathname;
-}
-
-const TOP_LEVEL_UNSCOPED = new Set([
-  "auth",
-  "accept-invite",
-  "loading",
-  "onboarding",
-]);
-
-const KNOWN_MODULE_ROOTS = new Set([
-  "dashboard",
-  "dashboards",
-  "observability",
-  "services",
-  "projects",
-  "p",
-  "alerts",
-  "automation",
-  "ingestion",
-  "ai",
-  "admin",
-  "super-admin",
-  "billing",
-  "connectors",
-  "developer",
-  "settings",
-  "account",
-  "team",
-]);
-
-/**
- * Normalizes an application URL by stripping the `:orgSlug` prefix if present.
- * For example:
- *   `/acme/observability/traces` -> `/observability/traces`
- *   `/acme/p/prj_123/remote-config` -> `/p/prj_123/remote-config`
- *   `/acme/billing` -> `/billing`
- *   `/auth/login` -> `/auth/login`
- *   `/dashboard` -> `/dashboard`
- */
-export function stripOrgSlug(pathname: string): string {
-  const norm = normalize(pathname);
-  const segments = norm.split("/").filter(Boolean);
-  if (segments.length === 0) return "/";
-
-  // Public/unscoped top-level roots
-  if (TOP_LEVEL_UNSCOPED.has(segments[0])) {
-    return norm;
-  }
-
-  // Already a known root without org slug
-  if (KNOWN_MODULE_ROOTS.has(segments[0])) {
-    return norm;
-  }
-
-  // Legacy root or single org slug e.g. /acme
-  if (segments.length === 1) {
-    return "/dashboard";
-  }
-
-  // Strip orgSlug segment
-  return "/" + segments.slice(1).join("/");
-}
+import { normalize, stripOrgSlug } from "./slug";
+export { stripOrgSlug };
 
 /** Resolve the skeleton component for a pathname. Exported for tests/tools. */
 export function resolveRouteSkeleton(pathname: string): ComponentType {
@@ -285,29 +244,153 @@ export function resolveRouteSkeleton(pathname: string): ComponentType {
   return GenericPageSkeleton;
 }
 
+/* ── continuity ────────────────────────────────────────────────────────────
+   A page load can hand the skeleton between owners (org guard → app shell →
+   module layout → page gate). Each handoff used to replay the entrance rise
+   and restart the shimmer, which is what made one load look like two. Two
+   rules make a handoff invisible:
+     1. A skeleton that mounts while another is on screen (or just left)
+        skips its entrance rise.
+     2. Every route skeleton shimmers on one shared clock, so the replacement
+        is in the same phase as the one it replaced. */
+
+/** Matches `loading-skeleton-shift` in src/app/index.css. */
+const SHIMMER_PERIOD_MS = 1200;
+const CONTINUE_WINDOW_MS = 250;
+let mountedRouteSkeletons = 0;
+let lastRouteSkeletonAt = Number.NEGATIVE_INFINITY;
+
+function useSkeletonContinuity() {
+  const [attrs] = useState(() => {
+    const now = performance.now();
+    return {
+      continuing: mountedRouteSkeletons > 0 || now - lastRouteSkeletonAt < CONTINUE_WINDOW_MS,
+      phase: -(Math.round(now) % SHIMMER_PERIOD_MS),
+    };
+  });
+
+  useLayoutEffect(() => {
+    mountedRouteSkeletons += 1;
+    return () => {
+      mountedRouteSkeletons -= 1;
+      lastRouteSkeletonAt = performance.now();
+    };
+  }, []);
+
+  return attrs;
+}
+
+/* ── destination frames ────────────────────────────────────────────────────
+   A skeleton rendered above the destination layout (org guard, app shell
+   boundary, project shell while the project resolves) must sit exactly where
+   that layout will put the page, or it jumps on handoff. */
+
+type FrameKind = "project" | "settings" | "home" | "module";
+
+function frameKind(pathname: string): FrameKind {
+  const segments = stripOrgSlug(pathname).split("/").filter(Boolean);
+  const root = segments[0];
+  if (root === "p") return "project";
+  if (root === "settings" || root === "account") return "settings";
+  if (!root || root === "dashboard") return "home";
+  return "module";
+}
+
+/** Stand-in for ProjectHeaderBar: same height, border and gutters. */
+function ProjectHeaderSkeleton() {
+  return (
+    <div
+      aria-hidden="true"
+      className="flex h-[var(--header-height)] shrink-0 items-center gap-2 border-b border-[var(--border)] bg-[var(--bg1)] px-3 sm:px-4"
+    >
+      <Block className="h-3 w-16" />
+      <Block className="h-3 w-2" />
+      <Block className="h-3.5 w-36" delay={20} />
+      <div className="ml-auto flex items-center gap-2">
+        <Block className="h-7 w-28" delay={40} />
+        <Block className="size-7" delay={60} />
+      </div>
+    </div>
+  );
+}
+
+export function RouteFrame({ pathname, children }: { pathname: string; children: ReactNode }) {
+  const kind = frameKind(pathname);
+
+  if (kind === "project") {
+    // ProjectShellPage: header bar, then the scroll area with the 1400px rail.
+    return (
+      <div className="flex h-full min-h-0 w-full flex-col overflow-hidden">
+        <ProjectHeaderSkeleton />
+        <div className="min-h-0 flex-1 overflow-hidden px-4 py-6 sm:px-6">
+          <div className="mx-auto w-full max-w-[1400px]">{children}</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (kind === "settings") {
+    // SettingsLayout: centred 1440px column with a breadcrumb row on account pages.
+    const hasCrumb = stripOrgSlug(pathname).startsWith("/account");
+    return (
+      <div className="mx-auto w-full max-w-[1440px] px-6 py-6 md:px-8 xl:px-10">
+        {hasCrumb && (
+          <div aria-hidden="true" className="mb-5 flex h-[18px] items-center gap-2">
+            <Block className="h-3 w-14" />
+            <Block className="h-3 w-20" delay={20} />
+            <Block className="h-3 w-24" delay={40} />
+          </div>
+        )}
+        {children}
+      </div>
+    );
+  }
+
+  if (kind === "home") {
+    // Home renders BoardPage with its own gutter.
+    return <div className="mx-auto w-full max-w-[1400px] px-4 py-6 sm:px-6">{children}</div>;
+  }
+
+  // ModuleLayout gutter.
+  return <div className="w-full px-6 py-6">{children}</div>;
+}
+
 /**
  * Renders the skeleton that matches the current (or supplied) location.
  *
- * `padded` adds the module gutter — set it to false when the skeleton is
- * rendered inside a layout that already applies page padding.
+ * - `framed` places it inside the destination layout's frame (use anywhere
+ *   above that layout: guards, the app-shell boundary, the project shell).
+ * - `padded` adds the plain module gutter (legacy; prefer `framed`).
+ * - neither: bare skeleton, for use inside a layout that already pads.
  */
 export function RouteSkeleton({
   pathname,
   padded = false,
+  framed = false,
   className,
 }: {
   pathname?: string;
   padded?: boolean;
+  framed?: boolean;
   className?: string;
 }) {
   const location = useLocation();
-  const Skeleton = resolveRouteSkeleton(pathname ?? location.pathname);
+  const path = pathname ?? location.pathname;
+  const Skeleton = resolveRouteSkeleton(path);
+  const { continuing, phase } = useSkeletonContinuity();
 
-  if (!padded && !className) return <Skeleton />;
-
-  return (
-    <div className={className ?? "w-full px-6 py-6"}>
+  const body = (
+    <div
+      className="route-skeleton"
+      data-sk-continue={continuing || undefined}
+      style={{ "--sk-phase": `${phase}ms` } as CSSProperties}
+    >
       <Skeleton />
     </div>
   );
+
+  if (framed) return <RouteFrame pathname={path}>{body}</RouteFrame>;
+  if (!padded && !className) return body;
+
+  return <div className={className ?? "w-full px-6 py-6"}>{body}</div>;
 }

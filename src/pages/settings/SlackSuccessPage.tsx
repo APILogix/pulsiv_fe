@@ -12,6 +12,7 @@ import {
   fieldInputClass,
 } from "@/shared/ui/pulse";
 import { Skeleton } from "@/components/ui/skeleton";
+import { apiErrorMessage } from "@/infrastructure/api-client/api-error";
 
 // ── module-level constants (rules.md §1.2) ──
 
@@ -63,7 +64,7 @@ export default function SlackSuccessPage() {
       navigate(`/connectors/integrations/${connectorId}`);
       return INITIAL_CHANNEL_STATE;
     } catch (err: any) {
-      return { error: err?.response?.data?.message || err?.message || "Could not save the default channel." };
+      return { error: apiErrorMessage(err) || err?.message || "Could not save the default channel." };
     }
   }, INITIAL_CHANNEL_STATE);
 

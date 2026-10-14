@@ -1,26 +1,37 @@
 import { useEffect, useState, useActionState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { ShieldAlert, UserPlus } from 'lucide-react';
 import { orgApi } from '../api/org.api';
+import { bootstrapService } from '@/modules/bootstrap';
+import { apiErrorMessage } from '@/infrastructure/api-client/api-error';
 import { orgQueryKeys } from '../hooks/useOrganizations';
-import { Button } from '@/components/ui/button';
-import { useFormStatus } from 'react-dom';
-import { Loader2 } from 'lucide-react';
-import { SentinelLogo } from '@/shared/components/PulsivLogo';
 import type { InvitationValidation } from '../types/org.types';
 import { useAuthStore } from '@/modules/auth/store/auth.store';
 import { AuthCardSkeleton } from '@/shared/skeletons';
+import {
+  AuthButton,
+  AuthCallout,
+  AuthFact,
+  AuthFooter,
+  AuthHeading,
+  AuthLinkButton,
+  AuthSubmit,
+  AuthTextButton,
+} from '@/shared/ui/pulse';
 
-function AcceptButton() {
-  const { pending } = useFormStatus();
-  return (
-    <Button type="submit" disabled={pending} className="w-full">
-      {pending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-      {pending ? 'Accepting...' : 'Accept Invitation'}
-    </Button>
-  );
+/** Server message from a normalized ApiError (it has no axios `response`);
+ *  shown inline on this page, so the global toast is skipped. */
+const apiMessage = apiErrorMessage;
+
+function formatRole(role: string) {
+  return role.charAt(0).toUpperCase() + role.slice(1).toLowerCase().replace(/_/g, ' ');
 }
 
+/**
+ * Invitation landing. Rendered inside AuthLayout without the guest guard: both
+ * signed-in and signed-out visitors arrive here from the invite email.
+ */
 export default function AcceptInviteLandingPage() {
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token');
@@ -28,10 +39,25 @@ export default function AcceptInviteLandingPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
-  
-  const [invitation, setInvitation] = useState<InvitationValidation | null>(null);
-  const [error, setError] = useState<string | null>(token ? null : 'No invitation token provided.');
-  const [isValidating, setIsValidating] = useState(!!token);
+
+  // Cached query instead of a mount-time effect: one request per token, and
+  // revisiting the link (back button) does not re-validate.
+  const validation = useQuery({
+    queryKey: ['invitation-validate', token],
+    queryFn: () => orgApi.validateInvitation(token!),
+    enabled: Boolean(token),
+    retry: false,
+    staleTime: 60_000,
+  });
+  const invitation: InvitationValidation | null = validation.data ?? null;
+  const error = !token
+    ? 'This link is missing its invitation token.'
+    : validation.isError
+      ? apiMessage(validation.error) || 'This invitation is invalid or has expired.'
+      : null;
+  const isValidating = validation.isLoading;
+  const [isDeclining, setIsDeclining] = useState(false);
+  const [declineError, setDeclineError] = useState<string | null>(null);
 
   useEffect(() => {
     if (signupParam === '1' && !isAuthenticated) {
@@ -39,32 +65,21 @@ export default function AcceptInviteLandingPage() {
     }
   }, [signupParam, isAuthenticated, navigate, token]);
 
-  useEffect(() => {
-    if (!token) {
-      return;
-    }
-
-    orgApi.validateInvitation(token)
-      .then(setInvitation)
-      .catch((err) => {
-        setError(err?.response?.data?.message || 'Invalid or expired invitation.');
-      })
-      .finally(() => setIsValidating(false));
-  }, [token]);
-
   const [state, submitAction] = useActionState(
-    async (_prevState: any, _formData: FormData) => {
+    async (_prevState: { success: boolean; error: string | null }, _formData: FormData) => {
       try {
-        if (!token) return { success: false, error: 'Missing token' };
-        
+        if (!token) return { success: false, error: 'Missing invitation token.' };
+
         await orgApi.acceptInvitation(token);
-        
-        // Invalidate organizations so user sees the new org
+
+        // The org switcher prefers the bootstrap snapshot over the org list
+        // query, so invalidating the query alone never showed the new org.
+        await bootstrapService.refreshBootstrap().catch(() => undefined);
         queryClient.invalidateQueries({ queryKey: orgQueryKeys.lists() });
-        
-        return { success: true };
-      } catch (err: any) {
-        return { success: false, error: err?.response?.data?.message || 'Failed to accept invitation.' };
+
+        return { success: true, error: null };
+      } catch (err) {
+        return { success: false, error: apiMessage(err) || 'Failed to accept the invitation.' };
       }
     },
     { success: false, error: null }
@@ -76,86 +91,101 @@ export default function AcceptInviteLandingPage() {
     }
   }, [state.success, navigate]);
 
+  async function decline() {
+    if (!invitation) return;
+    setIsDeclining(true);
+    setDeclineError(null);
+    try {
+      await orgApi.declineInvitation(invitation.id);
+      queryClient.removeQueries({ queryKey: ['invitation-validate', token] });
+      navigate('/dashboard');
+    } catch (err) {
+      setDeclineError(apiMessage(err) || 'Failed to decline the invitation.');
+      setIsDeclining(false);
+    }
+  }
+
   if (isValidating) {
+    return <AuthCardSkeleton />;
+  }
+
+  if (error || !invitation) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-[var(--bg)] p-4">
-        <AuthCardSkeleton />
+      <div className="w-full">
+        <AuthHeading
+          title="This invitation can't be used"
+          description="Ask the person who invited you to send a new one."
+        />
+        <div className="flex flex-col gap-4">
+          <AuthCallout icon={ShieldAlert} tone="danger" role="alert" title="Invitation not valid">
+            {error ?? 'This invitation is invalid or has expired.'}
+          </AuthCallout>
+          <AuthLinkButton to={isAuthenticated ? '/dashboard' : '/auth/login'} variant="ghost">
+            {isAuthenticated ? 'Go to dashboard' : 'Back to sign in'}
+          </AuthLinkButton>
+        </div>
       </div>
     );
   }
 
+  const orgName = invitation.orgName || 'this organization';
+  const actionError = state.error || declineError;
+
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-[var(--bg)] p-4">
-      <div className="w-full max-w-[440px] space-y-8 rounded-[10px] border border-border bg-[var(--bg1)] p-8 shadow-2xl text-center">
-        <div className="flex flex-col items-center space-y-4">
-          <SentinelLogo size={40} />
-        </div>
-        
-        {error ? (
-          <div className="space-y-4">
-            <div className="rounded-md bg-[var(--red-bg)] p-4 text-[var(--red)] border border-[rgba(239,68,68,0.35)]">
-              {error}
-            </div>
-            <Button variant="ghost" onClick={() => navigate('/dashboard')} className="w-full">
-              Go to Dashboard
-            </Button>
-          </div>
-        ) : invitation ? (
-          <div className="space-y-6">
-            <div className="space-y-2">
-              <h1 className="text-2xl font-semibold tracking-tight text-[var(--text)]">
-                You've been invited!
-              </h1>
-              <p className="text-[var(--text2)]">
-                You have been invited to join {invitation.orgName || 'this organization'}.
-              </p>
-            </div>
+    <div className="w-full">
+      <AuthHeading
+        title={`Join ${orgName}`}
+        description={`You've been invited to this Sentinel workspace with the ${formatRole(invitation.role)} role.`}
+      />
 
-            <div className="rounded-md border border-border bg-[var(--bg2)] p-4 text-left space-y-1">
-              <div className="text-sm font-medium text-[var(--text)]">Role: <span className="font-mono text-xs text-[var(--brand)]">{invitation.role.toUpperCase()}</span></div>
-              <div className="text-sm text-[var(--text2)]">Email: {invitation.email}</div>
-              <div className="text-sm text-[var(--text2)]">Account status: {invitation.accountExists ? 'Existing account detected' : 'Create an account with this email before accepting.'}</div>
-            </div>
+      <div className="flex flex-col gap-4">
+        <AuthFact label="Invitation for" value={invitation.email} />
+        <AuthFact
+          label="Role"
+          value={formatRole(invitation.role)}
+          action={
+            invitation.expiresAt ? (
+              <span className="text-[12px] text-[var(--text3)]">
+                Expires {new Date(invitation.expiresAt).toLocaleDateString()}
+              </span>
+            ) : undefined
+          }
+        />
 
-            <form action={submitAction} className="space-y-4">
-              {state.error && (
-                <div className="rounded-md bg-[var(--red-bg)] p-3 text-sm text-[var(--red)] border border-[rgba(239,68,68,0.35)]">
-                  {state.error}
-                </div>
-              )}
-              {invitation.accountExists ? (
-                isAuthenticated ? (
-                  <AcceptButton />
-                ) : (
-                  <Button type="button" onClick={() => navigate('/auth/login')} className="w-full">
-                    Sign in to accept
-                  </Button>
-                )
-              ) : (
-                <Button type="button" onClick={() => navigate(`/auth/register?inviteToken=${token || ''}`)} className="w-full">
-                  Create the invited account first
-                </Button>
-              )}
-              
-              <Button 
-                type="button" 
-                variant="ghost" 
-                className="w-full text-[var(--text3)] hover:text-[var(--text)]"
-                onClick={async () => {
-                  try {
-                    await orgApi.declineInvitation(invitation.id);
-                    navigate('/dashboard');
-                  } catch (err) {
-                    console.error("Failed to decline", err);
-                  }
-                }}
-              >
-                Decline Invitation
-              </Button>
+        {!invitation.accountExists && (
+          <AuthCallout icon={UserPlus} title="Create an account first">
+            There's no Sentinel account for <span className="text-[var(--text)]">{invitation.email}</span> yet. Create
+            one with this address, then accept.
+          </AuthCallout>
+        )}
+
+        {actionError && (
+          <AuthCallout icon={ShieldAlert} tone="danger" role="alert" title="Something went wrong">
+            {actionError}
+          </AuthCallout>
+        )}
+
+        {invitation.accountExists ? (
+          isAuthenticated ? (
+            <form action={submitAction}>
+              <AuthSubmit pendingLabel="Accepting…">Accept invitation</AuthSubmit>
             </form>
-          </div>
-        ) : null}
+          ) : (
+            <AuthLinkButton to="/auth/login">Sign in to accept</AuthLinkButton>
+          )
+        ) : (
+          <AuthButton type="button" onClick={() => navigate(`/auth/register?inviteToken=${token || ''}`)}>
+            Create account
+          </AuthButton>
+        )}
       </div>
+
+      <AuthFooter>
+        Not expecting this?{' '}
+        <AuthTextButton onClick={decline} disabled={isDeclining}>
+          {isDeclining ? 'Declining…' : 'Decline invitation'}
+        </AuthTextButton>
+      </AuthFooter>
     </div>
   );
 }

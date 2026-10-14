@@ -87,7 +87,15 @@ export default function OrgOverviewPage() {
       <SectionCard>
         <div className="flex flex-wrap items-center gap-4">
           {org.logoUrl ? (
-            <img src={org.logoUrl} alt="" className="size-10 rounded-[8px] object-cover" />
+            <img
+              src={org.logoUrl}
+              alt={org.name || "Organization logo"}
+              width={40}
+              height={40}
+              loading="lazy"
+              decoding="async"
+              className="size-10 rounded-[8px] object-cover"
+            />
           ) : (
             <div className="flex size-10 items-center justify-center rounded-[8px] bg-[var(--brand-bg)] text-sm font-semibold text-[var(--brand)]">
               {initials(org.name)}

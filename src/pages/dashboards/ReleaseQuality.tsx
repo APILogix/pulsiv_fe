@@ -1,153 +1,209 @@
-import { useState } from "react";
-import { useNavigate } from "react-router";
-import { AlertTriangle, GitCommit, Check } from "lucide-react";
-import { useErrorGroups } from "@/hooks/useDummyData";
+import { toast } from "sonner";
+import { AiActionButton } from "@/shared/ui/sentinel";
 import {
-  PageHeader, SectionCard, FilterSelect,
-  Table, Tr, Td, SeverityBadge, MonospaceText, Timestamp,
-} from "@/shared/observe";
-import { MultiLineChart, Banner, StatTile, ChartCard, HeroBand, ZoneLabel } from "./widgets";
-import { seededSeries } from "./lib";
+  BoardButton,
+  BoardPage,
+  Facts,
+  Ledger,
+  Meter,
+  ModelNote,
+  Panel,
+  RankList,
+  Readouts,
+  Tag,
+  TimeChart,
+  stateText,
+  type VerdictItem,
+} from "./board/kit";
+import { ERROR_GROUPS, RELEASES, series, type Release } from "./board/fixtures";
+import { ms, pct } from "./board/format";
 
-const RELEASES = ["v2.4.1", "v2.4.0", "v2.3.8", "v2.3.7"];
-const RELEASE_OPTIONS = RELEASES.map((r) => ({ value: r, label: r }));
+/*
+ * Release quality: did the last deploy make things worse. Each release is a
+ * row with its before → after readings and a verdict; unfolding it shows the
+ * error rate either side of the deploy marker.
+ * Sample data only; getReleaseBoard() is the seam a live API replaces.
+ */
 
-interface CompareRow { metric: string; prev: string; curr: string; delta: string; status: "improved" | "degraded" | "stable" }
-const COMPARISON: CompareRow[] = [
-  { metric: "Error rate", prev: "0.12%", curr: "0.53%", delta: "+341%", status: "degraded" },
-  { metric: "P50 latency", prev: "82ms", curr: "79ms", delta: "-3.7%", status: "improved" },
-  { metric: "P95 latency", prev: "240ms", curr: "812ms", delta: "+238%", status: "degraded" },
-  { metric: "P99 latency", prev: "640ms", curr: "1.2s", delta: "+88%", status: "degraded" },
-  { metric: "Throughput", prev: "14.2k rpm", curr: "14.8k rpm", delta: "+4.2%", status: "improved" },
-  { metric: "Unique error groups", prev: "12", curr: "19", delta: "+7", status: "degraded" },
-];
+const SPAN = 24; // hours shown around each deploy; deploy lands at index 12
+const AROUND = ["−12h", "−6h", "deploy", "+6h", "+12h"];
 
-const STATUS_TONE: Record<string, string> = { improved: "var(--green)", degraded: "var(--red)", stable: "var(--text3)" };
+function getReleaseBoard() {
+  const curves = Object.fromEntries(
+    RELEASES.map((r) => {
+      const before = series(`rel-b-${r.service}-${r.id}`, 12, r.errorBefore, r.errorBefore * 0.4, { diurnal: false, floor: 0 });
+      const after = series(`rel-a-${r.service}-${r.id}`, 12, r.errorAfter, r.errorAfter * 0.35, { diurnal: false, floor: 0 });
+      return [`${r.service}-${r.id}`, [...before, ...after]];
+    }),
+  ) as Record<string, number[]>;
+  const week = [
+    { label: "Deploys", value: 23 },
+    { label: "Rolled back", value: 2 },
+    { label: "Introduced a new issue", value: 4 },
+  ];
+  return { curves, week };
+}
 
-export default function ReleaseQuality() {
-  const navigate = useNavigate();
-  const [release, setRelease] = useState(RELEASES[0]);
-  const groups = useErrorGroups();
-  const groupList = groups.data ?? [];
+const key = (r: Release) => `${r.service}-${r.id}`;
 
-  const newErrors = groupList.slice(0, 5);
-  const resolvedCount = 8;
-
+function ReleaseDetail({ r, curve }: { r: Release; curve: number[] }) {
+  const issues = ERROR_GROUPS.filter((e) => e.service === r.service && e.release === r.id && (e.status === "New" || e.status === "Regressed"));
+  const mult = r.errorBefore ? r.errorAfter / r.errorBefore : 1;
   return (
-    <div className="flex flex-col gap-6">
-      <PageHeader
-        title="Release Quality & CI/CD Health"
-        description="Ensure every deploy improves the system, not breaks it · last 30 days."
-        actions={<FilterSelect label="Release" value={release} onChange={setRelease} options={RELEASE_OPTIONS} />}
-      />
-
-      <Banner
-        tone="red"
-        icon={AlertTriangle}
-        title={<>Consider rollback — <strong>{release}</strong> error rate increased 341% (0.12% → 0.53%) and P95 latency up 238%.</>}
-        action={<div className="flex gap-2"><button type="button" className="rounded-[6px] border border-current px-2 py-1 text-[12px]">Initiate rollback</button><button type="button" onClick={() => navigate("/dashboards/errors")} className="rounded-[6px] border border-current px-2 py-1 text-[12px]">View errors</button></div>}
-      />
-
-      <HeroBand
-        metrics={[
-          { label: "Deploy frequency", value: "4.2 / wk", delta: "Elite (DORA)", trend: "up", spark: seededSeries("rq-freq", 20, 20, 8) },
-          { label: "Lead time", value: "3.4h", delta: "commit → prod", trend: "up", spark: seededSeries("rq-lead", 20, 30, 10), sparkColor: "var(--blue)" },
-          { label: "MTTR", value: "42m", delta: "High (DORA)", trend: "up", spark: seededSeries("rq-mttr", 20, 25, 12), sparkColor: "var(--amber)" },
-          { label: "Change failure rate", value: "14%", delta: "Medium (DORA)", trend: "down", spark: seededSeries("rq-cfr", 20, 15, 6), sparkColor: "var(--red)" },
-        ]}
-      />
-
-      <ZoneLabel>Release comparison</ZoneLabel>
-
-      <SectionCard title={`Release comparison — ${release} vs previous`}>
-        <Table headers={["Metric", "Previous (baseline)", "Current", "Delta", "Status"]}>
-          {COMPARISON.map((row) => (
-            <Tr key={row.metric}>
-              <Td className="font-medium">{row.metric}</Td>
-              <Td className="tabular-nums text-[var(--text2)]">{row.prev}</Td>
-              <Td className="tabular-nums">{row.curr}</Td>
-              <Td><span style={{ color: STATUS_TONE[row.status] }} className="tabular-nums font-semibold">{row.delta}</span></Td>
-              <Td><span style={{ color: STATUS_TONE[row.status] }} className="capitalize">{row.status}</span></Td>
-            </Tr>
-          ))}
-        </Table>
-      </SectionCard>
-
-      <ChartCard
-        title="Canary deployment health"
-        legend={[
-          { label: "Canary error rate (5%)", color: "var(--red)" },
-          { label: "Stable error rate (95%)", color: "var(--green)" },
-        ]}
-        timeAxis="32 samples ago"
-      >
-        <MultiLineChart
-          series={[
-            { label: "Canary error rate (5%)", color: "var(--red)", data: seededSeries("canary", 32, 14, 8) },
-            { label: "Stable error rate (95%)", color: "var(--green)", data: seededSeries("stable", 32, 6, 3) },
+    <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
+      <div className="min-w-0">
+        <Facts
+          items={[
+            { label: "Deployed", value: r.deployedAt },
+            { label: "Author", value: r.author },
+            { label: "Commits", value: String(r.commits) },
+            { label: "Error rate change", value: `${mult.toFixed(1)}×`, state: mult > 3 ? "bad" : mult > 1.2 ? "warn" : undefined },
           ]}
         />
-        <div className="mt-3 flex items-center gap-3 rounded-[8px] bg-[var(--bg2)] px-3 py-2 text-[12px]">
-          <AlertTriangle className="size-4 text-[var(--amber)]" />
-          <span className="text-[var(--text2)]">Decision gate: canary error rate &gt; 2× stable → recommend <strong className="text-[var(--red)]">rollback canary</strong>.</span>
+        <div className="mt-5">
+          <TimeChart
+            label={`${r.service} error rate twelve hours either side of ${r.id}`}
+            height={170}
+            xLabels={AROUND}
+            format={(v) => `${v.toFixed(2)}%`}
+            pointLabel={(i) => (i < SPAN / 2 ? `${SPAN / 2 - i}h before deploy` : `${i - SPAN / 2 + 1}h after deploy`)}
+            threshold={{ value: r.errorBefore, label: `before ${pct(r.errorBefore)}` }}
+            series={[{ label: "Error rate", color: r.state === "bad" ? "var(--red)" : "var(--text)", data: curve, area: true }]}
+          />
         </div>
-      </ChartCard>
-
-      <ZoneLabel>Error delta</ZoneLabel>
-
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <SectionCard title="New error types introduced">
-          <Table headers={["Error", "Fingerprint", "Severity", "Count", "Users", "First seen"]}>
-            {newErrors.map((g) => (
-              <Tr key={g.fingerprint} onClick={() => navigate(`/observability/errors/${g.fingerprint}`)}>
-                <Td><span className="truncate">{g.name}</span></Td>
-                <Td><MonospaceText value={g.fingerprint.slice(0, 8)} className="text-[var(--text3)]" /></Td>
-                <Td><SeverityBadge severity={g.severity} /></Td>
-                <Td className="tabular-nums">{g.count}</Td>
-                <Td className="tabular-nums">{g.affectedUsers.size}</Td>
-                <Td><Timestamp value={g.firstSeen} /></Td>
-              </Tr>
-            ))}
-          </Table>
-        </SectionCard>
-
-        <SectionCard title="Resolved error groups">
-          <div className="flex flex-col items-center justify-center gap-2 py-6">
-            <Check className="size-10 text-[var(--green)]" />
-            <div className="text-3xl font-semibold tabular-nums text-[var(--text)]">{resolvedCount}</div>
-            <div className="text-[13px] text-[var(--text2)]">errors fixed in {release}</div>
-          </div>
-        </SectionCard>
       </div>
-
-      <ZoneLabel>Root cause</ZoneLabel>
-
-      <SectionCard title="Suspect commit detection" action={<GitCommit className="size-4 text-[var(--text3)]" />}>
-        <Table headers={["Commit", "Author", "Message", "Files", "Errors introduced", "Confidence"]}>
-          {[
-            { hash: "a3f9c21", author: "k.patel", msg: "refactor: payment validation pipeline", files: 7, errors: 4, conf: 91 },
-            { hash: "e81b0fd", author: "m.chen", msg: "feat: add retry to upstream client", files: 3, errors: 1, conf: 62 },
-            { hash: "7d2a4e8", author: "s.gupta", msg: "chore: bump prisma to 5.x", files: 12, errors: 2, conf: 74 },
-          ].map((c) => (
-            <Tr key={c.hash}>
-              <Td><MonospaceText value={c.hash} className="text-[var(--brand)]" /></Td>
-              <Td className="text-[var(--text2)]">{c.author}</Td>
-              <Td><span className="truncate">{c.msg}</span></Td>
-              <Td className="tabular-nums">{c.files}</Td>
-              <Td className="tabular-nums">{c.errors}</Td>
-              <Td><span style={{ color: c.conf > 80 ? "var(--red)" : "var(--amber)" }} className="tabular-nums font-semibold">{c.conf}%</span></Td>
-            </Tr>
-          ))}
-        </Table>
-        <div className="mt-2 text-[11px] text-[var(--text3)]">Requires git integration (GitHub/GitLab webhook) — correlating error spikes with recent commits.</div>
-      </SectionCard>
-
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <StatTile label="Releases (30d)" value={RELEASES.length * 4} />
-        <StatTile label="Rollbacks (30d)" value={2} tone="var(--amber)" />
-        <StatTile label="Failed deploys" value={3} tone="var(--red)" />
-        <StatTile label="Successful deploys" value={RELEASES.length * 4 - 3} tone="var(--green)" />
+      <div className="flex flex-col gap-3">
+        {r.state !== "ok" && (
+          <ModelNote
+            title={r.state === "bad" ? "This release caused the incident" : "Latency rose, errors did not"}
+            confidence={r.state === "bad" ? 95 : 71}
+            action={
+              r.state === "bad" ? <AiActionButton onClick={() => toast(`Rollback to previous ${r.service} release queued (sample)`)}>Roll back</AiActionButton> : undefined
+            }
+          >
+            {r.state === "bad"
+              ? `Error rate went from ${pct(r.errorBefore)} to ${pct(r.errorAfter)} within 13 minutes of ${r.id} reaching 100%. Both new error groups first appear after the deploy.`
+              : `P95 moved from ${ms(r.p95Before)} to ${ms(r.p95After)} on the ${r.adoption}% of traffic running ${r.id}. Hold the rollout until p99 settles.`}
+          </ModelNote>
+        )}
+        {issues.length > 0 && (
+          <div>
+            <p className="text-[12px] text-[var(--text3)]">Issues introduced</p>
+            <ul className="mt-1.5 divide-y divide-[var(--border)] text-[12px]">
+              {issues.map((e) => (
+                <li key={e.id} className="flex items-baseline justify-between gap-3 py-1.5">
+                  <span className="truncate font-mono text-[var(--text)]">{e.name}</span>
+                  <Tag state={e.status === "New" ? "bad" : "warn"}>{e.status}</Tag>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        <div className="flex flex-wrap gap-2">
+          <BoardButton onClick={() => toast(`Diff for ${r.id} opened (sample)`)}>View diff</BoardButton>
+          <BoardButton onClick={() => toast(`${r.id} marked as reviewed (sample)`)}>Mark reviewed</BoardButton>
+        </div>
       </div>
     </div>
+  );
+}
+
+export default function ReleaseQuality() {
+  const { curves, week } = getReleaseBoard();
+  const bad = RELEASES.filter((r) => r.state === "bad");
+  const watch = RELEASES.filter((r) => r.state === "warn");
+  const crashFree = RELEASES.reduce((a, r) => a + r.crashFree, 0) / RELEASES.length;
+
+  const verdict: VerdictItem[] = [
+    ...bad.map((r) => ({ state: "bad" as const, text: `Roll back ${r.service} ${r.id}` })),
+    ...watch.map((r) => ({ state: "warn" as const, text: `Watch ${r.service} ${r.id}` })),
+    { state: "ok", text: `${RELEASES.length - bad.length - watch.length} releases healthy` },
+  ];
+
+  return (
+    <BoardPage
+      title="Release quality"
+      description="Every recent deploy with its error rate and latency before and after. Unfold a release to see the moment it shipped."
+      verdict={verdict}
+      window="Last 7 days"
+    >
+      <Readouts
+        items={[
+          { label: "Deploys this week", value: "23", delta: "+4", verdict: "flat" },
+          { label: "Change failure rate", value: "8.7%", delta: "+2.1 pts", verdict: "bad", note: "2 of 23 rolled back" },
+          { label: "Crash-free, latest", value: pct(crashFree), note: "across services", state: crashFree < 99.5 ? "warn" : undefined },
+          { label: "New issues from deploys", value: String(RELEASES.reduce((a, r) => a + r.newIssues, 0)), note: "this week", state: "warn" },
+          { label: "Lead time to deploy", value: "3.4h", delta: "−0.6h", verdict: "good", note: "median" },
+        ]}
+      />
+
+      <Ledger
+        id="release"
+        title="Releases"
+        meta="Worst regression first"
+        rows={RELEASES}
+        rowId={key}
+        rowState={(r) => r.state}
+        attention={(r) => r.errorAfter - r.errorBefore}
+        primary={{ header: "Release", cell: (r) => <span className="font-mono">{r.service} {r.id}</span>, sub: (r) => `${r.deployedAt} · ${r.author} · ${r.commits} commits` }}
+        columns={[
+          {
+            key: "adopt",
+            header: "Traffic",
+            align: "right",
+            hide: "lg",
+            className: "w-[140px]",
+            cell: (r) => (
+              <span className="flex items-center justify-end gap-3">
+                <Meter value={r.adoption} max={100} className="w-14" />
+                <span className="w-9">{r.adoption}%</span>
+              </span>
+            ),
+          },
+          {
+            key: "err",
+            header: "Error rate",
+            align: "right",
+            sortValue: (r) => r.errorAfter - r.errorBefore,
+            cell: (r) => (
+              <span>
+                <span className="text-[var(--text3)]">{pct(r.errorBefore)} → </span>
+                <span style={{ color: stateText(r.errorAfter > r.errorBefore * 3 ? "bad" : r.errorAfter > r.errorBefore * 1.2 ? "warn" : "ok") }}>{pct(r.errorAfter)}</span>
+              </span>
+            ),
+          },
+          {
+            key: "p95",
+            header: "P95",
+            align: "right",
+            hide: "md",
+            sortValue: (r) => r.p95After - r.p95Before,
+            cell: (r) => (
+              <span>
+                <span className="text-[var(--text3)]">{ms(r.p95Before)} → </span>
+                <span style={{ color: stateText(r.p95After > r.p95Before * 2 ? "bad" : r.p95After > r.p95Before * 1.25 ? "warn" : "ok") }}>{ms(r.p95After)}</span>
+              </span>
+            ),
+          },
+          { key: "verdict", header: "Verdict", align: "right", className: "font-sans", cell: (r) => <Tag state={r.state}>{r.verdict}</Tag> },
+        ]}
+        detail={(r) => <ReleaseDetail r={r} curve={curves[key(r)]} />}
+      />
+
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+        <Panel title="Crash-free sessions by release" meta="Latest release per service">
+          <RankList
+            label="Crash-free session rate by release"
+            format={(v) => `${v.toFixed(1)}%`}
+            items={[...RELEASES]
+              .sort((a, b) => a.crashFree - b.crashFree)
+              .map((r) => ({ label: `${r.service} ${r.id}`, value: r.crashFree, state: r.crashFree < 98 ? "bad" : r.crashFree < 99.7 ? "warn" : undefined }))}
+          />
+        </Panel>
+        <Panel title="This week" meta="Deploy outcomes">
+          <RankList label="Deploy outcomes this week" format={(v) => String(v)} items={week.map((w, i) => ({ ...w, state: i === 0 ? undefined : "warn" }))} />
+        </Panel>
+      </div>
+    </BoardPage>
   );
 }

@@ -2,6 +2,7 @@ import { useMutation , useQueryClient} from '@tanstack/react-query';
 import { useNavigate } from 'react-router';
 import { authApi } from '../api/auth.api';
 import { toast } from 'sonner';
+import { apiErrorMessage } from "@/infrastructure/api-client/api-error";
 
 export function useResetPassword() {
   const queryClient = useQueryClient();
@@ -15,7 +16,7 @@ export function useResetPassword() {
       navigate('/auth/login', { replace: true });
     },
     onError: (error: any) => {
-      const message = error.response?.data?.error?.message || 'Failed to reset password';
+      const message = apiErrorMessage(error) || 'Failed to reset password';
       toast.error(message);
     }
   });

@@ -1,113 +1,94 @@
-import { useMemo, useState } from "react";
-import {
-  Sliders,
-  Search,
-  CheckCircle2,
-  Shield,
-  Clock,
-  Layers,
-  Plus,
-  MinusCircle,
-  Loader2,
-  X,
-  Zap,
-  Flame,
-  Activity,
-  Lock,
-  Database,
-  Cpu,
-  Check,
-} from "lucide-react";
+import { useMemo, useState, type ReactNode } from "react";
+import { BellOff, Loader2, Plus, SlidersHorizontal } from "lucide-react";
 import { toast } from "sonner";
-import { SkeletonTable } from "@/shared/skeletons";
+
 import {
   useOrganizationAlertPolicies,
   useProjectPolicyMutations,
   useProjectPolicySubscriptions,
 } from "@/modules/alerting/hooks/useAlerting";
 import type {
+  AlertSeverity,
   OrganizationAlertPolicy,
+  ProjectOverride,
   ProjectSubscription,
   SubscriptionState,
-  AlertSeverity,
-  ProjectOverride,
 } from "@/modules/alerting/api/types";
-import { useCurrentProject } from "./ProjectShellPage";
-import { apiErrorMessage, ConfirmDialog } from "@/modules/projects/components/project-ui";
 import {
   ProjectOverrideModal,
-  formatThreshold,
   formatDuration,
+  formatThreshold,
 } from "@/modules/alerting/components/ProjectOverrideModal";
 import { EntitlementRestrictedBanner } from "@/modules/alerting/components/EntitlementRestrictedBanner";
+import { orgRoutes } from "@/app/router/org-routes";
+import { apiErrorMessage, ConfirmDialog } from "@/modules/projects/components/project-ui";
+import {
+  HIDE_BELOW_LG,
+  HIDE_BELOW_MD,
+  HIDE_BELOW_XL,
+  ProjectPageHeader,
+  Readouts,
+  RowActions,
+  RowTitle,
+  SearchField,
+  Sheet,
+  SheetCell,
+  SheetEmpty,
+  SheetError,
+  SheetLoading,
+  SheetRow,
+  SheetTable,
+  TextLink,
+  ToolbarCount,
+  WorkspacePage,
+  type Readout,
+  type SheetColumn,
+} from "@/modules/projects/components/project-page";
+import { Pill, SegmentedControl, type SegmentOption } from "@/shared/ui/pulse";
+import { FilterSelect, SeverityBadge, formatNumber } from "@/shared/observe";
+import { Button as UiButton } from "@/components/ui/button";
+import { DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import { useCurrentProject } from "./ProjectShellPage";
+
+// ── module-level constants (rules.md §1.2) ───────────────────
 
 const PAGE_SIZE = 15;
 
-function ModernSeverityBadge({ severity }: { severity?: AlertSeverity | string | null }) {
-  const normalized = (severity || "info").toLowerCase();
-  const styles: Record<string, { bg: string; dot: string }> = {
-    critical: { bg: "bg-rose-500/15 text-rose-400 border-rose-500/30", dot: "bg-rose-400" },
-    fatal: { bg: "bg-rose-500/15 text-rose-400 border-rose-500/30", dot: "bg-rose-400" },
-    error: { bg: "bg-red-500/15 text-red-400 border-red-500/30", dot: "bg-red-400" },
-    warning: { bg: "bg-amber-500/15 text-amber-300 border-amber-500/30", dot: "bg-amber-400" },
-    info: { bg: "bg-sky-500/15 text-sky-300 border-sky-500/30", dot: "bg-sky-400" },
-  };
+type SubscriptionFilter = "all" | "subscribed" | "overridden" | "unsubscribed";
 
-  const current = styles[normalized] || { bg: "bg-zinc-500/15 text-zinc-300 border-zinc-500/30", dot: "bg-zinc-400" };
+const NO_SUBSCRIPTIONS: ProjectSubscription[] = [];
 
-  return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 font-mono text-[9.5px] font-bold uppercase tracking-wider",
-        current.bg,
-      )}
-    >
-      <span className={cn("size-1.5 rounded-full", current.dot)} />
-      {normalized}
-    </span>
-  );
-}
+const STATE_OPTIONS: Array<{ value: SubscriptionState; label: string }> = [
+  { value: "subscribed", label: "Subscribed" },
+  { value: "paused", label: "Paused" },
+  { value: "muted", label: "Muted" },
+  { value: "disabled", label: "Disabled" },
+];
 
-function getCategoryIcon(category?: string) {
-  const cat = (category || "").toLowerCase();
-  switch (cat) {
-    case "errors":
-      return <Flame className="size-3.5 text-rose-400" />;
-    case "performance":
-      return <Activity className="size-3.5 text-sky-400" />;
-    case "availability":
-      return <Zap className="size-3.5 text-emerald-400" />;
-    case "infrastructure":
-      return <Cpu className="size-3.5 text-amber-400" />;
-    case "security":
-      return <Lock className="size-3.5 text-red-400" />;
-    case "database":
-      return <Database className="size-3.5 text-violet-400" />;
-    default:
-      return <Shield className="size-3.5 text-emerald-400" />;
-  }
-}
+// The dot carries the state colour so the control itself stays neutral.
+const STATE_DOT: Record<SubscriptionState, string> = {
+  subscribed: "bg-[var(--green)]",
+  paused: "bg-[var(--amber)]",
+  muted: "bg-[var(--amber)]",
+  disabled: "bg-[var(--text3)]",
+  archived: "bg-[var(--text3)]",
+};
 
-function getCategoryBadgeColor(category?: string) {
-  const cat = (category || "").toLowerCase();
-  switch (cat) {
-    case "errors":
-      return "border-rose-500/30 bg-rose-500/10 text-rose-300";
-    case "performance":
-      return "border-sky-500/30 bg-sky-500/10 text-sky-300";
-    case "availability":
-      return "border-emerald-500/30 bg-emerald-500/10 text-emerald-300";
-    case "infrastructure":
-      return "border-amber-500/30 bg-amber-500/10 text-amber-300";
-    case "security":
-      return "border-red-500/30 bg-red-500/10 text-red-300";
-    case "database":
-      return "border-violet-500/30 bg-violet-500/10 text-violet-300";
-    default:
-      return "border-zinc-700 bg-zinc-800/60 text-zinc-300";
-  }
-}
+const STATE_SELECT_CLASS =
+  "h-8 min-w-0 flex-1 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg2)] px-2 text-[12px] text-[var(--text)] outline-none transition-colors hover:border-[var(--border2)] focus:border-[var(--brand)] focus:ring-3 focus:ring-[var(--brand-bg)]";
+
+const COLUMNS: SheetColumn[] = [
+  { key: "rule", header: "Rule" },
+  { key: "category", header: "Category", className: `w-[128px] ${HIDE_BELOW_XL}` },
+  { key: "threshold", header: "Threshold", className: "w-[156px]" },
+  { key: "window", header: "Window", className: `w-[128px] ${HIDE_BELOW_LG}` },
+  { key: "severity", header: "Severity", className: `w-[112px] ${HIDE_BELOW_MD}` },
+  { key: "state", header: "State", className: "w-[164px]" },
+  { key: "actions", header: "Actions", srOnly: true, className: "w-[56px]" },
+];
+
+// ── data helpers ─────────────────────────────────────────────
 
 /** Matches a policy to its active project subscription across all possible IDs and slugs */
 function findSubscriptionForPolicy(
@@ -170,19 +151,65 @@ function extractOverride(subscription?: ProjectSubscription | null): ProjectOver
   return null;
 }
 
+/** A threshold override counts only when it carries a value, not an empty object. */
+function hasThresholdValue(threshold: unknown): boolean {
+  return threshold != null && (typeof threshold !== "object" || Object.keys(threshold as object).length > 0);
+}
+
+const labelCase = (value: string) => (value ? value.charAt(0).toUpperCase() + value.slice(1) : value);
+
+/** Names what a project override changes, for the row's accessible description. */
+function overrideSummary(override: ProjectOverride): string {
+  const parts: string[] = [];
+  if (hasThresholdValue(override.threshold)) parts.push("threshold");
+  if (override.evaluationWindowSeconds != null) parts.push("window");
+  if (override.cooldownSeconds != null) parts.push("cooldown");
+  if (override.severity != null) parts.push("severity");
+  if (override.channels && override.channels.length > 0) parts.push(`channels (${override.channels.join(", ")})`);
+  if (override.environment) parts.push(`environment (${override.environment})`);
+  if (override.escalationPolicyId) parts.push("escalation policy");
+  return parts.length > 0 ? `Project overrides: ${parts.join(", ")}` : "Project overrides organization defaults";
+}
+
+/** Readings for every subscription of this project, independent of the catalog page. */
+function summarizeSubscriptions(subscriptions: ProjectSubscription[]) {
+  let enabled = 0;
+  let disabled = 0;
+  let overridden = 0;
+  for (const subscription of subscriptions) {
+    if (subscription.state === "disabled" || subscription.state === "archived") disabled += 1;
+    else enabled += 1;
+    if (extractOverride(subscription)) overridden += 1;
+  }
+  return { subscribed: subscriptions.length, enabled, disabled, overridden };
+}
+
+// ── page ─────────────────────────────────────────────────────
+
 export default function ProjectThresholdsPage() {
-  const { projectId, project } = useCurrentProject();
+  const { projectId, project, orgSlug } = useCurrentProject();
   const [page, setPage] = useState(0);
-  const { data: policiesPage, isLoading: policiesLoading } = useOrganizationAlertPolicies({ limit: PAGE_SIZE, offset: page * PAGE_SIZE });
+  const {
+    data: policiesPage,
+    isLoading: policiesLoading,
+    error: policiesError,
+    refetch: refetchPolicies,
+  } = useOrganizationAlertPolicies({ limit: PAGE_SIZE, offset: page * PAGE_SIZE });
   const policies = policiesPage?.data ?? [];
   const totalPolicies = policiesPage?.total ?? policies.length;
-  const { data: subscriptions = [], isLoading: subscriptionsLoading } = useProjectPolicySubscriptions(projectId);
+  const {
+    data: subscriptionsData,
+    isLoading: subscriptionsLoading,
+    error: subscriptionsError,
+    refetch: refetchSubscriptions,
+  } = useProjectPolicySubscriptions(projectId);
+  const subscriptions = subscriptionsData ?? NO_SUBSCRIPTIONS;
   const mutations = useProjectPolicyMutations(projectId);
 
   // Filter and search states
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
-  const [subscriptionFilter, setSubscriptionFilter] = useState<"all" | "subscribed" | "overridden" | "unsubscribed">("all");
+  const [subscriptionFilter, setSubscriptionFilter] = useState<SubscriptionFilter>("all");
 
   // Modal states
   const [selectedSubscription, setSelectedSubscription] = useState<ProjectSubscription | null>(null);
@@ -195,7 +222,7 @@ export default function ProjectThresholdsPage() {
   // Subscribing in-flight tracking
   const [subscribingPolicyId, setSubscribingPolicyId] = useState<string | null>(null);
 
-  // Derived counts for stat cards & filters
+  // Counts for the filter control. Filters run on the loaded catalog page.
   const subscribedCount = useMemo(() => {
     return policies.filter((p) => {
       const sub = findSubscriptionForPolicy(p, subscriptions);
@@ -213,6 +240,9 @@ export default function ProjectThresholdsPage() {
   const unsubscribedCount = useMemo(() => {
     return Math.max(0, policies.length - subscribedCount);
   }, [policies.length, subscribedCount]);
+
+  // Readings for the whole project, not the page or the filter.
+  const summary = useMemo(() => summarizeSubscriptions(subscriptions), [subscriptions]);
 
   // Categories extracted from policies
   const categories = useMemo(() => {
@@ -266,6 +296,19 @@ export default function ProjectThresholdsPage() {
         setSubscribingPolicyId(null);
       },
     });
+  };
+
+  const handleStateChange = (subscription: ProjectSubscription, state: SubscriptionState) => {
+    mutations.updateState.mutate(
+      {
+        subscriptionId: subscription.id,
+        state,
+      },
+      {
+        onSuccess: () => toast.success("Subscription state updated"),
+        onError: (error) => toast.error(apiErrorMessage(error, "Could not update subscription.")),
+      },
+    );
   };
 
   const handleSaveOverride = (payload: {
@@ -332,440 +375,337 @@ export default function ProjectThresholdsPage() {
     });
   };
 
-  return (
-    <div className="mx-auto w-full max-w-[1400px] space-y-6 p-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-border/60 pb-5">
-        <div>
-          <div className="flex items-center gap-3">
-            <div className="flex size-10 items-center justify-center rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 shadow-inner">
-              <Sliders className="size-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2.5">
-                <h1 className="text-2xl font-bold tracking-tight text-foreground">
-                  Project Alert Rules & Subscriptions
-                </h1>
-                <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 font-mono text-[10px] font-semibold text-emerald-400">
-                  <span className="size-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  LIVE
-                </span>
-              </div>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Subscribe to organization alert rules, customize project-level metric thresholds, cooldowns, and notification targets.
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
+  const clearFilters = () => {
+    setSearchQuery("");
+    setSelectedCategory("all");
+    setSubscriptionFilter("all");
+  };
 
-      {/* Plan Entitlement Notification */}
+  // ── derived view state ─────────────────────────────────────
+
+  const tableLoading =
+    (policiesLoading && policies.length === 0) || (subscriptionsLoading && subscriptions.length === 0);
+  const policiesFailed = Boolean(policiesError) && !policiesPage;
+  const subscriptionsFailed = Boolean(subscriptionsError) && !subscriptionsData;
+  const loadFailed = policiesFailed || subscriptionsFailed;
+  const paginated = page > 0 || totalPolicies > PAGE_SIZE;
+  const pageCount = Math.max(1, Math.ceil(totalPolicies / PAGE_SIZE));
+  const onThisPage = paginated ? " on this page" : "";
+
+  const readouts: Readout[] = [
+    { label: "Catalog rules", value: formatNumber(totalPolicies), sub: "In the organization catalog" },
+    { label: "Subscribed", value: formatNumber(summary.subscribed), sub: `${formatNumber(summary.enabled)} enabled` },
+    { label: "Overridden", value: formatNumber(summary.overridden), sub: "Set project-specific values" },
+    {
+      label: "Disabled",
+      value: formatNumber(summary.disabled),
+      tone: summary.disabled > 0 ? "warn" : "neutral",
+      sub: summary.disabled > 0 ? "Subscribed but switched off" : "None disabled",
+    },
+  ];
+
+  const filterOptions: SegmentOption<SubscriptionFilter>[] = [
+    { value: "all", label: "All", count: policies.length },
+    { value: "subscribed", label: "Subscribed", count: subscribedCount },
+    { value: "overridden", label: "Overridden", count: overriddenCount },
+    { value: "unsubscribed", label: "Not subscribed", count: unsubscribedCount },
+  ];
+
+  const categoryOptions = [
+    { value: "all", label: "All" },
+    ...categories.map((category) => ({ value: category, label: labelCase(category) })),
+  ];
+
+  let body: ReactNode;
+  if (tableLoading) {
+    body = <SheetLoading rows={8} label="Loading alert rules" />;
+  } else if (policiesFailed) {
+    body = (
+      <SheetError
+        title="Could not load alert rules"
+        message={apiErrorMessage(policiesError, "The organization's rule catalog is unavailable right now.")}
+        onRetry={() => void refetchPolicies()}
+      />
+    );
+  } else if (subscriptionsFailed) {
+    body = (
+      <SheetError
+        title="Could not load this project's subscriptions"
+        message={apiErrorMessage(subscriptionsError, "Subscriptions are unavailable right now.")}
+        onRetry={() => void refetchSubscriptions()}
+      />
+    );
+  } else if (policies.length === 0) {
+    body =
+      page > 0 ? (
+        <SheetEmpty
+          title="No rules on this page"
+          description="The catalog has fewer rules than this page expects."
+          action={
+            <UiButton variant="outline" size="lg" onClick={() => setPage(0)}>
+              Go to first page
+            </UiButton>
+          }
+        />
+      ) : (
+        <SheetEmpty
+          title="No alert rules in the catalog"
+          description="Alert rules are defined once for the organization, and each project subscribes to the ones it needs. Once the catalog has rules, subscribe this project to them here."
+          action={
+            <TextLink to={orgRoutes.alerts(orgSlug, "rules")} arrow>
+              Open organization alert rules
+            </TextLink>
+          }
+        />
+      );
+  } else if (filteredPolicies.length === 0) {
+    body = (
+      <SheetEmpty
+        title="No rules match"
+        description={
+          searchQuery.trim()
+            ? `Nothing${onThisPage} matches “${searchQuery.trim()}” with the current filters.`
+            : `No rule${onThisPage} matches the current filters.`
+        }
+        action={
+          <UiButton variant="outline" size="lg" onClick={clearFilters}>
+            Clear filters
+          </UiButton>
+        }
+      />
+    );
+  } else {
+    body = (
+      <SheetTable columns={COLUMNS} caption="Alert rules for this project" minWidth={600}>
+        {filteredPolicies.map((policy) => {
+          const subscription = findSubscriptionForPolicy(policy, subscriptions);
+          const override = extractOverride(subscription);
+          const thresholdOverridden = hasThresholdValue(override?.threshold);
+
+          const defaultThresholdDisplay = formatThreshold(policy.defaultThreshold);
+          const effectiveThresholdDisplay = thresholdOverridden
+            ? formatThreshold(override?.threshold)
+            : defaultThresholdDisplay;
+          const effectiveCooldown = override?.cooldownSeconds ?? policy.cooldownSeconds;
+          const effectiveWindow = override?.evaluationWindowSeconds ?? policy.evaluationWindowSeconds;
+          const effectiveSeverity = override?.severity ?? policy.severity;
+          const signal = policy.expression || policy.metricSource || policy.slug;
+          const overrideNote = override ? overrideSummary(override) : null;
+
+          const isCurrentlySubscribing = subscribingPolicyId === policy.id;
+
+          return (
+            <SheetRow key={policy.id}>
+              <SheetCell>
+                <RowTitle
+                  title={
+                    <span title={policy.description || undefined}>
+                      {policy.name}
+                      {policy.description && <span className="sr-only">. {policy.description}</span>}
+                    </span>
+                  }
+                  badges={
+                    <>
+                      <code className="hidden shrink-0 font-[family-name:var(--mono)] text-[11.5px] text-[var(--text3)] 2xl:inline">
+                        {policy.slug}
+                      </code>
+                      {overrideNote && (
+                        <span className="shrink-0" title={overrideNote}>
+                          <Pill>Overridden</Pill>
+                          <span className="sr-only">{overrideNote}</span>
+                        </span>
+                      )}
+                    </>
+                  }
+                  subtitle={<span title={signal}>{signal}</span>}
+                  subtitleMono
+                />
+              </SheetCell>
+
+              <SheetCell className={HIDE_BELOW_XL}>
+                <span className="block truncate text-[12px] text-[var(--text2)]">
+                  {labelCase(policy.category || "general")}
+                </span>
+              </SheetCell>
+
+              <SheetCell>
+                <div className="flex min-w-0 flex-col gap-0.5 leading-[1.35]">
+                  <span
+                    className="truncate font-[family-name:var(--mono)] text-[12px] tabular-nums text-[var(--text)]"
+                    title={effectiveThresholdDisplay}
+                  >
+                    {effectiveThresholdDisplay}
+                  </span>
+                  <span className="truncate text-[12px] text-[var(--text3)]">
+                    {thresholdOverridden ? (
+                      <>
+                        Org default{" "}
+                        <span className="font-[family-name:var(--mono)] tabular-nums">{defaultThresholdDisplay}</span>
+                      </>
+                    ) : (
+                      "Org default"
+                    )}
+                  </span>
+                </div>
+              </SheetCell>
+
+              <SheetCell className={HIDE_BELOW_LG}>
+                <div className="flex flex-col gap-0.5 leading-[1.35]">
+                  <span className="font-[family-name:var(--mono)] text-[12px] tabular-nums text-[var(--text)]">
+                    {formatDuration(effectiveWindow)}
+                  </span>
+                  <span className="text-[12px] text-[var(--text3)]">
+                    <span className="font-[family-name:var(--mono)] tabular-nums">{formatDuration(effectiveCooldown)}</span>{" "}
+                    cooldown
+                  </span>
+                </div>
+              </SheetCell>
+
+              <SheetCell className={HIDE_BELOW_MD}>
+                <SeverityBadge severity={effectiveSeverity} />
+              </SheetCell>
+
+              <SheetCell>
+                {subscription ? (
+                  <div className="flex min-w-0 items-center gap-2">
+                    <span
+                      aria-hidden="true"
+                      className={cn("size-1.5 shrink-0 rounded-full", STATE_DOT[subscription.state] ?? "bg-[var(--text3)]")}
+                    />
+                    <select
+                      value={subscription.state}
+                      onChange={(event) => handleStateChange(subscription, event.target.value as SubscriptionState)}
+                      aria-label={`Subscription state for ${policy.name}`}
+                      className={STATE_SELECT_CLASS}
+                    >
+                      {STATE_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ) : (
+                  <UiButton
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleSubscribe(policy)}
+                    disabled={isCurrentlySubscribing || mutations.subscribe.isPending}
+                    aria-label={`Subscribe to ${policy.name}`}
+                  >
+                    {isCurrentlySubscribing ? (
+                      <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
+                    ) : (
+                      <Plus className="size-3.5" aria-hidden="true" />
+                    )}
+                    Subscribe
+                  </UiButton>
+                )}
+              </SheetCell>
+
+              <SheetCell align="right">
+                {subscription && (
+                  <RowActions label={`Actions for ${policy.name}`}>
+                    <DropdownMenuItem onSelect={() => openOverrideModal(subscription, policy)}>
+                      <SlidersHorizontal aria-hidden="true" /> {override ? "Edit overrides" : "Override defaults"}
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem variant="destructive" onSelect={() => setUnsubscribingTarget({ policy, subscription })}>
+                      <BellOff aria-hidden="true" /> Unsubscribe
+                    </DropdownMenuItem>
+                  </RowActions>
+                )}
+              </SheetCell>
+            </SheetRow>
+          );
+        })}
+      </SheetTable>
+    );
+  }
+
+  return (
+    <WorkspacePage>
+      <ProjectPageHeader
+        title="Alert rules"
+        description="Subscribe this project to your organization's alert rules, then override their thresholds, cooldowns, and notification targets for it."
+      />
+
+      {/* Plan entitlement notice */}
       <EntitlementRestrictedBanner projectId={projectId} />
 
-      {/* Stats Summary Cards */}
-      <div className="grid grid-cols-2 gap-3.5 sm:grid-cols-4">
-        <div className="group rounded-xl border border-border/70 bg-card/60 p-4 shadow-xs backdrop-blur-sm transition-all hover:border-border hover:bg-card/80">
-          <div className="flex items-center justify-between">
-            <span className="text-[11.5px] font-medium text-muted-foreground uppercase tracking-wider font-mono">Catalog Rules</span>
-            <div className="flex size-7 items-center justify-center rounded-lg bg-zinc-800/80 text-zinc-300 border border-zinc-700/50">
-              <Layers className="size-4" />
-            </div>
-          </div>
-          <div className="mt-3 flex items-baseline gap-2">
-            <span className="font-mono text-2xl font-bold tracking-tight text-foreground">{totalPolicies}</span>
-            <span className="text-[11px] text-muted-foreground font-mono">available</span>
-          </div>
-        </div>
-
-        <div className="group rounded-xl border border-emerald-500/20 bg-card/60 p-4 shadow-xs backdrop-blur-sm transition-all hover:border-emerald-500/40 hover:bg-card/80">
-          <div className="flex items-center justify-between">
-            <span className="text-[11.5px] font-medium text-emerald-400/90 uppercase tracking-wider font-mono">Subscribed</span>
-            <div className="flex size-7 items-center justify-center rounded-lg bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
-              <CheckCircle2 className="size-4" />
-            </div>
-          </div>
-          <div className="mt-3 flex items-baseline gap-2">
-            <span className="font-mono text-2xl font-bold tracking-tight text-emerald-400">{subscribedCount}</span>
-            <span className="text-[11px] text-muted-foreground font-mono">active rules</span>
-          </div>
-        </div>
-
-        <div className="group rounded-xl border border-amber-500/20 bg-card/60 p-4 shadow-xs backdrop-blur-sm transition-all hover:border-amber-500/40 hover:bg-card/80">
-          <div className="flex items-center justify-between">
-            <span className="text-[11.5px] font-medium text-amber-400/90 uppercase tracking-wider font-mono">Custom Overrides</span>
-            <div className="flex size-7 items-center justify-center rounded-lg bg-amber-500/15 text-amber-400 border border-amber-500/30">
-              <Sliders className="size-4" />
-            </div>
-          </div>
-          <div className="mt-3 flex items-baseline gap-2">
-            <span className="font-mono text-2xl font-bold tracking-tight text-amber-400">{overriddenCount}</span>
-            <span className="text-[11px] text-muted-foreground font-mono">tuned thresholds</span>
-          </div>
-        </div>
-
-        <div className="group rounded-xl border border-border/70 bg-card/60 p-4 shadow-xs backdrop-blur-sm transition-all hover:border-border hover:bg-card/80">
-          <div className="flex items-center justify-between">
-            <span className="text-[11.5px] font-medium text-muted-foreground uppercase tracking-wider font-mono">Available</span>
-            <div className="flex size-7 items-center justify-center rounded-lg bg-sky-500/10 text-sky-400 border border-sky-500/20">
-              <Shield className="size-4" />
-            </div>
-          </div>
-          <div className="mt-3 flex items-baseline gap-2">
-            <span className="font-mono text-2xl font-bold tracking-tight text-muted-foreground">{unsubscribedCount}</span>
-            <span className="text-[11px] text-muted-foreground font-mono">unsubscribed</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Filters & Search Toolbar */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3.5">
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3.5 top-2.5 size-4 text-muted-foreground" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Filter policies by name, metric, slug..."
-            className="w-full rounded-xl border border-border/80 bg-card/80 pl-10 pr-9 py-2 text-xs text-foreground placeholder-muted-foreground/70 focus:border-emerald-500/60 focus:outline-none focus:ring-1 focus:ring-emerald-500/40 font-mono transition-all"
-          />
-          {searchQuery && (
-            <button
-              type="button"
-              onClick={() => setSearchQuery("")}
-              className="absolute right-3 top-2.5 text-muted-foreground hover:text-foreground cursor-pointer"
-            >
-              <X className="size-3.5" />
-            </button>
-          )}
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2.5">
-          {/* Subscription state filter tabs */}
-          <div className="flex items-center rounded-xl border border-border/80 bg-card/80 p-1 text-xs font-mono">
-            <button
-              type="button"
-              onClick={() => setSubscriptionFilter("all")}
-              className={cn(
-                "rounded-lg px-3 py-1.5 transition-all cursor-pointer",
-                subscriptionFilter === "all"
-                  ? "bg-zinc-800 text-foreground font-semibold shadow-xs"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-                All ({totalPolicies})
-            </button>
-            <button
-              type="button"
-              onClick={() => setSubscriptionFilter("subscribed")}
-              className={cn(
-                "rounded-lg px-3 py-1.5 transition-all cursor-pointer",
-                subscriptionFilter === "subscribed"
-                  ? "bg-emerald-500/15 text-emerald-300 font-semibold border border-emerald-500/30 shadow-xs"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              Subscribed ({subscribedCount})
-            </button>
-            <button
-              type="button"
-              onClick={() => setSubscriptionFilter("overridden")}
-              className={cn(
-                "rounded-lg px-3 py-1.5 transition-all cursor-pointer",
-                subscriptionFilter === "overridden"
-                  ? "bg-amber-500/15 text-amber-300 font-semibold border border-amber-500/30 shadow-xs"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              Overridden ({overriddenCount})
-            </button>
-            <button
-              type="button"
-              onClick={() => setSubscriptionFilter("unsubscribed")}
-              className={cn(
-                "rounded-lg px-3 py-1.5 transition-all cursor-pointer",
-                subscriptionFilter === "unsubscribed"
-                  ? "bg-zinc-800 text-foreground font-semibold shadow-xs"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              Available ({unsubscribedCount})
-            </button>
-          </div>
-
-          {/* Category Dropdown */}
-          {categories.length > 0 && (
-            <select
-              value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
-              className="rounded-xl border border-border/80 bg-card/80 px-3.5 py-2 text-xs text-foreground focus:border-emerald-500/60 focus:outline-none capitalize cursor-pointer font-mono shadow-xs"
-            >
-              <option value="all">All Categories ({categories.length})</option>
-              {categories.map((cat) => (
-                <option key={cat} value={cat}>
-                  {cat}
-                </option>
-              ))}
-            </select>
-          )}
-        </div>
-      </div>
-
-      {totalPolicies > PAGE_SIZE && (
-        <div className="flex items-center justify-between rounded-xl border border-border/70 bg-card/60 px-3 py-2">
-          <span className="font-mono text-[11px] text-muted-foreground">
-            Page {page + 1} of {Math.max(1, Math.ceil(totalPolicies / PAGE_SIZE))}
-          </span>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setPage((current) => Math.max(0, current - 1))}
-              disabled={page === 0}
-              className="rounded-lg border border-border/80 bg-card px-3 py-1.5 text-xs font-semibold text-foreground disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              Previous
-            </button>
-            <button
-              type="button"
-              onClick={() => setPage((current) => current + 1)}
-              disabled={(page + 1) * PAGE_SIZE >= totalPolicies}
-              className="rounded-lg border border-border/80 bg-card px-3 py-1.5 text-xs font-semibold text-foreground disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              Next
-            </button>
-          </div>
-        </div>
+      {!loadFailed && (
+        <Readouts
+          cells={readouts}
+          loading={(policiesLoading && !policiesPage) || (subscriptionsLoading && !subscriptionsData)}
+          label="Alert rules summary"
+        />
       )}
 
-      {/* Main Table Content */}
-      {(policiesLoading && policies.length === 0) || (subscriptionsLoading && subscriptions.length === 0) ? (
-        <SkeletonTable rows={8} columns={["w-48", "w-28", "w-32", "w-24", "w-20"]} withToolbar={false} delay={30} />
-      ) : policies.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-border/80 bg-card/30 p-14 text-center text-sm text-muted-foreground font-mono">
-          No organization policies are configured.
-        </div>
-      ) : filteredPolicies.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-border/80 bg-card/30 p-14 text-center text-sm text-muted-foreground font-mono">
-          No policies match your search query & filter criteria.
-        </div>
-      ) : (
-        <div className="overflow-hidden rounded-2xl border border-border/70 bg-card/60 shadow-lg backdrop-blur-md">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="border-b border-border/60 bg-zinc-900/60 font-mono text-[10.5px] uppercase tracking-wider font-semibold text-zinc-400">
-                <tr>
-                  <th className="py-3.5 px-4 pl-5">Policy Rule</th>
-                  <th className="py-3.5 px-4">Category</th>
-                  <th className="py-3.5 px-4">Org Base Default</th>
-                  <th className="py-3.5 px-4">Project Effective Setting</th>
-                  <th className="py-3.5 px-4">Subscription Status</th>
-                  <th className="py-3.5 px-4 pr-5 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border/30">
-                {filteredPolicies.map((policy) => {
-                  const subscription = findSubscriptionForPolicy(policy, subscriptions);
-                  const isSubscribed = Boolean(subscription);
-                  const override = extractOverride(subscription);
-                  const hasOverride = Boolean(override);
-
-                  const defaultThresholdDisplay = formatThreshold(policy.defaultThreshold);
-                  const effectiveThresholdDisplay = override?.threshold != null ? formatThreshold(override.threshold) : defaultThresholdDisplay;
-                  const effectiveCooldown = override?.cooldownSeconds != null ? override.cooldownSeconds : policy.cooldownSeconds;
-                  const effectiveSeverity = override?.severity != null ? override.severity : policy.severity;
-
-                  const isCurrentlySubscribing = subscribingPolicyId === policy.id;
-
-                  return (
-                    <tr
-                      key={policy.id}
-                      className={cn(
-                        "group transition-colors",
-                        isSubscribed
-                          ? "bg-emerald-500/[0.02] hover:bg-zinc-800/40"
-                          : "opacity-80 hover:opacity-100 hover:bg-zinc-800/30",
-                      )}
-                    >
-                      {/* Policy info */}
-                      <td className="py-4 px-4 pl-5 align-top">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="text-[13.5px] font-semibold text-foreground tracking-tight group-hover:text-emerald-300 transition-colors">
-                            {policy.name}
-                          </span>
-                          <ModernSeverityBadge severity={effectiveSeverity} />
-                        </div>
-                        <div className="mt-1 flex items-center gap-1.5">
-                          <code className="font-mono text-[10.5px] text-zinc-400 bg-zinc-900/80 px-1.5 py-0.5 rounded border border-zinc-800">
-                            {policy.slug}
-                          </code>
-                        </div>
-                        {policy.description && (
-                          <p className="mt-1.5 text-[11.5px] text-muted-foreground leading-relaxed line-clamp-2 max-w-sm">
-                            {policy.description}
-                          </p>
-                        )}
-                      </td>
-
-                      {/* Category */}
-                      <td className="py-4 px-4 align-top">
-                        <span
-                          className={cn(
-                            "inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 font-mono text-[11px] font-medium capitalize",
-                            getCategoryBadgeColor(policy.category),
-                          )}
-                        >
-                          {getCategoryIcon(policy.category)}
-                          <span>{policy.category || "General"}</span>
-                        </span>
-                      </td>
-
-                      {/* Org Base Default */}
-                      <td className="py-4 px-4 align-top space-y-1">
-                        <div className="font-mono font-bold text-foreground text-[13px]">
-                          {defaultThresholdDisplay}
-                        </div>
-                        <div className="flex items-center gap-1 text-[11px] text-muted-foreground/80 font-mono">
-                          <Clock className="size-3 text-zinc-500" />
-                          <span>
-                            {formatDuration(policy.cooldownSeconds)} cooldown • {formatDuration(policy.evaluationWindowSeconds)} win
-                          </span>
-                        </div>
-                      </td>
-
-                      {/* Project Effective Setting */}
-                      <td className="py-4 px-4 align-top">
-                        {isSubscribed ? (
-                          hasOverride ? (
-                            <div className="space-y-1">
-                              <div className="flex items-center gap-2">
-                                <span className="font-mono font-bold text-amber-400 text-[13px]">
-                                  {effectiveThresholdDisplay}
-                                </span>
-                                <span className="inline-flex items-center gap-1 rounded-md border border-amber-500/30 bg-amber-500/15 px-2 py-0.5 font-mono text-[10px] font-bold text-amber-300 shadow-xs">
-                                  <Sliders className="size-2.5" />
-                                  OVERRIDDEN
-                                </span>
-                              </div>
-                              <div className="text-[11px] text-muted-foreground font-mono">
-                                {formatDuration(effectiveCooldown)} cooldown
-                                {override?.channels && override.channels.length > 0 && ` • ${override.channels.join(", ")}`}
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="space-y-1">
-                              <div className="flex items-center gap-2">
-                                <span className="font-mono font-bold text-foreground text-[13px]">
-                                  {defaultThresholdDisplay}
-                                </span>
-                                <span className="inline-flex items-center gap-1 rounded-md border border-emerald-500/30 bg-emerald-500/15 px-2 py-0.5 font-mono text-[10px] font-bold text-emerald-400 shadow-xs">
-                                  <Check className="size-2.5" />
-                                  ORG DEFAULT
-                                </span>
-                              </div>
-                              <div className="text-[11px] text-muted-foreground font-mono">
-                                {formatDuration(policy.cooldownSeconds)} cooldown
-                              </div>
-                            </div>
-                          )
-                        ) : (
-                          <span className="font-mono text-[11px] text-muted-foreground/50 italic">
-                            — Not subscribed
-                          </span>
-                        )}
-                      </td>
-
-                      {/* Subscription Status Indicator */}
-                      <td className="py-4 px-4 align-top">
-                        {subscription ? (
-                          <div className="inline-flex items-center gap-2">
-                            <select
-                              value={subscription.state}
-                              onChange={(event) =>
-                                mutations.updateState.mutate(
-                                  {
-                                    subscriptionId: subscription.id,
-                                    state: event.target.value as SubscriptionState,
-                                  },
-                                  {
-                                    onSuccess: () => toast.success("Subscription state updated"),
-                                    onError: (error) =>
-                                      toast.error(apiErrorMessage(error, "Could not update subscription.")),
-                                  },
-                                )
-                              }
-                              className={cn(
-                                "rounded-lg border px-3 py-1.5 text-xs capitalize font-mono font-semibold transition-all focus:outline-none cursor-pointer shadow-xs",
-                                subscription.state === "subscribed"
-                                  ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-400 hover:border-emerald-500/60"
-                                  : subscription.state === "paused"
-                                    ? "border-amber-500/40 bg-amber-500/10 text-amber-300 hover:border-amber-500/60"
-                                    : subscription.state === "muted"
-                                      ? "border-purple-500/40 bg-purple-500/10 text-purple-300 hover:border-purple-500/60"
-                                      : "border-zinc-700 bg-zinc-800 text-zinc-400 hover:border-zinc-600",
-                              )}
-                            >
-                              <option value="subscribed" className="bg-zinc-950 text-emerald-400">● Subscribed</option>
-                              <option value="paused" className="bg-zinc-950 text-amber-300">● Paused</option>
-                              <option value="muted" className="bg-zinc-950 text-purple-300">● Muted</option>
-                              <option value="disabled" className="bg-zinc-950 text-zinc-400">● Disabled</option>
-                            </select>
-                          </div>
-                        ) : (
-                          <span className="inline-flex items-center gap-1.5 rounded-full border border-border/80 bg-zinc-900/60 px-2.5 py-1 font-mono text-[10.5px] font-medium text-muted-foreground">
-                            <span className="size-1.5 rounded-full bg-zinc-500/70" />
-                            Available
-                          </span>
-                        )}
-                      </td>
-
-                      {/* Actions Column */}
-                      <td className="py-4 px-4 pr-5 text-right align-top">
-                        {subscription ? (
-                          <div className="inline-flex items-center gap-2">
-                            {/* Override Button */}
-                            <button
-                              type="button"
-                              onClick={() => openOverrideModal(subscription, policy)}
-                              className="inline-flex items-center gap-1.5 rounded-lg border border-border/80 bg-card px-3 py-1.5 text-xs font-semibold text-foreground transition-all hover:bg-zinc-800 hover:border-border cursor-pointer shadow-xs font-mono"
-                            >
-                              <Sliders className="size-3.5 text-emerald-400" />
-                              <span>{hasOverride ? "Edit Override" : "Override Rule"}</span>
-                            </button>
-
-                            {/* Unsubscribe Button */}
-                            <button
-                              type="button"
-                              onClick={() => setUnsubscribingTarget({ policy, subscription })}
-                              className="inline-flex items-center gap-1 rounded-lg border border-transparent px-2 py-1.5 text-xs font-medium text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 hover:border-rose-500/20 transition-all cursor-pointer font-mono"
-                              title="Unsubscribe project from this policy"
-                            >
-                              <MinusCircle className="size-3.5" />
-                              <span>Unsubscribe</span>
-                            </button>
-                          </div>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => handleSubscribe(policy)}
-                            disabled={isCurrentlySubscribing || mutations.subscribe.isPending}
-                            className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-500 px-4 py-1.5 text-xs font-bold text-zinc-950 shadow-xs transition-all hover:bg-emerald-400 cursor-pointer disabled:opacity-50 font-mono"
-                          >
-                            {isCurrentlySubscribing ? (
-                              <Loader2 className="size-3.5 animate-spin text-zinc-950" />
-                            ) : (
-                              <Plus className="size-3.5 text-zinc-950" />
-                            )}
-                            <span>Subscribe</span>
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
+      <Sheet
+        label="Alert rules"
+        toolbar={
+          <>
+            <SearchField
+              value={searchQuery}
+              onChange={setSearchQuery}
+              placeholder="Search by name, slug, or category"
+              label="Search alert rules"
+            />
+            {/* Scrolls sideways on narrow screens instead of widening the page. */}
+            <div className="sidebar-scroll max-w-full overflow-x-auto">
+              <SegmentedControl
+                value={subscriptionFilter}
+                onChange={setSubscriptionFilter}
+                options={filterOptions}
+                ariaLabel="Filter rules by subscription"
+              />
+            </div>
+            {categories.length > 0 && (
+              <FilterSelect
+                label="Category"
+                value={selectedCategory}
+                onChange={setSelectedCategory}
+                options={categoryOptions}
+              />
+            )}
+            {!tableLoading && !loadFailed && (
+              <ToolbarCount>
+                {formatNumber(filteredPolicies.length)} {filteredPolicies.length === 1 ? "rule" : "rules"}
+              </ToolbarCount>
+            )}
+          </>
+        }
+        footer={
+          paginated ? (
+            <>
+              <span className="tabular-nums">
+                {policiesPage ? `Page ${page + 1} of ${pageCount}.` : `Page ${page + 1}.`} Search and filters apply to the
+                rules on this page.
+              </span>
+              <div className="flex items-center gap-2">
+                <UiButton
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage((current) => Math.max(0, current - 1))}
+                  disabled={page === 0}
+                >
+                  Previous
+                </UiButton>
+                <UiButton
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage((current) => current + 1)}
+                  disabled={(page + 1) * PAGE_SIZE >= totalPolicies}
+                >
+                  Next
+                </UiButton>
+              </div>
+            </>
+          ) : undefined
+        }
+      >
+        {body}
+      </Sheet>
 
       {/* Override Configuration Modal */}
       <ProjectOverrideModal
@@ -789,13 +729,13 @@ export default function ProjectThresholdsPage() {
         onOpenChange={(open) => {
           if (!open) setUnsubscribingTarget(null);
         }}
-        title={`Unsubscribe from ${unsubscribingTarget?.policy.name || "Rule"}?`}
-        description={`This will detach this alert rule from ${project.name || "this project"}. Custom threshold overrides will be cleared, and incidents for this policy will no longer be generated for this project.`}
+        title={`Unsubscribe from ${unsubscribingTarget?.policy.name || "this rule"}?`}
+        description={`This detaches the rule from ${project.name || "this project"}. Its project overrides are cleared, and it stops raising incidents for this project.`}
         confirmLabel="Unsubscribe"
         destructive={true}
         pending={mutations.remove.isPending}
         onConfirm={handleConfirmUnsubscribe}
       />
-    </div>
+    </WorkspacePage>
   );
 }

@@ -1,216 +1,195 @@
-import { useState } from "react";
-import { ShieldAlert } from "lucide-react";
-import { useRequestEvents, useErrorEvents } from "@/hooks/useDummyData";
-import { useTimeRangeStore, TIME_RANGES } from "@/stores/timeRangeStore";
+import { toast } from "sonner";
+import { AiActionButton } from "@/shared/ui/sentinel";
 import {
-  PageHeader, SectionCard, FilterSelect,
-  Table, Tr, Td, MonospaceText, Timestamp, SeverityBadge, formatCompact,
-} from "@/shared/observe";
-import { Gauge, MultiLineChart, Banner, StatTile, ChartCard, HeroBand, ZoneLabel } from "./widgets";
-import { seededSeries, groupBy, countryForIp } from "./lib";
+  BoardButton,
+  BoardPage,
+  Facts,
+  Ledger,
+  ModelNote,
+  Panel,
+  RankList,
+  Readouts,
+  Tag,
+  TimeChart,
+  Trend,
+  stateText,
+  type State,
+  type VerdictItem,
+} from "./board/kit";
+import { HOURS_24, series } from "./board/fixtures";
+import { compact } from "./board/format";
 
-const TIME_OPTIONS = TIME_RANGES.map((r) => ({ value: r, label: r }));
-const SENSITIVE = ["/admin", "/billing", "/users/export", "/api/v1/keys", "/settings/organization"];
+/*
+ * Security & threats: is anyone abusing our APIs. Lead ledger ranks source
+ * addresses by suspicious behaviour; each unfolds to its hourly shape and a
+ * block action. Addresses use documentation ranges (RFC 5737).
+ * Sample data only; getSecurityBoard() is the seam a live API replaces.
+ */
+
+type Pattern = "Credential stuffing" | "Token replay" | "Enumeration" | "Rate abuse" | "Scanner";
+
+interface Source {
+  ip: string;
+  country: string;
+  asn: string;
+  pattern: Pattern;
+  failedAuth: number;
+  requests: number;
+  targets: string;
+  firstSeen: string;
+  state: State;
+  hourly: number[];
+  blocked: boolean;
+}
+
+function src(s: Omit<Source, "hourly">, spikeAt?: number): Source {
+  return { ...s, hourly: series(`sec-${s.ip}`, 24, s.failedAuth / 40, s.failedAuth / 60, { diurnal: false, spikeAt, spike: s.failedAuth / 6, floor: 0 }) };
+}
+
+const SOURCES: Source[] = [
+  src({ ip: "203.0.113.42", country: "NL", asn: "AS64501 hosting", pattern: "Credential stuffing", failedAuth: 612, requests: 9_840, targets: "POST /auth/sessions", firstSeen: "12:14", state: "bad", blocked: false }, 18),
+  src({ ip: "198.51.100.7", country: "RU", asn: "AS64502 hosting", pattern: "Credential stuffing", failedAuth: 418, requests: 6_120, targets: "POST /auth/sessions", firstSeen: "12:20", state: "bad", blocked: false }, 18),
+  src({ ip: "192.0.2.199", country: "US", asn: "AS64503 cloud", pattern: "Token replay", failedAuth: 146, requests: 2_310, targets: "GET /v1/events", firstSeen: "09:02", state: "warn", blocked: false }, 10),
+  src({ ip: "203.0.113.88", country: "SG", asn: "AS64504 cloud", pattern: "Enumeration", failedAuth: 58, requests: 14_700, targets: "GET /v1/projects/:id", firstSeen: "Sep 28", state: "warn", blocked: false }),
+  src({ ip: "198.51.100.230", country: "BR", asn: "AS64505 ISP", pattern: "Rate abuse", failedAuth: 12, requests: 88_400, targets: "POST /v1/ingest", firstSeen: "Sep 27", state: "warn", blocked: false }),
+  src({ ip: "192.0.2.14", country: "DE", asn: "AS64506 hosting", pattern: "Scanner", failedAuth: 38, requests: 1_020, targets: "/.env, /wp-admin", firstSeen: "03:40", state: "ok", blocked: true }),
+];
+
+const ENDPOINTS = [
+  { path: "POST /auth/sessions", failed: 1_284, share: 11.2, state: "bad" as State },
+  { path: "POST /auth/password/reset", failed: 212, share: 4.1, state: "warn" as State },
+  { path: "GET /v1/projects/:id", failed: 58, share: 0.4, state: "ok" as State },
+  { path: "POST /v1/billing/charges", failed: 9, share: 0.05, state: "ok" as State },
+];
+
+const JWT = [
+  { label: "Expired", value: 1_560, state: undefined },
+  { label: "Signature mismatch", value: 146, state: "warn" as State },
+  { label: "Revoked but presented", value: 31, state: "warn" as State },
+  { label: "Wrong audience", value: 12, state: undefined },
+];
+
+function getSecurityBoard() {
+  const failed = series("sec-failed", 24, 38, 20, { diurnal: false, spikeAt: 18, spike: 260, floor: 0 });
+  const baseline = series("sec-base", 24, 36, 10, { diurnal: false, floor: 0 });
+  return { sources: SOURCES, failed, baseline, endpoints: ENDPOINTS, jwt: JWT };
+}
+
+const hourLabel = (i: number) => `${String(i).padStart(2, "0")}:00`;
+const PATTERN_STATE: Record<Pattern, State> = { "Credential stuffing": "bad", "Token replay": "warn", Enumeration: "warn", "Rate abuse": "warn", Scanner: "idle" };
+
+function SourceDetail({ s }: { s: Source }) {
+  return (
+    <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
+      <div className="min-w-0">
+        <Facts
+          items={[
+            { label: "Network", value: s.asn },
+            { label: "Country", value: s.country },
+            { label: "Target", value: s.targets },
+            { label: "Auth failure ratio", value: `${((s.failedAuth / s.requests) * 100).toFixed(1)}%`, state: s.state === "ok" ? undefined : s.state },
+          ]}
+        />
+        <div className="mt-5">
+          <TimeChart
+            label={`Failed authentications per hour from ${s.ip}`}
+            height={170}
+            xLabels={HOURS_24}
+            format={(v) => `${Math.round(v)}`}
+            pointLabel={hourLabel}
+            series={[{ label: "Failed auth", color: s.state === "bad" ? "var(--red)" : "var(--text)", data: s.hourly, area: true }]}
+          />
+        </div>
+      </div>
+      <div className="flex flex-col gap-3">
+        {s.state === "bad" && (
+          <ModelNote
+            title="Same password list, two networks"
+            confidence={93}
+            action={<AiActionButton onClick={() => toast("Block rule drafted for both addresses (sample)")}>Block both sources</AiActionButton>}
+          >
+            {s.ip} and its pair try the same 1,900 email addresses in the same order, 40ms apart. No attempt has succeeded.
+          </ModelNote>
+        )}
+        <div className="flex flex-wrap gap-2">
+          <BoardButton onClick={() => toast(`${s.ip} ${s.blocked ? "unblocked" : "blocked for 24h"} (sample)`)}>
+            {s.blocked ? "Unblock" : "Block for 24h"}
+          </BoardButton>
+          <BoardButton onClick={() => toast(`Requests from ${s.ip} opened (sample)`)}>View requests</BoardButton>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function SecurityThreat() {
-  const timeRange = useTimeRangeStore((s) => s.timeRange);
-  const setTimeRange = useTimeRangeStore((s) => s.setTimeRange);
-  const requests = useRequestEvents();
-  const errors = useErrorEvents();
+  const { sources, failed, baseline, endpoints, jwt } = getSecurityBoard();
+  const totalFailed = sources.reduce((a, s) => a + s.failedAuth, 0) + 90;
+  const active = sources.filter((s) => s.state === "bad" && !s.blocked);
 
-  const reqList = requests.data ?? [];
-  const errList = errors.data ?? [];
-
-  const authFails = reqList.filter((r) => r.statusCode === 401 || r.statusCode === 403);
-  const rateLimited = reqList.filter((r) => r.statusCode === 429);
-  const securityScore = Math.max(0, Math.min(100, 92 - authFails.length * 2 - rateLimited.length));
-
-  const [now] = useState(() => Date.now());
-  const [randomCounts] = useState(() => Array.from({ length: SENSITIVE.length }, () => Math.floor(Math.random() * 40)));
-  const [randomJWT] = useState(() => Array.from({ length: 4 }, () => Math.floor(Math.random() * 5)));
-
-  // Failed auth by IP
-  const byIp = Object.entries(groupBy(authFails, (r) => r.clientIp ?? "127.0.0.1"))
-    .map(([ip, rs]) => ({ ip, count: rs.length, country: countryForIp(ip), endpoint: rs[0]?.route ?? "—" }))
-    .sort((a, b) => b.count - a.count)
-    .slice(0, 8);
-
-  // Sensitive endpoint access
-  const sensitiveAccess = SENSITIVE.map((path, i) => {
-    const matched = reqList.filter((r) => r.route.includes(path) || r.url.includes(path));
-    return {
-      path,
-      count: matched.length || randomCounts[i],
-      users: new Set(matched.flatMap((r) => r.userId ? [r.userId] : [])).size || 3,
-      failed: matched.filter((r) => r.statusCode === 403).length,
-    };
-  });
-
-  // API key abuse (by tenant as proxy)
-  const keyAbuse = Object.entries(groupBy(reqList, (r) => r.tenantId ?? "unknown"))
-    .map(([tenant, rs]) => {
-      const countries = new Set(rs.map((r) => countryForIp(r.clientIp ?? "").code)).size;
-      const errRate = (rs.filter((r) => r.statusCode >= 400).length / rs.length) * 100;
-      const risk = Math.min(100, countries * 12 + errRate);
-      return { key: `pulse_${tenant.slice(0, 6)}`, count: rs.length, countries, errRate, risk };
-    })
-    .sort((a, b) => b.risk - a.risk)
-    .slice(0, 6);
-
-  // JWT anomalies from errors
-  const jwtAnomalies = errList.filter((e) => /jwt|token|signature|expired/i.test(e.message + e.name)).slice(0, 10);
+  const verdict: VerdictItem[] = [
+    { state: "bad", text: `Credential stuffing from ${active.length} addresses, unblocked` },
+    { state: "warn", text: `${sources.filter((s) => s.state === "warn").length} suspicious sources` },
+    { state: "ok", text: "No successful account takeover" },
+  ];
 
   return (
-    <div className="flex flex-col gap-6">
-      <PageHeader
-        title="Security & Threat Detection"
-        description="Detect, investigate, and respond to API security threats · auto-refresh 30s."
-        actions={<FilterSelect label="Range" value={timeRange} onChange={setTimeRange} options={TIME_OPTIONS} />}
-      />
-
-      {byIp[0]?.count > 10 && (
-        <Banner tone="red" icon={ShieldAlert} title={<>Brute force suspected — <strong>{byIp[0].count} failed auth attempts</strong> from <span className="font-[family-name:var(--mono)]">{byIp[0].ip}</span>.</>} action={<button type="button" className="rounded-[6px] border border-current px-2 py-1 text-[12px]">Block IP</button>} />
-      )}
-
-      <HeroBand
-        metrics={[
-          { label: "Failed auth (401/403)", value: authFails.length, delta: "last window", trend: "down", spark: seededSeries("sec-auth", 20, 20, 10), sparkColor: "var(--amber)" },
-          { label: "Rate-limited (429)", value: rateLimited.length, delta: "possible abuse", trend: "down", spark: seededSeries("sec-429", 20, 12, 8), sparkColor: "var(--red)" },
-          { label: "Suspicious IPs", value: byIp.length, delta: "flagged", trend: "down" },
-          { label: "JWT anomalies", value: jwtAnomalies.length, delta: "token issues", trend: "down" },
-          { label: "Sensitive accesses", value: formatCompact(sensitiveAccess.reduce((s, x) => s + x.count, 0)), delta: "audited", trend: "neutral", spark: seededSeries("sec-sens", 20, 30, 12), sparkColor: "var(--blue)" },
+    <BoardPage title="Security & threats" description="Traffic that looks like abuse: failed logins, replayed tokens, scraping and scanners." verdict={verdict}>
+      <Readouts
+        items={[
+          { label: "Failed logins", value: totalFailed.toLocaleString("en-US"), delta: "+640%", verdict: "bad", note: "vs 7-day average", state: "bad" },
+          { label: "Suspicious sources", value: String(sources.length), note: `${sources.filter((s) => s.blocked).length} blocked` },
+          { label: "Successful takeovers", value: "0", note: "last 30 days" },
+          { label: "Invalid tokens", value: compact(jwt.reduce((a, j) => a + j.value, 0)), note: "rejected JWTs" },
+          { label: "Rate-limited requests", value: "88.4K", note: "one source", state: "warn" },
+          { label: "WAF blocks", value: "3,912", delta: "+12%", verdict: "flat" },
         ]}
       />
 
-      <ZoneLabel>Threat posture</ZoneLabel>
+      <Ledger
+        id="source"
+        title="Suspicious sources"
+        meta="Most active threat first"
+        rows={sources}
+        rowId={(s) => s.ip}
+        rowState={(s) => (s.blocked ? "idle" : s.state)}
+        attention={(s) => s.failedAuth}
+        primary={{ header: "Source", cell: (s) => <span className="font-mono">{s.ip}</span>, sub: (s) => `${s.country} · ${s.asn}` }}
+        columns={[
+          { key: "pattern", header: "Pattern", className: "font-sans", cell: (s) => <Tag state={s.blocked ? "idle" : PATTERN_STATE[s.pattern]}>{s.blocked ? `${s.pattern}, blocked` : s.pattern}</Tag> },
+          { key: "trend", header: "Failed auth, 24h", hide: "lg", cell: (s) => <Trend data={s.hourly} state={s.blocked ? "ok" : s.state} label={`Failed authentications per hour from ${s.ip}`} /> },
+          { key: "fail", header: "Failed auth", align: "right", sortValue: (s) => s.failedAuth, cell: (s) => <span style={{ color: stateText(s.blocked ? "ok" : s.state) }}>{s.failedAuth.toLocaleString("en-US")}</span> },
+          { key: "req", header: "Requests", align: "right", hide: "md", sortValue: (s) => s.requests, cell: (s) => compact(s.requests) },
+          { key: "first", header: "First seen", align: "right", hide: "xl", cell: (s) => s.firstSeen },
+        ]}
+        detail={(s) => <SourceDetail s={s} />}
+      />
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <ChartCard title="Security score" headline={`${securityScore}`} headlineLabel="out of 100">
-          <div className="flex items-center justify-center py-2">
-            <Gauge value={securityScore} label={`${securityScore}`} sublabel="auth failures · suspicious IPs · rate limits" color={securityScore < 50 ? "var(--red)" : securityScore < 80 ? "var(--amber)" : "var(--green)"} />
-          </div>
-        </ChartCard>
-        <ChartCard
-          title="Failed authentication attempts over time"
-          className="lg:col-span-2"
-          legend={[
-            { label: "401 Unauthorized", color: "var(--amber)" },
-            { label: "403 Forbidden", color: "var(--red)" },
+      <Panel title="Failed authentications" meta="Per hour, today against the 7-day average">
+        <TimeChart
+          label="Failed authentications per hour today against the seven-day average"
+          xLabels={HOURS_24}
+          format={(v) => `${Math.round(v)}`}
+          pointLabel={hourLabel}
+          series={[
+            { label: "Today", color: "var(--red)", data: failed, area: true },
+            { label: "7-day average", color: "var(--text3)", data: baseline, dashed: true },
           ]}
-          timeAxis="32 samples ago"
-        >
-          <MultiLineChart
-            series={[
-              { label: "401 Unauthorized", color: "var(--amber)", data: seededSeries("401", 32, authFails.length / 2 + 4, 8) },
-              { label: "403 Forbidden", color: "var(--red)", data: seededSeries("403", 32, authFails.length / 3 + 2, 6) },
-            ]}
+        />
+      </Panel>
+
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+        <Panel title="Sensitive endpoints" meta="Failed attempts, 24h">
+          <RankList
+            label="Sensitive endpoints ranked by failed attempts"
+            format={(v) => v.toLocaleString("en-US")}
+            items={endpoints.map((e) => ({ label: e.path, value: e.failed, sub: `${e.share}% of calls`, state: e.state === "ok" ? undefined : e.state }))}
           />
-        </ChartCard>
+        </Panel>
+        <Panel title="Rejected tokens" meta="By reason, 24h">
+          <RankList label="Rejected JWTs by reason" format={(v) => v.toLocaleString("en-US")} items={jwt} />
+        </Panel>
       </div>
-
-      <ZoneLabel>Active investigations</ZoneLabel>
-
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <SectionCard title="Failed auth by source IP">
-          <Table headers={["IP address", "Country", "Attempts", "Endpoint"]}>
-            {byIp.map((r) => (
-              <Tr key={r.ip}>
-                <Td><MonospaceText value={r.ip} /></Td>
-                <Td>{r.country.flag} {r.country.code}</Td>
-                <Td><span style={{ color: r.count > 10 ? "var(--red)" : "var(--text)" }} className="tabular-nums font-semibold">{r.count}</span></Td>
-                <Td><MonospaceText value={r.endpoint} className="max-w-[160px]" /></Td>
-              </Tr>
-            ))}
-          </Table>
-        </SectionCard>
-
-        <SectionCard title="Unusual traffic patterns">
-          <div className="flex flex-col gap-2">
-            {[
-              { type: "Traffic spike from new country", sev: "high", endpoint: "/api/v1/auth/login", conf: 92 },
-              { type: "Requests outside business hours", sev: "medium", endpoint: "/admin/users", conf: 74 },
-              { type: "Sudden endpoint popularity shift", sev: "low", endpoint: "/api/v1/export", conf: 61 },
-              { type: "Unusual user-agent pattern", sev: "critical", endpoint: "/api/v1/keys", conf: 88 },
-            ].map((a) => (
-              <div key={a.type} className="flex items-center gap-3 rounded-[10px] border border-[var(--border)] bg-[var(--bg2)] p-3">
-                <SeverityBadge severity={a.sev} />
-                <div className="min-w-0 flex-1">
-                  <div className="truncate text-[13px] font-medium text-[var(--text)]">{a.type}</div>
-                  <div className="truncate font-[family-name:var(--mono)] text-[11px] text-[var(--text3)]">{a.endpoint}</div>
-                </div>
-                <span className="shrink-0 text-[11px] text-[var(--text3)]">{a.conf}% conf</span>
-                <button type="button" className="shrink-0 rounded-[6px] border border-[var(--border)] px-2 py-1 text-[11px] text-[var(--brand)]">Investigate</button>
-              </div>
-            ))}
-          </div>
-        </SectionCard>
-      </div>
-
-      <ZoneLabel>Audit trail</ZoneLabel>
-
-      <SectionCard title="Sensitive endpoint access">
-        <Table headers={["Endpoint", "Access count", "Unique users", "Failed (403)", "After-hours %", "Last accessed"]}>
-          {sensitiveAccess.map((s) => (
-            <Tr key={s.path}>
-              <Td><MonospaceText value={s.path} /></Td>
-              <Td className="tabular-nums">{s.count}</Td>
-              <Td className="tabular-nums">{s.users}</Td>
-              <Td className="tabular-nums">{Math.round((s.count % 30))}%</Td>
-              <Td><Timestamp value={now - s.count * 60000} /></Td>
-            </Tr>
-          ))}
-        </Table>
-      </SectionCard>
-
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <SectionCard title="API key abuse detection">
-          <Table headers={["Key", "Requests", "Countries", "Err %", "Risk"]}>
-            {keyAbuse.map((k) => (
-              <Tr key={k.key}>
-                <Td><MonospaceText value={`${k.key}...`} /></Td>
-                <Td className="tabular-nums">{k.count}</Td>
-                <Td className="tabular-nums">{k.countries}</Td>
-                <Td className="tabular-nums">{k.errRate.toFixed(0)}%</Td>
-                <Td><span style={{ color: k.risk > 80 ? "var(--red)" : k.risk > 50 ? "var(--amber)" : "var(--green)" }} className="tabular-nums font-semibold">{Math.round(k.risk)}</span></Td>
-              </Tr>
-            ))}
-          </Table>
-          {keyAbuse[0]?.risk > 80 && <div className="mt-2 text-[12px] text-[var(--red)]">Suggested: rotate {keyAbuse[0].key}... (risk {Math.round(keyAbuse[0].risk)})</div>}
-        </SectionCard>
-
-        <SectionCard title="JWT token anomalies">
-          {jwtAnomalies.length ? (
-            <div className="flex flex-col divide-y divide-[var(--border)]">
-              {jwtAnomalies.map((e) => (
-                <div key={e.eventId} className="flex items-center gap-3 py-2 first:pt-0">
-                  <SeverityBadge severity={e.severity} />
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate text-[12px] font-medium text-[var(--text)]">{e.name}</div>
-                    <div className="truncate text-[11px] text-[var(--text3)]">{e.message}</div>
-                  </div>
-                  <Timestamp value={e.timestamp} />
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="flex flex-col gap-2">
-              {["Token replay (same JWT, different IPs)", "Expired token attempts", "Malformed JWT signatures", "Privilege escalation attempts"].map((d, i) => (
-                <div key={d} className="flex items-center justify-between rounded-[8px] bg-[var(--bg2)] px-3 py-2 text-[12px]">
-                  <span className="text-[var(--text2)]">{d}</span>
-                  <span className="tabular-nums text-[var(--text3)]">{randomJWT[i]}</span>
-                </div>
-              ))}
-            </div>
-          )}
-        </SectionCard>
-      </div>
-
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <StatTile label="Rate-limit evasion suspects" value={Math.max(0, rateLimited.length - 2)} />
-        <StatTile label="Blocked IPs (24h)" value={3} />
-        <StatTile label="MFA challenges" value={formatCompact(reqList.length * 2)} />
-        <StatTile label="Audit events" value={formatCompact(reqList.length * 6)} />
-      </div>
-    </div>
+    </BoardPage>
   );
 }

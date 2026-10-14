@@ -1,6 +1,4 @@
-import { AlertTriangle, Rocket, RotateCcw } from "lucide-react";
-import { Button } from "@/shared/observe";
-import { cn } from "@/lib/utils";
+import { Button as UiButton } from "@/components/ui/button";
 
 interface DraftStateBannerProps {
   isDirty: boolean;
@@ -11,6 +9,10 @@ interface DraftStateBannerProps {
   onReviewPublish: () => void;
 }
 
+/**
+ * Sticky bar at the foot of the editor while the draft differs from the
+ * published revision. One hairline, no shadow (design/workspaces/DESIGN.md).
+ */
 export function DraftStateBanner({
   isDirty,
   hasErrors,
@@ -22,66 +24,38 @@ export function DraftStateBanner({
   if (!isDirty && !hasErrors) return null;
 
   return (
-    <div className="fixed inset-x-0 bottom-6 z-50 flex justify-center px-4 pointer-events-none">
-      <div className="pointer-events-auto flex w-full max-w-2xl flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4 rounded-[var(--radius-lg)] border border-[var(--border2)] bg-[var(--bg1)] px-5 py-3.5 shadow-[var(--shadow-toast)] animate-in fade-in slide-in-from-bottom-5 duration-200">
-        <div className="flex min-w-0 items-center gap-3">
-          {hasErrors ? (
-            <div className="flex items-center gap-2.5">
-              <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-[var(--red-bg)] text-[var(--red)] border border-[var(--red)]/40">
-                <AlertTriangle className="size-4" />
-              </span>
-              <div>
-                <div className="text-[13px] font-bold text-[var(--red)]">
-                  {errorCount} Validation Error{errorCount === 1 ? "" : "s"} Detected
-                </div>
-                <div className="text-[11px] text-[var(--text3)]">
-                  Input bounds violation. Correct before publishing.
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="flex items-center gap-2.5">
-              <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-[var(--brand)] text-[12px] font-bold text-[var(--brand-fg)] shadow-xs">
-                {diffCount}
-              </span>
-              <div>
-                <div className="text-[13px] font-bold text-[var(--text)]">
-                  {diffCount} Unsaved Change{diffCount === 1 ? "" : "s"} in Local Buffer
-                </div>
-                <div className="text-[11px] text-[var(--text3)]">
-                  Modifications are staged locally and not yet compiled.
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
+    <div
+      role="region"
+      aria-label="Unpublished changes"
+      className="sticky bottom-4 z-20 flex flex-col gap-3 rounded-[var(--radius-lg)] border border-[var(--border2)] bg-[var(--bg1)] px-5 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:gap-6"
+    >
+      <div className="min-w-0" aria-live="polite">
+        {hasErrors ? (
+          <>
+            <p className="text-[13px] font-medium text-[var(--red)]">
+              <span className="font-[family-name:var(--mono)] tabular-nums">{errorCount}</span> validation{" "}
+              {errorCount === 1 ? "error" : "errors"}
+            </p>
+            <p className="mt-0.5 text-[12px] text-[var(--text3)]">Fix them before publishing. Values outside the allowed range are rejected.</p>
+          </>
+        ) : (
+          <>
+            <p className="text-[13px] font-medium text-[var(--text)]">
+              <span className="font-[family-name:var(--mono)] tabular-nums text-[var(--amber)]">{diffCount}</span> unpublished{" "}
+              {diffCount === 1 ? "change" : "changes"}
+            </p>
+            <p className="mt-0.5 text-[12px] text-[var(--text3)]">Edits stay in this draft until you publish a new revision.</p>
+          </>
+        )}
+      </div>
 
-        <div className="flex shrink-0 items-center gap-2 self-stretch sm:self-center justify-end">
-          <Button
-            type="button"
-            variant="ghost"
-            onClick={onDiscard}
-            className="h-8.5 px-3 text-xs gap-1.5 text-[var(--text2)] hover:text-[var(--text)] hover:bg-[var(--bg2)]"
-          >
-            <RotateCcw className="size-3.5" />
-            Discard
-          </Button>
-
-          <Button
-            type="button"
-            onClick={onReviewPublish}
-            disabled={hasErrors}
-            className={cn(
-              "h-8.5 px-3.5 text-xs font-semibold gap-1.5 transition-all shadow-xs",
-              hasErrors
-                ? "bg-[var(--red-bg)] text-[var(--red)] border border-[var(--red)]/30 cursor-not-allowed"
-                : "bg-[var(--brand)] hover:bg-[var(--brand-d)] text-[var(--brand-fg)]"
-            )}
-          >
-            <Rocket className="size-3.5" />
-            Review & Publish
-          </Button>
-        </div>
+      <div className="flex shrink-0 items-center justify-end gap-2">
+        <UiButton variant="ghost" size="lg" onClick={onDiscard}>
+          Discard
+        </UiButton>
+        <UiButton size="lg" onClick={onReviewPublish} disabled={hasErrors}>
+          Review and publish
+        </UiButton>
       </div>
     </div>
   );

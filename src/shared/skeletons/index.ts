@@ -55,9 +55,6 @@ export {
   LogsSkeleton,
   MembersSkeleton,
   MetricsSkeleton,
-  ProjectOverviewSkeleton,
-  ProjectsSkeleton,
-  RemoteConfigSkeleton,
   RulesSkeleton,
   ServiceHealthSkeleton,
   SettingsSkeleton,
@@ -66,5 +63,29 @@ export {
   WorkflowsSkeleton,
 } from "./pages";
 
-export { RouteSkeleton, resolveRouteSkeleton, stripOrgSlug } from "./RouteSkeleton";
+// Workspace pages: the projects list, project creation, and every project tab.
+export {
+  ProjectActivitySkeleton,
+  ProjectAlertChannelsSkeleton,
+  ProjectAlertRulesSkeleton,
+  ProjectAnalyticsSkeleton,
+  ProjectApiKeysSkeleton,
+  ProjectConnectorsSkeleton,
+  ProjectCreateSkeleton,
+  ProjectDeadLettersSkeleton,
+  ProjectDeliveriesSkeleton,
+  ProjectEnvironmentsSkeleton,
+  ProjectIncidentsSkeleton,
+  ProjectMembersSkeleton,
+  ProjectOverviewSkeleton,
+  ProjectPreferencesSkeleton,
+  ProjectRouteEditorSkeleton,
+  ProjectRoutesSkeleton,
+  ProjectSettingsSkeleton,
+  ProjectsSkeleton,
+  ProjectUsageSkeleton,
+  RemoteConfigSkeleton,
+} from "./workspace";
+
+export { RouteFrame, RouteSkeleton, resolveRouteSkeleton, stripOrgSlug } from "./RouteSkeleton";
 

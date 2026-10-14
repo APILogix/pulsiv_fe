@@ -15,6 +15,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
+import { apiErrorMessage } from "@/infrastructure/api-client/api-error";
 
 export default function InvitationsPage() {
   const queryClient = useQueryClient();
@@ -30,7 +31,10 @@ export default function InvitationsPage() {
   const invites = data?.data ?? [];
 
   const [state, inviteAction] = useActionState(
-    async (_prevState: any, form: FormData) => {
+    async (
+      _prevState: { ok: boolean; error?: string | null; email?: string },
+      form: FormData,
+    ): Promise<{ ok: boolean; error?: string | null; email?: string }> => {
       if (!activeOrgId) return { ok: false, error: "No active org" };
       try {
         const email = form.get("email") as string;
@@ -40,7 +44,7 @@ export default function InvitationsPage() {
         queryClient.invalidateQueries({ queryKey: orgQueryKeys.members(activeOrgId) });
         return { ok: true, email };
       } catch (err: any) {
-        return { ok: false, error: err.response?.data?.message || "Failed to send invitation" };
+        return { ok: false, error: apiErrorMessage(err) || "Failed to send invitation" };
       }
     },
     { ok: false, error: null, email: undefined }
@@ -62,7 +66,7 @@ export default function InvitationsPage() {
       toast.success("Invitation resent");
       queryClient.invalidateQueries({ queryKey: orgQueryKeys.invitations(activeOrgId!) });
     },
-    onError: (err: any) => toast.error(err.response?.data?.message || "Failed to resend")
+    onError: (err: any) => toast.error(apiErrorMessage(err) || "Failed to resend")
   });
 
   const revokeMutation = useMutation({
@@ -72,7 +76,7 @@ export default function InvitationsPage() {
       toast.success("Invitation revoked");
       queryClient.invalidateQueries({ queryKey: orgQueryKeys.invitations(activeOrgId!) });
     },
-    onError: (err: any) => toast.error(err.response?.data?.message || "Failed to revoke")
+    onError: (err: any) => toast.error(apiErrorMessage(err) || "Failed to revoke")
   });
 
   const columns: Column<Invitation>[] = [

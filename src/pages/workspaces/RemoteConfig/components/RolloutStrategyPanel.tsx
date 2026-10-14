@@ -1,136 +1,112 @@
-import { useState } from "react";
-import { Percent, ShieldCheck, Play, Pause, Zap } from "lucide-react";
-import { Button, SectionCard } from "@/shared/observe";
+import { useId, useState } from "react";
+
+import { Notice, Panel } from "@/shared/ui/pulse";
+import { cn } from "@/lib/utils";
 
 interface RolloutStrategyPanelProps {
   environmentName: string;
 }
 
+type Strategy = "full" | "percentage" | "canary";
+
+const STRATEGIES: Array<{ value: Strategy; label: string; description: string; percentage: number }> = [
+  {
+    value: "full",
+    label: "Immediate",
+    description: "Every SDK instance receives the update on its next config refresh.",
+    percentage: 100,
+  },
+  {
+    value: "percentage",
+    label: "Gradual percentage",
+    description: "Sticky, hash-based distribution to a share of SDK instances.",
+    percentage: 25,
+  },
+  {
+    value: "canary",
+    label: "Canary preview",
+    description: "Only instances tagged as preview or staging receive the update.",
+    percentage: 10,
+  },
+];
+
+/**
+ * Rollout strategies are not wired to publishing. The controls are shown so
+ * the intended workflow is visible, but they are disabled: changing them never
+ * affected a publish, and an enabled control would suggest it does.
+ */
 export function RolloutStrategyPanel({ environmentName }: RolloutStrategyPanelProps) {
-  const [strategy, setStrategy] = useState<"full" | "percentage" | "canary">("full");
+  const [strategy, setStrategy] = useState<Strategy>("full");
   const [percentage, setPercentage] = useState<number>(100);
-  const [isPaused, setIsPaused] = useState<boolean>(false);
+  const groupName = useId();
+  const percentageId = useId();
 
   return (
-    <SectionCard
-      title="SDK Rollout Strategy & Canary Control"
-      description="Configure safe deployment rules, gradual percentage rollouts, or canary previews for SDK instances connected to this environment."
+    <Panel
+      title="Rollout strategy"
+      description={`How a published revision reaches the SDK instances in ${environmentName}.`}
     >
-      <div className="flex flex-col gap-6">
-        {/* Strategy Selection */}
-        <div className="grid gap-4 sm:grid-cols-3">
-          <button
-            type="button"
-            onClick={() => {
-              setStrategy("full");
-              setPercentage(100);
-            }}
-            className={`flex flex-col items-start gap-2 rounded-[var(--radius-lg)] border p-4 text-left transition-all ${
-              strategy === "full"
-                ? "border-[var(--brand)] bg-[var(--brand)]/10 ring-1 ring-[var(--brand)]"
-                : "border-[var(--border)] bg-[var(--bg2)] hover:border-[var(--brand)]/50"
-            }`}
-          >
-            <div className="flex items-center justify-between w-full">
-              <span className="text-xs font-bold uppercase tracking-wider text-[var(--text3)]">Mode A</span>
-              <Zap className="size-4 text-[var(--amber)]" />
-            </div>
-            <div className="text-sm font-bold text-[var(--text)]">100% Immediate</div>
-            <div className="text-xs text-[var(--text3)]">All SDK instances receive updates on next TTL refresh cycle.</div>
-          </button>
+      <div className="flex flex-col gap-5">
+        <Notice tone="neutral" title="Preview">
+          Rollout strategies aren't connected to publishing yet. Today every published revision reaches all SDK
+          instances on their next config refresh.
+        </Notice>
 
-          <button
-            type="button"
-            onClick={() => {
-              setStrategy("percentage");
-              setPercentage(25);
-            }}
-            className={`flex flex-col items-start gap-2 rounded-[var(--radius-lg)] border p-4 text-left transition-all ${
-              strategy === "percentage"
-                ? "border-[var(--brand)] bg-[var(--brand)]/10 ring-1 ring-[var(--brand)]"
-                : "border-[var(--border)] bg-[var(--bg2)] hover:border-[var(--brand)]/50"
-            }`}
-          >
-            <div className="flex items-center justify-between w-full">
-              <span className="text-xs font-bold uppercase tracking-wider text-[var(--text3)]">Mode B</span>
-              <Percent className="size-4 text-[var(--blue)]" />
-            </div>
-            <div className="text-sm font-bold text-[var(--text)]">Gradual Percentage</div>
-            <div className="text-xs text-[var(--text3)]">Hash-ring based sticky distribution to a percentage of SDKs.</div>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              setStrategy("canary");
-              setPercentage(10);
-            }}
-            className={`flex flex-col items-start gap-2 rounded-[var(--radius-lg)] border p-4 text-left transition-all ${
-              strategy === "canary"
-                ? "border-[var(--brand)] bg-[var(--brand)]/10 ring-1 ring-[var(--brand)]"
-                : "border-[var(--border)] bg-[var(--bg2)] hover:border-[var(--brand)]/50"
-            }`}
-          >
-            <div className="flex items-center justify-between w-full">
-              <span className="text-xs font-bold uppercase tracking-wider text-[var(--text3)]">Mode C</span>
-              <ShieldCheck className="size-4 text-[var(--green)]" />
-            </div>
-            <div className="text-sm font-bold text-[var(--text)]">Canary Preview</div>
-            <div className="text-xs text-[var(--text3)]">Restrict deployment to explicitly tagged preview/staging instances.</div>
-          </button>
-        </div>
-
-        {/* Percentage Slider (If Percentage or Canary) */}
-        {strategy !== "full" && (
-          <div className="flex flex-col gap-3.5 rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg2)] p-5">
-            <div className="flex items-center justify-between text-xs">
-              <span className="font-semibold text-[var(--text)]">Rollout Target Percentage:</span>
-              <span className="font-mono font-bold text-[var(--brand)] text-sm">{percentage}%</span>
-            </div>
-            <input
-              type="range"
-              min="1"
-              max="100"
-              value={percentage}
-              onChange={(e) => setPercentage(Number(e.target.value))}
-              className="w-full accent-[var(--brand)] cursor-pointer"
-            />
-            <div className="flex justify-between text-[11px] text-[var(--text3)] font-mono">
-              <span>1% (Canary)</span>
-              <span>25%</span>
-              <span>50%</span>
-              <span>75%</span>
-              <span>100% (Global)</span>
-            </div>
-          </div>
-        )}
-
-        {/* Status and Pause controls */}
-        <div className="flex flex-wrap items-center justify-between gap-4 rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] p-5">
-          <div className="flex items-center gap-3">
-            <div className={`flex size-9 items-center justify-center rounded-lg ${isPaused ? "bg-[var(--amber)]/10 text-[var(--amber)]" : "bg-[var(--green)]/10 text-[var(--green)]"}`}>
-              {isPaused ? <Pause className="size-4" /> : <Play className="size-4" />}
-            </div>
-            <div>
-              <div className="text-xs font-bold text-[var(--text)]">
-                Rollout Engine Status: {isPaused ? "Paused (Holding current version)" : "Active (Distributing updates)"}
-              </div>
-              <div className="text-[11px] text-[var(--text3)]">
-                Targeting environment: <strong className="text-[var(--text)]">{environmentName}</strong>
-              </div>
-            </div>
+        <fieldset disabled className="flex flex-col gap-5">
+          <legend className="sr-only">Rollout strategy</legend>
+          <div className="flex flex-col divide-y divide-[var(--border)] overflow-hidden rounded-[var(--radius-lg)] border border-[var(--border)]">
+            {STRATEGIES.map((option) => {
+              const selected = strategy === option.value;
+              return (
+                <label
+                  key={option.value}
+                  className={cn(
+                    "flex items-start gap-3 px-4 py-3.5",
+                    selected ? "bg-[var(--bg2)]" : undefined,
+                    "cursor-not-allowed opacity-70",
+                  )}
+                >
+                  <input
+                    type="radio"
+                    name={groupName}
+                    value={option.value}
+                    checked={selected}
+                    onChange={() => {
+                      setStrategy(option.value);
+                      setPercentage(option.percentage);
+                    }}
+                    className="mt-0.5 size-4 shrink-0 accent-[var(--text)]"
+                  />
+                  <span className="min-w-0">
+                    <span className="block text-[13px] font-medium text-[var(--text)]">{option.label}</span>
+                    <span className="mt-0.5 block text-[12px] leading-[1.5] text-[var(--text2)]">{option.description}</span>
+                  </span>
+                </label>
+              );
+            })}
           </div>
 
-          <Button
-            type="button"
-            variant="ghost"
-            onClick={() => setIsPaused(!isPaused)}
-            className={`h-8 text-xs font-semibold ${isPaused ? "bg-[var(--green)]/20 text-[var(--green)] border border-[var(--green)]/30" : "bg-[var(--amber)]/20 text-[var(--amber)] border border-[var(--amber)]/30"}`}
-          >
-            {isPaused ? "Resume Rollout" : "Pause Rollout Engine"}
-          </Button>
-        </div>
+          {strategy !== "full" && (
+            <div className="flex flex-col gap-2 opacity-70">
+              <div className="flex items-baseline justify-between gap-3">
+                <label htmlFor={percentageId} className="text-[13px] font-medium text-[var(--text2)]">
+                  Target share of instances
+                </label>
+                <span className="font-[family-name:var(--mono)] text-[13px] tabular-nums text-[var(--text)]">{percentage}%</span>
+              </div>
+              <input
+                id={percentageId}
+                type="range"
+                min={1}
+                max={100}
+                value={percentage}
+                onChange={(event) => setPercentage(Number(event.target.value))}
+                className="w-full cursor-not-allowed accent-[var(--text)]"
+              />
+            </div>
+          )}
+        </fieldset>
       </div>
-    </SectionCard>
+    </Panel>
   );
 }

@@ -18,6 +18,10 @@ export default defineConfig({
     tailwindcss(),
   ],
   server: {
+    host: true,
+    watch: {
+      ignored: ["**/dist/**", "**/.git/**"],
+    },
     headers: {
       "X-Frame-Options": "DENY",
       "X-Content-Type-Options": "nosniff",
@@ -26,6 +30,7 @@ export default defineConfig({
     },
   },
   preview: {
+    host: true,
     headers: {
       "X-Frame-Options": "DENY",
       "X-Content-Type-Options": "nosniff",
@@ -54,14 +59,44 @@ export default defineConfig({
     ],
   },
   build: {
+    target: "es2022",
+    cssCodeSplit: true,
+    emptyOutDir: false,
+    chunkSizeWarningLimit: 600,
     rollupOptions: {
       output: {
-        manualChunks: {
-          'react-vendor': ['react', 'react-dom', 'react-router'],
-          'ui-vendor': ['lucide-react', 'framer-motion', 'cmdk', 'sonner', 'radix-ui'],
-          'util-vendor': ['@tanstack/react-query', 'axios', 'zustand', 'zod', '@simplewebauthn/browser']
-        }
-      }
-    }
-  }
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            if (id.includes('/react/') || id.includes('/react-dom/') || id.includes('/scheduler/')) {
+              return 'react-core';
+            }
+            if (id.includes('react-router')) {
+              return 'router-vendor';
+            }
+            if (id.includes('framer-motion')) {
+              return 'motion-vendor';
+            }
+            if (id.includes('lucide-react')) {
+              return 'icons-vendor';
+            }
+            if (id.includes('react-simple-maps') || id.includes('d3-')) {
+              return 'map-vendor';
+            }
+            if (id.includes('countries-and-timezones')) {
+              return 'countries-vendor';
+            }
+            if (id.includes('@simplewebauthn')) {
+              return 'authn-vendor';
+            }
+            if (id.includes('cmdk')) {
+              return 'cmdk-vendor';
+            }
+            if (id.includes('@tanstack/react-query')) {
+              return 'query-vendor';
+            }
+          }
+        },
+      },
+    },
+  },
 })

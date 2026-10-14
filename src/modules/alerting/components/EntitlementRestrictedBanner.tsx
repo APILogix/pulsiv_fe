@@ -1,23 +1,12 @@
 import { Link } from "react-router";
-import {
-  Mail,
-  Sparkles,
-  Lock,
-  Hash,
-  MessageSquare,
-  Users,
-  Radio,
-  Webhook,
-  AlertTriangle,
-  CheckCircle2,
-  ArrowRight,
-  Plug,
-  Info,
-} from "lucide-react";
+import { AlertTriangle, ArrowRight } from "lucide-react";
 import { useNotificationEntitlement, useProjectAlertingStatus } from "../hooks/useAlerting";
 import { useProjectMembers } from "@/modules/projects/hooks/useMembers";
+import type { ProjectMember } from "@/modules/projects/api/types";
 import { useOrgStore } from "@/modules/organizations/store/org.store";
 import { orgRoutes } from "@/app/router/org-routes";
+import { Button as UiButton } from "@/components/ui/button";
+import { Pill } from "@/shared/ui/pulse";
 import { cn } from "@/lib/utils";
 
 interface EntitlementRestrictedBannerProps {
@@ -26,197 +15,99 @@ interface EntitlementRestrictedBannerProps {
   showOwnerDetails?: boolean;
 }
 
+/** Connector channels the plan does not include. Named, not decorated. */
+const LOCKED_CHANNELS = ["Slack", "Discord", "Teams", "PagerDuty", "Webhook"];
+
+/**
+ * Delivery notice for alerting surfaces (design/alerting/DESIGN.md).
+ * One hairline sheet, state carried by an amber pill, one action on the right.
+ * Renders nothing when connectors are available and configured.
+ */
 export function EntitlementRestrictedBanner({
   projectId,
   className,
   showOwnerDetails = true,
 }: EntitlementRestrictedBannerProps) {
   const activeOrgSlug = useOrgStore((s) => s.activeOrgSlug);
-  const { isRestricted, isLoading: entitlementLoading } = useNotificationEntitlement();
+  const { isRestricted } = useNotificationEntitlement();
   const { data: alertingStatus } = useProjectAlertingStatus(projectId);
   const { data: memberPage } = useProjectMembers(projectId ?? "", { status: "active" });
 
-  const members = memberPage?.data ?? (memberPage as any)?.members ?? [];
-  const ownerMember = members.find((m: any) => m.role === "owner") ?? members[0];
+  // Older member endpoints returned `{ members }` instead of `{ data }`.
+  const legacy = memberPage as unknown as { members?: ProjectMember[] } | undefined;
+  const members: ProjectMember[] = memberPage?.data ?? legacy?.members ?? [];
+  const ownerMember = members.find((m) => m.role === "owner") ?? members[0];
   const ownerUser = ownerMember?.user;
   const ownerEmail = alertingStatus?.projectOwner?.email || ownerUser?.email;
-  const ownerName = ownerUser?.fullName || (ownerEmail ? ownerEmail.split("@")[0] : "Project Owner");
-  const initials = (ownerName || "PO")
-    .split(" ")
-    .map((part: string) => part[0])
-    .filter(Boolean)
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
+  const ownerName = ownerUser?.fullName || (ownerEmail ? ownerEmail.split("@")[0] : "Project owner");
 
-  // Case 1: Plan has NO connector entitlement (Email only fallback)
-  if (isRestricted || (alertingStatus && !alertingStatus.connectorAccess.allowed)) {
-    return (
-      <div
-        className={cn(
-          "relative overflow-hidden rounded-2xl border border-amber-500/20 bg-gradient-to-br from-amber-500/[0.07] via-[var(--bg2)]/80 to-[var(--bg2)]/40 p-4 sm:p-5 text-[13px] text-[var(--text)] shadow-sm backdrop-blur-md transition-all",
-          className,
-        )}
-        role="region"
-        aria-label="Email-only alert delivery notice"
-      >
-        <div
-          className="pointer-events-none absolute -right-10 -top-10 size-36 rounded-full bg-amber-500/10 blur-2xl"
-          aria-hidden="true"
-        />
+  const emailOnly = isRestricted || (alertingStatus && !alertingStatus.connectorAccess.allowed);
+  const unconfigured =
+    !emailOnly &&
+    alertingStatus &&
+    alertingStatus.connectorAccess.allowed &&
+    !alertingStatus.connectorStatus.configured;
 
-        <div className="relative flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div className="flex items-start gap-3.5">
-            <div className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-amber-500/30 bg-gradient-to-br from-amber-500/20 to-amber-600/10 text-amber-400 shadow-[0_0_12px_rgba(245,158,11,0.12)]">
-              <Mail className="size-4.5" aria-hidden="true" />
-            </div>
+  if (!emailOnly && !unconfigured) return null;
 
-            <div className="space-y-2">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-[13.5px] font-semibold tracking-tight text-[var(--text)]">
-                  Email fallback is active
-                </span>
-                <span className="inline-flex items-center rounded-full border border-amber-500/30 bg-amber-500/15 px-2.5 py-0.5 text-[10.5px] font-medium text-amber-300">
-                  Plan Quota
-                </span>
-              </div>
+  const title = emailOnly ? "Email fallback is active" : "No notification connector configured";
+  const body = emailOnly
+    ? "Your current plan doesn't include notification connectors. Alerts will continue to be sent to the project owner by email."
+    : "Alerts are currently sent to the project owner by email. Configure a connector to route notifications to Slack, PagerDuty, Discord, or webhooks.";
 
-              <p className="max-w-[68ch] text-[12.5px] leading-relaxed text-[var(--text2)]">
-                Your current plan doesn't include notification connectors. Alerts will continue to be safely sent to the project owner by email.
-              </p>
-
-              <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                <span className="text-[11px] font-medium text-muted-foreground">Locked channels:</span>
-                <div className="flex flex-wrap items-center gap-1.5">
-                  <span className="inline-flex items-center gap-1 rounded-md border border-border/40 bg-muted/30 px-2 py-0.5 text-[11px] text-muted-foreground opacity-75">
-                    <Hash className="size-3 text-muted-foreground" />
-                    <span>Slack</span>
-                  </span>
-                  <span className="inline-flex items-center gap-1 rounded-md border border-border/40 bg-muted/30 px-2 py-0.5 text-[11px] text-muted-foreground opacity-75">
-                    <MessageSquare className="size-3 text-muted-foreground" />
-                    <span>Discord</span>
-                  </span>
-                  <span className="inline-flex items-center gap-1 rounded-md border border-border/40 bg-muted/30 px-2 py-0.5 text-[11px] text-muted-foreground opacity-75">
-                    <Users className="size-3 text-muted-foreground" />
-                    <span>Teams</span>
-                  </span>
-                  <span className="inline-flex items-center gap-1 rounded-md border border-border/40 bg-muted/30 px-2 py-0.5 text-[11px] text-muted-foreground opacity-75">
-                    <Radio className="size-3 text-muted-foreground" />
-                    <span>PagerDuty</span>
-                  </span>
-                  <span className="inline-flex items-center gap-1 rounded-md border border-border/40 bg-muted/30 px-2 py-0.5 text-[11px] text-muted-foreground opacity-75">
-                    <Webhook className="size-3 text-muted-foreground" />
-                    <span>Webhook</span>
-                  </span>
-                  <span className="inline-flex items-center gap-1 rounded-md bg-amber-500/15 border border-amber-500/20 px-1.5 py-0.5 text-[10px] font-medium text-amber-300">
-                    <Lock className="size-2.5" />
-                    <span>Pro</span>
-                  </span>
-                </div>
-              </div>
-            </div>
+  return (
+    <section
+      aria-label={emailOnly ? "Email-only alert delivery notice" : "No connector configured notice"}
+      className={cn(
+        "min-w-0 overflow-hidden rounded-[var(--radius-lg)] border border-[var(--amber)]/25 bg-[var(--bg1)]",
+        className,
+      )}
+    >
+      <div className="flex flex-col gap-4 px-5 py-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="text-[13px] font-semibold text-[var(--text)]">{title}</h2>
+            <Pill tone="amber" dot>
+              {emailOnly ? "Email only" : "Setup needed"}
+            </Pill>
           </div>
-
-          <Link
-            to={orgRoutes.billing(activeOrgSlug)}
-            className="inline-flex shrink-0 items-center gap-2 self-start rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 px-4 py-2 text-xs font-semibold text-zinc-950 shadow-md shadow-amber-500/20 transition-all duration-200 hover:from-amber-400 hover:to-amber-500 hover:shadow-lg hover:shadow-amber-500/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 sm:self-center"
-          >
-            <Sparkles className="size-3.5 fill-current text-zinc-950" aria-hidden="true" />
-            <span>Upgrade plan</span>
-            <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
-          </Link>
+          <p className="mt-1.5 max-w-[72ch] text-[13px] leading-[1.6] text-[var(--text2)]">{body}</p>
+          {emailOnly && (
+            <p className="mt-2 text-[12px] text-[var(--text3)]">
+              Not on this plan: <span className="text-[var(--text2)]">{LOCKED_CHANNELS.join(", ")}</span>
+            </p>
+          )}
         </div>
 
-        {showOwnerDetails && projectId && (
-          <div className="relative mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border/40 pt-3 text-xs">
-            <div className="flex items-center gap-2">
-              <span className="text-[11.5px] text-muted-foreground">Currently routing to:</span>
-              <div className="inline-flex items-center gap-2 rounded-lg border border-border/50 bg-background/60 px-2.5 py-1">
-                <div className="flex size-5 shrink-0 items-center justify-center rounded-full bg-muted font-mono text-[10px] font-semibold text-[var(--text)]">
-                  {initials}
-                </div>
-                <span className="font-medium text-[var(--text)]">{ownerName}</span>
-                <span className="text-[11px] text-muted-foreground">
-                  ({ownerEmail || "No verified email configured"})
-                </span>
-                {ownerEmail && (
-                  <CheckCircle2 className="size-3.5 text-emerald-500/80" aria-label="Verified recipient" />
-                )}
-              </div>
-            </div>
-
-            {!ownerEmail && (
-              <div className="inline-flex items-center gap-1.5 rounded-md border border-rose-500/25 bg-rose-500/10 px-2.5 py-1 text-[11px] font-medium text-rose-400">
-                <AlertTriangle className="size-3.5 shrink-0" />
-                <span>Owner email unverified — please configure verified profile email</span>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  // Case 2: Plan HAS connector entitlement, but NO connector is configured
-  if (alertingStatus && alertingStatus.connectorAccess.allowed && !alertingStatus.connectorStatus.configured) {
-    return (
-      <div
-        className={cn(
-          "relative overflow-hidden rounded-2xl border border-sky-500/20 bg-gradient-to-br from-sky-500/[0.07] via-[var(--bg2)]/80 to-[var(--bg2)]/40 p-4 sm:p-5 text-[13px] text-[var(--text)] shadow-sm backdrop-blur-md transition-all",
-          className,
-        )}
-        role="region"
-        aria-label="No connector configured notice"
-      >
-        <div className="relative flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div className="flex items-start gap-3.5">
-            <div className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-sky-500/30 bg-gradient-to-br from-sky-500/20 to-sky-600/10 text-sky-400 shadow-[0_0_12px_rgba(14,165,233,0.12)]">
-              <Plug className="size-4.5" aria-hidden="true" />
-            </div>
-
-            <div className="space-y-1.5">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-[13.5px] font-semibold tracking-tight text-[var(--text)]">
-                  No notification connector configured
-                </span>
-                <span className="inline-flex items-center rounded-full border border-sky-500/30 bg-sky-500/15 px-2.5 py-0.5 text-[10.5px] font-medium text-sky-300">
-                  Connectors Available
-                </span>
-              </div>
-
-              <p className="max-w-[68ch] text-[12.5px] leading-relaxed text-[var(--text2)]">
-                Alerts will currently be sent to the project owner by email. Configure a connector to route notifications directly to Slack, PagerDuty, Discord, or webhooks.
-              </p>
-            </div>
-          </div>
-
+        <UiButton asChild variant="outline" size="lg" className="shrink-0 self-start">
           <Link
-            to={orgRoutes.connectors(activeOrgSlug, "integrations")}
-            className="inline-flex shrink-0 items-center gap-2 self-start rounded-xl bg-gradient-to-r from-sky-500 to-sky-600 px-4 py-2 text-xs font-semibold text-white shadow-md shadow-sky-500/20 transition-all duration-200 hover:from-sky-400 hover:to-sky-500 hover:shadow-lg hover:shadow-sky-500/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 sm:self-center"
+            to={emailOnly ? orgRoutes.billing(activeOrgSlug) : orgRoutes.connectors(activeOrgSlug, "integrations")}
           >
-            <Plug className="size-3.5" aria-hidden="true" />
-            <span>Configure connector</span>
-            <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+            {emailOnly ? "Upgrade plan" : "Configure connector"}
+            <ArrowRight className="size-3.5" aria-hidden="true" />
           </Link>
-        </div>
-
-        {showOwnerDetails && projectId && (
-          <div className="relative mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border/40 pt-3 text-xs">
-            <div className="flex items-center gap-2">
-              <span className="text-[11.5px] text-muted-foreground">Default destination:</span>
-              <div className="inline-flex items-center gap-2 rounded-lg border border-border/50 bg-background/60 px-2.5 py-1">
-                <Mail className="size-3.5 text-muted-foreground" />
-                <span className="font-medium text-[var(--text)]">{ownerEmail || "Project Owner Email"}</span>
-                {ownerEmail && (
-                  <CheckCircle2 className="size-3.5 text-emerald-500/80" aria-label="Verified recipient" />
-                )}
-              </div>
-            </div>
-          </div>
-        )}
+        </UiButton>
       </div>
-    );
-  }
 
-  return null;
+      {showOwnerDetails && projectId && (
+        <div className="flex flex-wrap items-center justify-between gap-x-5 gap-y-2 border-t border-[var(--border)] px-5 py-3 text-[12px]">
+          <dl className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+            <dt className="text-[var(--text3)]">{emailOnly ? "Currently routing to" : "Default destination"}</dt>
+            <dd className="flex min-w-0 items-center gap-2">
+              {emailOnly && <span className="text-[var(--text)]">{ownerName}</span>}
+              <span className="truncate font-[family-name:var(--mono)] text-[11.5px] text-[var(--text2)]">
+                {ownerEmail || "No verified email configured"}
+              </span>
+            </dd>
+          </dl>
+          {emailOnly && !ownerEmail && (
+            <p className="flex items-center gap-1.5 text-[var(--red)]">
+              <AlertTriangle className="size-3.5 shrink-0" aria-hidden="true" />
+              Owner email is not verified. Add a verified profile email so alerts can be delivered.
+            </p>
+          )}
+        </div>
+      )}
+    </section>
+  );
 }

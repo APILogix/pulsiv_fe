@@ -13,9 +13,9 @@ import { RouteBoundary, useScrollRestoration } from "@/shared/motion";
  *    navigation and restores the previous offset on back. Without it, moving
  *    between pages inside one module inherited the previous page's scrollTop,
  *    which is the "page opened halfway down" jump.
- *  - the page-level `RouteBoundary` swaps in a route-specific skeleton on every
- *    page change, since the module-level boundary in AppLayout deliberately does
- *    not remount within a module.
+ *  - the page-level `RouteBoundary` owns the page's single skeleton: it covers
+ *    the chunk wait and the first-data wait with the same element, then
+ *    crossfades to the page. Cached pages render with no skeleton at all.
  */
 export function ModuleLayout() {
   const scrollRef = useRef<HTMLDivElement>(null);

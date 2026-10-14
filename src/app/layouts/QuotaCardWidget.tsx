@@ -1,7 +1,10 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import type { AxiosRequestConfig } from 'axios';
 import { RefreshCw } from 'lucide-react';
 import { apiClient } from '@/infrastructure/api-client/axios';
 import { useOrgStore } from '@/modules/organizations/store/org.store';
+import { orgQueryKeys } from '@/modules/organizations/hooks/useOrganizations';
 import { useBootstrapUsage, useBootstrapBilling, useBootstrapStore } from '@/modules/bootstrap';
 import clsx from 'clsx';
 
@@ -36,60 +39,66 @@ export function formatQuotaValue(value: number | null | undefined): string {
   return num.toLocaleString();
 }
 
+/**
+ * Quota summary, cached. This used to be a `useEffect` + `useState` fetch in
+ * the sidebar, so every layout mount re-requested it and a failure toasted
+ * even though the widget silently falls back to bootstrap values. Keyed under
+ * the org's billing subtree so billing mutations refresh it too.
+ */
+function useQuotaSummary(orgId: string | null) {
+  return useQuery({
+    queryKey: [...orgQueryKeys.billing(orgId ?? ''), 'quota-summary'],
+    queryFn: async ({ signal }): Promise<QuotaSummaryData | null> => {
+      const res = await apiClient.get('/billing/usage/quota-summary', {
+        headers: { 'x-org-id': orgId },
+        signal,
+        // Background widget: it keeps showing bootstrap values on failure.
+        skipToast: true,
+      } as AxiosRequestConfig);
+      return res.data?.success && res.data?.data ? (res.data.data as QuotaSummaryData) : null;
+    },
+    enabled: Boolean(orgId),
+    staleTime: 60_000,
+  });
+}
+
 export function QuotaCardWidget() {
   const activeOrgId = useOrgStore((s) => s.activeOrgId);
   const bootstrapUsage = useBootstrapUsage();
   const bootstrapBilling = useBootstrapBilling();
   const updateUsage = useBootstrapStore((s) => s.updateUsage);
 
-  const [isLoading, setIsLoading] = useState(false);
-  const [overrideData, setOverrideData] = useState<QuotaSummaryData | null>(null);
+  const quota = useQuotaSummary(activeOrgId);
+  const overrideData = quota.data ?? null;
+  const isLoading = quota.isFetching;
 
-  const fetchQuotaSummary = useCallback(async () => {
-    if (!activeOrgId) return;
-    setIsLoading(true);
-    try {
-      const res = await apiClient.get('/billing/usage/quota-summary', {
-        headers: { 'x-org-id': activeOrgId },
-      });
-      if (res.data?.success && res.data?.data) {
-        const d: QuotaSummaryData = res.data.data;
-        setOverrideData(d);
-
-        // Sync fresh quota summary directly into Zustand bootstrap usage state
-        const totalEv = d.totalEvents ?? 1000000;
-        const leftEv = d.eventsLeft ?? totalEv;
-        const usedEv = Math.max(0, totalEv - leftEv);
-
-        const totalAi = d.aiCreditsTotal ?? 500;
-        const leftAi = d.aiCreditsLeft ?? totalAi;
-        const usedAi = Math.max(0, totalAi - leftAi);
-
-        updateUsage({
-          monthlyEvents: {
-            limit: totalEv,
-            used: usedEv,
-            remaining: leftEv,
-            percentage: totalEv > 0 ? Math.min(100, Math.round((usedEv / totalEv) * 100)) : 0,
-          },
-          aiCredits: {
-            limit: totalAi,
-            used: usedAi,
-            remaining: leftAi,
-            percentage: totalAi > 0 ? Math.min(100, Math.round((usedAi / totalAi) * 100)) : 0,
-          },
-        });
-      }
-    } catch {
-      // Retain existing state on transient errors
-    } finally {
-      setIsLoading(false);
-    }
-  }, [activeOrgId, updateUsage]);
-
+  // Mirror the fresh summary into the bootstrap usage state other surfaces read.
   useEffect(() => {
-    fetchQuotaSummary();
-  }, [fetchQuotaSummary]);
+    const d = quota.data;
+    if (!d) return;
+    const totalEv = d.totalEvents ?? 1000000;
+    const leftEv = d.eventsLeft ?? totalEv;
+    const usedEv = Math.max(0, totalEv - leftEv);
+
+    const totalAi = d.aiCreditsTotal ?? 500;
+    const leftAi = d.aiCreditsLeft ?? totalAi;
+    const usedAi = Math.max(0, totalAi - leftAi);
+
+    updateUsage({
+      monthlyEvents: {
+        limit: totalEv,
+        used: usedEv,
+        remaining: leftEv,
+        percentage: totalEv > 0 ? Math.min(100, Math.round((usedEv / totalEv) * 100)) : 0,
+      },
+      aiCredits: {
+        limit: totalAi,
+        used: usedAi,
+        remaining: leftAi,
+        percentage: totalAi > 0 ? Math.min(100, Math.round((usedAi / totalAi) * 100)) : 0,
+      },
+    });
+  }, [quota.data, updateUsage]);
 
   // Priority: Override -> Bootstrap Zustand Store -> Safe Fallbacks
   const totalEvents = overrideData?.totalEvents ?? bootstrapUsage?.monthlyEvents.limit ?? 1000000;
@@ -120,15 +129,15 @@ export function QuotaCardWidget() {
   return (
     <div className="shrink-0 p-3 mt-auto border-t border-[var(--border)]">
       <div className="group h-[92px] [perspective:1000px]">
-        <div className="relative h-full w-full transition-transform duration-500 [transform-style:preserve-3d] group-hover:[transform:rotateY(180deg)]">
+        <div className="relative h-full w-full transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] [transform-style:preserve-3d] group-hover:[transform:rotateY(180deg)] group-focus-within:[transform:rotateY(180deg)] motion-reduce:transition-none">
           {/* Front: Credits quota */}
           <div className="absolute inset-0 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg2)]/40 px-3 py-2.5 flex flex-col justify-between overflow-hidden [backface-visibility:hidden]">
             <div className="flex justify-between items-center font-mono">
-              <span className="text-[10px] tracking-[0.09em] text-[var(--text3)] uppercase">Credits quota</span>
+              <span className="font-sans text-[12px] font-medium text-[var(--text2)]">Credits quota</span>
               <span className="text-[12px] font-medium tabular-nums text-[var(--text)]">{ingestPercent}%</span>
             </div>
             <div className="h-1.5 w-full bg-[var(--bg3)] rounded-full overflow-hidden">
-              <div className="h-full bg-[var(--brand)] rounded-full transition-all duration-300" style={{ width: `${ingestPercent}%` }} />
+              <div className="h-full w-full origin-left bg-[var(--brand)] transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none" style={{ transform: `scaleX(${ingestPercent / 100})` }} />
             </div>
             <div className="text-[11px] font-mono tabular-nums text-[var(--text3)] flex justify-between items-center gap-1.5 min-w-0">
               <span
@@ -144,12 +153,12 @@ export function QuotaCardWidget() {
           {/* Back: AI credit usage with Refresh Icon */}
           <div className="absolute inset-0 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg2)]/40 px-3 py-2.5 flex flex-col justify-between overflow-hidden [backface-visibility:hidden] [transform:rotateY(180deg)]">
             <div className="flex justify-between items-center font-mono">
-              <span className="text-[10px] tracking-[0.09em] text-[var(--text3)] uppercase">AI credit</span>
+              <span className="font-sans text-[12px] font-medium text-[var(--text2)]">AI credit</span>
               <button
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
-                  fetchQuotaSummary();
+                  void quota.refetch();
                 }}
                 title="Refresh Quota Summary"
                 className="p-1 text-[var(--text3)] hover:text-[var(--text)] rounded transition-colors cursor-pointer"
@@ -158,7 +167,7 @@ export function QuotaCardWidget() {
               </button>
             </div>
             <div className="h-1.5 w-full bg-[var(--bg3)] rounded-full overflow-hidden">
-              <div className="h-full bg-[var(--brand)] rounded-full transition-all duration-300" style={{ width: `${aiPercent}%` }} />
+              <div className="h-full w-full origin-left bg-[var(--brand)] transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none" style={{ transform: `scaleX(${aiPercent / 100})` }} />
             </div>
             <div className="text-[11px] font-mono tabular-nums text-[var(--text3)] flex justify-between items-center gap-1.5 min-w-0">
               <span

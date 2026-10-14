@@ -1,3 +1,4 @@
+import type { AxiosRequestConfig } from 'axios';
 import { apiClient } from '@/infrastructure/api-client/axios';
 import { tokenService } from '@/modules/auth/services/token.service';
 import type * as t from '../types/org.types';
@@ -54,11 +55,18 @@ function mapCurrentBillingUsage(usage: any): t.CurrentBillingUsage {
   };
 }
 
+/** The error interceptor skips its toast when a caller shows the error itself. */
+const silentErrors = (config: AxiosRequestConfig = {}) => ({ ...config, skipToast: true }) as AxiosRequestConfig;
+
 export const orgApi = {
-  createOrganization: (data: t.CreateOrganizationBody, options?: { idempotencyKey?: string }) =>
-    apiClient.post('/organizations', data, {
+  createOrganization: (data: t.CreateOrganizationBody, options?: { idempotencyKey?: string; silent?: boolean }) => {
+    const config: AxiosRequestConfig = {
       headers: options?.idempotencyKey ? { 'Idempotency-Key': options.idempotencyKey } : undefined,
-    }).then(r => r.data.data as t.Organization),
+    };
+    return apiClient
+      .post('/organizations', data, options?.silent ? silentErrors(config) : config)
+      .then(r => r.data.data as t.Organization);
+  },
   switchOrganization: (orgId: string) => apiClient.post('/organizations/switch', { orgId }).then(r => {
     const session = r.data.data as { access_token: string; expires_at: string; current_org_id: string };
     tokenService.setAccessToken(session.access_token, session.expires_at);
@@ -73,7 +81,8 @@ export const orgApi = {
   restoreOrganization: (id: string) => apiClient.post(`/organizations/${id}/restore`).then(r => r.data.data as t.Organization),
   transferOwnership: (id: string, data: t.TransferOwnershipBody) => apiClient.post(`/organizations/${id}/transfer-ownership`, data).then(() => undefined),
   resolveBySlug: (slug: string) => apiClient.get(`/organizations/by-slug/${slug}`).then(r => r.data.data as t.Organization),
-  checkSlugAvailability: (slug: string) => apiClient.get(`/organizations/slug-available/${slug}`).then(r => r.data.data as { available: boolean }),
+  // Background check while typing: failures show inline, never as a toast.
+  checkSlugAvailability: (slug: string) => apiClient.get(`/organizations/slug-available/${slug}`, silentErrors()).then(r => r.data.data as { available: boolean }),
 
   // Settings
   getSettings: (orgId: string) => apiClient.get(`/organizations/${orgId}/settings`).then(r => r.data.data as t.OrgSettings),

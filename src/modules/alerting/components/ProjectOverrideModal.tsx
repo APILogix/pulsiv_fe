@@ -362,7 +362,7 @@ export const ProjectOverrideModal: React.FC<ProjectOverrideModalProps> = ({
                   setEditorMode("visual");
                 }}
                 className={cn(
-                  "flex items-center gap-1.5 rounded-md px-2.5 py-1 font-medium transition-all cursor-pointer",
+                  "flex items-center gap-1.5 rounded-md px-2.5 py-1 font-medium transition-colors cursor-pointer",
                   editorMode === "visual"
                     ? "bg-[var(--bg1)] text-[var(--text)] shadow-xs"
                     : "text-[var(--text3)] hover:text-[var(--text)]"
@@ -378,7 +378,7 @@ export const ProjectOverrideModal: React.FC<ProjectOverrideModalProps> = ({
                   setEditorMode("json");
                 }}
                 className={cn(
-                  "flex items-center gap-1.5 rounded-md px-2.5 py-1 font-medium transition-all cursor-pointer",
+                  "flex items-center gap-1.5 rounded-md px-2.5 py-1 font-medium transition-colors cursor-pointer",
                   editorMode === "json"
                     ? "bg-[var(--bg1)] text-[var(--text)] shadow-xs"
                     : "text-[var(--text3)] hover:text-[var(--text)]"
@@ -551,7 +551,7 @@ export const ProjectOverrideModal: React.FC<ProjectOverrideModalProps> = ({
                         type="button"
                         onClick={() => setCooldownSeconds(String(p.seconds))}
                         className={cn(
-                          "rounded px-2 py-0.5 text-[10px] font-mono border transition-all cursor-pointer",
+                          "rounded px-2 py-0.5 text-[10px] font-mono border transition-colors cursor-pointer",
                           cooldownSeconds === String(p.seconds)
                             ? "border-[var(--brand)] bg-[var(--brand)]/15 text-[var(--brand)] font-semibold"
                             : "border-[var(--border)] bg-[var(--bg2)] text-[var(--text3)] hover:text-[var(--text)]"
@@ -608,7 +608,7 @@ export const ProjectOverrideModal: React.FC<ProjectOverrideModalProps> = ({
                         type="button"
                         onClick={() => setWindowSeconds(String(p.seconds))}
                         className={cn(
-                          "rounded px-2 py-0.5 text-[10px] font-mono border transition-all cursor-pointer",
+                          "rounded px-2 py-0.5 text-[10px] font-mono border transition-colors cursor-pointer",
                           windowSeconds === String(p.seconds)
                             ? "border-[var(--brand)] bg-[var(--brand)]/15 text-[var(--brand)] font-semibold"
                             : "border-[var(--border)] bg-[var(--bg2)] text-[var(--text3)] hover:text-[var(--text)]"
@@ -656,7 +656,7 @@ export const ProjectOverrideModal: React.FC<ProjectOverrideModalProps> = ({
                       type="button"
                       onClick={() => setSeverity(sev)}
                       className={cn(
-                        "rounded-lg border px-2 py-1.5 text-center text-xs capitalize font-medium transition-all cursor-pointer",
+                        "rounded-lg border px-2 py-1.5 text-center text-xs capitalize font-medium transition-colors cursor-pointer",
                         severity === sev
                           ? "border-[var(--brand)] bg-[var(--brand)]/15 text-[var(--brand)] shadow-xs"
                           : "border-[var(--border)] bg-[var(--bg2)] text-[var(--text2)] hover:border-[var(--border2)]"
@@ -740,7 +740,7 @@ export const ProjectOverrideModal: React.FC<ProjectOverrideModalProps> = ({
                       type="button"
                       onClick={() => handleToggleChannel(ch.id)}
                       className={cn(
-                        "inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-all cursor-pointer",
+                        "inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors cursor-pointer",
                         active
                           ? "border-[var(--brand)] bg-[var(--brand)]/15 text-[var(--brand)] shadow-xs"
                           : "border-[var(--border)] bg-[var(--bg2)] text-[var(--text3)] hover:text-[var(--text)]"
@@ -842,7 +842,7 @@ export const ProjectOverrideModal: React.FC<ProjectOverrideModalProps> = ({
               <button
                 type="submit"
                 disabled={isSaving}
-                className="rounded-lg bg-[var(--brand)] px-5 py-2 text-xs font-semibold text-[var(--bg)] shadow-md hover:opacity-90 disabled:opacity-50 transition-all flex items-center gap-1.5 cursor-pointer"
+                className="rounded-lg bg-[var(--brand)] px-5 py-2 text-xs font-semibold text-[var(--bg)] shadow-md hover:opacity-90 disabled:opacity-50 transition-colors flex items-center gap-1.5 cursor-pointer"
               >
                 {isSaving ? (
                   <>

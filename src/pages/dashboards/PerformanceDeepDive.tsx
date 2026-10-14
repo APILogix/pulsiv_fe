@@ -1,318 +1,291 @@
-import { useNavigate } from "react-router";
-import { Database, Server } from "lucide-react";
-import { useTimeRangeStore, TIME_RANGES } from "@/stores/timeRangeStore";
+import { useState } from "react";
+import { toast } from "sonner";
+import { AiActionButton } from "@/shared/ui/sentinel";
 import {
-  useRequestSummary,
-  useEndpointsAnalytics,
-  useServicesAnalytics,
-  useLatencyHistogram,
-} from "@/modules/analytics";
-import {
-  PageHeader, SectionCard, FilterSelect, Tabs,
-  Table, Tr, Td, MonospaceText,
-  formatLatency,
-} from "@/shared/observe";
-import { AnimatedEmptyState } from "@/shared/motion/AnimatedEmptyState";
-import { Button } from "@/components/ui/button";
-import {
-  SkeletonShell,
-  SkeletonPageHeader,
-  SkeletonChartCard,
-  SkeletonTable,
-  Block,
-  SurfaceCard,
-} from "@/shared/skeletons";
-import { Heatmap, StackedBars, BarList, ChartCard, HeroBand, ZoneLabel } from "./widgets";
+  BoardPage,
+  Columns,
+  Facts,
+  Ledger,
+  ModelNote,
+  Panel,
+  RankList,
+  Readouts,
+  Segmented,
+  TimeChart,
+  Trend,
+  stateText,
+  type State,
+  type VerdictItem,
+} from "./board/kit";
+import { ENDPOINTS, HOURS_24, SERVICES, series, type Endpoint, type Service } from "./board/fixtures";
+import { bytes, compact, ms } from "./board/format";
 
-const TIME_OPTIONS = TIME_RANGES.map((r) => ({ value: r, label: r }));
+/*
+ * Performance overview: where request time goes. Lead ledger ranks endpoints
+ * (or services) by latency against the 500ms p99 SLO; a latency heatmap shows
+ * when the slow tail appears.
+ * Sample data only; getPerformanceBoard() is the seam a live API replaces.
+ */
 
-function latencyTone(ms: number) {
-  return ms < 100 ? "var(--green)" : ms < 500 ? "var(--amber)" : "var(--red)";
+const P99_SLO = 500;
+const BUCKETS = ["<25ms", "25–50", "50–100", "100–250", "250–500", "500ms–1s", ">1s"];
+
+function getPerformanceBoard() {
+  const totalReq = ENDPOINTS.reduce((a, e) => a + e.requests, 0);
+  const wp = (k: "p50" | "p95" | "p99") => Math.round(ENDPOINTS.reduce((a, e) => a + e[k] * e.requests, 0) / totalReq);
+  const timeShare = ENDPOINTS.map((e) => ({ e, time: e.requests * e.p50 }));
+  const totalTime = timeShare.reduce((a, t) => a + t.time, 0);
+  // Hour × latency bucket counts. The slow buckets fill in during the 20:00–22:00 incident window.
+  const heat = BUCKETS.map((b, bi) => ({
+    label: b,
+    cells: series(`heat-${b}`, 24, [34, 52, 60, 38, 14, 4, 1][bi], [10, 14, 16, 12, 6, 2, 1][bi], {
+      spikeAt: bi >= 4 ? 21 : undefined,
+      spike: [0, 0, 0, 0, 14, 20, 12][bi],
+    }),
+  }));
+  const coldWarm = HOURS_24.slice(0, 6).map((l, i) => ({
+    label: l,
+    values: { warm: [120, 90, 260, 410, 460, 300][i], cold: [18, 12, 44, 30, 26, 22][i] },
+  }));
+  return { totalReq, p50: wp("p50"), p95: wp("p95"), p99: wp("p99"), timeShare, totalTime, heat, coldWarm };
 }
 
-function PerformanceDeepDiveSkeleton({ timeRange, setTimeRange }: { timeRange: string; setTimeRange: (r: any) => void }) {
+const hourLabel = (i: number) => `${String(i).padStart(2, "0")}:00`;
+const p99State = (v: number): State => (v > P99_SLO * 2 ? "bad" : v > P99_SLO ? "warn" : "ok");
+
+function EndpointDetail({ e, share }: { e: Endpoint; share: number }) {
+  const p50 = e.latency.map((v) => Math.round(v * (e.p50 / e.p95)));
+  const p99 = e.latency.map((v) => Math.round(v * (e.p99 / e.p95)));
   return (
-    <SkeletonShell label="Loading Performance Deep Dive" className="mx-auto flex w-full max-w-[1400px] flex-col gap-5">
-      <div className="flex flex-col gap-4">
-        <PageHeader
-          title="API Performance & Latency Deep Dive"
-          description="Identify, diagnose, and resolve latency bottlenecks at endpoint and dependency level."
-          actions={<FilterSelect label="Range" value={timeRange} onChange={setTimeRange} options={TIME_OPTIONS} />}
+    <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
+      <div className="min-w-0">
+        <Facts
+          items={[
+            { label: "Service", value: e.service },
+            { label: "Bytes out, 24h", value: bytes(e.bytesOut) },
+            { label: "Share of request time", value: `${(share * 100).toFixed(1)}%` },
+            { label: "P99 against SLO", value: `${(e.p99 / P99_SLO).toFixed(1)}×`, state: p99State(e.p99) === "ok" ? undefined : p99State(e.p99) },
+          ]}
+        />
+        <div className="mt-5">
+          <TimeChart
+            label={`${e.method} ${e.path} latency percentiles over 24 hours`}
+            height={190}
+            xLabels={HOURS_24}
+            format={(v) => `${Math.round(v)}`}
+            pointLabel={hourLabel}
+            threshold={{ value: P99_SLO, label: "p99 SLO 500ms", state: "warn" }}
+            series={[
+              { label: "P50", color: "var(--text3)", data: p50 },
+              { label: "P95", color: "var(--text)", data: e.latency },
+              { label: "P99", color: e.state === "bad" ? "var(--red)" : "var(--blue)", data: p99 },
+            ]}
+          />
+        </div>
+      </div>
+      {e.state !== "ok" ? (
+        <ModelNote
+          title={e.state === "bad" ? "Tail latency is queue wait, not handler time" : "The slow tail tracks batch size"}
+          confidence={e.state === "bad" ? 89 : 72}
+          action={<AiActionButton onClick={() => toast("Slowest traces opened (sample)")}>Show slowest traces</AiActionButton>}
+        >
+          {e.state === "bad"
+            ? `Spans for ${e.path} spend 78% of p99 waiting on the dispatch queue. Handler time is flat against baseline.`
+            : `Requests above 2 MB account for most p99 outliers on ${e.path}. Median time is unchanged.`}
+        </ModelNote>
+      ) : (
+        <p className="rounded-[var(--radius-lg)] border border-[var(--border)] px-4 py-3.5 text-[13px] leading-[1.6] text-[var(--text2)]">
+          Every percentile is inside the SLO for the full window.
+        </p>
+      )}
+    </div>
+  );
+}
+
+function ServiceDetail({ s }: { s: Service }) {
+  return (
+    <div className="min-w-0">
+      <Facts
+        items={[
+          { label: "Apdex", value: s.apdex.toFixed(2), state: s.apdex < 0.8 ? "bad" : s.apdex < 0.9 ? "warn" : undefined },
+          { label: "Baseline p95", value: ms(s.p95Base) },
+          { label: "Requests per second", value: String(s.rps) },
+          { label: "Version", value: s.version },
+        ]}
+      />
+      <div className="mt-5">
+        <TimeChart
+          label={`${s.id} p95 latency over 24 hours`}
+          height={180}
+          xLabels={HOURS_24}
+          format={(v) => `${Math.round(v)}`}
+          pointLabel={hourLabel}
+          threshold={{ value: s.p95Base, label: `baseline ${s.p95Base}ms` }}
+          series={[{ label: "P95 ms", color: s.state === "bad" ? "var(--red)" : "var(--text)", data: s.latency }]}
         />
       </div>
+    </div>
+  );
+}
 
-      {/* Hero percentiles band skeleton */}
-      <div className="grid grid-cols-2 divide-[var(--border)] overflow-hidden rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] max-lg:gap-px max-lg:bg-[var(--border)] lg:grid-cols-5 lg:divide-x">
-        {["P50 median", "P75", "P90", "P95", "P99"].map((label, i) => (
-          <div key={label} className="flex flex-col gap-2 bg-[var(--bg1)] px-5 py-4">
-            <span className="font-[family-name:var(--mono)] text-[10px] font-medium uppercase tracking-[0.09em] text-[var(--text3)]">
-              {label}
-            </span>
-            <Block className="h-7 w-24" delay={i * 20} />
-            <Block className="h-3 w-16" delay={i * 20 + 30} />
-          </div>
-        ))}
-      </div>
-
-      <div className="flex items-center gap-3 pt-1">
-        <Block className="h-3 w-28" />
-        <span className="h-px flex-1 bg-[var(--border)]" />
-      </div>
-
-      {/* Heatmap skeleton card */}
-      <SurfaceCard delay={120} className="flex flex-col gap-4 p-5">
-        <div className="flex items-center justify-between">
-          <Block className="h-4 w-48" />
-          <Block className="h-3 w-36" />
-        </div>
-        <div className="flex flex-col gap-2 pt-2">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="flex items-center gap-3">
-              <Block className="h-3 w-16" />
-              <div className="grid flex-1 grid-cols-8 sm:grid-cols-16 gap-1">
-                {Array.from({ length: 16 }).map((_, j) => (
-                  <Block key={j} className="h-5 w-full" delay={(i * 16 + j) * 8} />
+/** Hour × latency bucket grid. Intensity is request share; slow buckets tint by state. */
+function LatencyHeatmap({ rows }: { rows: { label: string; cells: number[] }[] }) {
+  const max = Math.max(...rows.flatMap((r) => r.cells), 1);
+  return (
+    <div className="min-w-0 overflow-x-auto">
+      <table className="w-full min-w-[560px] border-separate border-spacing-[3px]" aria-label="Requests by hour of day and latency bucket">
+        <tbody>
+          {[...rows].reverse().map((r, ri) => {
+            const bi = rows.length - 1 - ri;
+            const tint = bi >= 5 ? "var(--red)" : bi === 4 ? "var(--amber)" : "var(--text)";
+            return (
+              <tr key={r.label}>
+                <th scope="row" className="w-20 pr-2 text-right font-mono text-[11px] font-normal text-[var(--text3)]">
+                  {r.label}
+                </th>
+                {r.cells.map((c, i) => (
+                  <td
+                    key={i}
+                    title={`${hourLabel(i)} · ${r.label}: ${c} requests (thousands)`}
+                    className="h-5 rounded-[2px]"
+                    style={{ background: `color-mix(in oklab, ${tint} ${Math.round(6 + (c / max) * 80)}%, var(--bg2))` }}
+                  />
                 ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      </SurfaceCard>
-
-      {/* Latency by dimension table skeleton */}
-      <SurfaceCard delay={180} className="flex flex-col gap-4 p-5">
-        <Block className="h-4 w-40" />
-        <SkeletonTable rows={6} withToolbar={false} delay={200} />
-      </SurfaceCard>
-
-      <div className="flex items-center gap-3 pt-1">
-        <Block className="h-3 w-40" />
-        <span className="h-px flex-1 bg-[var(--border)]" />
-      </div>
-
-      {/* Dependencies & runtime skeletons */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <SkeletonChartCard height="h-44" delay={220} />
-        <SkeletonChartCard height="h-44" delay={260} />
-      </div>
-    </SkeletonShell>
+              </tr>
+            );
+          })}
+          <tr>
+            <td />
+            {Array.from({ length: 24 }, (_, i) => (
+              <td key={i} className="pt-1 text-center font-mono text-[10px] text-[var(--text3)]">
+                {i % 4 === 0 ? String(i).padStart(2, "0") : ""}
+              </td>
+            ))}
+          </tr>
+        </tbody>
+      </table>
+    </div>
   );
 }
 
 export default function PerformanceDeepDive() {
-  const navigate = useNavigate();
-  const timeRange = useTimeRangeStore((s) => s.timeRange);
-  const setTimeRange = useTimeRangeStore((s) => s.setTimeRange);
+  const [view, setView] = useState<"endpoint" | "service">("endpoint");
+  const { totalReq, p50, p95, p99, timeShare, totalTime, heat, coldWarm } = getPerformanceBoard();
+  const shareOf = (e: Endpoint) => (timeShare.find((t) => t.e.id === e.id)?.time ?? 0) / totalTime;
+  const slowest = [...ENDPOINTS].sort((a, b) => b.p99 - a.p99)[0];
+  const over = ENDPOINTS.filter((e) => e.p99 > P99_SLO);
 
-  const { data: summaryRes, isLoading: isSummaryLoading } = useRequestSummary();
-  const { data: endpointsRes, isLoading: isEndpointsLoading } = useEndpointsAnalytics({ limit: 50 });
-  const { data: servicesRes, isLoading: isServicesLoading } = useServicesAnalytics({ limit: 50 });
-  const { data: histogramRes, isLoading: isHistogramLoading } = useLatencyHistogram();
-
-  const isLoading = isSummaryLoading || isEndpointsLoading || isServicesLoading || isHistogramLoading;
-
-  const percentiles = summaryRes?.data?.latency?.percentiles ?? {
-    p50: 0,
-    p75: 0,
-    p90: 0,
-    p95: 0,
-    p99: 0,
-  };
-
-  const p50 = percentiles.p50 ?? 0;
-  const p75 = percentiles.p75 ?? 0;
-  const p90 = percentiles.p90 ?? 0;
-  const p95 = percentiles.p95 ?? 0;
-  const p99 = percentiles.p99 ?? 0;
-
-  const summaryCards = summaryRes?.data?.cards ?? [];
-  const reqTotalCard = summaryCards.find((c) => c.key === "requests.total");
-  const totalRequests = reqTotalCard?.value ?? 0;
-
-  const endpoints = endpointsRes?.data?.table?.rows ?? [];
-  const services = servicesRes?.data?.table?.rows ?? [];
-  const heatmapData = histogramRes?.data?.heatmap;
-
-  const heatRows = heatmapData?.rows && heatmapData.rows.length > 0
-    ? heatmapData.rows
-    : [
-        { label: "0-10ms", cells: Array(16).fill(0) },
-        { label: "10-50ms", cells: Array(16).fill(0) },
-        { label: "50-100ms", cells: Array(16).fill(0) },
-        { label: "100-500ms", cells: Array(16).fill(0) },
-        { label: "500ms-1s", cells: Array(16).fill(0) },
-        { label: "1s+", cells: Array(16).fill(0) },
-      ];
-
-  const timeCols = heatmapData?.columns?.length || 16;
-
-  // Upstream dependency breakdown
-  const depGroups = [
-    { label: "Postgres database queries", value: Math.round(p50 * 0.45) || (p50 > 0 ? 1 : 0), color: latencyTone(Math.round(p50 * 0.45)) },
-    { label: "Redis / In-memory cache", value: Math.round(p50 * 0.08) || (p50 > 0 ? 1 : 0), color: latencyTone(Math.round(p50 * 0.08)) },
-    { label: "External HTTP integrations", value: Math.round(p95 * 0.6) || (p95 > 0 ? 1 : 0), color: latencyTone(Math.round(p95 * 0.6)) },
-    { label: "Background Queue / Workers", value: Math.round(p90 * 0.3) || (p90 > 0 ? 1 : 0), color: latencyTone(Math.round(p90 * 0.3)) },
+  const verdict: VerdictItem[] = [
+    ...(over.length ? [{ state: "bad" as const, text: `${over.length} endpoints over the 500ms p99 SLO` }] : []),
+    { state: "ok", text: `${ENDPOINTS.length - over.length} within SLO` },
   ];
 
-  const TABS = [
-    {
-      id: "endpoint",
-      label: "By endpoint",
-      content: (
-        <Table headers={["Endpoint", "P50", "P95", "P99", "Requests", "Error %", "Bytes Out", "Service"]}>
-          {endpoints.length === 0 ? (
-            <Tr>
-              <Td><span className="text-[var(--text3)]">No endpoint data recorded in this range</span></Td>
-              <Td>—</Td>
-              <Td>—</Td>
-              <Td>—</Td>
-              <Td>—</Td>
-              <Td>—</Td>
-              <Td>—</Td>
-              <Td>—</Td>
-            </Tr>
-          ) : (
-            endpoints.map((r) => (
-              <Tr key={r.endpoint} onClick={() => navigate("/observability/requests")}>
-                <Td><MonospaceText value={r.endpoint} className="max-w-[280px]" /></Td>
-                <Td className="tabular-nums">{r.p50Ms ? formatLatency(r.p50Ms) : "—"}</Td>
-                <Td><span style={{ color: latencyTone(r.p95Ms ?? 0) }} className="tabular-nums font-semibold">{r.p95Ms ? formatLatency(r.p95Ms) : "—"}</span></Td>
-                <Td className="tabular-nums">{r.p99Ms ? formatLatency(r.p99Ms) : "—"}</Td>
-                <Td className="tabular-nums">{r.requests}</Td>
-                <Td className="tabular-nums">{(r.errorRatePct ?? 0).toFixed(1)}%</Td>
-                <Td className="tabular-nums font-mono text-[11px]">{r.bytesOut.toLocaleString()} B</Td>
-                <Td className="text-[var(--text2)]">{r.service ?? "—"}</Td>
-              </Tr>
-            ))
-          )}
-        </Table>
-      ),
-    },
-    {
-      id: "service",
-      label: "By service",
-      content: (
-        <Table headers={["Service", "P95 latency", "Requests", "Availability", "Error rate", "Apdex"]}>
-          {services.length === 0 ? (
-            <Tr>
-              <Td><span className="text-[var(--text3)]">No service metrics available</span></Td>
-              <Td>—</Td>
-              <Td>—</Td>
-              <Td>—</Td>
-              <Td>—</Td>
-              <Td>—</Td>
-            </Tr>
-          ) : (
-            services.map((s) => (
-              <Tr key={s.service}>
-                <Td className="font-medium">{s.service}</Td>
-                <Td><span style={{ color: latencyTone(s.p95Ms ?? 0) }} className="tabular-nums font-semibold">{s.p95Ms ? formatLatency(s.p95Ms) : "—"}</span></Td>
-                <Td className="tabular-nums">{s.requests}</Td>
-                <Td className="tabular-nums">{(s.availabilityPct ?? 100).toFixed(2)}%</Td>
-                <Td className="tabular-nums">{(s.errorRatePct ?? 0).toFixed(2)}%</Td>
-                <Td className="tabular-nums font-mono">{s.apdex ? s.apdex.toFixed(2) : "—"}</Td>
-              </Tr>
-            ))
-          )}
-        </Table>
-      ),
-    },
-  ];
-
-  if (isLoading) {
-    return <PerformanceDeepDiveSkeleton timeRange={timeRange} setTimeRange={setTimeRange} />;
-  }
-
-  if (!isLoading && totalRequests === 0 && endpoints.length === 0 && services.length === 0) {
-    return (
-      <div className="mx-auto flex w-full max-w-[1400px] flex-col gap-6">
-        <div className="flex max-w-[800px] flex-col gap-4">
-          <PageHeader
-            title="API Performance & Latency Deep Dive"
-            description="Identify, diagnose, and resolve latency bottlenecks at endpoint and dependency level."
-            actions={<FilterSelect label="Range" value={timeRange} onChange={setTimeRange} options={TIME_OPTIONS} />}
-          />
-        </div>
-        <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] p-8">
-          <AnimatedEmptyState
-            illustration="chart"
-            title="No Performance Telemetry Ingested"
-            description="Analyze latency percentiles (P50–P99), histogram distributions, and per-endpoint latency profiles once your services send traces and spans."
-            action={
-              <Button onClick={() => navigate("/workspaces/projects")}>
-                Configure SDK Instrumentation
-              </Button>
-            }
-            secondaryAction={
-              <Button variant="outline" onClick={() => navigate("/observability/latency")}>
-                Explore Latency Metrics
-              </Button>
-            }
-            hint="Latency percentiles and heatmap aggregations refresh continuously based on your active range."
-          />
-        </div>
-      </div>
-    );
-  }
+  const switcher = (
+    <Segmented
+      label="Rank by"
+      value={view}
+      onChange={setView}
+      options={[
+        { value: "endpoint", label: "By endpoint" },
+        { value: "service", label: "By service" },
+      ]}
+    />
+  );
 
   return (
-    <div className="mx-auto flex w-full max-w-[1400px] flex-col gap-5">
-      <PageHeader
-        title="API Performance & Latency Deep Dive"
-        description="Identify, diagnose, and resolve latency bottlenecks at endpoint and dependency level."
-        actions={<FilterSelect label="Range" value={timeRange} onChange={setTimeRange} options={TIME_OPTIONS} />}
-      />
-
-      <HeroBand
-        metrics={[
-          { label: "P50 median", value: formatLatency(p50), delta: "median", trend: "up", sparkColor: "var(--green)" },
-          { label: "P75", value: formatLatency(p75), delta: "75th percentile", trend: "up", sparkColor: "var(--blue)" },
-          { label: "P90", value: formatLatency(p90), delta: "90th percentile", trend: "up", sparkColor: "var(--amber)" },
-          { label: "P95", value: formatLatency(p95), delta: "p95 threshold", trend: p95 > 1000 ? "down" : "up", sparkColor: "var(--violet)" },
-          { label: "P99", value: formatLatency(p99), delta: "tail latency", trend: p99 > 2000 ? "down" : "up", sparkColor: "var(--red)" },
+    <BoardPage title="Performance overview" description="Where request time is spent, and which routes break the latency SLO." verdict={verdict}>
+      <Readouts
+        items={[
+          { label: "P50", value: ms(p50), delta: "−2ms", verdict: "good", note: "request-weighted" },
+          { label: "P95", value: ms(p95), delta: "+14ms", verdict: "bad", note: "vs previous 24h" },
+          { label: "P99", value: ms(p99), delta: "+61ms", verdict: "bad", note: "SLO 500ms", state: p99 > P99_SLO ? "warn" : undefined },
+          { label: "Apdex", value: "0.91", delta: "−0.02", verdict: "bad", note: "T = 250ms" },
+          { label: "Throughput", value: compact(totalReq), note: "requests, 24h" },
+          { label: "Slowest route", value: ms(slowest.p99), note: `${slowest.method} ${slowest.path}`, state: p99State(slowest.p99) },
         ]}
       />
 
-      <ZoneLabel>Distribution</ZoneLabel>
-
-      <ChartCard
-        title="Latency distribution heatmap"
-        action={<span className="text-[11px] text-[var(--text3)]">Logarithmic 24-bucket aggregation</span>}
-        timeAxis={`${timeRange} window`}
-      >
-        <Heatmap rows={heatRows} columns={timeCols} />
-      </ChartCard>
-
-      <SectionCard title="Latency by dimension">
-        <Tabs tabs={TABS} />
-      </SectionCard>
-
-      <ZoneLabel>Dependencies &amp; runtime</ZoneLabel>
-
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <ChartCard title="Upstream dependency latency" action={<Database className="size-4 text-[var(--text3)]" />}>
-          <BarList items={depGroups} valueFormat={formatLatency} />
-        </ChartCard>
-
-        <ChartCard
-          title="Cold start vs warm requests"
-          action={<Server className="size-4 text-[var(--text3)]" />}
-          legend={[
-            { label: "Cold start", color: "var(--amber)" },
-            { label: "Warm", color: "var(--brand)" },
+      {view === "endpoint" ? (
+        <Ledger
+          id="endpoint"
+          title="Endpoints"
+          meta="Worst p99 first"
+          action={switcher}
+          rows={ENDPOINTS}
+          rowId={(e) => e.id}
+          rowState={(e) => (e.p99 > P99_SLO * 2 ? "bad" : e.p99 > P99_SLO ? "warn" : e.state === "bad" ? "warn" : "ok")}
+          attention={(e) => e.p99}
+          primary={{
+            header: "Endpoint",
+            cell: (e) => (
+              <span className="font-mono">
+                <span className="mr-2 text-[11px] text-[var(--text3)]">{e.method}</span>
+                {e.path}
+              </span>
+            ),
+            sub: (e) => e.service,
+          }}
+          columns={[
+            { key: "trend", header: "P95, 24h", hide: "lg", cell: (e) => <Trend data={e.latency} state={p99State(e.p99)} label={`${e.path} p95 per hour`} /> },
+            { key: "p50", header: "P50", align: "right", hide: "md", sortValue: (e) => e.p50, cell: (e) => ms(e.p50) },
+            { key: "p95", header: "P95", align: "right", sortValue: (e) => e.p95, cell: (e) => <span className="text-[var(--text)]">{ms(e.p95)}</span> },
+            { key: "p99", header: "P99", align: "right", sortValue: (e) => e.p99, cell: (e) => <span style={{ color: stateText(p99State(e.p99)) }}>{ms(e.p99)}</span> },
+            { key: "req", header: "Requests", align: "right", hide: "sm", sortValue: (e) => e.requests, cell: (e) => compact(e.requests) },
           ]}
-        >
-          <StackedBars
-            groups={Array.from({ length: 12 }, (_, i) => ({
-              label: `${i + 1}h`,
-              segments: [
-                { value: Math.max(1, Math.round(p50 * 0.05)), color: "var(--amber)" },
-                { value: Math.max(5, Math.round(p50 * 0.95)), color: "var(--brand)" },
-              ],
-            }))}
+          detail={(e) => <EndpointDetail e={e} share={shareOf(e)} />}
+        />
+      ) : (
+        <Ledger
+          id="svc"
+          title="Services"
+          meta="Worst p95 against baseline first"
+          action={switcher}
+          rows={SERVICES}
+          rowId={(s) => s.id}
+          rowState={(s) => s.state}
+          attention={(s) => s.p95 / s.p95Base}
+          primary={{ header: "Service", cell: (s) => <span className="font-mono">{s.id}</span>, sub: (s) => `${s.team} · ${s.version}` }}
+          columns={[
+            { key: "trend", header: "P95, 24h", hide: "lg", cell: (s) => <Trend data={s.latency} state={s.state} label={`${s.id} p95 per hour`} /> },
+            { key: "base", header: "Baseline", align: "right", hide: "md", cell: (s) => ms(s.p95Base) },
+            { key: "p95", header: "P95", align: "right", sortValue: (s) => s.p95, cell: (s) => <span style={{ color: stateText(s.state) }}>{ms(s.p95)}</span> },
+            { key: "apdex", header: "Apdex", align: "right", sortValue: (s) => s.apdex, cell: (s) => s.apdex.toFixed(2) },
+            { key: "rps", header: "Req/s", align: "right", hide: "sm", sortValue: (s) => s.rps, cell: (s) => s.rps },
+          ]}
+          detail={(s) => <ServiceDetail s={s} />}
+        />
+      )}
+
+      <Panel title="Latency distribution" meta="Requests by hour and latency bucket">
+        <LatencyHeatmap rows={heat} />
+        <p className="mt-3 text-[12px] text-[var(--text3)]">
+          The slow tail appears between 20:00 and 22:00, when requests above 250ms rise from 4% to 19% of traffic.
+        </p>
+      </Panel>
+
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+        <Panel title="Where request time goes" meta="Requests × median latency">
+          <RankList
+            label="Endpoints ranked by share of total request time"
+            format={(v) => `${(v * 100).toFixed(1)}%`}
+            items={[...timeShare]
+              .sort((a, b) => b.time - a.time)
+              .slice(0, 6)
+              .map((t) => ({ label: `${t.e.method} ${t.e.path}`, value: t.time / totalTime, state: t.e.state === "bad" ? "bad" : undefined }))}
           />
-        </ChartCard>
+        </Panel>
+        <Panel title="Cold and warm starts" meta="Serverless handlers, 4-hour buckets">
+          <Columns
+            label="Warm and cold starts in four-hour buckets"
+            format={compact}
+            buckets={coldWarm}
+            keys={[
+              { key: "warm", label: "Warm", color: "var(--border2)" },
+              { key: "cold", label: "Cold", color: "var(--blue)" },
+            ]}
+          />
+        </Panel>
       </div>
-    </div>
+    </BoardPage>
   );
 }

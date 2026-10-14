@@ -24,6 +24,8 @@ export interface WorkflowState {
   error: string | null;
   /** Timestamp (ms) when current run started, for live elapsed tickers */
   startedAt: number | null;
+  /** Timestamp (ms) when the task itself resolved or rejected (before any cascade). */
+  settledAt: number | null;
 }
 
 export interface WorkflowResult<T> {
@@ -37,23 +39,31 @@ interface UseWorkflowOptions {
   pace?: number;
   /** ms the success state is held before `onSuccess` fires. */
   successHold?: number;
+  /**
+   * Minimum ms the narration runs before success, so a fast response still
+   * reads as a setup rather than a flash. Errors are never delayed.
+   */
+  minDuration?: number;
 }
 
 export function useWorkflow(
   steps: readonly WorkflowStepDef[],
   options: UseWorkflowOptions = {},
 ) {
-  const { pace = 750, successHold = 450 } = options;
+  const { pace = 750, successHold = 450, minDuration = 0 } = options;
 
   const [state, setState] = useState<WorkflowState>({
     status: "idle",
     activeIndex: 0,
     error: null,
     startedAt: null,
+    settledAt: null,
   });
 
   const timers = useRef<number[]>([]);
   const mounted = useRef(true);
+  /** Live mirror of `activeIndex`; `run` outlives the render that started it. */
+  const activeRef = useRef(0);
 
   useEffect(() => {
     mounted.current = true;
@@ -72,7 +82,7 @@ export function useWorkflow(
 
   function reset() {
     clearTimers();
-    setState({ status: "idle", activeIndex: 0, error: null, startedAt: null });
+    setState({ status: "idle", activeIndex: 0, error: null, startedAt: null, settledAt: null });
   }
 
   /**
@@ -88,7 +98,8 @@ export function useWorkflow(
   ): Promise<WorkflowResult<T>> {
     clearTimers();
     const startTime = Date.now();
-    setState({ status: "running", activeIndex: 0, error: null, startedAt: startTime });
+    activeRef.current = 0;
+    setState({ status: "running", activeIndex: 0, error: null, startedAt: startTime, settledAt: null });
 
     // Pace all intermediate steps up to the final step so it never gets stuck
     const totalSteps = steps.length;
@@ -96,21 +107,28 @@ export function useWorkflow(
       timers.current.push(
         window.setTimeout(() => {
           if (!mounted.current) return;
+          activeRef.current = Math.min(index, totalSteps - 1);
           setState((prev) =>
-            prev.status === "running" ? { ...prev, activeIndex: Math.min(index, totalSteps - 1) } : prev,
+            prev.status === "running" ? { ...prev, activeIndex: activeRef.current } : prev,
           );
         }, pace * index),
       );
     }
 
     try {
-      const data = await task();
+      // Promise.all rejects as soon as the task does, so failures surface at once.
+      const data =
+        minDuration > 0
+          ? (await Promise.all([task(), new Promise<void>((resolve) => window.setTimeout(resolve, minDuration))]))[0]
+          : await task();
+      const settledAt = Date.now();
       clearTimers();
 
       if (!mounted.current) return { ok: true, data };
+      setState((prev) => ({ ...prev, settledAt }));
 
       // If finished while on an earlier step, perform a rapid satisfying cascade to 100%
-      const currentActive = state.activeIndex;
+      const currentActive = activeRef.current;
       if (currentActive < totalSteps - 1) {
         const remainingSteps = totalSteps - currentActive;
         const cascadeInterval = Math.min(90, Math.max(40, Math.floor(300 / remainingSteps)));
@@ -119,6 +137,7 @@ export function useWorkflow(
             timers.current.push(
               window.setTimeout(() => {
                 if (mounted.current) {
+                  activeRef.current = i;
                   setState((prev) =>
                     prev.status === "running" ? { ...prev, activeIndex: i } : prev,
                   );
@@ -131,7 +150,7 @@ export function useWorkflow(
       }
 
       if (mounted.current) {
-        setState({ status: "success", activeIndex: totalSteps, error: null, startedAt: startTime });
+        setState({ status: "success", activeIndex: totalSteps, error: null, startedAt: startTime, settledAt });
       }
 
       await new Promise<void>((resolve) => {
@@ -141,6 +160,7 @@ export function useWorkflow(
       handlers?.onSuccess?.(data);
       return { ok: true, data };
     } catch (error) {
+      const settledAt = Date.now();
       clearTimers();
       if (mounted.current) {
         setState((prev) => ({
@@ -148,6 +168,7 @@ export function useWorkflow(
           activeIndex: prev.activeIndex,
           error: extractMessage(error),
           startedAt: startTime,
+          settledAt,
         }));
       }
       handlers?.onError?.(error);

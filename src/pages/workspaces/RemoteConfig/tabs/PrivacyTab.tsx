@@ -1,11 +1,13 @@
-import { useState } from 'react';
-import { SectionBanner, FieldTooltip, MicroCopy } from '../components/HelpSystem';
+import { useId, useState } from 'react';
+import { Plus, X } from 'lucide-react';
+
+import { Panel, Pill, RowStack, Toggle, fieldMonoClass } from '@/shared/ui/pulse';
+import { Button as UiButton } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
+
+import { SectionBanner } from '../components/HelpSystem';
 import type { SdkConfigState } from '../schema';
 import type { FieldError } from '../bounds';
-import { Switch } from '@/components/ui/switch';
-import { X, Plus, Shield, Lock, EyeOff, PlusCircle } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { Button } from '@/shared/observe';
 
 interface PrivacyTabProps {
   privacy: SdkConfigState['privacy'];
@@ -18,316 +20,282 @@ interface PrivacyTabProps {
 const COMMON_HEADER_PRESETS = ['authorization', 'proxy-authorization', 'cookie', 'set-cookie', 'x-api-key', 'bearer'];
 const COMMON_FIELD_PRESETS = ['password', 'secret', 'token', 'apiKey', 'creditCard', 'ssn', 'cvv'];
 
-export function PrivacyTab({
-  privacy,
-  onChangeCapture,
-  onChangePii,
-  onChangeScrubbing,
-  errors,
-}: PrivacyTabProps) {
-  const [newField, setNewField] = useState('');
-  const [newHeader, setNewHeader] = useState('');
+const PII_SETTINGS = [
+  { key: 'maskEmails' as const, label: 'Mask email addresses', desc: 'Replaces detected email addresses with', token: '[EMAIL_REDACTED]' },
+  { key: 'maskPhones' as const, label: 'Mask phone numbers', desc: 'Replaces international and domestic phone numbers with', token: '[PHONE_REDACTED]' },
+  { key: 'maskIPs' as const, label: 'Mask client IP addresses', desc: 'Replaces IPv4 and IPv6 client addresses with', token: '[IP_REDACTED]' },
+];
 
-  const fieldsError = errors.find((e) => e.path === 'privacy.scrubbing.fields')?.message;
-  const headersError = errors.find((e) => e.path === 'privacy.scrubbing.headers')?.message;
+const CAPTURE_CONTROLS = [
+  { key: 'headers' as const, label: 'Request headers', desc: 'Header names and values, filtered by the scrubbing rules below.', risky: false },
+  { key: 'query' as const, label: 'Query parameters', desc: 'Full URL query strings.', risky: false },
+  { key: 'body' as const, label: 'Request body', desc: 'Raw request payloads. These can contain secrets.', risky: true },
+  { key: 'response' as const, label: 'Response body', desc: 'API response payloads.', risky: true },
+  { key: 'cookies' as const, label: 'Cookies', desc: 'Cookie values sent by browsers.', risky: false },
+];
 
-  const addField = (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    const val = newField.trim().toLowerCase();
-    if (val && !privacy.scrubbing.fields.includes(val)) {
-      onChangeScrubbing('fields', [...privacy.scrubbing.fields, val]);
-      setNewField('');
+/** Divided row: copy on the left, one switch on the right. */
+function SwitchRow({
+  label,
+  description,
+  badge,
+  checked,
+  onChange,
+  toggleLabel,
+}: {
+  label: string;
+  description: React.ReactNode;
+  badge?: React.ReactNode;
+  checked: boolean;
+  onChange: (next: boolean) => void;
+  toggleLabel: string;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-6 px-5 py-3.5">
+      <div className="min-w-0">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-[13px] font-medium text-[var(--text)]">{label}</span>
+          {badge}
+        </div>
+        <p className="mt-0.5 max-w-[68ch] text-[12px] leading-[1.5] text-[var(--text2)]">{description}</p>
+      </div>
+      <Toggle checked={checked} onChange={onChange} label={toggleLabel} />
+    </div>
+  );
+}
+
+/** Add, list, and remove scrub patterns, with one-click suggestions. */
+function PatternListEditor({
+  title,
+  description,
+  placeholder,
+  noun,
+  items,
+  presets,
+  error,
+  onChange,
+}: {
+  title: string;
+  description: string;
+  placeholder: string;
+  /** Singular name used in labels, e.g. "header". */
+  noun: string;
+  items: string[];
+  presets: string[];
+  error?: string;
+  onChange: (next: string[]) => void;
+}) {
+  const [draft, setDraft] = useState('');
+  const [duplicate, setDuplicate] = useState(false);
+  const inputId = useId();
+  const noteId = `${inputId}-note`;
+  const suggestions = presets.filter((preset) => !items.includes(preset));
+
+  const submit = (event: React.FormEvent) => {
+    event.preventDefault();
+    const value = draft.trim().toLowerCase();
+    if (!value) return;
+    if (items.includes(value)) {
+      setDuplicate(true);
+      return;
     }
+    onChange([...items, value]);
+    setDraft('');
   };
 
-  const addHeader = (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    const val = newHeader.trim().toLowerCase();
-    if (val && !privacy.scrubbing.headers.includes(val)) {
-      onChangeScrubbing('headers', [...privacy.scrubbing.headers, val]);
-      setNewHeader('');
-    }
-  };
-
-  const addFieldPreset = (field: string) => {
-    if (!privacy.scrubbing.fields.includes(field)) {
-      onChangeScrubbing('fields', [...privacy.scrubbing.fields, field]);
-    }
-  };
-
-  const addHeaderPreset = (header: string) => {
-    if (!privacy.scrubbing.headers.includes(header)) {
-      onChangeScrubbing('headers', [...privacy.scrubbing.headers, header]);
-    }
-  };
-
-  const removeField = (field: string) =>
-    onChangeScrubbing('fields', privacy.scrubbing.fields.filter((f) => f !== field));
-
-  const removeHeader = (header: string) =>
-    onChangeScrubbing('headers', privacy.scrubbing.headers.filter((h) => h !== header));
-
-  const piiSettings = [
-    { key: 'maskEmails' as const, label: 'Mask Email Addresses', desc: 'Replaces detected email addresses with [EMAIL_REDACTED].' },
-    { key: 'maskPhones' as const, label: 'Mask Phone Numbers', desc: 'Replaces international and domestic phone numbers with [PHONE_REDACTED].' },
-    { key: 'maskIPs' as const, label: 'Mask Client IP Addresses', desc: 'Replaces IPv4 and IPv6 client addresses with [IP_REDACTED].' },
-  ];
-
-  const captureControls = [
-    { key: 'headers' as const, label: 'HTTP Request Headers', desc: 'Capture header key-value pairs (filtered by scrubbing rules).' },
-    { key: 'query' as const, label: 'URL Query Parameters', desc: 'Capture full URL query strings.' },
-    { key: 'body' as const, label: 'HTTP Request Body', desc: 'Capture raw request body payloads (risk of secret leakage).' },
-    { key: 'response' as const, label: 'HTTP Response Body', desc: 'Capture API response bodies.' },
-    { key: 'cookies' as const, label: 'Cookie Headers', desc: 'Capture cookie values sent by browsers.' },
-  ];
+  const note = error ?? (duplicate ? `That ${noun} is already in the list.` : undefined);
 
   return (
-    <div className="flex flex-col gap-6 animate-in fade-in duration-200">
+    <div className="flex min-w-0 flex-col gap-3 px-5 py-4">
+      <div>
+        <div className="flex items-baseline justify-between gap-3">
+          <h3 className="text-[13px] font-medium text-[var(--text)]">{title}</h3>
+          <span className="font-[family-name:var(--mono)] text-[11.5px] tabular-nums text-[var(--text3)]">{items.length}</span>
+        </div>
+        <p className="mt-0.5 text-[12px] leading-[1.5] text-[var(--text2)]">{description}</p>
+      </div>
+
+      <form onSubmit={submit} className="flex gap-2">
+        <label htmlFor={inputId} className="sr-only">
+          Add {noun}
+        </label>
+        <input
+          id={inputId}
+          type="text"
+          value={draft}
+          onChange={(event) => {
+            setDraft(event.target.value);
+            setDuplicate(false);
+          }}
+          placeholder={placeholder}
+          autoComplete="off"
+          spellCheck={false}
+          aria-invalid={note ? true : undefined}
+          aria-describedby={note ? noteId : undefined}
+          className={cn(fieldMonoClass, 'min-w-0 flex-1')}
+        />
+        <UiButton type="submit" variant="outline" size="sm" className="h-9" disabled={!draft.trim()}>
+          <Plus className="size-3.5" aria-hidden="true" />
+          Add
+        </UiButton>
+      </form>
+
+      {note && (
+        <p id={noteId} role={error ? 'alert' : 'status'} className={cn('text-[12px] leading-[1.5]', error ? 'text-[var(--red)]' : 'text-[var(--text3)]')}>
+          {note}
+        </p>
+      )}
+
+      {items.length > 0 ? (
+        <ul aria-label={title} className="flex flex-wrap gap-1.5">
+          {items.map((item) => (
+            <li
+              key={item}
+              className="inline-flex items-center gap-0.5 rounded-[4px] border border-[var(--border)] bg-[var(--bg2)] py-0.5 pl-2 pr-0.5 font-[family-name:var(--mono)] text-[11.5px] text-[var(--text2)]"
+            >
+              {item}
+              <button
+                type="button"
+                onClick={() => onChange(items.filter((current) => current !== item))}
+                aria-label={`Remove ${noun} ${item}`}
+                className="inline-flex size-5 items-center justify-center rounded-[3px] text-[var(--text3)] transition-colors hover:text-[var(--text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border2)]"
+              >
+                <X className="size-3" aria-hidden="true" />
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="text-[12px] text-[var(--text3)]">Nothing scrubbed yet.</p>
+      )}
+
+      {suggestions.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5 border-t border-[var(--border)] pt-3">
+          <span className="mr-1 text-[12px] text-[var(--text3)]">Suggestions</span>
+          {suggestions.map((preset) => (
+            <button
+              key={preset}
+              type="button"
+              onClick={() => onChange([...items, preset])}
+              aria-label={`Add ${noun} ${preset}`}
+              className="inline-flex items-center gap-1 rounded-[4px] border border-dashed border-[var(--border)] px-1.5 py-0.5 font-[family-name:var(--mono)] text-[11.5px] text-[var(--text3)] transition-colors hover:border-[var(--border2)] hover:text-[var(--text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border2)]"
+            >
+              <Plus className="size-3" aria-hidden="true" />
+              {preset}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function PrivacyTab({ privacy, onChangeCapture, onChangePii, onChangeScrubbing, errors }: PrivacyTabProps) {
+  const fieldsError = errors.find((e) => e.path === 'privacy.scrubbing.fields')?.message;
+  const headersError = errors.find((e) => e.path === 'privacy.scrubbing.headers')?.message;
+  const piiEnabled = privacy.piiDetection.enabled;
+  const scrubbingEnabled = privacy.scrubbing.enabled;
+
+  return (
+    <div className="flex flex-col gap-6">
       <SectionBanner
-        title="Privacy, Compliance & Data Scrubbing"
-        definition="Zero-trust privacy enforcement executed at the SDK runtime boundary before telemetry packets leave your servers."
+        title="Privacy and scrubbing"
+        definition="Privacy rules run inside the SDK, before telemetry leaves your servers."
       >
-        Redact sensitive identifiers, strip authorization headers, and block PII leakage.
+        Redact personal data, strip credentials from headers, and choose what request data is captured.
       </SectionBanner>
 
-      {/* Top Grid: PII Engine & Ingestion Capture */}
-      <div className="grid gap-5 md:grid-cols-2">
-        {/* PII Masking Engine */}
-        <div className="flex flex-col gap-4 rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] p-5">
-          <div className="flex items-center justify-between border-b border-[var(--border)] pb-3.5">
-            <div className="flex items-center gap-2">
-              <Shield className="size-4 text-[var(--green)]" />
-              <h3 className="font-semibold text-[13.5px] text-[var(--text)]">PII Masking Engine</h3>
-            </div>
-            <Switch
-              checked={privacy.piiDetection.enabled}
-              onCheckedChange={(val) => onChangePii('enabled', val)}
-              aria-label="Toggle PII Masking Engine"
-            />
-          </div>
-
-          <div className={cn('flex flex-col gap-3 transition-opacity', !privacy.piiDetection.enabled && 'opacity-40 pointer-events-none')}>
-            <p className="text-[12px] text-[var(--text3)]">
-              Embedded client regex parses error messages, log lines, and breadcrumbs to redact personally identifiable data before transmission.
-            </p>
-
-            <div className="divide-y divide-[var(--border)]">
-              {piiSettings.map(({ key, label, desc }) => (
-                <div key={key} className="flex items-center justify-between py-2.5">
-                  <div className="pr-2">
-                    <span className="font-semibold text-[12.5px] text-[var(--text)]">{label}</span>
-                    <p className="text-[11px] text-[var(--text3)]">{desc}</p>
-                  </div>
-                  <Switch
-                    checked={privacy.piiDetection[key]}
-                    onCheckedChange={(val) => onChangePii(key, val)}
-                    aria-label={`Toggle ${label}`}
-                  />
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Payload Field Capture */}
-        <div className="flex flex-col gap-4 rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] p-5">
-          <div className="flex items-center justify-between border-b border-[var(--border)] pb-3.5">
-            <div className="flex items-center gap-2">
-              <EyeOff className="size-4 text-[var(--amber)]" />
-              <h3 className="font-semibold text-[13.5px] text-[var(--text)]">Telemetry Ingestion Capture</h3>
-            </div>
-            <span className="font-mono text-[10px] font-semibold text-[var(--text3)] uppercase">Selective</span>
-          </div>
-
-          <div className="flex flex-col gap-1 divide-y divide-[var(--border)]">
-            {captureControls.map(({ key, label, desc }) => {
-              const isActive = privacy.capture[key];
-              const isHighRisk = key === 'body' || key === 'response';
-              return (
-                <div key={key} className="flex items-center justify-between py-2.5">
-                  <div className="pr-2">
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold text-[12.5px] text-[var(--text)]">{label}</span>
-                      {isHighRisk && isActive && (
-                        <span className="rounded bg-[var(--red-bg)] px-1.5 py-0.5 text-[9.5px] font-bold text-[var(--red)] border border-[var(--red)]/30">
-                          High Risk
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-[11px] text-[var(--text3)]">{desc}</p>
-                  </div>
-                  <Switch
-                    checked={isActive}
-                    onCheckedChange={(val) => onChangeCapture(key, val)}
-                    aria-label={`Toggle capture of ${label}`}
-                  />
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-
-      {/* Bottom Grid: Header Scrubbing & JSON Field Redaction */}
-      <div className="grid gap-5 md:grid-cols-2">
-        {/* Header Scrubbing */}
-        <div className="flex flex-col gap-4 rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] p-5">
-          <div className="flex items-center justify-between border-b border-[var(--border)] pb-3.5">
-            <div className="flex items-center gap-2">
-              <Lock className="size-4 text-[var(--brand)]" />
-              <h3 className="font-semibold text-[13.5px] text-[var(--text)]">Scrubbed HTTP Headers</h3>
-            </div>
-            <Switch
-              checked={privacy.scrubbing.enabled}
-              onCheckedChange={(val) => onChangeScrubbing('enabled', val)}
-              aria-label="Toggle scrubbing"
-            />
-          </div>
-
-          <div className={cn('flex flex-col gap-3', !privacy.scrubbing.enabled && 'opacity-40 pointer-events-none')}>
-            <p className="text-[12px] text-[var(--text3)]">
-              Any header matching these names will have its value scrubbed to <code className="text-[var(--brand)] font-mono text-[11px]">[FILTERED]</code>.
-            </p>
-
-            <form onSubmit={addHeader} className="flex gap-2">
-              <input
-                type="text"
-                value={newHeader}
-                onChange={(e) => setNewHeader(e.target.value)}
-                placeholder="Add header name (e.g. x-custom-token)"
-                className="h-8 flex-1 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg2)] px-2.5 font-mono text-[12px] text-[var(--text)] outline-none focus:border-[var(--brand)]"
+      <Panel
+        title="PII masking"
+        description="Client-side patterns redact personal data in error messages, log lines, and breadcrumbs before sending."
+        actions={
+          <Toggle checked={piiEnabled} onChange={(next) => onChangePii('enabled', next)} label="Mask personal data" />
+        }
+        bodyClassName="p-0"
+      >
+        <fieldset disabled={!piiEnabled} className="m-0 min-w-0 border-0 p-0 transition-opacity duration-150 disabled:opacity-60">
+          <legend className="sr-only">Masking rules</legend>
+          <RowStack>
+            {PII_SETTINGS.map(({ key, label, desc, token }) => (
+              <SwitchRow
+                key={key}
+                label={label}
+                description={
+                  <>
+                    {desc} <code className="font-[family-name:var(--mono)] text-[11.5px] text-[var(--text)]">{token}</code>.
+                  </>
+                }
+                checked={privacy.piiDetection[key]}
+                onChange={(next) => onChangePii(key, next)}
+                toggleLabel={label}
               />
-              <Button
-                type="submit"
-                variant="ghost"
-                disabled={!newHeader.trim()}
-                className="h-8 border border-[var(--border)] px-2.5 text-xs text-[var(--text)] hover:bg-[var(--bg3)]"
-              >
-                <Plus className="size-3.5" />
-                Add
-              </Button>
-            </form>
+            ))}
+          </RowStack>
+        </fieldset>
+      </Panel>
 
-            {headersError && <p className="text-[11px] font-semibold text-[var(--red)]">{headersError}</p>}
-
-            {/* Current Chips */}
-            <div className="flex flex-wrap gap-1.5 pt-1">
-              {privacy.scrubbing.headers.map((header) => (
-                <span
-                  key={header}
-                  className="flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--bg2)] px-2.5 py-0.5 font-mono text-[11px] text-[var(--text2)]"
-                >
-                  {header}
-                  <button
-                    type="button"
-                    onClick={() => removeHeader(header)}
-                    className="text-[var(--text3)] hover:text-[var(--red)] transition-colors"
-                    aria-label={`Remove header ${header}`}
-                  >
-                    <X className="size-3" />
-                  </button>
-                </span>
-              ))}
-            </div>
-
-            {/* Quick Presets */}
-            <div className="pt-2 border-t border-[var(--border)]">
-              <span className="eyebrow text-[10px] text-[var(--text3)]">Common Presets:</span>
-              <div className="mt-1.5 flex flex-wrap gap-1">
-                {COMMON_HEADER_PRESETS.map((preset) => (
-                  <button
-                    key={preset}
-                    type="button"
-                    onClick={() => addHeaderPreset(preset)}
-                    disabled={privacy.scrubbing.headers.includes(preset)}
-                    className="rounded bg-[var(--bg2)] px-2 py-0.5 font-mono text-[10px] text-[var(--text3)] hover:text-[var(--text)] disabled:opacity-40"
-                  >
-                    +{preset}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* JSON Field Redaction */}
-        <div className="flex flex-col gap-4 rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] p-5">
-          <div className="flex items-center justify-between border-b border-[var(--border)] pb-3.5">
-            <div className="flex items-center gap-2">
-              <Lock className="size-4 text-[var(--brand)]" />
-              <h3 className="font-semibold text-[13.5px] text-[var(--text)]">Redacted JSON Keys</h3>
-            </div>
-            <span className="font-mono text-[11px] text-[var(--text3)]">
-              {privacy.scrubbing.fields.length} Keys Filtered
-            </span>
-          </div>
-
-          <div className={cn('flex flex-col gap-3', !privacy.scrubbing.enabled && 'opacity-40 pointer-events-none')}>
-            <p className="text-[12px] text-[var(--text3)]">
-              Keys in request/response bodies or log objects recursively sanitized before dispatch.
-            </p>
-
-            <form onSubmit={addField} className="flex gap-2">
-              <input
-                type="text"
-                value={newField}
-                onChange={(e) => setNewField(e.target.value)}
-                placeholder="Add JSON key (e.g. ssn, creditCard)"
-                className="h-8 flex-1 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg2)] px-2.5 font-mono text-[12px] text-[var(--text)] outline-none focus:border-[var(--brand)]"
+      <Panel
+        title="Request capture"
+        description="What the SDK records from each HTTP exchange."
+        bodyClassName="p-0"
+      >
+        <RowStack>
+          {CAPTURE_CONTROLS.map(({ key, label, desc, risky }) => {
+            const isActive = privacy.capture[key];
+            return (
+              <SwitchRow
+                key={key}
+                label={label}
+                description={desc}
+                badge={risky && isActive ? <Pill tone="amber">High risk</Pill> : undefined}
+                checked={isActive}
+                onChange={(next) => onChangeCapture(key, next)}
+                toggleLabel={`Capture ${label.toLowerCase()}`}
               />
-              <Button
-                type="submit"
-                variant="ghost"
-                disabled={!newField.trim()}
-                className="h-8 border border-[var(--border)] px-2.5 text-xs text-[var(--text)] hover:bg-[var(--bg3)]"
-              >
-                <Plus className="size-3.5" />
-                Add
-              </Button>
-            </form>
+            );
+          })}
+        </RowStack>
+      </Panel>
 
-            {fieldsError && <p className="text-[11px] font-semibold text-[var(--red)]">{fieldsError}</p>}
-
-            {/* Current Chips */}
-            <div className="flex flex-wrap gap-1.5 pt-1">
-              {privacy.scrubbing.fields.map((field) => (
-                <span
-                  key={field}
-                  className="flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--bg2)] px-2.5 py-0.5 font-mono text-[11px] text-[var(--brand)]"
-                >
-                  {field}
-                  <button
-                    type="button"
-                    onClick={() => removeField(field)}
-                    className="text-[var(--text3)] hover:text-[var(--red)] transition-colors"
-                    aria-label={`Remove field ${field}`}
-                  >
-                    <X className="size-3" />
-                  </button>
-                </span>
-              ))}
-            </div>
-
-            {/* Quick Presets */}
-            <div className="pt-2 border-t border-[var(--border)]">
-              <span className="eyebrow text-[10px] text-[var(--text3)]">Common Presets:</span>
-              <div className="mt-1.5 flex flex-wrap gap-1">
-                {COMMON_FIELD_PRESETS.map((preset) => (
-                  <button
-                    key={preset}
-                    type="button"
-                    onClick={() => addFieldPreset(preset)}
-                    disabled={privacy.scrubbing.fields.includes(preset)}
-                    className="rounded bg-[var(--bg2)] px-2 py-0.5 font-mono text-[10px] text-[var(--text3)] hover:text-[var(--text)] disabled:opacity-40"
-                  >
-                    +{preset}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <Panel
+        title="Scrubbing"
+        description="Matching header values are replaced with [FILTERED]. Matching keys in bodies and log objects are sanitized recursively."
+        actions={
+          <Toggle
+            checked={scrubbingEnabled}
+            onChange={(next) => onChangeScrubbing('enabled', next)}
+            label="Scrub headers and JSON keys"
+          />
+        }
+        bodyClassName="p-0"
+      >
+        <fieldset
+          disabled={!scrubbingEnabled}
+          className="m-0 grid min-w-0 border-0 p-0 transition-opacity duration-150 disabled:opacity-60 md:grid-cols-2 md:divide-x md:divide-[var(--border)] max-md:divide-y max-md:divide-[var(--border)]"
+        >
+          <legend className="sr-only">Scrub patterns</legend>
+          <PatternListEditor
+            title="Headers"
+            description="Header names whose values are scrubbed."
+            placeholder="x-custom-token"
+            noun="header"
+            items={privacy.scrubbing.headers}
+            presets={COMMON_HEADER_PRESETS}
+            error={headersError}
+            onChange={(next) => onChangeScrubbing('headers', next)}
+          />
+          <PatternListEditor
+            title="JSON keys"
+            description="Keys in request and response bodies and in log objects."
+            placeholder="ssn"
+            noun="key"
+            items={privacy.scrubbing.fields}
+            presets={COMMON_FIELD_PRESETS}
+            error={fieldsError}
+            onChange={(next) => onChangeScrubbing('fields', next)}
+          />
+        </fieldset>
+      </Panel>
     </div>
   );
 }

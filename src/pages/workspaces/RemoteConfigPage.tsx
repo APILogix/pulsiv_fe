@@ -1,25 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import {
-  CheckCircle2,
-  RotateCcw,
-  ServerCog,
-  ShieldCheck,
-  ShieldOff,
-  Copy,
-  Check,
-  AlertTriangle,
-  History,
-  FlaskConical,
-} from "lucide-react";
-import {
-  Button,
-  FillPage,
-  SectionCard,
-  StatusBadge,
-  SubmitButton,
-  inputClass,
-} from "@/shared/observe";
 import { toast } from "sonner";
+
 import { useOrganizations } from "@/modules/organizations/hooks/useOrganizations";
 import {
   useResolveSdkConfig,
@@ -27,8 +8,23 @@ import {
   useSdkConfigMutations,
   useSdkConfigVersions,
 } from "@/modules/projects/hooks/useSdkConfigs";
+import type { SdkConfigVersionView } from "@/modules/projects/api/sdk-configs.api";
 import { useEnvironments } from "@/modules/projects/hooks/useEnvironments";
 import type { ProjectEnvironment } from "@/modules/projects/api/types";
+import { ConfirmDialog, DialogField, apiErrorMessage } from "@/modules/projects/components/project-ui";
+import {
+  ProjectPageHeader,
+  Readouts,
+  Sheet,
+  SheetEmpty,
+  SheetList,
+  SheetListItem,
+  WorkspacePage,
+  type Readout,
+} from "@/modules/projects/components/project-page";
+import { Notice, Panel, Pill, fieldInputClass } from "@/shared/ui/pulse";
+import { CodeBlock, Timestamp } from "@/shared/observe";
+import { Button as UiButton } from "@/components/ui/button";
 import { useCurrentProject } from "@/pages/workspaces/ProjectShellPage";
 
 import { RemoteConfigHeader } from "./RemoteConfig/components/RemoteConfigHeader";
@@ -44,32 +40,47 @@ import { AuditLogPanel } from "./RemoteConfig/components/AuditLogPanel";
 import { SdkTelemetryPanel } from "./RemoteConfig/components/SdkTelemetryPanel";
 import { RemoteConfigPanel, type RemoteConfigPanelHandle } from "./RemoteConfig/RemoteConfigPanel";
 
-function formatDate(value?: string | null) {
-  return value ? new Date(value).toLocaleString() : "-";
-}
+// ── helpers ──────────────────────────────────────────────────
+
+const EDITOR_SECTIONS = new Set([
+  "features",
+  "transport",
+  "sampling",
+  "privacy",
+  "instrumentation",
+  "limits",
+  "killswitches",
+]);
+
+const PLATFORM_OPTIONS = [
+  { value: "web", label: "Web browser (JavaScript / TypeScript)" },
+  { value: "node", label: "Node.js (Express / Fastify / NestJS)" },
+  { value: "python", label: "Python (FastAPI / Django / Flask)" },
+  { value: "ios", label: "iOS (native Swift SDK)" },
+  { value: "android", label: "Android (native Kotlin SDK)" },
+];
 
 function shortHash(value?: string | null) {
-  return value ? `${value.slice(0, 10)}...${value.slice(-6)}` : "-";
+  return value ? `${value.slice(0, 10)}…${value.slice(-6)}` : "—";
+}
+
+function sentenceCase(value: string) {
+  const text = value.replace(/_/g, " ");
+  return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
 function envLabel(environment?: Pick<ProjectEnvironment, "name" | "slug"> | null) {
   return environment ? `${environment.name} (${environment.slug})` : "All environments";
 }
 
-function countChangedKeys(
-  a: Record<string, unknown> | null | undefined,
-  b: Record<string, unknown> | null | undefined
-): number {
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function countChangedKeys(a?: Record<string, unknown> | null, b?: Record<string, unknown> | null): number {
   const seen = new Set<string>();
-  const walk = (prev: any, next: any, path: string) => {
-    if (
-      prev &&
-      next &&
-      typeof prev === "object" &&
-      typeof next === "object" &&
-      !Array.isArray(prev) &&
-      !Array.isArray(next)
-    ) {
+  const walk = (prev: unknown, next: unknown, path: string) => {
+    if (isPlainObject(prev) && isPlainObject(next)) {
       const keys = new Set([...Object.keys(prev), ...Object.keys(next)]);
       keys.forEach((key) => walk(prev[key], next[key], path ? `${path}.${key}` : key));
       return;
@@ -80,170 +91,127 @@ function countChangedKeys(
   return seen.size;
 }
 
+function countEnabled(section: unknown): { on: number; total: number } {
+  if (!isPlainObject(section)) return { on: 0, total: 0 };
+  const bools = Object.values(section).filter((value): value is boolean => typeof value === "boolean");
+  return { on: bools.filter(Boolean).length, total: bools.length };
+}
+
+type RollbackMutation = ReturnType<typeof useSdkConfigMutations>["rollbackConfig"];
+
+// ── revision history ─────────────────────────────────────────
+
 function VersionsTab({
   versions,
   rollbackConfig,
   activeOrgId,
   selectedConfigId,
+  currentRevision,
 }: {
-  versions: any[];
-  rollbackConfig: { mutate: (payload: any) => void; isPending: boolean };
+  versions: SdkConfigVersionView[];
+  rollbackConfig: RollbackMutation;
   activeOrgId?: string | null;
   selectedConfigId: string;
+  currentRevision: number;
 }) {
-  const [confirmRollbackRevision, setConfirmRollbackRevision] = useState<number | null>(null);
-
-  if (!versions.length) {
-    return (
-      <SectionCard title="Revision History & Rollbacks">
-        <div className="rounded-[var(--radius-lg)] border border-dashed border-[var(--border)] bg-[var(--bg1)] p-8 text-center text-xs text-[var(--text3)]">
-          No historical revisions have been recorded for this configuration yet.
-        </div>
-      </SectionCard>
-    );
-  }
-
+  const [confirmRevision, setConfirmRevision] = useState<number | null>(null);
   const sorted = [...versions].sort((a, b) => (b.revision ?? 0) - (a.revision ?? 0));
 
-  const handleRollback = (rev: number) => {
-    rollbackConfig.mutate({
-      orgId: activeOrgId,
-      configId: selectedConfigId,
-      revision: rev,
-    });
-    setConfirmRollbackRevision(null);
+  const handleRollback = (revision: number) => {
+    if (!activeOrgId) return;
+    rollbackConfig.mutate(
+      { orgId: activeOrgId, configId: selectedConfigId, revision },
+      { onSettled: () => setConfirmRevision(null) },
+    );
   };
 
   return (
-    <SectionCard
-      title="Immutable Revision Log & Instant Rollbacks"
-      description="Cryptographically hashed revision history. Every publish creates an immutable snapshot with instant zero-downtime rollback capability."
+    <Sheet
+      title="Revision history"
+      description="Every publish creates an immutable revision. Restoring one publishes its snapshot again as a new revision."
     >
-      <div className="space-y-3">
-        {sorted.map((version, index) => {
-          const previous = sorted[index + 1];
-          const changedCount = previous
-            ? countChangedKeys(previous.compiledSnapshot, version.compiledSnapshot)
-            : null;
-
-          return (
-            <div
-              key={version.id}
-              className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] p-4 sm:p-5 transition-all hover:border-[var(--border2)]"
-            >
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-mono text-sm font-bold text-[var(--text)]">
-                    Revision #{version.revision}
-                  </span>
-                  <StatusBadge status={version.changeType ?? "publish"} />
-                  {version.revisionHash && (
-                    <span className="font-mono text-[11px] text-[var(--text3)]">
-                      ({shortHash(version.revisionHash)})
+      {sorted.length === 0 ? (
+        <SheetEmpty
+          title="No revisions yet"
+          description="A revision is recorded each time this configuration is published."
+        />
+      ) : (
+        <SheetList label="Revisions">
+          {sorted.map((version, index) => {
+            const previous = sorted[index + 1];
+            const changedCount = previous ? countChangedKeys(previous.compiledSnapshot, version.compiledSnapshot) : null;
+            const isCurrent = version.revision === currentRevision;
+            return (
+              <SheetListItem key={version.id} className="items-start">
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-[family-name:var(--mono)] text-[13px] font-medium tabular-nums text-[var(--text)]">
+                      #{version.revision}
                     </span>
-                  )}
-                </div>
-                <div className="mt-1 text-xs text-[var(--text3)]">
-                  Scope: <strong className="text-[var(--text2)]">{version.environmentName || "All Environments"}</strong> · {formatDate(version.publishedAt)}
-                  {changedCount !== null && (
-                    <> · {changedCount === 0 ? "No field changes" : `${changedCount} field${changedCount === 1 ? "" : "s"} modified`}</>
-                  )}
-                </div>
-                {version.changeSummary && (
-                  <div className="mt-1.5 rounded bg-[var(--bg2)] px-2.5 py-1 text-xs font-mono text-[var(--brand)] border border-[var(--border)] inline-block">
-                    {version.changeSummary}
+                    <Pill>{sentenceCase(version.changeType ?? "publish")}</Pill>
+                    {isCurrent && (
+                      <Pill tone="green" dot>
+                        Serving
+                      </Pill>
+                    )}
+                    {version.revisionHash && (
+                      <code
+                        className="font-[family-name:var(--mono)] text-[11.5px] text-[var(--text3)]"
+                        title={version.revisionHash}
+                      >
+                        {shortHash(version.revisionHash)}
+                      </code>
+                    )}
                   </div>
-                )}
-              </div>
-
-              <div className="flex shrink-0 items-center gap-2 self-end sm:self-center">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  disabled={rollbackConfig.isPending}
-                  onClick={() => setConfirmRollbackRevision(version.revision)}
-                  className="h-8 gap-1.5 border border-[var(--border)] px-3 text-xs text-[var(--text2)] hover:border-[var(--amber)] hover:text-[var(--amber)]"
+                  <p className="mt-1 flex flex-wrap items-center gap-x-1.5 text-[12px] text-[var(--text3)]">
+                    <span>{version.environmentName || "All environments"}</span>
+                    <span aria-hidden="true">·</span>
+                    <Timestamp value={version.publishedAt} />
+                    {changedCount !== null && (
+                      <>
+                        <span aria-hidden="true">·</span>
+                        <span>
+                          {changedCount === 0
+                            ? "No field changes"
+                            : `${changedCount} ${changedCount === 1 ? "field" : "fields"} changed`}
+                        </span>
+                      </>
+                    )}
+                  </p>
+                  {version.changeSummary && (
+                    <p className="mt-1.5 text-[13px] leading-[1.5] text-[var(--text2)]">{version.changeSummary}</p>
+                  )}
+                </div>
+                <UiButton
+                  variant="outline"
+                  size="sm"
+                  disabled={rollbackConfig.isPending || isCurrent}
+                  title={isCurrent ? "This revision is already serving" : undefined}
+                  onClick={() => setConfirmRevision(version.revision)}
                 >
-                  <RotateCcw className="size-3.5 text-[var(--amber)]" />
-                  Restore Revision
-                </Button>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Rollback confirmation modal */}
-      {confirmRollbackRevision !== null && (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-[var(--overlay)] p-4 animate-in fade-in duration-150">
-          <div className="w-full max-w-md rounded-[var(--radius-lg)] border border-[var(--border2)] bg-[var(--bg1)] p-6 shadow-[var(--shadow-modal)] animate-in zoom-in-95 duration-200">
-            <div className="flex items-center gap-3 text-[var(--amber)]">
-              <RotateCcw className="size-6 shrink-0" />
-              <h2 className="font-[family-name:var(--display)] text-[16px] font-bold text-[var(--text)]">
-                Restore Revision #{confirmRollbackRevision}?
-              </h2>
-            </div>
-            <p className="mt-3 text-xs leading-relaxed text-[var(--text2)]">
-              This action creates a new revision with the compiled snapshot from Revision #{confirmRollbackRevision} and delivers it to all connected SDKs.
-            </p>
-            <div className="mt-6 flex justify-end gap-2.5">
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => setConfirmRollbackRevision(null)}
-                className="h-8.5 px-3.5 text-xs text-[var(--text2)]"
-              >
-                Cancel
-              </Button>
-              <Button
-                type="button"
-                onClick={() => handleRollback(confirmRollbackRevision)}
-                disabled={rollbackConfig.isPending}
-                className="h-8.5 gap-1.5 bg-[var(--brand)] text-[var(--brand-fg)] hover:bg-[var(--brand-d)] px-4 text-xs font-semibold"
-              >
-                <RotateCcw className="size-3.5" />
-                {rollbackConfig.isPending ? "Restoring..." : `Confirm Rollback to #${confirmRollbackRevision}`}
-              </Button>
-            </div>
-          </div>
-        </div>
+                  Restore
+                </UiButton>
+              </SheetListItem>
+            );
+          })}
+        </SheetList>
       )}
-    </SectionCard>
+
+      <ConfirmDialog
+        open={confirmRevision !== null}
+        onOpenChange={(open) => !open && setConfirmRevision(null)}
+        destructive={false}
+        title={`Restore revision #${confirmRevision ?? ""}?`}
+        description={`This creates a new revision with the snapshot from revision #${confirmRevision ?? ""} and delivers it to every connected SDK.`}
+        confirmLabel={`Restore revision #${confirmRevision ?? ""}`}
+        pending={rollbackConfig.isPending}
+        onConfirm={() => confirmRevision !== null && handleRollback(confirmRevision)}
+      />
+    </Sheet>
   );
 }
 
-function countEnabled(section: unknown): { on: number; total: number } {
-  if (!section || typeof section !== "object") return { on: 0, total: 0 };
-  const values = Object.values(section as Record<string, unknown>);
-  const bools = values.filter((v) => typeof v === "boolean");
-  return { on: bools.filter(Boolean).length, total: bools.length };
-}
-
-function ResolveSummaryTile({
-  label,
-  icon: Icon,
-  on,
-  total,
-  tone = "default",
-}: {
-  label: string;
-  icon: typeof ServerCog;
-  on: number;
-  total: number;
-  tone?: "default" | "danger";
-}) {
-  return (
-    <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg2)]/50 p-4">
-      <div className="flex items-center justify-between gap-3">
-        <span className="eyebrow text-[10px] text-[var(--text3)]">{label}</span>
-        <Icon className={`size-4 ${tone === "danger" ? "text-[var(--red)]" : "text-[var(--brand)]"}`} />
-      </div>
-      <div className={`mt-2 text-base font-bold ${tone === "danger" && on > 0 ? "text-[var(--red)]" : "text-[var(--text)]"}`}>
-        {on} / {total} Active
-      </div>
-    </div>
-  );
-}
+// ── payload simulator ────────────────────────────────────────
 
 function ResolveTab({
   environments,
@@ -265,39 +233,49 @@ function ResolveTab({
   isResolving: boolean;
 }) {
   const selectedEnvironment = environments.find((environment) => environment.id === resolveEnv);
-  const result = (resolvedResult ?? null) as Record<string, any> | null;
+  const result = isPlainObject(resolvedResult) ? resolvedResult : null;
   const [copied, setCopied] = useState(false);
 
   const features = countEnabled(result?.features);
   const instrumentation = countEnabled(result?.instrumentation);
   const killswitches = countEnabled(result?.killswitches);
-  const samplingEntries: Array<[string, number]> = result?.sampling
-    ? (Object.entries(result.sampling) as Array<[string, unknown]>).filter(
-        (entry): entry is [string, number] => typeof entry[1] === "number"
-      )
+  const samplingEntries: Array<[string, number]> = isPlainObject(result?.sampling)
+    ? Object.entries(result.sampling).filter((entry): entry is [string, number] => typeof entry[1] === "number")
     : [];
+
+  const readouts: Readout[] = [
+    { label: "Features on", value: `${features.on}`, sub: `of ${features.total} features` },
+    { label: "Instrumentation on", value: `${instrumentation.on}`, sub: `of ${instrumentation.total} integrations` },
+    {
+      label: "Killswitches armed",
+      value: `${killswitches.on}`,
+      sub: `of ${killswitches.total} killswitches`,
+      tone: killswitches.on > 0 ? "bad" : "neutral",
+    },
+  ];
 
   const handleCopyJson = () => {
     if (!result) return;
-    navigator.clipboard.writeText(JSON.stringify(result, null, 2));
-    setCopied(true);
-    toast.success("Resolved SDK config JSON copied to clipboard");
-    setTimeout(() => setCopied(false), 2000);
+    void navigator.clipboard?.writeText(JSON.stringify(result, null, 2)).then(() => {
+      setCopied(true);
+      toast.success("Resolved SDK config JSON copied to clipboard");
+      window.setTimeout(() => setCopied(false), 2000);
+    });
   };
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
-      <SectionCard
-        title="SDK Delivery Sandbox"
-        description="Simulate the compiled runtime payload delivered to running SDK instances for any environment and platform."
+    <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-[320px_minmax(0,1fr)]">
+      <Panel
+        title="Payload simulator"
+        description="Compile the payload a running SDK receives for an environment and platform."
       >
         <form onSubmit={handleResolve} className="flex flex-col gap-4">
-          <label className="flex flex-col gap-1.5">
-            <span className="eyebrow text-[11px] text-[var(--text3)]">Target Environment</span>
+          <DialogField label="Environment" name="resolve-environment">
             <select
-              className={inputClass}
+              id="resolve-environment"
+              className={fieldInputClass}
               value={resolveEnv}
-              onChange={(e) => setResolveEnv(e.target.value)}
+              onChange={(event) => setResolveEnv(event.target.value)}
             >
               {environments.map((environment) => (
                 <option key={environment.id} value={environment.id}>
@@ -305,84 +283,78 @@ function ResolveTab({
                 </option>
               ))}
             </select>
-          </label>
+          </DialogField>
 
-          <label className="flex flex-col gap-1.5">
-            <span className="eyebrow text-[11px] text-[var(--text3)]">SDK Target Platform</span>
+          <DialogField label="SDK platform" name="resolve-platform">
             <select
-              className={inputClass}
+              id="resolve-platform"
+              className={fieldInputClass}
               value={resolvePlatform}
-              onChange={(e) => setResolvePlatform(e.target.value)}
+              onChange={(event) => setResolvePlatform(event.target.value)}
             >
-              <option value="web">Web Browser (JavaScript / TypeScript)</option>
-              <option value="node">Node.js (Express / Fastify / NestJS)</option>
-              <option value="python">Python (FastAPI / Django / Flask)</option>
-              <option value="ios">iOS (Native Swift SDK)</option>
-              <option value="android">Android (Native Kotlin SDK)</option>
+              {PLATFORM_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
             </select>
-          </label>
+          </DialogField>
 
-          <SubmitButton className="mt-2 h-8.5 font-semibold text-xs bg-[var(--brand)] text-[var(--brand-fg)] hover:bg-[var(--brand-d)]">
-            {isResolving ? "Compiling Payload..." : "Simulate SDK Resolution"}
-          </SubmitButton>
+          <UiButton type="submit" size="lg" disabled={isResolving || !resolveEnv}>
+            {isResolving ? "Compiling payload…" : "Simulate resolution"}
+          </UiButton>
         </form>
-      </SectionCard>
+      </Panel>
 
-      <SectionCard
-        title={
-          selectedEnvironment
-            ? `Compiled Live Payload: ${selectedEnvironment.name}`
-            : "Compiled Live Telemetry Payload"
-        }
-      >
+      <div className="flex min-w-0 flex-col gap-6">
         {result ? (
-          <div className="flex flex-col gap-4">
-            <div className="grid gap-3 sm:grid-cols-3">
-              <ResolveSummaryTile label="Active Features" icon={ShieldCheck} on={features.on} total={features.total} />
-              <ResolveSummaryTile label="Instrumentation" icon={ServerCog} on={instrumentation.on} total={instrumentation.total} />
-              <ResolveSummaryTile label="Killswitches Armed" icon={ShieldOff} on={killswitches.on} total={killswitches.total} tone="danger" />
-            </div>
+          <>
+            <Readouts cells={readouts} label="Resolved payload summary" />
 
             {samplingEntries.length > 0 && (
-              <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg2)]/40 p-4">
-                <div className="mb-2 text-[11px] font-bold uppercase tracking-wider text-[var(--text3)]">
-                  Compiled Ingestion Rates
-                </div>
-                <div className="flex flex-wrap gap-1.5">
+              <Panel title="Sampling rates" description="Share of each signal the SDK keeps.">
+                <dl className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-3 lg:grid-cols-4">
                   {samplingEntries.map(([key, value]) => (
-                    <span
-                      key={key}
-                      className="rounded border border-[var(--border)] bg-[var(--bg1)] px-2 py-0.5 font-mono text-[11px] text-[var(--text2)]"
-                    >
-                      {key}: <strong className="text-[var(--brand)]">{Math.round(value <= 1 ? value * 100 : value)}%</strong>
-                    </span>
+                    <div key={key} className="flex min-w-0 flex-col gap-1">
+                      <dt className="truncate font-[family-name:var(--mono)] text-[12px] text-[var(--text3)]">{key}</dt>
+                      <dd className="font-[family-name:var(--mono)] text-[15px] font-medium tabular-nums text-[var(--text)]">
+                        {Math.round(value <= 1 ? value * 100 : value)}%
+                      </dd>
+                    </div>
                   ))}
-                </div>
-              </div>
+                </dl>
+              </Panel>
             )}
 
-            <div className="flex flex-col gap-2">
-              <div className="flex items-center justify-between">
-                <span className="eyebrow text-[11px] text-[var(--text3)]">Delivered JSON Payload</span>
-                <Button type="button" variant="ghost" className="h-7 text-xs gap-1 text-[var(--text2)]" onClick={handleCopyJson}>
-                  {copied ? <Check className="size-3 text-[var(--green)]" /> : <Copy className="size-3" />}
-                  {copied ? "Copied!" : "Copy JSON"}
-                </Button>
-              </div>
-              <pre className="max-h-[380px] overflow-auto rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] p-4 font-mono text-[11px] leading-relaxed text-[var(--text)]">
+            <Panel
+              title={selectedEnvironment ? `Delivered payload · ${selectedEnvironment.name}` : "Delivered payload"}
+              description="The exact JSON document SDK instances receive."
+              actions={
+                <UiButton variant="outline" size="sm" onClick={handleCopyJson}>
+                  {copied ? "Copied" : "Copy JSON"}
+                </UiButton>
+              }
+              bodyClassName="p-0"
+            >
+              <CodeBlock maxHeight={440} className="rounded-none border-0">
                 {JSON.stringify(result, null, 2)}
-              </pre>
-            </div>
-          </div>
+              </CodeBlock>
+            </Panel>
+          </>
         ) : (
-          <div className="rounded-[var(--radius-lg)] border border-dashed border-[var(--border)] p-12 text-center text-xs text-[var(--text3)]">
-            Select an environment and SDK target platform above, then click <strong>Simulate SDK Resolution</strong> to inspect the exact JSON document received by SDK instances.
-          </div>
+          <Sheet label="Resolved payload">
+            <SheetEmpty
+              title="Nothing compiled yet"
+              description="Choose an environment and an SDK platform, then simulate to inspect the exact JSON document SDK instances receive."
+            />
+          </Sheet>
         )}
-      </SectionCard>
+      </div>
     </div>
   );
 }
+
+// ── page ─────────────────────────────────────────────────────
 
 export default function RemoteConfigPage() {
   const { projectId } = useCurrentProject();
@@ -420,29 +392,22 @@ export default function RemoteConfigPage() {
     isLoading: configsLoading,
     error: configsError,
     refetch: refetchConfigs,
-  } = useSdkConfigs(
-    activeOrgId ?? "",
-    projectId,
-    environmentId ? { environmentId } : undefined
-  );
+  } = useSdkConfigs(activeOrgId ?? "", projectId, environmentId ? { environmentId } : undefined);
 
   const { updateConfig, rollbackConfig } = useSdkConfigMutations();
   const resolveMutation = useResolveSdkConfig();
 
   const selectedConfig = useMemo(
     () => configs.find((config) => config.id === selectedConfigId) ?? configs[0] ?? null,
-    [configs, selectedConfigId]
+    [configs, selectedConfigId],
   );
 
   const selectedEnvironment = useMemo(
     () => environments.find((env) => env.id === (environmentId || selectedConfig?.environmentId)),
-    [environmentId, environments, selectedConfig?.environmentId]
+    [environmentId, environments, selectedConfig?.environmentId],
   );
 
-  const { data: versions = [] } = useSdkConfigVersions(
-    activeOrgId ?? "",
-    selectedConfig?.id ?? ""
-  );
+  const { data: versions = [] } = useSdkConfigVersions(activeOrgId ?? "", selectedConfig?.id ?? "");
 
   useEffect(() => {
     if (configs.length > 0 && !configs.some((config) => config.id === selectedConfigId)) {
@@ -491,11 +456,8 @@ export default function RemoteConfigPage() {
       },
       {
         onSuccess: () => toast.success(`Published revision #${selectedConfig.revision + 1}`),
-        onError: (error: any) => {
-          const message = error?.response?.data?.error?.message ?? "Failed to publish SDK config";
-          toast.error(message);
-        },
-      }
+        onError: (error: unknown) => toast.error(apiErrorMessage(error, "Failed to publish SDK config")),
+      },
     );
   };
 
@@ -517,206 +479,136 @@ export default function RemoteConfigPage() {
   };
 
   if ((configsLoading && configs.length === 0) || (environmentsLoading && environments.length === 0)) {
-    return (
-      <FillPage>
-        <RemoteConfigSkeleton />
-      </FillPage>
-    );
+    return <RemoteConfigSkeleton />;
   }
 
   if (configsError || environmentsError) {
     return (
-      <FillPage>
-        <div className="data-rail mx-auto w-full p-4 sm:p-6">
-          <RemoteConfigErrorState
-            error={(configsError || environmentsError) as Error}
-            onRetry={() => {
-              refetchEnvironments();
-              refetchConfigs();
-            }}
-          />
-        </div>
-      </FillPage>
+      <WorkspacePage>
+        <ProjectPageHeader
+          title="Remote config"
+          description="Values delivered to SDKs at runtime. Each environment has its own configuration."
+        />
+        <RemoteConfigErrorState
+          error={(configsError || environmentsError) as Error}
+          onRetry={() => {
+            void refetchEnvironments();
+            void refetchConfigs();
+          }}
+        />
+      </WorkspacePage>
     );
   }
 
-  const envName = selectedConfig?.environmentName || selectedEnvironment?.name || "All Environments";
-
-  // Check if current view is a wide data view
-  const isWideDataView = [
-    "transport",
-    "inheritance",
-    "rollout",
-    "telemetry",
-    "history",
-    "resolve",
-    "audit",
-  ].includes(activeSection);
+  const envName = selectedConfig?.environmentName || selectedEnvironment?.name || "All environments";
 
   return (
-    <FillPage>
-      <div className="data-rail mx-auto flex w-full flex-col gap-6 p-3 pb-28 sm:p-5">
-        {/* Header with Scope Switcher & Status */}
-        <RemoteConfigHeader
-          environments={environments}
-          selectedEnvironmentId={environmentId}
-          onSelectEnvironment={handleSelectEnvironment}
-          currentRevision={selectedConfig?.revision ?? 1}
-          revisionHash={shortHash(selectedConfig?.revisionHash)}
-          publishedAt={formatDate(selectedConfig?.publishedAt)}
+    <WorkspacePage>
+      <RemoteConfigHeader
+        environments={environments}
+        selectedEnvironmentId={environmentId}
+        onSelectEnvironment={handleSelectEnvironment}
+        isDraft={panelState.isDirty}
+        draftChangesCount={panelState.diffCount}
+        hasErrors={panelState.hasErrors}
+        onOpenPublishDrawer={() => setPublishDrawerOpen(true)}
+        onDiscardDraft={panelState.discardDraft}
+      />
+
+      {selectedConfig && (
+        <RemoteConfigOverview
+          environmentName={envName}
+          currentRevision={selectedConfig.revision ?? 1}
+          revisionHash={shortHash(selectedConfig.revisionHash)}
+          publishedAt={selectedConfig.publishedAt}
           isDraft={panelState.isDirty}
-          draftChangesCount={panelState.diffCount}
-          hasErrors={panelState.hasErrors}
-          onOpenPublishDrawer={() => setPublishDrawerOpen(true)}
-          onDiscardDraft={panelState.discardDraft}
-          onOpenRollout={() => setActiveSection("rollout")}
-          onOpenInheritance={() => setActiveSection("inheritance")}
-          onOpenTelemetry={() => setActiveSection("telemetry")}
-        />
-
-        {/* Configuration KPI Overview Cards */}
-        {selectedConfig && (
-          <RemoteConfigOverview
-            environmentName={envName}
-            currentRevision={selectedConfig?.revision ?? 1}
-            revisionHash={shortHash(selectedConfig?.revisionHash)}
-            publishedAt={formatDate(selectedConfig?.publishedAt)}
-            isDraft={panelState.isDirty}
-            diffCount={panelState.diffCount}
-            hasErrors={panelState.hasErrors}
-          />
-        )}
-
-        {/* Success Alert Banner */}
-        {updateConfig.isSuccess && !updateConfig.isPending && (
-          <div
-            role="status"
-            className="flex items-start gap-2.5 rounded-[var(--radius-lg)] border border-[var(--green)]/30 bg-[var(--green-bg)] px-4 py-2.5 text-[12px] text-[var(--green)] animate-in fade-in"
-          >
-            <CheckCircle2 className="mt-px size-4 shrink-0" aria-hidden="true" />
-            <span>
-              <span className="font-semibold">Revision published successfully.</span>{" "}
-              <span className="text-[var(--text2)]">
-                Connected SDKs pick up the update on their next cache refresh cycle (within TTL window).
-              </span>
-            </span>
-          </div>
-        )}
-
-        {/* Main Content Workspace: Navigation Rail + Tab Workspace */}
-        {configs.length === 0 ? (
-          <RemoteConfigEmptyState
-            environmentName={envName}
-            onResetScope={() => setEnvironmentId("")}
-          />
-        ) : (
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
-            <RemoteConfigNav
-              activeSection={activeSection}
-              onSelectSection={setActiveSection}
-              changedCounts={panelState.changedCounts}
-              errorCounts={panelState.errorCounts}
-            />
-
-            <div className={isWideDataView ? "min-w-0 flex-1" : "min-w-0 flex-1 max-w-[800px]"}>
-              {/* Primary Settings Workspace */}
-              {[
-                "features",
-                "transport",
-                "sampling",
-                "privacy",
-                "instrumentation",
-                "limits",
-                "killswitches",
-              ].includes(activeSection) && selectedConfig && (
-                <RemoteConfigPanel
-                  initialConfig={selectedConfig.compiledSnapshot}
-                  onSave={handleSave}
-                  isSaving={updateConfig.isPending}
-                  environmentName={envName}
-                  currentRevision={selectedConfig.revision}
-                  activeSection={activeSection}
-                  onStateChange={setPanelState}
-                  publishDrawerOpen={publishDrawerOpen}
-                  onClosePublishDrawer={() => setPublishDrawerOpen(false)}
-                />
-              )}
-
-              {/* Operations & Overrides Views */}
-              {activeSection === "inheritance" && <InheritanceVisualizer environmentName={envName} />}
-              {activeSection === "rollout" && <RolloutStrategyPanel environmentName={envName} />}
-              {activeSection === "telemetry" && <SdkTelemetryPanel environmentName={envName} />}
-
-              {/* Control Plane & Audit Views */}
-              {activeSection === "history" && selectedConfig && (
-                <VersionsTab
-                  versions={versions}
-                  rollbackConfig={rollbackConfig}
-                  activeOrgId={activeOrgId}
-                  selectedConfigId={selectedConfig.id}
-                />
-              )}
-              {activeSection === "resolve" && (
-                <ResolveTab
-                  environments={environments}
-                  resolveEnv={resolveEnv}
-                  setResolveEnv={setResolveEnv}
-                  resolvePlatform={resolvePlatform}
-                  setResolvePlatform={setResolvePlatform}
-                  handleResolve={handleResolve}
-                  resolvedResult={resolvedResult}
-                  isResolving={resolveMutation.isPending}
-                />
-              )}
-              {activeSection === "audit" && <AuditLogPanel />}
-            </div>
-          </div>
-        )}
-
-        {/* Floating Draft Action Bar */}
-        <DraftStateBanner
-          isDirty={panelState.isDirty}
-          hasErrors={panelState.hasErrors}
           diffCount={panelState.diffCount}
+          hasErrors={panelState.hasErrors}
           errorCount={panelState.errorCount}
-          onDiscard={panelState.discardDraft}
-          onReviewPublish={() => setPublishDrawerOpen(true)}
         />
+      )}
 
-        {/* Unsaved Changes Confirmation Modal */}
-        {confirmEnvSwitchId !== null && (
-          <div className="fixed inset-0 z-[120] flex items-center justify-center bg-[var(--overlay)] p-4 animate-in fade-in duration-150">
-            <div className="w-full max-w-md rounded-[var(--radius-lg)] border border-[var(--border2)] bg-[var(--bg1)] p-6 shadow-[var(--shadow-modal)] animate-in zoom-in-95 duration-200">
-              <div className="flex items-center gap-3 text-[var(--amber)]">
-                <AlertTriangle className="size-6 shrink-0" />
-                <h2 className="font-[family-name:var(--display)] text-[16px] font-bold text-[var(--text)]">
-                  Discard Unsaved Draft Changes?
-                </h2>
-              </div>
-              <p className="mt-3 text-xs leading-relaxed text-[var(--text2)]">
-                You have unsaved changes in the local draft for <strong>{envName}</strong>. Switching environments will discard these buffered changes.
-              </p>
-              <div className="mt-6 flex justify-end gap-2.5">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={() => setConfirmEnvSwitchId(null)}
-                  className="h-8.5 px-3.5 text-xs text-[var(--text2)]"
-                >
-                  Stay on Page
-                </Button>
-                <Button
-                  type="button"
-                  onClick={confirmSwitchEnv}
-                  className="h-8.5 bg-[var(--red)] text-white hover:bg-[var(--red-d)] px-4 text-xs font-semibold"
-                >
-                  Discard Changes & Switch
-                </Button>
-              </div>
-            </div>
+      {updateConfig.isSuccess && !updateConfig.isPending && !panelState.isDirty && (
+        <div role="status">
+          <Notice tone="green" title="Revision published">
+            Connected SDKs pick up the update on their next config refresh, within their refresh interval.
+          </Notice>
+        </div>
+      )}
+
+      {configs.length === 0 ? (
+        <RemoteConfigEmptyState environmentName={envName} onResetScope={() => setEnvironmentId("")} />
+      ) : (
+        <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[232px_minmax(0,1fr)] lg:gap-8">
+          <RemoteConfigNav
+            activeSection={activeSection}
+            onSelectSection={setActiveSection}
+            changedCounts={panelState.changedCounts}
+            errorCounts={panelState.errorCounts}
+          />
+
+          <div className="min-w-0">
+            {EDITOR_SECTIONS.has(activeSection) && selectedConfig && (
+              <RemoteConfigPanel
+                initialConfig={selectedConfig.compiledSnapshot}
+                onSave={handleSave}
+                isSaving={updateConfig.isPending}
+                environmentName={envName}
+                currentRevision={selectedConfig.revision}
+                activeSection={activeSection}
+                onStateChange={setPanelState}
+                publishDrawerOpen={publishDrawerOpen}
+                onClosePublishDrawer={() => setPublishDrawerOpen(false)}
+              />
+            )}
+
+            {activeSection === "inheritance" && <InheritanceVisualizer environmentName={envName} />}
+            {activeSection === "rollout" && <RolloutStrategyPanel environmentName={envName} />}
+            {activeSection === "telemetry" && <SdkTelemetryPanel environmentName={envName} />}
+
+            {activeSection === "history" && selectedConfig && (
+              <VersionsTab
+                versions={versions}
+                rollbackConfig={rollbackConfig}
+                activeOrgId={activeOrgId}
+                selectedConfigId={selectedConfig.id}
+                currentRevision={selectedConfig.revision}
+              />
+            )}
+            {activeSection === "resolve" && (
+              <ResolveTab
+                environments={environments}
+                resolveEnv={resolveEnv}
+                setResolveEnv={setResolveEnv}
+                resolvePlatform={resolvePlatform}
+                setResolvePlatform={setResolvePlatform}
+                handleResolve={handleResolve}
+                resolvedResult={resolvedResult}
+                isResolving={resolveMutation.isPending}
+              />
+            )}
+            {activeSection === "audit" && <AuditLogPanel />}
           </div>
-        )}
-      </div>
-    </FillPage>
+        </div>
+      )}
+
+      <DraftStateBanner
+        isDirty={panelState.isDirty}
+        hasErrors={panelState.hasErrors}
+        diffCount={panelState.diffCount}
+        errorCount={panelState.errorCount}
+        onDiscard={panelState.discardDraft}
+        onReviewPublish={() => setPublishDrawerOpen(true)}
+      />
+
+      <ConfirmDialog
+        open={confirmEnvSwitchId !== null}
+        onOpenChange={(open) => !open && setConfirmEnvSwitchId(null)}
+        title="Discard unpublished changes?"
+        description={`The draft for ${envName} has changes that aren't published. Switching environments discards them.`}
+        confirmLabel="Discard and switch"
+        onConfirm={confirmSwitchEnv}
+      />
+    </WorkspacePage>
   );
 }

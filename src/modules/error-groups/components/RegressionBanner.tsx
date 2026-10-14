@@ -1,32 +1,22 @@
-import { AlertTriangle } from "lucide-react";
-import type { ErrorGroup } from "../types/error-group";
+import { RotateCcw } from "lucide-react";
 import { Timestamp } from "@/shared/observe";
+import type { ErrorGroup } from "../types/error-group";
 
-interface RegressionBannerProps {
-  group: ErrorGroup;
-}
-
-export function RegressionBanner({ group }: RegressionBannerProps) {
-  if (!group.isRegression) return null;
+export function RegressionBanner({ group }: { group: ErrorGroup }) {
+  const count = Number(group.regression?.count ?? group.regressionCount ?? 0);
+  if (!group.isRegression && count === 0) return null;
+  const release = group.release?.latest ?? group.latestRelease;
+  const at = group.regression?.lastRegressedAt ?? group.lastRegressedAt;
 
   return (
-    <div className="flex items-start gap-3 rounded-[var(--radius-lg)] border border-[var(--amber)]/40 bg-[var(--amber-bg)] p-4 text-[13px] text-[var(--amber)]">
-      <AlertTriangle className="size-5 shrink-0 mt-0.5" />
-      <div className="flex-1 space-y-1">
-        <div className="font-semibold text-[14px]">
-          ⚠ Active Regression Detected ({group.regressionCount} regressed release{group.regressionCount > 1 ? "s" : ""})
-        </div>
-        <div>
-          This error group was previously resolved but re-occurred in release{" "}
-          <strong className="font-[family-name:var(--mono)]">{group.latestRelease}</strong>{" "}
-          {group.lastRegressedAt && (
-            <span>
-              (<Timestamp value={group.lastRegressedAt} />)
-            </span>
-          )}
-          .
-        </div>
-      </div>
+    <div role="status" className="flex items-start gap-3 rounded-[var(--radius-lg)] bg-[var(--red-bg)] px-4 py-3 text-[13px]">
+      <RotateCcw className="mt-0.5 size-4 shrink-0 text-[var(--red)]" aria-hidden="true" />
+      <p className="leading-[1.6] text-[var(--text)]">
+        <span className="font-medium text-[var(--red)]">Regressed {count > 1 ? `${count} times` : "after a fix"}.</span>{" "}
+        This issue was resolved and came back
+        {release ? <> in <span className="font-[family-name:var(--mono)]">{release}</span></> : null}
+        {at ? <> <Timestamp value={at} /></> : null}. Check what that release changed near the top in-app frame.
+      </p>
     </div>
   );
 }

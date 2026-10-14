@@ -344,7 +344,7 @@ export default function BillingUsagePage() {
           <Panel title="Forecast" description="Where this cycle lands at the current run rate." icon={TrendingUp}>
             <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="flex flex-col gap-1">
-                <dt className="text-[11px] font-medium uppercase tracking-[0.1em] text-[var(--text3)]">
+                <dt className="text-[12px] text-[var(--text3)]">
                   Projected total credits
                 </dt>
                 <dd className="font-[family-name:var(--display)] text-[19px] font-semibold tabular-nums text-[var(--text)]">
@@ -352,7 +352,7 @@ export default function BillingUsagePage() {
                 </dd>
               </div>
               <div className="flex flex-col gap-1">
-                <dt className="text-[11px] font-medium uppercase tracking-[0.1em] text-[var(--text3)]">
+                <dt className="text-[12px] text-[var(--text3)]">
                   Daily run rate
                 </dt>
                 <dd className="font-[family-name:var(--display)] text-[19px] font-semibold tabular-nums text-[var(--text)]">

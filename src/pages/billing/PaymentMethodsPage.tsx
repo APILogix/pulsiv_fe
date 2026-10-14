@@ -21,6 +21,7 @@ import {
   fieldInputClass,
   type HeroFact,
 } from "@/shared/ui/pulse";
+import { apiErrorMessage } from "@/infrastructure/api-client/api-error";
 
 interface AddCardState {
   ok: boolean;
@@ -72,7 +73,7 @@ export default function PaymentMethodsPage() {
       queryClient.invalidateQueries({ queryKey: orgQueryKeys.paymentMethods(activeOrgId) });
       return { ok: true, error: null };
     } catch (err: any) {
-      return { ok: false, error: err?.response?.data?.message || "Failed to add payment method" };
+      return { ok: false, error: apiErrorMessage(err) || "Failed to add payment method" };
     }
   }, INITIAL_ADD_STATE);
 
@@ -82,7 +83,7 @@ export default function PaymentMethodsPage() {
       toast.success("Default payment method updated");
       queryClient.invalidateQueries({ queryKey: orgQueryKeys.paymentMethods(activeOrgId!) });
     },
-    onError: (err: any) => toast.error(err?.response?.data?.message || "Failed to set default payment method"),
+    onError: (err: any) => toast.error(apiErrorMessage(err) || "Failed to set default payment method"),
   });
 
   const removeMutation = useMutation({
@@ -91,7 +92,7 @@ export default function PaymentMethodsPage() {
       toast.success("Payment method removed");
       queryClient.invalidateQueries({ queryKey: orgQueryKeys.paymentMethods(activeOrgId!) });
     },
-    onError: (err: any) => toast.error(err?.response?.data?.message || "Failed to remove payment method"),
+    onError: (err: any) => toast.error(apiErrorMessage(err) || "Failed to remove payment method"),
   });
 
   useEffect(() => {

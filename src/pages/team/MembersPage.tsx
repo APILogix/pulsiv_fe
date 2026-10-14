@@ -16,6 +16,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
+import { apiErrorMessage } from "@/infrastructure/api-client/api-error";
 
 export default function MembersPage() {
   const navigate = useNavigate();
@@ -38,7 +39,7 @@ export default function MembersPage() {
       toast.success("Member suspended");
       queryClient.invalidateQueries({ queryKey: orgQueryKeys.members(activeOrgId!) });
     },
-    onError: (err: any) => toast.error(err.response?.data?.message || "Failed to suspend member")
+    onError: (err: any) => toast.error(apiErrorMessage(err) || "Failed to suspend member")
   });
 
   const reactivateMutation = useMutation({
@@ -47,7 +48,7 @@ export default function MembersPage() {
       toast.success("Member reactivated");
       queryClient.invalidateQueries({ queryKey: orgQueryKeys.members(activeOrgId!) });
     },
-    onError: (err: any) => toast.error(err.response?.data?.message || "Failed to reactivate member")
+    onError: (err: any) => toast.error(apiErrorMessage(err) || "Failed to reactivate member")
   });
 
   const columns: Column<Member>[] = [

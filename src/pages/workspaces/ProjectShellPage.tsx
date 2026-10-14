@@ -1,15 +1,15 @@
 import { useEffect, createContext, useContext, useRef } from "react";
-import { Link, Navigate, Outlet, useParams } from "react-router";
-import { FolderOpen } from "lucide-react";
+import { Navigate, Outlet, useParams } from "react-router";
 
 import { useProjectByPublicId } from "@/modules/projects/hooks/useProjects";
 import type { Project, ProjectStatus } from "@/modules/projects/api/types";
 import { ProjectHeaderBar } from "@/modules/projects/components/ProjectHeaderBar";
+import { TextLink, WORKSPACE_RAIL } from "@/modules/projects/components/project-page";
 import { useOrgStore } from "@/modules/organizations/store/org.store";
 import { useOrganizations } from "@/modules/organizations/hooks/useOrganizations";
 import { RouteBoundary, useScrollRestoration } from "@/shared/motion";
 import { RouteSkeleton } from "@/shared/skeletons";
-import { IconChip, type SurfaceTone } from "@/shared/ui/pulse";
+import type { SurfaceTone } from "@/shared/ui/pulse";
 
 // ── project context ──────────────────────────────────────────
 
@@ -59,7 +59,9 @@ export function ProjectShellPage() {
   const { orgSlug, projectPublicId } = useParams<{ orgSlug: string; projectPublicId: string }>();
   const safePublicId = projectPublicId ?? "";
   const { organizations, isLoading: orgsLoading } = useOrganizations();
-  const { activeOrgId, setActiveOrgId, setActiveOrgSlug } = useOrgStore();
+  const activeOrgId = useOrgStore((s) => s.activeOrgId);
+  const setActiveOrgId = useOrgStore((s) => s.setActiveOrgId);
+  const setActiveOrgSlug = useOrgStore((s) => s.setActiveOrgSlug);
 
   useEffect(() => {
     if (orgSlug && organizations.length > 0) {
@@ -85,31 +87,32 @@ export function ProjectShellPage() {
   const isLoading = orgsLoading || projectLoading || (!activeOrgId && organizations.length === 0);
 
   if (isLoading) {
-    // Shape the wait like the tab being opened, not like a generic detail page:
-    // the header bar is still resolving, so the skeleton is all the user has.
-    return (
-      <div className="sidebar-scroll h-full w-full overflow-y-auto">
-        <div className="px-6 py-6">
-          <RouteSkeleton />
-        </div>
-      </div>
-    );
+    // Same frame as the shell below (header bar + rail), shaped like the tab
+    // being opened. When the project resolves, the tab boundary takes this
+    // skeleton over in place, so the load reads as one skeleton, not two.
+    return <RouteSkeleton framed />;
   }
 
   if (error || !project) {
+    // Same anatomy as every other workspace page: the title states the
+    // outcome, one line explains it, the next step is a link.
     return (
-      <div className="flex min-h-[50vh] flex-col items-center justify-center gap-3 px-6 text-center">
-        <IconChip icon={FolderOpen} tone="red" size="lg" />
-        <h2 className="text-[17px] font-semibold text-[var(--text)]">Project not found</h2>
-        <p className="max-w-[46ch] text-[13px] text-[var(--text2)]">
-          This project does not exist, was deleted, or your account does not have access to it.
-        </p>
-        <Link
-          to={`/${orgSlug}/projects`}
-          className="mt-1 text-[13px] font-medium text-[var(--brand)] hover:underline"
-        >
-          Back to all projects
-        </Link>
+      <div className="sidebar-scroll h-full w-full overflow-y-auto px-4 py-6 sm:px-6">
+        <div className={`${WORKSPACE_RAIL} flex flex-col gap-4 pt-10`}>
+          <div className="max-w-[640px]">
+            <h1 className="text-[22px] font-semibold leading-[1.2] tracking-[-0.025em] text-[var(--text)]">
+              Project not found
+            </h1>
+            <p className="mt-2 text-[13px] leading-[1.6] text-[var(--text2)]">
+              Nothing matched{" "}
+              <code className="break-all font-[family-name:var(--mono)] text-[12px] text-[var(--text)]">
+                {safePublicId}
+              </code>{" "}
+              in this organization. The project may have been deleted, or your account does not have access to it.
+            </p>
+          </div>
+          <TextLink to={`/${orgSlug}/projects`}>Back to all projects</TextLink>
+        </div>
       </div>
     );
   }
@@ -118,16 +121,16 @@ export function ProjectShellPage() {
     <ProjectContext.Provider value={{ project, projectId: project.id, publicId: project.publicId, orgSlug }}>
       <div className="flex h-full min-h-0 w-full flex-col overflow-hidden bg-[var(--bg)]">
         <ProjectHeaderBar project={project} />
-        <div
-          ref={scrollRef}
-          className="scroll-region sidebar-scroll min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-6 sm:py-6"
-        >
-          {/* Each project tab is its own lazy chunk, so it gets its own
-              tab-shaped skeleton. The shell (header bar, project query) stays
-              mounted across tab switches. */}
-          <RouteBoundary scope="page">
-            <Outlet />
-          </RouteBoundary>
+        <div ref={scrollRef} className="scroll-region sidebar-scroll min-h-0 flex-1 overflow-y-auto px-4 py-6 sm:px-6">
+          {/* One rail for every tab, applied here so no tab sets its own outer
+              width and the page title never shifts between tabs. Each tab is
+              its own lazy chunk with a tab-shaped skeleton; the shell (scope
+              bar, project query) stays mounted across tab switches. */}
+          <div className={WORKSPACE_RAIL}>
+            <RouteBoundary scope="page">
+              <Outlet />
+            </RouteBoundary>
+          </div>
         </div>
       </div>
     </ProjectContext.Provider>

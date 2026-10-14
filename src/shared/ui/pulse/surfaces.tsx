@@ -6,18 +6,45 @@ import { Switch } from "@/components/ui/switch";
 
 // ── module-level constants (rules.md §1.2 — no inline objects in JSX) ──
 
-const TONE_CHIP: Record<string, string> = {
-  brand: "bg-[var(--brand-bg)] text-[var(--brand)] ring-[var(--brand)]/25",
-  ai: "bg-[var(--ai-bg)] text-[var(--ai)] ring-[var(--ai)]/25",
-  green: "bg-[var(--green-bg)] text-[var(--green)] ring-[var(--green)]/25",
-  amber: "bg-[var(--amber-bg)] text-[var(--amber)] ring-[var(--amber)]/25",
-  red: "bg-[var(--red-bg)] text-[var(--red)] ring-[var(--red)]/25",
-  blue: "bg-[var(--blue-bg)] text-[var(--blue)] ring-[var(--blue)]/25",
-  violet: "bg-[var(--violet-bg)] text-[var(--violet)] ring-[var(--violet)]/25",
+// Known tones. The type was historically derived from a Record<string, …>, so
+// it has always accepted any string; `(string & {})` keeps that contract while
+// still autocompleting the named tones.
+export type SurfaceTone =
+  | "brand"
+  | "ai"
+  | "green"
+  | "amber"
+  | "red"
+  | "blue"
+  | "violet"
+  | "neutral"
+  | (string & {});
+
+// Icon chips carry colour only when the tone is a state (truth channel) or the
+// model (ai). Brand, blue, and violet collapse to neutral so chips never
+// decorate chrome (design/dashboards/DESIGN.md).
+const ICON_CHIP_TONE: Record<SurfaceTone, string> = {
+  brand: "bg-[var(--bg2)] text-[var(--text2)] ring-[var(--border)]",
+  ai: "bg-[var(--ai-bg)] text-[var(--ai)] ring-[var(--ai)]/20",
+  green: "bg-[var(--green-bg)] text-[var(--green)] ring-[var(--green)]/20",
+  amber: "bg-[var(--amber-bg)] text-[var(--amber)] ring-[var(--amber)]/20",
+  red: "bg-[var(--red-bg)] text-[var(--red)] ring-[var(--red)]/20",
+  blue: "bg-[var(--bg2)] text-[var(--text2)] ring-[var(--border)]",
+  violet: "bg-[var(--bg2)] text-[var(--text2)] ring-[var(--border)]",
   neutral: "bg-[var(--bg2)] text-[var(--text2)] ring-[var(--border)]",
 };
 
-export type SurfaceTone = keyof typeof TONE_CHIP;
+// Status pills: sentence case, 4px radius, a flat tint of the state colour.
+const PILL_TONE: Record<SurfaceTone, string> = {
+  brand: "bg-[var(--bg3)] text-[var(--text)]",
+  ai: "bg-[var(--ai-bg)] text-[var(--ai)]",
+  green: "bg-[var(--green-bg)] text-[var(--green)]",
+  amber: "bg-[var(--amber-bg)] text-[var(--amber)]",
+  red: "bg-[var(--red-bg)] text-[var(--red)]",
+  blue: "bg-[var(--blue-bg)] text-[var(--blue)]",
+  violet: "bg-[var(--violet-bg)] text-[var(--violet)]",
+  neutral: "bg-[var(--bg3)] text-[var(--text2)]",
+};
 
 // Tailwind can't generate arbitrary values from runtime-built strings, so tone →
 // text colour needs an explicit map rather than `text-[var(--${tone})]`.
@@ -84,12 +111,12 @@ export function IconChip({
   size?: "sm" | "md" | "lg";
   className?: string;
 }) {
-  const box = size === "sm" ? "size-7 rounded-[7px]" : size === "lg" ? "size-11 rounded-[12px]" : "size-9 rounded-[10px]";
-  const glyph = size === "sm" ? "size-3.5" : size === "lg" ? "size-5" : "size-4";
+  const box = size === "sm" ? "size-7 rounded-[var(--radius)]" : size === "lg" ? "size-10 rounded-[var(--radius-lg)]" : "size-8 rounded-[var(--radius)]";
+  const glyph = size === "sm" ? "size-3.5" : size === "lg" ? "size-[18px]" : "size-4";
   return (
     <span
       aria-hidden="true"
-      className={cn("inline-flex shrink-0 items-center justify-center ring-1 ring-inset", box, TONE_CHIP[tone], className)}
+      className={cn("inline-flex shrink-0 items-center justify-center ring-1 ring-inset", box, ICON_CHIP_TONE[tone], className)}
     >
       <Icon className={glyph} />
     </span>
@@ -124,34 +151,38 @@ export function Pill({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-mono text-[10px] font-medium uppercase tracking-[0.08em] ring-1 ring-inset",
-        TONE_CHIP[tone],
+        "inline-flex items-center gap-1.5 whitespace-nowrap rounded-[4px] px-1.5 py-0.5 text-[11px] font-medium leading-[1.35]",
+        PILL_TONE[tone],
         className
       )}
     >
       {dot && <span className="size-1.5 rounded-full bg-current" aria-hidden="true" />}
-      {children}
+      {/* Sentence case without rewriting callers' strings. */}
+      <span className="inline-block first-letter:uppercase">{children}</span>
     </span>
   );
 }
 
 // ── Page hero ────────────────────────────────────────────────
-// Replaces the flat PageHeader on redesigned surfaces: adds an eyebrow,
-// aurora/grid backdrop, and an optional inline metric strip.
+// The page header sits on the canvas, never inside a card: title,
+// description, actions, then an optional readout band (HeroFacts). No
+// backdrop, no icon chip, no eyebrow (design/dashboards/DESIGN.md).
+// `eyebrow` and `icon` stay in the signature so existing call sites compile;
+// they are intentionally not rendered.
 
 export function PageHero({
-  eyebrow,
   title,
   description,
-  icon,
   breadcrumbs,
   actions,
   children,
   className,
 }: {
+  /** @deprecated Not rendered. Headings carry their own weight. */
   eyebrow?: string;
   title: string;
   description?: string;
+  /** @deprecated Not rendered. */
   icon?: LucideIcon;
   breadcrumbs?: Crumb[];
   actions?: React.ReactNode;
@@ -159,43 +190,30 @@ export function PageHero({
   className?: string;
 }) {
   return (
-    <header
-      className={cn(
-        "pulse-grid pulse-aurora relative overflow-hidden rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)]",
-        className
-      )}
-    >
-      <div className="relative z-10 flex flex-col gap-6 p-7">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div className="flex min-w-0 items-start gap-4">
-            {icon && <IconChip icon={icon} size="lg" tone="brand" className="mt-0.5" />}
-            <div className="min-w-0">
-              {breadcrumbs && breadcrumbs.length > 0 && (
-                <div className="mb-2.5">
-                  <Breadcrumbs items={breadcrumbs} />
-                </div>
-              )}
-              {eyebrow && (
-                <p className="mb-2 font-mono text-[10px] font-medium uppercase tracking-[0.09em] text-[var(--text3)]">{eyebrow}</p>
-              )}
-              <h1 className="font-[family-name:var(--display)] text-[24px] font-semibold leading-tight tracking-[-0.02em] text-[var(--text)]">
-                {title}
-              </h1>
-              {description && (
-                <p className="mt-2.5 max-w-[68ch] text-[13px] leading-[1.6] text-[var(--text2)]">{description}</p>
-              )}
+    <header className={cn("flex flex-col gap-5", className)}>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div className="min-w-0">
+          {breadcrumbs && breadcrumbs.length > 0 && (
+            <div className="mb-2">
+              <Breadcrumbs items={breadcrumbs} />
             </div>
-          </div>
-          {actions && <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>}
+          )}
+          <h1 className="text-[22px] font-semibold leading-[1.2] tracking-[-0.025em] text-[var(--text)]">
+            {title}
+          </h1>
+          {description && (
+            <p className="mt-1.5 max-w-[72ch] text-[13px] leading-[1.6] text-[var(--text2)]">{description}</p>
+          )}
         </div>
-        {children}
+        {actions && <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>}
       </div>
+      {children}
     </header>
   );
 }
 
-// ── Hero metric strip ────────────────────────────────────────
-// Compact inline facts rendered inside a PageHero.
+// ── Readout band ─────────────────────────────────────────────
+// Hairline-divided cells of label + value. Used under a PageHero.
 
 export interface HeroFact {
   label: string;
@@ -207,16 +225,13 @@ export interface HeroFact {
 export function HeroFacts({ facts }: { facts: HeroFact[] }) {
   if (facts.length === 0) return null;
   return (
-    <dl className="grid gap-px overflow-hidden rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--border)] sm:grid-cols-2 lg:grid-cols-4">
+    <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--border)] lg:grid-cols-4">
       {facts.map((fact) => (
-        <div key={fact.label} className="flex flex-col gap-2 bg-[var(--bg1)] px-5 py-4">
-          <dt className="flex items-center gap-1.5 font-mono text-[10px] font-medium uppercase tracking-[0.09em] text-[var(--text3)]">
-            {fact.icon && <fact.icon className="size-3.5" aria-hidden="true" />}
-            {fact.label}
-          </dt>
+        <div key={fact.label} className="flex min-w-0 flex-col gap-2.5 bg-[var(--bg1)] px-5 py-4">
+          <dt className="truncate text-[12px] text-[var(--text2)]">{fact.label}</dt>
           <dd
             className={cn(
-              "font-mono text-[19px] font-medium tabular-nums leading-none tracking-[-0.02em]",
+              "truncate font-mono text-[22px] font-medium tabular-nums leading-none tracking-[-0.02em]",
               toneText(fact.tone)
             )}
           >
@@ -231,11 +246,14 @@ export function HeroFacts({ facts }: { facts: HeroFact[] }) {
 // ── Panel ────────────────────────────────────────────────────
 // The workhorse card: optional icon, title, description, actions, footer.
 
+function DangerGlyph({ icon: Icon }: { icon: LucideIcon }) {
+  return <Icon className="size-4 shrink-0 text-[var(--red)]" aria-hidden="true" />;
+}
+
 export function Panel({
   title,
   description,
   icon,
-  tone = "brand",
   actions,
   footer,
   children,
@@ -245,7 +263,9 @@ export function Panel({
 }: {
   title?: string;
   description?: string;
+  /** Rendered only on `danger` panels. */
   icon?: LucideIcon;
+  /** @deprecated Panels no longer carry a tone chip. */
   tone?: SurfaceTone;
   actions?: React.ReactNode;
   footer?: React.ReactNode;
@@ -265,25 +285,26 @@ export function Panel({
       {(title || actions) && (
         <div
           className={cn(
-            "flex flex-col gap-3 border-b px-6 py-5 sm:flex-row sm:items-center sm:justify-between",
+            "flex flex-col gap-3 border-b px-5 py-4 sm:flex-row sm:items-center sm:justify-between",
             danger ? "border-[var(--red)]/20" : "border-[var(--border)]"
           )}
         >
-          <div className="flex min-w-0 items-start gap-3">
-            {icon && <IconChip icon={icon} tone={danger ? "red" : tone} size="sm" className="mt-0.5" />}
+          <div className="flex min-w-0 items-center gap-2.5">
+            {/* Only a danger panel keeps its glyph: it is state, not decoration. */}
+            {danger && icon && <DangerGlyph icon={icon} />}
             <div className="min-w-0">
               {title && <h2 className="text-[14px] font-semibold tracking-[-0.01em] text-[var(--text)]">{title}</h2>}
-              {description && <p className="mt-1.5 max-w-[76ch] text-[12px] leading-[1.6] text-[var(--text2)]">{description}</p>}
+              {description && <p className="mt-1 max-w-[76ch] text-[12px] leading-[1.55] text-[var(--text2)]">{description}</p>}
             </div>
           </div>
           {actions && <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>}
         </div>
       )}
-      {children && <div className={cn("p-6", bodyClassName)}>{children}</div>}
+      {children && <div className={cn("p-5", bodyClassName)}>{children}</div>}
       {footer && (
         <div
           className={cn(
-            "flex flex-wrap items-center justify-end gap-2 border-t bg-[var(--bg2)]/60 px-6 py-4",
+            "flex flex-wrap items-center justify-end gap-2 border-t bg-[var(--bg1)] px-5 py-3.5",
             danger ? "border-[var(--red)]/20" : "border-[var(--border)]"
           )}
         >
@@ -309,7 +330,7 @@ export function Toolbar({
   return (
     <div
       className={cn(
-        "flex flex-wrap items-center gap-2.5 rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] p-3",
+        "flex flex-wrap items-center gap-2.5 border-b border-[var(--border)] pb-3",
         className
       )}
     >
@@ -333,8 +354,8 @@ export function SectionHeading({
   return (
     <div className="flex flex-wrap items-end justify-between gap-3">
       <div>
-        <h2 className="font-mono text-[10px] font-medium uppercase tracking-[0.09em] text-[var(--text3)]">{title}</h2>
-        {description && <p className="mt-1.5 text-[13px] text-[var(--text2)]">{description}</p>}
+        <h2 className="text-[15px] font-semibold tracking-[-0.015em] text-[var(--text)]">{title}</h2>
+        {description && <p className="mt-1 text-[13px] text-[var(--text2)]">{description}</p>}
       </div>
       {actions}
     </div>
@@ -359,16 +380,14 @@ export function EmptyPanel({
   return (
     <div
       className={cn(
-        "flex flex-col items-center justify-center rounded-[var(--radius-lg)] border border-dashed border-[var(--border)] bg-[var(--bg1)] px-8 py-16 text-center",
+        "flex flex-col items-center justify-center rounded-[var(--radius-lg)] border border-dashed border-[var(--border)] px-8 py-14 text-center",
         className
       )}
     >
-      <span className="mb-5 inline-flex size-12 items-center justify-center rounded-full bg-[var(--bg2)] text-[var(--text3)] ring-1 ring-inset ring-[var(--border)]">
-        <Icon className="size-5" aria-hidden="true" />
-      </span>
-      <h3 className="font-[family-name:var(--display)] text-[16px] font-semibold text-[var(--text)]">{title}</h3>
-      {description && <p className="mt-2 max-w-[42ch] text-[13px] leading-[1.6] text-[var(--text2)]">{description}</p>}
-      {action && <div className="mt-6">{action}</div>}
+      <Icon className="mb-4 size-5 text-[var(--text3)]" aria-hidden="true" />
+      <h3 className="text-[14px] font-semibold text-[var(--text)]">{title}</h3>
+      {description && <p className="mt-1.5 max-w-[46ch] text-[13px] leading-[1.6] text-[var(--text2)]">{description}</p>}
+      {action && <div className="mt-5">{action}</div>}
     </div>
   );
 }
@@ -376,13 +395,13 @@ export function EmptyPanel({
 // ── Notice ───────────────────────────────────────────────────
 
 const NOTICE_TONE: Record<string, string> = {
-  brand: "border-[var(--brand)]/25 bg-[var(--brand-bg)] text-[var(--brand)]",
+  brand: "border-[var(--border2)] bg-[var(--bg1)] text-[var(--text)]",
   ai: "border-[var(--ai)]/25 bg-[var(--ai-bg)] text-[var(--ai)]",
   green: "border-[var(--green)]/25 bg-[var(--green-bg)] text-[var(--green)]",
   amber: "border-[var(--amber)]/25 bg-[var(--amber-bg)] text-[var(--amber)]",
   red: "border-[var(--red)]/25 bg-[var(--red-bg)] text-[var(--red)]",
-  blue: "border-[var(--blue)]/25 bg-[var(--blue-bg)] text-[var(--blue)]",
-  violet: "border-[var(--violet)]/25 bg-[var(--violet-bg)] text-[var(--violet)]",
+  blue: "border-[var(--border2)] bg-[var(--bg1)] text-[var(--text)]",
+  violet: "border-[var(--border2)] bg-[var(--bg1)] text-[var(--text)]",
   neutral: "border-[var(--border)] bg-[var(--bg2)] text-[var(--text2)]",
 };
 
@@ -402,7 +421,7 @@ export function Notice({
   className?: string;
 }) {
   return (
-    <div className={cn("flex items-start gap-3.5 rounded-[var(--radius-lg)] border px-5 py-4", NOTICE_TONE[tone], className)}>
+    <div className={cn("flex items-start gap-3 rounded-[var(--radius-lg)] border px-4 py-3.5", NOTICE_TONE[tone], className)}>
       {Icon && <Icon className="mt-0.5 size-4 shrink-0" aria-hidden="true" />}
       <div className="min-w-0 flex-1">
         {title && <p className="text-[13px] font-semibold">{title}</p>}

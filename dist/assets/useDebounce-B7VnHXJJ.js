@@ -1,0 +1,1 @@
+import{c as d,r as n}from"./react-core-DP6dhlaz.js";function f(t,r){const e=d.c(4),o=r===void 0?350:r,[u,i]=n.useState(t);let s,c;return e[0]!==o||e[1]!==t?(s=()=>{const a=setTimeout(()=>{i(t)},o);return()=>{clearTimeout(a)}},c=[t,o],e[0]=o,e[1]=t,e[2]=s,e[3]=c):(s=e[2],c=e[3]),n.useEffect(s,c),u}export{f as u};

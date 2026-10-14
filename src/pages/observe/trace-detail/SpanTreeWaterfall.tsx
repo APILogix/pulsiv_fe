@@ -31,7 +31,7 @@ import type { SpanTreeNode, TraceSpan, ExecutionBreakdown } from "./types";
 const KIND_COLORS: Record<string, { bg: string; text: string; bar: string }> = {
   internal: { bg: "bg-[var(--violet-bg)]", text: "text-[var(--violet)]", bar: "bg-[var(--violet)]" },
   server: { bg: "bg-[var(--blue-bg)]", text: "text-[var(--blue)]", bar: "bg-[var(--blue)]" },
-  client: { bg: "bg-[var(--cyan-bg)]", text: "text-[var(--cyan)]", bar: "bg-[var(--cyan)]" },
+  client: { bg: "bg-[var(--cyan-bg)]", text: "text-[var(--text2)]", bar: "bg-[var(--text2)]" },
   db: { bg: "bg-[var(--amber-bg)]", text: "text-[var(--amber)]", bar: "bg-[var(--amber)]" },
   database: { bg: "bg-[var(--amber-bg)]", text: "text-[var(--amber)]", bar: "bg-[var(--amber)]" },
   http: { bg: "bg-[var(--blue-bg)]", text: "text-[var(--blue)]", bar: "bg-[var(--blue)]" },
@@ -182,7 +182,7 @@ export function SpanTreeWaterfall({
   }, [executionGaps]);
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--bg1)] shadow-xs">
+    <div className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)]">
       {/* Missing Parent Warning Alert Banner (if applicable) */}
       {hasMissingParents && (
         <div className="flex items-center gap-2.5 border-b border-[var(--amber)]/30 bg-[var(--amber-bg)]/40 px-5 py-3 text-[12px] text-[var(--amber)]">
@@ -230,7 +230,7 @@ export function SpanTreeWaterfall({
           <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
             <div className="flex items-center gap-2">
               <SlidersHorizontal className="size-4 text-[var(--brand)]" />
-              <span className="font-[family-name:var(--mono)] text-[11px] font-bold uppercase tracking-[0.06em] text-[var(--text)]">
+              <span className="font-[family-name:var(--mono)] text-[11px] font-semibold text-[var(--text)]">
                 Trace Execution Time Attribution
               </span>
             </div>
@@ -247,28 +247,28 @@ export function SpanTreeWaterfall({
             {executionBreakdown.internalComputeMs > 0 && (
               <div
                 style={{ width: `${Math.max(1, executionBreakdown.internalComputePercent)}%` }}
-                className="h-full bg-[var(--violet)] transition-all relative group"
+                className="h-full bg-[var(--violet)] relative group"
                 title={`Internal Calculation / App Logic: ${formatDurationMs(executionBreakdown.internalComputeMs)} (${formatPercent(executionBreakdown.internalComputePercent)})`}
               />
             )}
             {executionBreakdown.databaseMs > 0 && (
               <div
                 style={{ width: `${Math.max(1, executionBreakdown.databasePercent)}%` }}
-                className="h-full bg-[var(--amber)] transition-all relative group"
+                className="h-full bg-[var(--amber)] relative group"
                 title={`Database Queries: ${formatDurationMs(executionBreakdown.databaseMs)} (${formatPercent(executionBreakdown.databasePercent)})`}
               />
             )}
             {executionBreakdown.httpMs > 0 && (
               <div
                 style={{ width: `${Math.max(1, executionBreakdown.httpPercent)}%` }}
-                className="h-full bg-[var(--blue)] transition-all relative group"
+                className="h-full bg-[var(--blue)] relative group"
                 title={`External HTTP: ${formatDurationMs(executionBreakdown.httpMs)} (${formatPercent(executionBreakdown.httpPercent)})`}
               />
             )}
             {executionBreakdown.cacheMs > 0 && (
               <div
                 style={{ width: `${Math.max(1, executionBreakdown.cachePercent)}%` }}
-                className="h-full bg-[var(--cyan)] transition-all relative group"
+                className="h-full bg-[var(--text2)] relative group"
                 title={`Cache: ${formatDurationMs(executionBreakdown.cacheMs)} (${formatPercent(executionBreakdown.cachePercent)})`}
               />
             )}
@@ -304,9 +304,9 @@ export function SpanTreeWaterfall({
             )}
             {executionBreakdown.cacheMs > 0 && (
               <div className="flex items-center gap-1.5">
-                <span className="size-2.5 rounded-full bg-[var(--cyan)]" />
+                <span className="size-2.5 rounded-full bg-[var(--text2)]" />
                 <span className="font-medium text-[var(--text)]">Cache:</span>
-                <span className="font-[family-name:var(--mono)] font-semibold text-[var(--cyan)]">
+                <span className="font-[family-name:var(--mono)] font-semibold text-[var(--text2)]">
                   {formatDurationMs(executionBreakdown.cacheMs)} ({formatPercent(executionBreakdown.cachePercent)})
                 </span>
               </div>
@@ -326,7 +326,7 @@ export function SpanTreeWaterfall({
               placeholder="Search spans by name, ID, service…"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="h-9 w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] pl-9 pr-8 font-[family-name:var(--mono)] text-[12px] text-[var(--text)] placeholder-[var(--text3)] outline-none focus:border-[var(--brand)] transition-colors"
+              className="h-9 w-full rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg)] pl-9 pr-8 font-[family-name:var(--mono)] text-[12px] text-[var(--text)] placeholder-[var(--text3)] outline-none focus:border-[var(--brand)] transition-colors"
             />
             {searchQuery && (
               <button
@@ -340,7 +340,7 @@ export function SpanTreeWaterfall({
           </div>
 
           {/* Kind filters */}
-          <div className="flex items-center gap-1 rounded-xl border border-[var(--border)] bg-[var(--bg)] p-1">
+          <div className="flex items-center gap-1 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg)] p-1">
             {[
               { id: "all", label: "All Spans" },
               { id: "db", label: "Database" },
@@ -352,7 +352,7 @@ export function SpanTreeWaterfall({
                 type="button"
                 onClick={() => setFilterKind(k.id)}
                 className={cn(
-                  "rounded-lg px-2.5 py-1 text-[11.5px] font-medium transition-colors cursor-pointer",
+                  "rounded-[var(--radius)] px-2.5 py-1 text-[11.5px] font-medium transition-colors cursor-pointer",
                   filterKind === k.id
                     ? "bg-[var(--bg3)] text-[var(--text)] font-semibold"
                     : "text-[var(--text3)] hover:text-[var(--text)]",
@@ -368,7 +368,7 @@ export function SpanTreeWaterfall({
             type="button"
             onClick={() => setOnlyErrors((p) => !p)}
             className={cn(
-              "flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-[11.5px] font-medium transition-colors cursor-pointer",
+              "flex items-center gap-1.5 rounded-[var(--radius)] border px-3 py-1.5 text-[11.5px] font-medium transition-colors cursor-pointer",
               onlyErrors
                 ? "border-[var(--red)]/40 bg-[var(--red-bg)] text-[var(--red)]"
                 : "border-[var(--border)] bg-[var(--bg)] text-[var(--text3)] hover:text-[var(--text)]",
@@ -384,7 +384,7 @@ export function SpanTreeWaterfall({
               type="button"
               onClick={() => setShowGaps((p) => !p)}
               className={cn(
-                "flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-[11.5px] font-medium transition-colors cursor-pointer",
+                "flex items-center gap-1.5 rounded-[var(--radius)] border px-3 py-1.5 text-[11.5px] font-medium transition-colors cursor-pointer",
                 showGaps
                   ? "border-[var(--violet)]/40 bg-[var(--violet-bg)]/30 text-[var(--violet)]"
                   : "border-[var(--border)] bg-[var(--bg)] text-[var(--text3)] hover:text-[var(--text)]",
@@ -412,7 +412,7 @@ export function SpanTreeWaterfall({
       <div className="relative w-full overflow-x-auto">
         <div className="min-w-[840px] w-full">
           {/* Time axis header — 3 Columns: Span Hierarchy, Timeline Bar, Duration */}
-          <div className="grid grid-cols-[minmax(320px,420px)_1fr_130px] items-center border-b border-[var(--border)] bg-[var(--bg2)]/60 text-[10.5px] font-[family-name:var(--mono)] uppercase tracking-[0.08em] text-[var(--text3)]">
+          <div className="grid grid-cols-[minmax(320px,420px)_1fr_130px] items-center border-b border-[var(--border)] bg-[var(--bg2)]/60 text-[10.5px] font-[family-name:var(--mono)] text-[var(--text3)]">
             <div className="px-5 py-3 font-semibold">Span Hierarchy</div>
             <div className="relative min-w-0 px-3 py-3">
               <div className="flex justify-between">
@@ -496,7 +496,7 @@ export function SpanTreeWaterfall({
                         {/* Kind badge */}
                         <span
                           className={cn(
-                            "shrink-0 rounded px-1.5 py-0.5 font-[family-name:var(--mono)] text-[9.5px] font-semibold uppercase",
+                            "shrink-0 rounded px-1.5 py-0.5 font-[family-name:var(--mono)] text-[9.5px] font-semibold ",
                             kindStyle.bg,
                             kindStyle.text,
                           )}
@@ -562,7 +562,7 @@ export function SpanTreeWaterfall({
                         >
                           <div
                             className={cn(
-                              "h-3 w-full rounded-sm transition-all shadow-xs relative overflow-hidden",
+                              "h-3 w-full rounded-sm relative overflow-hidden transition-opacity duration-150",
                               node.hasError
                                 ? "bg-[var(--red)]"
                                 : node.isBottleneck
@@ -620,7 +620,7 @@ export function SpanTreeWaterfall({
                           <span className="flex size-4 shrink-0 items-center justify-center rounded bg-[var(--violet-bg)] text-[var(--violet)]">
                             <Cpu className="size-2.5" />
                           </span>
-                          <span className="shrink-0 rounded px-1.5 py-0.5 font-[family-name:var(--mono)] text-[9px] font-semibold uppercase bg-[var(--violet-bg)] text-[var(--violet)] border border-[var(--violet)]/40">
+                          <span className="shrink-0 rounded px-1.5 py-0.5 font-[family-name:var(--mono)] text-[9px] font-semibold bg-[var(--violet-bg)] text-[var(--violet)] border border-[var(--violet)]/40">
                             INTERNAL CALCULATION
                           </span>
                           <span className="min-w-0 truncate font-[family-name:var(--mono)] text-[11.5px] text-[var(--violet)] font-medium">
@@ -639,7 +639,7 @@ export function SpanTreeWaterfall({
                             }}
                           >
                             <div
-                              className="h-2.5 w-full rounded-sm bg-[var(--violet)]/30 border border-dashed border-[var(--violet)]/80 shadow-xs"
+                              className="h-2.5 w-full rounded-sm bg-[var(--violet)]/30 border border-dashed border-[var(--violet)]/80"
                               title={`Internal calculation / async gap: ${formatDurationMs(gapAfter.durationMs)}`}
                             />
                           </div>

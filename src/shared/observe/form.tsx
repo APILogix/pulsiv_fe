@@ -41,7 +41,7 @@ export function Field({ label, error, children, hint }: { label: string; error?:
 
   return (
     <div className="flex flex-col gap-1.5">
-      <label htmlFor={fieldId} className="font-[family-name:var(--mono)] text-[10px] font-medium uppercase tracking-[0.09em] text-[var(--text3)]">{label}</label>
+      <label htmlFor={fieldId} className="text-[12px] font-medium text-[var(--text2)]">{label}</label>
       {control}
       {hint && !error && <span className="text-[12px] text-[var(--text3)]">{hint}</span>}
       {error && <span className="text-[12px] text-[var(--red)]">{error}</span>}

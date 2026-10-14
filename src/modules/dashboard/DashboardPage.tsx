@@ -1,567 +1,225 @@
-import { useRequestEvents, useErrorEvents } from "@/hooks/useDummyData";
+import { toast } from "sonner";
+import { AiActionButton } from "@/shared/ui/sentinel";
 import {
-  percentile, errorRate, seededSeries,
-} from "@/pages/dashboards/lib";
-import { formatCompact, formatLatency } from "@/shared/observe";
-import { AiActionButton, AiInsightCard, AiWatchingDot } from "@/shared/ui/sentinel";
+  BoardPage,
+  Columns,
+  Facts,
+  Ledger,
+  Meter,
+  ModelNote,
+  Panel,
+  Readouts,
+  TimeChart,
+  Timeline,
+  Trend,
+  stateText,
+  type VerdictItem,
+} from "@/pages/dashboards/board/kit";
+import { ACTIVITY, ENDPOINTS, HOURS_24, SERVICES, fleetTotals, type Service } from "@/pages/dashboards/board/fixtures";
+import { compact, ms, pct } from "@/pages/dashboards/board/format";
 
-/* ═══════════════════════════════════════════════════════════════
-   MOCK DATA — sections that lack a live API use stable fixtures.
-   ═══════════════════════════════════════════════════════════════ */
+/*
+ * Home: the org's departure board. Verdict, one readout strip, then every
+ * service ranked worst first with its evidence unfolding in place.
+ * Sample data only; getHomeBoard() is the seam a live API replaces.
+ */
 
-const SERVICES = [
-  { name: "ingest-gateway", uptime: 99.99, latency: 38, healthy: true },
-  { name: "query-engine", uptime: 99.97, latency: 84, healthy: true },
-  { name: "alert-dispatcher", uptime: 98.41, latency: 412, healthy: false },
-  { name: "auth-service", uptime: 100, latency: 22, healthy: true },
-  { name: "trace-collector", uptime: 99.95, latency: 61, healthy: true },
-];
-
-type Severity = "critical" | "warning" | "info";
-
-const ACTIVITY: { sev: Severity; title: string; src: string; at: string }[] = [
-  { sev: "critical", title: "Elevated 5xx on alert-dispatcher", src: "alert-dispatcher", at: "14:22" },
-  { sev: "warning", title: "P99 latency spike on /api/v1/ingest", src: "ingest-gateway", at: "14:08" },
-  { sev: "info", title: "Deploy v2.41.0 rolled out", src: "query-engine", at: "11:38" },
-  { sev: "warning", title: "Rate limit threshold reached (org acme)", src: "ingest-gateway", at: "09:47" },
-];
-
-const ENDPOINTS = [
-  { method: "GET", path: "/api/v1/events", req: "812K", p95: "96ms", err: "0.12%", errHigh: false },
-  { method: "POST", path: "/api/v1/ingest", req: "644K", p95: "211ms", err: "0.31%", errHigh: true },
-  { method: "GET", path: "/api/v1/projects/:id/metrics", req: "389K", p95: "148ms", err: "0.09%", errHigh: false },
-  { method: "GET", path: "/api/v1/traces/:id", req: "271K", p95: "176ms", err: "0.44%", errHigh: true },
-  { method: "POST", path: "/auth/sessions/refresh", req: "184K", p95: "64ms", err: "0.02%", errHigh: false },
-];
-
-const STATUS_BUCKETS = [
-  { t: "00:00", s2: 28000, s4: 1800, s5: 400 },
-  { t: "04:00", s2: 22000, s4: 1200, s5: 200 },
-  { t: "08:00", s2: 68000, s4: 4500, s5: 700 },
-  { t: "12:00", s2: 118000, s4: 8200, s5: 1800 },
-  { t: "16:00", s2: 135000, s4: 9500, s5: 2200 },
-  { t: "20:00", s2: 85000, s4: 5000, s5: 900 },
-];
-
-const TIME_LABELS = [
-  "00:00", "02:00", "04:00", "06:00", "08:00", "10:00",
-  "12:00", "14:00", "16:00", "18:00", "20:00", "22:00",
-];
-
-const METHOD_CLR: Record<string, string> = {
-  GET: "var(--blue)", POST: "var(--green)", PUT: "var(--amber)", DELETE: "var(--red)",
-};
-
-const SEV_MAP: Record<Severity, { bg: string; fg: string; label: string }> = {
-  critical: { bg: "var(--red-bg)", fg: "var(--red)", label: "critical" },
-  warning: { bg: "var(--amber-bg)", fg: "var(--amber)", label: "warning" },
-  info: { bg: "var(--blue-bg)", fg: "var(--blue)", label: "info" },
-};
-
-/* ═══════════════════════════════════════════════════════════════
-   SVG PATH HELPERS — smooth cubic-bezier curves for charts
-   ═══════════════════════════════════════════════════════════════ */
-
-function smoothLine(pts: [number, number][]): string {
-  if (pts.length < 2) return pts.length === 1 ? `M${pts[0][0]},${pts[0][1]}` : "";
-  let d = `M${pts[0][0]},${pts[0][1]}`;
-  for (let i = 1; i < pts.length; i++) {
-    const cx = (pts[i - 1][0] + pts[i][0]) / 2;
-    d += ` C${cx},${pts[i - 1][1]} ${cx},${pts[i][1]} ${pts[i][0]},${pts[i][1]}`;
-  }
-  return d;
+function getHomeBoard() {
+  const totals = fleetTotals();
+  const bad = SERVICES.filter((s) => s.state === "bad").length;
+  const warn = SERVICES.filter((s) => s.state === "warn").length;
+  const ok = SERVICES.length - bad - warn;
+  const p95 = Math.round(SERVICES.reduce((a, s) => a + s.p95 * s.requests, 0) / totals.requests);
+  const buckets = Array.from({ length: 6 }, (_, b) => {
+    const slice = (arr: number[]) => arr.slice(b * 4, b * 4 + 4).reduce((a, v) => a + v, 0);
+    const req = slice(totals.traffic);
+    const s5 = slice(totals.errors);
+    return { label: HOURS_24[b], values: { s2: Math.round(req * 0.93), s4: Math.round(req * 0.06), s5 } };
+  });
+  return { totals, bad, warn, ok, p95, buckets };
 }
 
-function smoothArea(pts: [number, number][], baseY: number): string {
-  if (pts.length < 2) return "";
-  return `${smoothLine(pts)} L${pts[pts.length - 1][0]},${baseY} L${pts[0][0]},${baseY} Z`;
-}
+const hourLabel = (i: number) => `${String(i).padStart(2, "0")}:00`;
 
-const MONO = { fontFamily: "'JetBrains Mono', monospace" } as const;
-
-/* ═══════════════════════════════════════════════════════════════
-   SMALL PRESENTATIONAL COMPONENTS
-   ═══════════════════════════════════════════════════════════════ */
-
-/** Tiny inline sparkline-style trend indicator next to delta values. */
-function TrendWave({ color }: { color: string }) {
+function ServiceDetail({ s }: { s: Service }) {
+  const ratio = s.p95 / s.p95Base;
   return (
-    <svg width="22" height="10" viewBox="0 0 22 10" className="inline-block align-middle mr-1">
-      <polyline
-        points="0,8 5,5 10,7 16,3 22,1"
-        fill="none" stroke={color} strokeWidth={1.5}
-        strokeLinecap="round" strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-function TopKpiRow({ total, rate, p95Val, degradedCount }: { total: number, rate: number, p95Val: number, degradedCount: number }) {
-  return (
-    <div className="flex flex-row overflow-x-auto rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-      {/* KPI 1 */}
-      <div className="flex-1 p-5 border-r border-[var(--border)] min-w-[200px]">
-        <div className="text-[10px] font-medium uppercase tracking-[0.09em] text-[var(--text3)] font-[family-name:var(--mono)]">
-          API calls (24h)
-        </div>
-        <div className="mt-3 flex items-center justify-between">
-          <span className="font-[family-name:var(--mono)] text-[26px] font-medium tabular-nums leading-none tracking-[-0.02em] text-[var(--text)]">
-            {formatCompact(total * 1240)}
-          </span>
-          <TrendWave color="var(--green)" />
-        </div>
-        <div className="mt-2 font-[family-name:var(--mono)] text-[11px] font-medium tabular-nums" style={{ color: "var(--green)" }}>
-          +12.4% vs prev
+    <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
+      <div className="min-w-0">
+        <Facts
+          items={[
+            { label: "Owner", value: s.team },
+            { label: "Region", value: s.region },
+            { label: "P95 vs baseline", value: `${ratio.toFixed(1)}×`, state: ratio > 2 ? "bad" : ratio > 1.25 ? "warn" : undefined },
+            { label: "Apdex", value: s.apdex.toFixed(2), state: s.apdex < 0.8 ? "bad" : s.apdex < 0.9 ? "warn" : undefined },
+          ]}
+        />
+        <div className="mt-5">
+          <TimeChart
+            label={`${s.id} p95 latency over the last 24 hours`}
+            height={180}
+            xLabels={HOURS_24}
+            format={(v) => `${Math.round(v)}`}
+            pointLabel={hourLabel}
+            threshold={{ value: s.p95Base, label: `baseline ${s.p95Base}ms` }}
+            series={[{ label: "P95 ms", color: s.state === "bad" ? "var(--red)" : "var(--text)", data: s.latency }]}
+          />
         </div>
       </div>
-      {/* KPI 2 */}
-      <div className="flex-1 p-5 border-r border-[var(--border)] min-w-[200px]">
-        <div className="text-[10px] font-medium uppercase tracking-[0.09em] text-[var(--text3)] font-[family-name:var(--mono)]">
-          Error rate
+      {s.note ? (
+        <ModelNote
+          title={s.state === "bad" ? "Queue backpressure, not a code regression" : "Drift started with the last deploy"}
+          confidence={s.state === "bad" ? 94 : 78}
+          action={
+            <AiActionButton onClick={() => toast("Suggested runbook opened (sample)")}>
+              {s.state === "bad" ? "Scale consumers" : "Compare releases"}
+            </AiActionButton>
+          }
+        >
+          {s.note}. P95 is {ratio.toFixed(1)}× its 30-day baseline of {s.p95Base}ms.
+        </ModelNote>
+      ) : (
+        <div className="rounded-[var(--radius-lg)] border border-[var(--border)] px-4 py-3.5 text-[13px] leading-[1.6] text-[var(--text2)]">
+          Within baseline for the whole window. Latest release {s.version} has been live without new error groups.
         </div>
-        <div className="mt-3 flex items-center justify-between">
-          <span className="font-[family-name:var(--mono)] text-[26px] font-medium tabular-nums leading-none tracking-[-0.02em] text-[var(--text)]">
-            {rate.toFixed(2)}%
-          </span>
-          <TrendWave color="var(--red)" />
-        </div>
-        <div className="mt-2 font-[family-name:var(--mono)] text-[11px] font-medium tabular-nums" style={{ color: "var(--green)" }}>
-          -0.08% vs prev
-        </div>
-      </div>
-      {/* KPI 3 */}
-      <div className="flex-1 p-5 border-r border-[var(--border)] min-w-[200px]">
-        <div className="text-[10px] font-medium uppercase tracking-[0.09em] text-[var(--text3)] font-[family-name:var(--mono)]">
-          P95 latency
-        </div>
-        <div className="mt-3 flex items-center justify-between">
-          <span className="font-[family-name:var(--mono)] text-[26px] font-medium tabular-nums leading-none tracking-[-0.02em] text-[var(--text)]">
-            {formatLatency(p95Val)}
-          </span>
-          <TrendWave color="var(--violet)" />
-        </div>
-        <div className="mt-2 font-[family-name:var(--mono)] text-[11px] font-medium tabular-nums" style={{ color: "var(--green)" }}>
-          -22ms vs prev
-        </div>
-      </div>
-      {/* KPI 4 */}
-      <div className="flex-1 p-5 border-r border-[var(--border)] min-w-[200px]">
-        <div className="text-[10px] font-medium uppercase tracking-[0.09em] text-[var(--text3)] font-[family-name:var(--mono)]">
-          Availability
-        </div>
-        <div className="mt-3 flex items-center justify-between">
-          <span className="font-[family-name:var(--mono)] text-[26px] font-medium tabular-nums leading-none tracking-[-0.02em] text-[var(--text)]">
-            {degradedCount > 0 ? "77.20%" : "99.99%"}
-          </span>
-          <TrendWave color="var(--green)" />
-        </div>
-        <div className="mt-2 font-[family-name:var(--mono)] text-[11px] font-medium tabular-nums" style={{ color: "var(--green)" }}>
-          +0.01%
-        </div>
-      </div>
-      {/* KPI 5 */}
-      <div className="flex-1 p-5 min-w-[200px]">
-        <div className="text-[10px] font-medium uppercase tracking-[0.09em] text-[var(--text3)] font-[family-name:var(--mono)]">
-          Revenue at risk
-        </div>
-        <div className="mt-3 flex items-center justify-between">
-          <span className="font-[family-name:var(--mono)] text-[26px] font-medium tabular-nums leading-none tracking-[-0.02em] text-[var(--text)]">
-            $4,845
-          </span>
-          <TrendWave color="var(--red)" />
-        </div>
-        <div className="mt-2 font-[family-name:var(--mono)] text-[11px] font-medium tabular-nums" style={{ color: "var(--red)" }}>
-          17 failed payments
-        </div>
-      </div>
+      )}
     </div>
   );
 }
 
-/** Generic chart wrapper card with title + optional right-aligned badge. */
-function ChartCard({ title, badge, children }: {
-  title: string; badge?: string; children: React.ReactNode;
-}) {
-  return (
-    <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] flex flex-col justify-between">
-      <div className="flex items-center justify-between px-5 pt-4 pb-2">
-        <h3 className="text-[14px] font-semibold text-[var(--text)]">{title}</h3>
-        {badge && (
-          <span className="text-[10px] font-medium uppercase tracking-[0.09em] text-[var(--text3)] font-[family-name:var(--mono)]">
-            {badge}
-          </span>
-        )}
-      </div>
-      <div className="px-3 pb-3.5 pt-1">{children}</div>
-    </div>
-  );
-}
+export default function DashboardPage() {
+  const { totals, bad, warn, ok, p95, buckets } = getHomeBoard();
 
-/* ═══════════════════════════════════════════════════════════════
-   CHART COMPONENTS — pure SVG, no external charting library
-   ═══════════════════════════════════════════════════════════════ */
-
-const Y_VOL = [0, 40, 80, 120, 160]; // thousands
-
-function VolumeChart({ data, errData }: { data: number[]; errData: number[] }) {
-  const W = 760, H = 220, PL = 38, PR = 12, PT = 10, PB = 28;
-  const cw = W - PL - PR, ch = H - PT - PB;
-  const max = 160000;
-  const toY = (v: number) => PT + ch - (v / max) * ch;
-  const toX = (i: number, len: number) => PL + (i / (len - 1)) * cw;
-  const base = PT + ch;
-
-  const pts = data.map((v, i): [number, number] => [toX(i, data.length), toY(v)]);
-  const ePts = errData.map((v, i): [number, number] => [toX(i, errData.length), toY(v)]);
-
-  return (
-    <svg width="100%" viewBox={`0 0 ${W} ${H}`} className="w-full">
-      {/* Y-axis gridlines + labels */}
-      {Y_VOL.map((k) => {
-        const y = toY(k * 1000);
-        return (
-          <g key={k}>
-            <line x1={PL} x2={W - PR} y1={y} y2={y} stroke="var(--border)" strokeWidth={1} strokeDasharray="3 3" />
-            <text x={PL - 6} y={y + 3} textAnchor="end" fill="var(--text3)" fontSize={10} style={MONO}>
-              {k === 0 ? "0" : `${k}k`}
-            </text>
-          </g>
-        );
-      })}
-      <path d={smoothArea(pts, base)} fill="var(--brand)" fillOpacity={0.16} />
-      <path d={smoothLine(pts)} fill="none" stroke="var(--brand)" strokeWidth={2} />
-      <path d={smoothArea(ePts, base)} fill="var(--red-bg)" />
-      <path d={smoothLine(ePts)} fill="none" stroke="var(--red)" strokeWidth={1.5} />
-      {TIME_LABELS.map((l, i) => (
-        <text key={l} x={PL + (i / (TIME_LABELS.length - 1)) * cw} y={H - 5}
-          textAnchor="middle" fill="var(--text3)" fontSize={10} style={MONO}>{l}</text>
-      ))}
-    </svg>
-  );
-}
-
-function LatencyChart({ p50, p95, p99 }: { p50: number[]; p95: number[]; p99: number[] }) {
-  const W = 760, H = 220, PL = 38, PR = 12, PT = 10, PB = 28;
-  const cw = W - PL - PR, ch = H - PT - PB;
-  const max = 600;
-  const yVals = [0, 150, 300, 450, 600];
-  const toY = (v: number) => PT + ch - (v / max) * ch;
-  const toX = (i: number, len: number) => PL + (i / (len - 1)) * cw;
-  const mkPts = (d: number[]): [number, number][] => d.map((v, i) => [toX(i, d.length), toY(v)]);
-
-  const lines = [
-    { data: p50, color: "var(--brand)", label: "p50" },
-    { data: p95, color: "var(--blue)", label: "p95" },
-    { data: p99, color: "var(--amber)", label: "p99" },
+  const verdict: VerdictItem[] = [
+    ...(bad ? [{ state: "bad" as const, text: `${bad} service failing` }] : []),
+    ...(warn ? [{ state: "warn" as const, text: `${warn} degraded` }] : []),
+    { state: "ok", text: `${ok} healthy` },
   ];
 
   return (
-    <div>
-      <svg width="100%" viewBox={`0 0 ${W} ${H}`} className="w-full">
-        {yVals.map((v) => {
-          const y = toY(v);
-          return (
-            <g key={v}>
-              <line x1={PL} x2={W - PR} y1={y} y2={y} stroke="var(--border)" strokeWidth={1} strokeDasharray="3 3" />
-              <text x={PL - 6} y={y + 3} textAnchor="end" fill="var(--text3)" fontSize={10} style={MONO}>{v}</text>
-            </g>
-          );
-        })}
-        {lines.map((s) => (
-          <path key={s.label} d={smoothLine(mkPts(s.data))} fill="none" stroke={s.color} strokeWidth={2} />
-        ))}
-        {TIME_LABELS.map((l, i) => (
-          <text key={l} x={PL + (i / (TIME_LABELS.length - 1)) * cw} y={H - 5}
-            textAnchor="middle" fill="var(--text3)" fontSize={10} style={MONO}>{l}</text>
-        ))}
-      </svg>
-      <div className="flex items-center gap-5 px-5 pt-2">
-        {lines.map((s) => (
-          <span key={s.label} className="flex items-center gap-1.5 text-[11px] text-[var(--text2)] font-[family-name:var(--mono)]">
-            <span className="inline-block h-2 w-2 rounded-full" style={{ background: s.color }} />
-            {s.label}
-          </span>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function StatusCodesChart() {
-  const W = 760, H = 220, PL = 38, PR = 12, PT = 10, PB = 28;
-  const cw = W - PL - PR, ch = H - PT - PB;
-  const max = 160000;
-  const yVals = [0, 40, 80, 120, 160];
-  const n = STATUS_BUCKETS.length;
-  const bw = cw / n;
-  const barW = bw * 0.45;
-  const toY = (v: number) => PT + ch - (v / max) * ch;
-  const base = PT + ch;
-
-  return (
-    <div>
-      <svg width="100%" viewBox={`0 0 ${W} ${H}`} className="w-full">
-        {yVals.map((k) => {
-          const y = toY(k * 1000);
-          return (
-            <g key={k}>
-              <line x1={PL} x2={W - PR} y1={y} y2={y} stroke="var(--border)" strokeWidth={1} strokeDasharray="3 3" />
-              <text x={PL - 6} y={y + 3} textAnchor="end" fill="var(--text3)" fontSize={10} style={MONO}>
-                {k === 0 ? "0" : `${k}k`}
-              </text>
-            </g>
-          );
-        })}
-        {STATUS_BUCKETS.map((b, i) => {
-          const cx = PL + i * bw + bw / 2;
-          const x = cx - barW / 2;
-          const h2 = (b.s2 / max) * ch;
-          const h4 = (b.s4 / max) * ch;
-          const h5 = (b.s5 / max) * ch;
-          return (
-            <g key={b.t}>
-              <rect x={x} y={base - h2} width={barW} height={h2} fill="var(--green)" rx={2} />
-              <rect x={x} y={base - h2 - h4} width={barW} height={h4} fill="var(--amber)" />
-              <rect x={x} y={base - h2 - h4 - h5} width={barW} height={h5} fill="var(--red)" rx={2} />
-              <text x={cx} y={H - 5} textAnchor="middle" fill="var(--text3)" fontSize={10} style={MONO}>
-                {b.t}
-              </text>
-            </g>
-          );
-        })}
-      </svg>
-      <div className="flex items-center gap-5 px-5 pt-2">
-        {[
-          { c: "var(--green)", l: "2xx" },
-          { c: "var(--amber)", l: "4xx" },
-          { c: "var(--red)", l: "5xx" },
-        ].map((x) => (
-          <span key={x.l} className="flex items-center gap-1.5 text-[11px] text-[var(--text2)] font-[family-name:var(--mono)]">
-            <span className="inline-block h-2 w-2 rounded-full" style={{ background: x.c }} />
-            {x.l}
-          </span>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-/* ═══════════════════════════════════════════════════════════════
-   SIDE PANELS
-   ═══════════════════════════════════════════════════════════════ */
-
-function ServiceHealthPanel() {
-  return (
-    <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] p-5">
-      <h3 className="text-[14px] font-semibold text-[var(--text)] mb-3.5">Service health</h3>
-      <div className="flex flex-col gap-2.5">
-        {SERVICES.map((s) => (
-          <div key={s.name} className="flex items-center gap-3 py-0.5">
-            <span
-              className="size-2 rounded-full shrink-0"
-              style={{ background: s.healthy ? "var(--green)" : "var(--amber)" }}
-            />
-            <span className="flex-1 text-[13px] text-[var(--text)] font-[family-name:var(--mono)] truncate">
-              {s.name}
-            </span>
-            <span className="w-14 text-right font-[family-name:var(--mono)] text-[12px] tabular-nums text-[var(--text2)]">
-              {s.uptime === 100 ? "100%" : `${s.uptime.toFixed(2)}%`}
-            </span>
-            <span className="w-12 text-right font-[family-name:var(--mono)] text-[12px] tabular-nums text-[var(--text3)]">
-              {s.latency}ms
-            </span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function RecentActivityPanel() {
-  return (
-    <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] p-5">
-      <h3 className="text-[14px] font-semibold text-[var(--text)] mb-3.5">Recent activity</h3>
-      <div className="flex flex-col gap-3.5">
-        {ACTIVITY.map((a) => {
-          const s = SEV_MAP[a.sev];
-          return (
-            <div key={`${a.title}-${a.at}`} className="flex gap-3 items-start">
-              <span
-                className="mt-0.5 shrink-0 rounded-full px-2 py-0.5 font-[family-name:var(--mono)] text-[10px] font-medium uppercase tracking-[0.08em] leading-snug"
-                style={{ background: s.bg, color: s.fg }}
-              >
-                {s.label}
-              </span>
-              <div className="min-w-0 flex-1">
-                <div className="text-[13px] font-medium text-[var(--text)] leading-snug">{a.title}</div>
-                <div className="mt-0.5 font-[family-name:var(--mono)] text-[10px] tabular-nums text-[var(--text3)]">
-                  {a.src} · {a.at}
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-function TopEndpointsPanel() {
-  return (
-    <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)]">
-      <div className="flex items-center justify-between px-5 pt-4 pb-3">
-        <h3 className="text-[14px] font-semibold text-[var(--text)]">Top endpoints</h3>
-        <span className="text-[10px] font-medium uppercase tracking-[0.09em] text-[var(--text3)] font-[family-name:var(--mono)]">
-          By volume
-        </span>
-      </div>
-      {/* Column headers */}
-      <div className="grid grid-cols-[1fr_80px_70px_60px] gap-2 px-5 pb-2 text-[10px] font-medium uppercase tracking-[0.09em] text-[var(--text3)] font-[family-name:var(--mono)]">
-        <span>Endpoint</span>
-        <span className="text-right">Requests</span>
-        <span className="text-right">P95</span>
-        <span className="text-right">Err %</span>
-      </div>
-      {/* Rows */}
-      {ENDPOINTS.map((ep) => (
-        <div
-          key={ep.path}
-          className="grid grid-cols-[1fr_80px_70px_60px] gap-2 items-center px-5 py-2.5 border-t border-[var(--border)] hover:bg-[var(--bg2)]/50 transition-colors"
-        >
-          <div className="flex items-center gap-2 min-w-0">
-            <span
-              className="text-[10px] font-medium uppercase tracking-[0.08em] font-[family-name:var(--mono)] shrink-0"
-              style={{ color: METHOD_CLR[ep.method] ?? "var(--text2)" }}
-            >
-              {ep.method}
-            </span>
-            <span className="text-[12px] text-[var(--text)] font-[family-name:var(--mono)] truncate">
-              {ep.path}
-            </span>
-          </div>
-          <span className="font-[family-name:var(--mono)] text-[12px] tabular-nums text-[var(--text)] text-right">{ep.req}</span>
-          <span className="font-[family-name:var(--mono)] text-[12px] tabular-nums text-[var(--text2)] text-right">{ep.p95}</span>
-          <span
-            className="font-[family-name:var(--mono)] text-[12px] tabular-nums text-right font-medium"
-            style={{ color: ep.errHigh ? "var(--red)" : "var(--text2)" }}
-          >
-            {ep.err}
-          </span>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-/* ═══════════════════════════════════════════════════════════════
-   LOADING SKELETON
-   ═══════════════════════════════════════════════════════════════ */
-
-function DashboardSkeleton() {
-  return (
-    <div className="flex flex-col gap-6 w-full max-w-[1400px] mx-auto px-4 sm:px-6 py-6">
-      <div className="h-10" />
-      {/* TopKpiRow Skeleton */}
-      <div className="flex flex-row gap-0 rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] overflow-hidden">
-        {Array.from({ length: 5 }).map((_, i) => (
-          <div key={`ks-${i}`} className="loading-skeleton h-[120px] flex-1 border-r border-[var(--border)] bg-[var(--bg2)] min-w-[200px]" />
-        ))}
-      </div>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        <div className="loading-skeleton h-[280px] rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)]" />
-        <div className="loading-skeleton h-[280px] rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)]" />
-      </div>
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
-        <div className="loading-skeleton lg:col-span-3 h-[340px] rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)]" />
-        <div className="loading-skeleton lg:col-span-2 h-[340px] rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)]" />
-      </div>
-    </div>
-  );
-}
-
-/* ═══════════════════════════════════════════════════════════════
-   DASHBOARD PAGE
-   ═══════════════════════════════════════════════════════════════ */
-
-export default function DashboardPage() {
-  const requests = useRequestEvents();
-  const errors = useErrorEvents();
-
-  if (requests.isLoading || errors.isLoading) {
-    return <DashboardSkeleton />;
-  }
-
-  const reqList = requests.data ?? [];
-  const latencies = reqList.map((r) => r.latency);
-  const total = reqList.length;
-  const p95Val = percentile(latencies, 95);
-  const rate = errorRate(reqList);
-
-  // Stable seeded chart series (no per-render randomness)
-  const volumeData = seededSeries("dash-vol-24h", 24, 85000, 40000);
-  const errorVolData = seededSeries("dash-err-24h", 24, 2000, 1500);
-  const p50Data = seededSeries("dash-lat-p50", 24, 55, 15);
-  const p95Data = seededSeries("dash-lat-p95", 24, 140, 40);
-  const p99Data = seededSeries("dash-lat-p99", 24, 350, 180);
-
-  const healthyCount = SERVICES.filter((s) => s.healthy).length;
-  const degradedCount = SERVICES.length - healthyCount;
-
-  return (
-    <div className="flex flex-col gap-6 w-full max-w-[1400px] mx-auto px-4 sm:px-6 py-6">
-      {/* ── Header ── */}
-      <div className="flex flex-wrap items-center justify-between gap-3 pb-1">
-        <div>
-          <h1 className="font-[family-name:var(--display)] text-[22px] font-semibold tracking-[-0.02em] text-[var(--text)]">Dashboard</h1>
-          <p className="mt-1 text-[13px] leading-[1.5] text-[var(--text2)]">
-            API monitoring overview across all connected services.
-          </p>
-        </div>
-        <AiWatchingDot />
-      </div>
-
-      {/* ── KPI Metrics ── */}
-      <TopKpiRow 
-        total={total} 
-        rate={rate} 
-        p95Val={p95Val} 
-        degradedCount={degradedCount} 
+    <BoardPage
+      padded
+      title="Home"
+      description="Every connected service across the organization, worst first. Open a row to see why."
+      verdict={verdict}
+    >
+      <Readouts
+        items={[
+          { label: "Requests", value: compact(totals.requests), delta: "+12.4%", verdict: "flat", note: "vs previous 24h" },
+          { label: "Error rate", value: pct(totals.errorRate), delta: "+0.09%", verdict: "bad", note: "vs previous 24h", state: totals.errorRate > 0.25 ? "warn" : undefined },
+          { label: "P95 latency", value: ms(p95), delta: "+18ms", verdict: "bad", note: "request-weighted" },
+          { label: "Availability", value: pct(totals.availability, 2), delta: "−0.03%", verdict: "bad", note: "SLO 99.90%" },
+          { label: "Open incidents", value: "1", note: "INC-2291 · paged", state: "bad" },
+        ]}
       />
 
-      {/* ── Request Volume + Latency Percentiles ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        <ChartCard title="Request volume" badge="Last 24h">
-          <VolumeChart data={volumeData} errData={errorVolData} />
-        </ChartCard>
-        <ChartCard title="Latency percentiles" badge="ms · last 24h">
-          <LatencyChart p50={p50Data} p95={p95Data} p99={p99Data} />
-        </ChartCard>
+      <Ledger
+        id="service"
+        title="Services"
+        rows={SERVICES}
+        rowId={(s) => s.id}
+        rowState={(s) => s.state}
+        attention={(s) => s.errorRate}
+        primary={{ header: "Service", cell: (s) => <span className="font-mono">{s.id}</span>, sub: (s) => s.note ?? `${s.team} · ${s.version}` }}
+        columns={[
+          { key: "traffic", header: "Traffic, 24h", hide: "lg", cell: (s) => <Trend data={s.traffic} label={`${s.id} requests per hour`} /> },
+          { key: "req", header: "Requests", align: "right", sortValue: (s) => s.requests, cell: (s) => <span className="text-[var(--text)]">{compact(s.requests)}</span> },
+          {
+            key: "p95",
+            header: "P95",
+            align: "right",
+            sortValue: (s) => s.p95,
+            cell: (s) => <span style={{ color: stateText(s.p95 > s.p95Base * 2 ? "bad" : s.p95 > s.p95Base * 1.25 ? "warn" : "ok") }}>{ms(s.p95)}</span>,
+          },
+          {
+            key: "err",
+            header: "Error rate",
+            align: "right",
+            sortValue: (s) => s.errorRate,
+            cell: (s) => <span style={{ color: stateText(s.errorRate >= 1 ? "bad" : s.errorRate >= 0.3 ? "warn" : "ok") }}>{pct(s.errorRate)}</span>,
+          },
+          {
+            key: "avail",
+            header: "Availability",
+            align: "right",
+            hide: "md",
+            sortValue: (s) => s.availability,
+            className: "w-[150px]",
+            cell: (s) => (
+              <span className="flex items-center justify-end gap-3">
+                <Meter value={s.availability - 97} max={3} threshold={2.9} state={s.availability < 99.9 ? "bad" : "ok"} className="w-14" />
+                <span style={{ color: stateText(s.availability < 99.9 ? "bad" : "ok") }}>{s.availability.toFixed(2)}%</span>
+              </span>
+            ),
+          },
+        ]}
+        detail={(s) => <ServiceDetail s={s} />}
+      />
+
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+        <Panel title="Traffic and errors" meta="All services, hourly">
+          <TimeChart
+            label="Requests and failed requests per hour over the last 24 hours"
+            xLabels={HOURS_24}
+            format={compact}
+            pointLabel={hourLabel}
+            series={[
+              { label: "Requests", color: "var(--text)", data: totals.traffic, area: true },
+              { label: "Failed", color: "var(--red)", data: totals.errors },
+            ]}
+          />
+        </Panel>
+        <Panel title="Recent activity" meta="Today" flush>
+          <Timeline items={ACTIVITY} />
+        </Panel>
       </div>
 
-      {/* ── Status Codes / Top Endpoints + Service Health / Recent Activity ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
-        {/* Left column: charts & table */}
-        <div className="lg:col-span-3 flex flex-col gap-5">
-          <ChartCard title="Status codes" badge="Last 24h">
-            <StatusCodesChart />
-          </ChartCard>
-          <TopEndpointsPanel />
-        </div>
-        {/* Right column: AI insights rail, health & activity (§5.2) */}
-        <div className="lg:col-span-2 flex flex-col gap-5">
-          <AiInsightCard
-            title="Latency anomaly on alert-dispatcher"
-            confidence={94}
-            action={<AiActionButton>Apply fix</AiActionButton>}
-          >
-            P99 on alert-dispatcher has drifted {degradedCount > 0 ? "4.9×" : "1.2×"} above its
-            30-day baseline since 14:05. The pattern matches queue backpressure, not a code
-            regression.
-          </AiInsightCard>
-          <ServiceHealthPanel />
-          <RecentActivityPanel />
-        </div>
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+        <Panel title="Responses by status class" meta="4-hour buckets">
+          <Columns
+            label="Responses by status class in four-hour buckets"
+            format={compact}
+            buckets={buckets}
+            keys={[
+              { key: "s2", label: "2xx", color: "var(--border2)" },
+              { key: "s4", label: "4xx", color: "var(--amber)" },
+              { key: "s5", label: "5xx", color: "var(--red)" },
+            ]}
+          />
+        </Panel>
+        <Ledger
+          id="endpoint"
+          title="Busiest endpoints"
+          meta="Worst first"
+          filter={false}
+          limit={5}
+          rows={ENDPOINTS}
+          rowId={(e) => e.id}
+          rowState={(e) => e.state}
+          attention={(e) => e.requests}
+          primary={{
+            header: "Endpoint",
+            cell: (e) => (
+              <span className="font-mono">
+                <span className="mr-2 text-[11px] text-[var(--text3)]">{e.method}</span>
+                {e.path}
+              </span>
+            ),
+            sub: (e) => e.service,
+          }}
+          columns={[
+            { key: "req", header: "Requests", align: "right", sortValue: (e) => e.requests, cell: (e) => <span className="text-[var(--text)]">{compact(e.requests)}</span> },
+            { key: "p95", header: "P95", align: "right", sortValue: (e) => e.p95, cell: (e) => ms(e.p95) },
+            {
+              key: "err",
+              header: "Errors",
+              align: "right",
+              sortValue: (e) => e.errorRate,
+              cell: (e) => <span style={{ color: stateText(e.state) }}>{pct(e.errorRate)}</span>,
+            },
+          ]}
+        />
       </div>
-    </div>
+    </BoardPage>
   );
 }

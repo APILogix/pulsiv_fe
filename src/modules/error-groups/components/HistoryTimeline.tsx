@@ -1,132 +1,85 @@
-import { Timestamp } from "@/shared/observe";
+import { CheckCircle2, EyeOff, GitMerge, RotateCcw, Activity, AlertTriangle } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import { EmptyNote, Panel, Timestamp } from "@/shared/observe";
+import { cn } from "@/lib/utils";
 import type { ErrorGroupHistoryItem } from "../types/error-group";
-import { CheckCircle2, AlertTriangle, EyeOff, GitMerge, RotateCcw, Activity, User, Info } from "lucide-react";
 
-interface HistoryTimelineProps {
-  history: ErrorGroupHistoryItem[];
-}
-
-function formatValue(val: any): string {
+function formatValue(val: unknown): string {
   if (val === null || val === undefined) return "none";
   if (typeof val === "object") {
-    if (val.status) return String(val.status).toUpperCase();
-    if (val.comment) return `Comment: "${val.comment}"`;
-    return Object.entries(val)
-      .map(([k, v]) => `${k}: ${String(v)}`)
-      .join(", ");
+    const v = val as Record<string, unknown>;
+    if (v.status) return String(v.status).toLowerCase();
+    if (v.comment) return `“${String(v.comment)}”`;
+    return Object.entries(v).map(([k, x]) => `${k}: ${String(x)}`).join(", ");
   }
-  return String(val).toUpperCase();
+  return String(val).toLowerCase();
 }
 
-function getActionBadge(action: string) {
-  const normalized = action.toLowerCase();
-  switch (normalized) {
+function actionMeta(action: string): { icon: LucideIcon; tone: string; label: string } {
+  switch (action.toLowerCase()) {
     case "marked_resolved":
     case "resolved":
-      return { icon: CheckCircle2, color: "text-[var(--green)] bg-[var(--green-bg)] border-[var(--green-border,var(--green))]", label: "Resolved" };
+      return { icon: CheckCircle2, tone: "text-[var(--green)]", label: "Resolved" };
     case "ignored":
-      return { icon: EyeOff, color: "text-[var(--text3)] bg-[var(--bg2)] border-[var(--border)]", label: "Ignored" };
+      return { icon: EyeOff, tone: "text-[var(--text3)]", label: "Ignored" };
     case "reopened":
-      return { icon: RotateCcw, color: "text-[var(--amber)] bg-[var(--amber-bg)] border-[var(--amber-border,var(--amber))]", label: "Reopened" };
+      return { icon: RotateCcw, tone: "text-[var(--amber)]", label: "Reopened" };
     case "merged":
-      return { icon: GitMerge, color: "text-[var(--violet)] bg-[var(--violet-bg)] border-[var(--violet-border,var(--violet))]", label: "Merged" };
+      return { icon: GitMerge, tone: "text-[var(--violet)]", label: "Merged" };
     case "regression_detected":
     case "regressed":
-      return { icon: AlertTriangle, color: "text-[var(--red)] bg-[var(--red-bg)] border-[var(--red-border,var(--red))]", label: "Regression" };
-    default:
-      return { icon: Activity, color: "text-[var(--brand)] bg-[var(--brand-bg,var(--bg2))]", label: action.replace(/_/g, " ") };
+      return { icon: AlertTriangle, tone: "text-[var(--red)]", label: "Regressed" };
+    default: {
+      const l = action.replace(/_/g, " ");
+      return { icon: Activity, tone: "text-[var(--text2)]", label: l.charAt(0).toUpperCase() + l.slice(1) };
+    }
   }
 }
 
-export function HistoryTimeline({ history }: HistoryTimelineProps) {
-  if (!history || history.length === 0) {
-    return (
-      <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg1)] p-6 text-center text-[13px] text-[var(--text3)]">
-        No state transition history recorded for this error group yet.
-      </div>
-    );
-  }
-
+export function HistoryTimeline({ history }: { history: ErrorGroupHistoryItem[] }) {
   return (
-    <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg1)] p-6 space-y-6 shadow-xs">
-      <div className="flex items-center justify-between border-b border-[var(--border)] pb-4">
-        <div>
-          <h3 className="text-[15px] font-semibold text-[var(--text)] flex items-center gap-2">
-            <Activity className="size-4 text-[var(--brand)]" />
-            Audit & History Timeline
-          </h3>
-          <p className="text-[12px] text-[var(--text3)] mt-0.5">
-            Immutable audit log of state changes, regressions, and manual triage actions
-          </p>
-        </div>
-        <span className="rounded-full bg-[var(--bg2)] px-3 py-1 font-[family-name:var(--mono)] text-[11px] font-medium text-[var(--text2)] border border-[var(--border)]">
-          {history.length} {history.length === 1 ? "event" : "events"}
-        </span>
-      </div>
-
-      <div className="relative pl-6 space-y-6 before:absolute before:left-3 before:top-2 before:bottom-2 before:w-0.5 before:bg-[var(--border)]">
-        {history.map((item) => {
-          const badge = getActionBadge(item.action);
-          const Icon = badge.icon;
-          const oldVal = item.oldValue ?? item.old_value;
-          const newVal = item.newValue ?? item.new_value;
-          const meta = item.metadata;
-
-          return (
-            <div key={item.id} className="relative flex flex-col gap-1.5 text-[13px] transition-colors hover:bg-[var(--bg2)]/40 p-3 -ml-2.5 rounded-xl">
-              <div className={`absolute -left-6 top-3.5 flex size-6 items-center justify-center rounded-full border bg-[var(--bg1)] ${badge.color}`}>
-                <Icon className="size-3.5" />
-              </div>
-              <div className="flex items-center justify-between gap-2 flex-wrap">
-                <div className="flex items-center gap-2">
-                  <span className="inline-flex items-center gap-1.5 font-semibold text-[var(--text)]">
-                    <User className="size-3.5 text-[var(--text3)]" />
-                    {item.actor || "System"}
-                  </span>
-                  <span className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 font-[family-name:var(--mono)] text-[10.5px] font-semibold uppercase border ${badge.color}`}>
-                    {badge.label}
-                  </span>
-                </div>
-                <div className="text-[11px] text-[var(--text3)] font-[family-name:var(--mono)]">
-                  <Timestamp value={item.timestamp} />
-                </div>
-              </div>
-
-              {(oldVal !== undefined || newVal !== undefined) && (
-                <div className="flex items-center gap-2 font-[family-name:var(--mono)] text-[12px] text-[var(--text2)] mt-0.5">
-                  {oldVal !== undefined && (
-                    <span className="line-through text-[var(--text3)] bg-[var(--bg2)] px-2 py-0.5 rounded-md">
-                      {formatValue(oldVal)}
-                    </span>
+    <Panel title="History" description="Every status change, regression, and merge on this issue, newest first." flush>
+      {!history || history.length === 0 ? (
+        <div className="p-5"><EmptyNote>No status changes have been recorded for this issue yet.</EmptyNote></div>
+      ) : (
+        <ol className="divide-y divide-[var(--border)]">
+          {history.map((item) => {
+            const meta = actionMeta(item.action);
+            const Icon = meta.icon;
+            const oldVal = item.oldValue ?? item.old_value;
+            const newVal = item.newValue ?? item.new_value;
+            const extra = item.metadata && typeof item.metadata === "object" ? Object.entries(item.metadata) : [];
+            return (
+              <li key={item.id} className="grid grid-cols-[20px_minmax(0,1fr)_96px] gap-3 px-5 py-3">
+                <Icon className={cn("mt-0.5 size-4", meta.tone)} aria-hidden="true" />
+                <div className="min-w-0">
+                  <p className="text-[13px] text-[var(--text)]">
+                    <span className="font-medium">{meta.label}</span>
+                    <span className="text-[var(--text3)]"> by </span>
+                    <span>{item.actor || "System"}</span>
+                  </p>
+                  {(oldVal !== undefined || newVal !== undefined) && (
+                    <p className="mt-1 font-[family-name:var(--mono)] text-[12px] text-[var(--text2)]">
+                      {oldVal !== undefined && <span className="text-[var(--text3)] line-through">{formatValue(oldVal)}</span>}
+                      {oldVal !== undefined && newVal !== undefined && <span className="text-[var(--text3)]"> → </span>}
+                      {newVal !== undefined && <span className="text-[var(--text)]">{formatValue(newVal)}</span>}
+                    </p>
                   )}
-                  {oldVal !== undefined && newVal !== undefined && (
-                    <span className="text-[var(--text3)]">→</span>
-                  )}
-                  {newVal !== undefined && (
-                    <span className="font-semibold text-[var(--green)] bg-[var(--green-bg)] px-2 py-0.5 rounded-md border border-[var(--green)]/20">
-                      {formatValue(newVal)}
-                    </span>
+                  {(item.reason || extra.length > 0) && (
+                    <p className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[12px] text-[var(--text3)]">
+                      {item.reason && <span>{item.reason}</span>}
+                      {extra.map(([k, v]) => (
+                        <span key={k} className="font-[family-name:var(--mono)]">{k}: <span className="text-[var(--text2)]">{String(v)}</span></span>
+                      ))}
+                    </p>
                   )}
                 </div>
-              )}
-
-              {meta && typeof meta === "object" && Object.keys(meta).length > 0 && (
-                <div className="mt-1.5 flex flex-wrap items-center gap-2 rounded-lg bg-[var(--bg2)] p-2.5 text-[11.5px] text-[var(--text2)] border border-[var(--border)]">
-                  <Info className="size-3.5 shrink-0 text-[var(--brand)]" />
-                  {Object.entries(meta).map(([k, v]) => (
-                    <span key={k} className="inline-flex items-center gap-1 rounded bg-[var(--bg1)] px-2 py-0.5 font-[family-name:var(--mono)]">
-                      <span className="text-[var(--text3)]">{k}:</span>
-                      <span className="text-[var(--text)] font-semibold">{String(v)}</span>
-                    </span>
-                  ))}
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
-    </div>
+                <span className="text-right"><Timestamp value={item.timestamp} /></span>
+              </li>
+            );
+          })}
+        </ol>
+      )}
+    </Panel>
   );
 }
-
-

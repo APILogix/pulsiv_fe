@@ -475,8 +475,8 @@ export function WorkflowFormDialog({
             </div>
 
             {/* ── Trigger ── */}
-            <section className="rounded-[12px] border border-[var(--border)] bg-[var(--bg2)]/40 p-4">
-              <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--text3)]">
+            <section className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg2)]/40 p-4">
+              <h3 className="mb-3 text-[13px] font-semibold text-[var(--text)]">
                 Trigger
               </h3>
               <div className="grid gap-4 sm:grid-cols-2">
@@ -571,9 +571,9 @@ export function WorkflowFormDialog({
             </section>
 
             {/* ── Conditions ── */}
-            <section className="rounded-[12px] border border-[var(--border)] bg-[var(--bg2)]/40 p-4">
+            <section className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg2)]/40 p-4">
               <div className="mb-3 flex items-center justify-between">
-                <h3 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--text3)]">
+                <h3 className="text-[13px] font-semibold text-[var(--text)]">
                   Conditions ({draft.conditions.length}/{AUTOMATION_LIMITS.CONDITIONS})
                 </h3>
                 <UiButton
@@ -598,7 +598,7 @@ export function WorkflowFormDialog({
                     return (
                       <div
                         key={index}
-                        className="grid items-center gap-2 rounded-[9px] border border-[var(--border)] bg-[var(--bg1)] p-2 sm:grid-cols-[minmax(0,1.4fr)_minmax(0,0.9fr)_minmax(0,1.2fr)_auto]"
+                        className="grid items-center gap-2 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg1)] p-2 sm:grid-cols-[minmax(0,1.4fr)_minmax(0,0.9fr)_minmax(0,1.2fr)_auto]"
                       >
                         <input
                           className={smallInputClass}
@@ -649,9 +649,9 @@ export function WorkflowFormDialog({
             </section>
 
             {/* ── Actions ── */}
-            <section className="rounded-[12px] border border-[var(--border)] bg-[var(--bg2)]/40 p-4">
+            <section className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg2)]/40 p-4">
               <div className="mb-3 flex items-center justify-between">
-                <h3 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--text3)]">
+                <h3 className="text-[13px] font-semibold text-[var(--text)]">
                   Actions ({draft.actions.length}/{AUTOMATION_LIMITS.ACTIONS})
                 </h3>
                 <UiButton
@@ -669,7 +669,7 @@ export function WorkflowFormDialog({
                 {draft.actions.map((action, index) => {
                   const forced = mustRequireApproval(action);
                   return (
-                    <div key={index} className="rounded-[9px] border border-[var(--border)] bg-[var(--bg1)] p-3">
+                    <div key={index} className="rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg1)] p-3">
                       <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)_minmax(0,0.8fr)_auto]">
                         <input
                           className={smallInputClass}
@@ -720,7 +720,7 @@ export function WorkflowFormDialog({
                       </div>
 
                       <div className="mt-2 grid gap-2 sm:grid-cols-3">
-                        <label className="flex flex-col gap-1 text-[10.5px] font-semibold uppercase tracking-[0.1em] text-[var(--text3)]">
+                        <label className="flex flex-col gap-1 text-[12px] text-[var(--text2)]">
                           Timeout (s)
                           <input
                             type="number"
@@ -733,7 +733,7 @@ export function WorkflowFormDialog({
                             }
                           />
                         </label>
-                        <label className="flex flex-col gap-1 text-[10.5px] font-semibold uppercase tracking-[0.1em] text-[var(--text3)]">
+                        <label className="flex flex-col gap-1 text-[12px] text-[var(--text2)]">
                           Max attempts
                           <input
                             type="number"
@@ -746,7 +746,7 @@ export function WorkflowFormDialog({
                             }
                           />
                         </label>
-                        <label className="flex flex-col gap-1 text-[10.5px] font-semibold uppercase tracking-[0.1em] text-[var(--text3)]">
+                        <label className="flex flex-col gap-1 text-[12px] text-[var(--text2)]">
                           Retry backoff (s)
                           <input
                             type="number"
@@ -786,7 +786,7 @@ export function WorkflowFormDialog({
                       )}
 
                       {action.actionType === "webhook.call" && (
-                        <p className="mt-1.5 text-[11.5px] text-[var(--text-muted)]">
+                        <p className="mt-1.5 text-[11.5px] text-[var(--text3)]">
                           Set <CodeChip>connectorId</CodeChip> in the config below to an existing
                           webhook connector. Inline URLs are rejected so the destination stays
                           SSRF-validated and its credentials stay encrypted.
@@ -809,8 +809,8 @@ export function WorkflowFormDialog({
             </section>
 
             {/* ── Safety ── */}
-            <section className="rounded-[12px] border border-[var(--border)] bg-[var(--bg2)]/40 p-4">
-              <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--text3)]">
+            <section className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg2)]/40 p-4">
+              <h3 className="mb-3 text-[13px] font-semibold text-[var(--text)]">
                 Safety rails
               </h3>
               <div className="grid gap-4 sm:grid-cols-3">

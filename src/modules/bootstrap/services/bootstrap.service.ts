@@ -1,4 +1,5 @@
 import { apiClient } from '@/infrastructure/api-client/axios';
+import { errorStatus, isNetworkFailure } from '@/infrastructure/api-client/api-error';
 import { tokenService } from '@/modules/auth/services/token.service';
 import { useOrgStore } from '@/modules/organizations/store/org.store';
 import { orgApi } from '@/modules/organizations/api/org.api';
@@ -53,7 +54,7 @@ export class BootstrapService {
           response = await apiClient.get('/me/bootstrap', { headers });
         } catch (err: any) {
           // If /me/bootstrap is not deployed, synthesize bootstrap state from organizations
-          if (err.response?.status === 404) {
+          if (errorStatus(err) === 404) {
             const orgsRes = await orgApi.listOrganizations({ limit: 100 }).catch(() => ({ data: [] }));
             const orgs = Array.isArray(orgsRes.data) ? orgsRes.data : [];
             const activeOrg = orgs.find((o) => o.id === targetOrgId) ?? orgs[0] ?? null;
@@ -128,8 +129,10 @@ export class BootstrapService {
 
         return data;
       } catch (error: any) {
-        const isNetworkError = !error.response || error.code === 'ERR_NETWORK';
-        const errorMessage = error.response?.data?.message || error.message || 'Failed to fetch application bootstrap';
+        // ApiError-aware: the old `!error.response` check was true for every
+        // failure, so 401/403/500 were all treated as "offline".
+        const isNetworkError = isNetworkFailure(error);
+        const errorMessage = error?.message || 'Failed to fetch application bootstrap';
 
         if (isNetworkError && store.bootstrap) {
           // Retain cached UI snapshot during transient network loss

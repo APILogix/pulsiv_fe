@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Sparkles, X, AlertCircle, Copy, Check, Loader2, RefreshCw } from "lucide-react";
 import { useOrgStore } from "@/modules/organizations/store/org.store";
 import { analyzeBulkObservability } from "@/pages/observe/hooks/useObservabilityApi";
+import { ApiError, apiErrorMessage } from "@/infrastructure/api-client/api-error";
 
 const EXAMPLE_PROMPTS = [
   "What is causing these failures?",
@@ -79,15 +80,16 @@ export function AskAiModal({
       } else {
         setResult(res);
       }
-    } catch (err: any) {
-      if (
-        err?.response?.status === 402 ||
-        err?.response?.data?.error?.code === "INSUFFICIENT_CREDITS"
-      ) {
+    } catch (err: unknown) {
+      // The axios error interceptor normalizes every failure to ApiError
+      // (`status` / `code`, no `response`), so check those fields. The old
+      // `err.response.status === 402` check could never match.
+      if (err instanceof ApiError && (err.status === 402 || err.code === "INSUFFICIENT_CREDITS")) {
+        err.handled = true; // shown inline below; no global toast
         setIsCreditsExhausted(true);
         setError("No AI credits remaining. Purchase additional AI credits to continue.");
       } else {
-        setError(err?.response?.data?.error?.message ?? err?.message ?? "AI analysis failed. Please try again.");
+        setError(apiErrorMessage(err) ?? "AI analysis failed. Please try again.");
       }
     } finally {
       setIsLoading(false);
@@ -109,7 +111,7 @@ export function AskAiModal({
         {/* Modal Header */}
         <div className="flex items-center justify-between border-b border-[var(--border)] px-5 py-4">
           <div className="flex items-center gap-2.5">
-            <div className="flex size-8 items-center justify-center rounded-lg bg-[var(--brand)]/10 text-[var(--brand)]">
+            <div className="flex size-8 items-center justify-center rounded-[var(--radius)] bg-[var(--ai-bg)] text-[var(--ai)]">
               <Sparkles className="size-4" />
             </div>
             <div>
@@ -134,7 +136,7 @@ export function AskAiModal({
         <div className="sidebar-scroll flex-1 overflow-y-auto p-5 space-y-4">
           {/* Credits Exhausted Warning Banner */}
           {isCreditsExhausted && (
-            <div className="flex items-start gap-3 rounded-lg border border-[var(--red)]/30 bg-[var(--red-bg)] p-3.5 text-[13px] text-[var(--red)]">
+            <div className="flex items-start gap-3 rounded-[var(--radius)] border border-[var(--red)]/30 bg-[var(--red-bg)] p-3.5 text-[13px] text-[var(--red)]">
               <AlertCircle className="size-4 shrink-0 mt-0.5" />
               <div className="flex-1">
                 <div className="font-medium">No AI credits remaining.</div>
@@ -147,7 +149,7 @@ export function AskAiModal({
 
           {/* Standard Error Notice */}
           {error && !isCreditsExhausted && (
-            <div className="flex items-center gap-2 rounded-lg border border-[var(--red)]/30 bg-[var(--red-bg)] px-3.5 py-2.5 text-[13px] text-[var(--red)]">
+            <div className="flex items-center gap-2 rounded-[var(--radius)] border border-[var(--red)]/30 bg-[var(--red-bg)] px-3.5 py-2.5 text-[13px] text-[var(--red)]">
               <AlertCircle className="size-4 shrink-0" />
               <span>{error}</span>
             </div>
@@ -155,10 +157,10 @@ export function AskAiModal({
 
           {/* Result View */}
           {result && (
-            <div className="rounded-lg border border-[var(--border)] bg-[var(--bg2)] p-4 space-y-3">
+            <div className="rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg2)] p-4 space-y-3">
               <div className="flex items-center justify-between border-b border-[var(--border)] pb-2.5">
-                <span className="font-[family-name:var(--mono)] text-[11px] font-medium uppercase tracking-wider text-[var(--brand)] flex items-center gap-1.5">
-                  <Sparkles className="size-3.5" /> AI Analysis Result
+                <span className="text-[12px] font-medium text-[var(--ai)] flex items-center gap-1.5">
+                  <Sparkles className="size-3.5" /> AI analysis
                 </span>
                 <button
                   type="button"
@@ -199,13 +201,13 @@ export function AskAiModal({
               onChange={(e) => setPrompt(e.target.value)}
               placeholder="Ask AI to analyze patterns, root causes, or suggest solutions..."
               rows={3}
-              className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg2)] px-3 py-2.5 text-[13px] text-[var(--text)] placeholder-[var(--text3)] focus:border-[var(--brand)] focus:outline-none transition-colors resize-none"
+              className="w-full rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg2)] px-3 py-2.5 text-[13px] text-[var(--text)] placeholder-[var(--text3)] focus:border-[var(--ai-d)] focus:outline-none transition-colors resize-none"
             />
           </div>
 
           {/* Preset Example Chips */}
           <div className="space-y-1.5">
-            <span className="text-[11px] font-medium text-[var(--text3)] uppercase tracking-wider font-[family-name:var(--mono)]">
+            <span className="text-[11px] font-medium text-[var(--text3)] font-[family-name:var(--mono)]">
               Example Prompts
             </span>
             <div className="flex flex-wrap gap-1.5">
@@ -232,7 +234,7 @@ export function AskAiModal({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg border border-[var(--border)] px-4 py-2 text-[13px] font-medium text-[var(--text2)] hover:bg-[var(--bg1)] hover:text-[var(--text)] transition-colors cursor-pointer"
+            className="rounded-[var(--radius)] border border-[var(--border)] px-4 py-2 text-[13px] font-medium text-[var(--text2)] hover:bg-[var(--bg1)] hover:text-[var(--text)] transition-colors cursor-pointer"
           >
             Cancel
           </button>
@@ -240,7 +242,7 @@ export function AskAiModal({
             type="button"
             onClick={() => handleAnalyze()}
             disabled={isLoading}
-            className="inline-flex items-center gap-2 rounded-lg bg-[var(--brand)] px-4 py-2 text-[13px] font-medium text-[var(--bg)] hover:opacity-90 transition-opacity cursor-pointer disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-[var(--radius)] border border-[var(--ai-d)] bg-[var(--ai-bg)] px-4 py-2 text-[13px] font-medium text-[var(--ai)] hover:bg-[var(--ai)] hover:text-[var(--ai-fg)] transition-opacity cursor-pointer disabled:opacity-50"
           >
             {isLoading ? (
               <>

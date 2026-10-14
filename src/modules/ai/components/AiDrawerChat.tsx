@@ -213,7 +213,7 @@ export function AiDrawerChat() {
                     key={prompt}
                     type="button"
                     onClick={() => handleSend(prompt)}
-                    className="rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg1)] px-3.5 py-2.5 text-left text-[12px] text-[var(--text2)] transition-all hover:border-[var(--ai)]/50 hover:bg-[var(--ai-bg)]/20 hover:text-[var(--text)]"
+                    className="rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg1)] px-3.5 py-2.5 text-left text-[12px] text-[var(--text2)] transition-colors hover:border-[var(--ai)]/50 hover:bg-[var(--ai-bg)]/20 hover:text-[var(--text)]"
                   >
                     {prompt}
                   </button>

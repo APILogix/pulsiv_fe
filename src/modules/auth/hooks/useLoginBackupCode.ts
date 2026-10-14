@@ -4,6 +4,7 @@ import { authApi } from '../api/auth.api';
 import { useAuthStore } from '../store/auth.store';
 import { completeLogin } from '../services/post-login';
 import { toast } from 'sonner';
+import { apiErrorMessage } from "@/infrastructure/api-client/api-error";
 
 export function useLoginBackupCode() {
   const navigate = useNavigate();
@@ -17,7 +18,7 @@ export function useLoginBackupCode() {
       completeLogin(session, { setAuth, queryClient, navigate });
     },
     onError: (error: any) => {
-      const message = error.response?.data?.error?.message || 'Invalid backup code';
+      const message = apiErrorMessage(error) || 'Invalid backup code';
       toast.error(message);
     }
   });

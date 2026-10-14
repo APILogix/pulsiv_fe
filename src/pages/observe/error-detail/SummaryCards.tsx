@@ -1,81 +1,31 @@
-import { AlertOctagon, CheckCircle2, AlertCircle, ShieldAlert, FolderGit2, GitBranch } from "lucide-react";
+import { ReadoutBand } from "@/shared/observe";
+import type { ReadoutCell } from "@/shared/observe";
 import type { ErrorDetailResponse } from "./types";
 import { displayValue } from "./helpers";
 
 export function SummaryCards({ detail }: { detail: ErrorDetailResponse }) {
   const issueId = detail.errorGroup?.publicId ?? detail.related?.errorGroup?.publicId;
   const traceId = detail.trace?.publicId ?? detail.related?.trace?.publicId;
-  const isHandled = detail.error?.handled ?? true;
+  const handled = detail.error?.handled;
+  const severity = String(detail.error?.severity ?? "error").toLowerCase();
 
-  const items = [
+  const cells: ReadoutCell[] = [
+    { label: "Exception", value: detail.error?.name ?? "Error", sub: "error class", tone: "bad" },
     {
-      label: "Exception Class",
-      value: detail.error?.name ?? "Error",
-      icon: AlertOctagon,
-      subtext: "Categorized Exception",
-      accent: "text-[var(--red)]",
-    },
-    {
-      label: "Handling Status",
-      value: detail.error?.handled == null ? "Unknown" : isHandled ? "Handled" : "Unhandled",
-      icon: isHandled ? CheckCircle2 : AlertCircle,
-      subtext: isHandled ? "Caught gracefully" : "Fatal unhandled exception",
-      accent: isHandled ? "text-[var(--green)]" : "text-[var(--red)]",
+      label: "Handling",
+      value: handled == null ? "Unknown" : handled ? "Handled" : "Unhandled",
+      sub: handled === false ? "reached the global handler" : handled ? "caught by application code" : "not reported by the SDK",
+      tone: handled === false ? "bad" : "neutral",
     },
     {
       label: "Severity",
-      value: (detail.error?.severity ?? "error").toUpperCase(),
-      icon: ShieldAlert,
-      subtext: "Telemetry level",
-      accent: "text-[var(--amber)]",
+      value: severity.charAt(0).toUpperCase() + severity.slice(1),
+      sub: "reported level",
+      tone: severity === "fatal" || severity === "critical" ? "bad" : severity === "warning" ? "warn" : "neutral",
     },
-    {
-      label: "Issue Group",
-      value: displayValue(issueId),
-      icon: FolderGit2,
-      subtext: issueId ? "Grouped fingerprint" : "No issue group",
-      accent: issueId ? "text-[var(--brand)]" : "text-[var(--text3)]",
-    },
-    {
-      label: "Correlated Trace",
-      value: displayValue(traceId),
-      icon: GitBranch,
-      subtext: traceId ? "Distributed trace attached" : "No trace linked",
-      accent: traceId ? "text-[var(--violet)]" : "text-[var(--text3)]",
-    },
+    { label: "Issue", value: displayValue(issueId), sub: issueId ? "fingerprint group" : "not grouped yet" },
+    { label: "Trace", value: displayValue(traceId), sub: traceId ? "correlated trace" : "no trace linked" },
   ];
 
-  return (
-    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
-      {items.map((item) => {
-        const Icon = item.icon;
-        return (
-          <div
-            key={item.label}
-            className="group relative flex flex-col justify-between rounded-2xl border border-[var(--border)] bg-[var(--bg1)] p-5 shadow-xs transition-all hover:border-[var(--border2)] hover:bg-[var(--bg1)]/80"
-          >
-            <div className="flex items-center justify-between gap-2">
-              <span className="font-[family-name:var(--mono)] text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[var(--text3)]">
-                {item.label}
-              </span>
-              <div className="flex size-7 items-center justify-center rounded-lg bg-[var(--bg2)] text-[var(--text3)] group-hover:text-[var(--text)] transition-colors">
-                <Icon className="size-3.5" />
-              </div>
-            </div>
-            <div className="mt-4">
-              <div
-                className={`truncate font-[family-name:var(--mono)] text-[19px] font-semibold leading-none tracking-[-0.02em] tabular-nums ${item.accent}`}
-                title={item.value}
-              >
-                {item.value}
-              </div>
-              <p className="mt-2 text-[11.5px] text-[var(--text3)] leading-none truncate">
-                {item.subtext}
-              </p>
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
+  return <ReadoutBand cells={cells} />;
 }

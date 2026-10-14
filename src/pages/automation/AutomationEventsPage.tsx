@@ -1,5 +1,5 @@
 /**
- * Event inbox — `POST /events`.
+ * Event inbox: `POST /events`.
  *
  * The automation engine is event-driven: modules publish into an inbox that is
  * deduplicated on `(organizationId, dedupeKey)`. This surface lets operators
@@ -9,27 +9,12 @@
 import { useState } from "react";
 import { Link } from "react-router";
 import { toast } from "sonner";
-import {
-  AlertTriangle,
-  CopyCheck,
-  Inbox,
-  Send,
-  Zap,
-} from "lucide-react";
-import {
-  HeroFacts,
-  Notice,
-  PageHero,
-  Panel,
-  Pill,
-  SetupSteps,
-  SplitShell,
-  fieldInputClass,
-  fieldTextareaClass,
-} from "@/shared/ui/pulse";
+import { AlertTriangle, Send } from "lucide-react";
+import { Notice, Panel, Pill, SplitShell, fieldInputClass, fieldTextareaClass } from "@/shared/ui/pulse";
 import { JsonViewer, Timestamp } from "@/shared/observe";
 import { Button as UiButton } from "@/components/ui/button";
 import { DialogField, apiErrorMessage, optionalText } from "@/modules/projects/components/project-ui";
+import { ProjectPageHeader, Sheet, WorkspacePage } from "@/modules/projects/components/project-page";
 import { useAutomationScope, useIngestAutomationEvent } from "@/modules/automation/hooks/useAutomation";
 import {
   AUTOMATION_LIMITS,
@@ -37,15 +22,23 @@ import {
   type IngestEventResult,
   type TriggerType,
 } from "@/modules/automation/api/types";
-import { CodeChip, MetaCell, labelize } from "@/modules/automation/components/automation-ui";
+import {
+  FactGrid,
+  NoOrgNotice,
+  Sequence,
+  SequenceStage,
+  labelize,
+} from "@/modules/automation/components/automation-ui";
 
 // ── module-level constants (rules.md §1.2) ───────────────────
 
-const selectClass = `${fieldInputClass} appearance-none pr-8`;
-const monoTextarea = `${fieldTextareaClass} min-h-[140px] font-[family-name:var(--mono)] text-[12px]`;
+const FORM_ID = "publish-automation-event";
+const selectClass = `${fieldInputClass} appearance-none pr-8 font-[family-name:var(--mono)] text-[12px]`;
+const monoInput = `${fieldInputClass} font-[family-name:var(--mono)] text-[12px]`;
+const monoTextarea = `${fieldTextareaClass} min-h-[160px] font-[family-name:var(--mono)] text-[12px]`;
 const DEFAULT_PAYLOAD = '{\n  "severity": "critical",\n  "service": "checkout-api"\n}';
 
-const SETUP_STEPS = [
+const DELIVERY_STAGES = [
   {
     title: "Pick the event type",
     description: "It must match the trigger type on a published, switched-on workflow.",
@@ -84,6 +77,41 @@ function parseHeaders(raw: FormDataEntryValue | null): Record<string, string> {
   return headers;
 }
 
+function LastResponse({ result }: { result: IngestEventResult }) {
+  const { event } = result;
+  return (
+    <Panel
+      title="Last response"
+      description={result.created ? "Queued as a new inbox event." : "Deduplicated against an existing event. Nothing new was queued."}
+      actions={
+        <Pill tone={result.created ? "green" : "amber"} dot>
+          {result.created ? "201 created" : "200 duplicate"}
+        </Pill>
+      }
+    >
+      <div className="flex flex-col gap-4">
+        <FactGrid
+          columns={2}
+          facts={[
+            { label: "Event", value: event.id, mono: true, wide: true },
+            { label: "Status", value: labelize(event.status) },
+            { label: "Attempts", value: event.attempts, mono: true },
+            { label: "Received", value: <Timestamp value={event.receivedAt} /> },
+            event.processedAt && { label: "Processed", value: <Timestamp value={event.processedAt} /> },
+            { label: "Dedupe key", value: event.dedupeKey, mono: true, wide: true },
+            event.lastError && {
+              label: "Last error",
+              value: <span className="text-[var(--red)]">{event.lastError}</span>,
+              wide: true,
+            },
+          ]}
+        />
+        <JsonViewer data={event.payload} maxHeight={200} />
+      </div>
+    </Panel>
+  );
+}
+
 export default function AutomationEventsPage() {
   const { activeOrgId } = useAutomationScope();
   const ingest = useIngestAutomationEvent();
@@ -91,11 +119,7 @@ export default function AutomationEventsPage() {
   const [result, setResult] = useState<IngestEventResult | null>(null);
 
   if (!activeOrgId) {
-    return (
-      <Notice tone="amber" icon={AlertTriangle} title="No organization selected">
-        Pick an organization to publish automation events.
-      </Notice>
-    );
+    return <NoOrgNotice>Pick an organization to publish automation events.</NoOrgNotice>;
   }
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
@@ -150,77 +174,51 @@ export default function AutomationEventsPage() {
   };
 
   return (
-    <div className="flex flex-col gap-6">
-      <PageHero
-        eyebrow="Workflows"
+    <WorkspacePage>
+      <ProjectPageHeader
         title="Event inbox"
         description="Publish an automation event by hand to exercise a workflow, or replay one that a module failed to deliver."
-        icon={Inbox}
+        meta={[
+          { label: "Rate limit", value: "200 / min", mono: true },
+          { label: "Max payload", value: "256 KB", mono: true },
+          { label: "Dedupe", value: "Organization + key" },
+          { label: "Delivery", value: "Async worker" },
+        ]}
         actions={
           <UiButton asChild variant="outline" size="lg">
-            <Link to="/automation/runs">
-              <Zap className="size-4" /> Watch runs
-            </Link>
+            <Link to="/automation/runs">Watch runs</Link>
           </UiButton>
         }
-      >
-        <HeroFacts
-          facts={[
-            { label: "Rate limit", value: "200 / min" },
-            { label: "Max payload", value: "256 KB" },
-            { label: "Dedupe", value: "org + key" },
-            { label: "Delivery", value: "Async worker" },
-          ]}
-        />
-      </PageHero>
+      />
 
       <SplitShell
         rail={
           <>
-            <Panel title="How delivery works" icon={Send}>
-              <SetupSteps steps={SETUP_STEPS} />
-            </Panel>
-            {result && (
-              <Panel
-                title="Last response"
-                description={result.created ? "Queued as a new inbox event." : "Deduplicated against an existing event."}
-                icon={CopyCheck}
-                tone={result.created ? "green" : "amber"}
-              >
-                <div className="flex flex-col gap-3">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Pill tone={result.created ? "green" : "amber"} dot>
-                      {result.created ? "201 created" : "200 duplicate"}
-                    </Pill>
-                    <Pill tone="neutral">{labelize(result.event.status)}</Pill>
-                  </div>
-                  <MetaCell label="Event id">
-                    <CodeChip>{result.event.id}</CodeChip>
-                  </MetaCell>
-                  <MetaCell label="Received">
-                    <Timestamp value={result.event.receivedAt} />
-                  </MetaCell>
-                  <MetaCell label="Attempts">{result.event.attempts}</MetaCell>
-                  {result.event.lastError && (
-                    <MetaCell label="Last error">
-                      <span className="text-[var(--red)]">{result.event.lastError}</span>
-                    </MetaCell>
-                  )}
-                  <JsonViewer data={result.event.payload} maxHeight={200} />
-                </div>
-              </Panel>
-            )}
+            {result && <LastResponse result={result} />}
+            <Sheet title="How delivery works" description="What happens after you publish.">
+              <Sequence label="Event delivery">
+                {DELIVERY_STAGES.map((stage, index) => (
+                  <SequenceStage key={stage.title} marker={index + 1} title={stage.title}>
+                    {stage.description}
+                  </SequenceStage>
+                ))}
+              </Sequence>
+            </Sheet>
           </>
         }
       >
         <Panel
           title="Publish an event"
           description="Matching workflows must be published and switched on for a run to be queued."
-          icon={Send}
+          footer={
+            <UiButton type="submit" form={FORM_ID} size="lg" disabled={ingest.isPending}>
+              <Send className="size-4" aria-hidden="true" /> {ingest.isPending ? "Publishing…" : "Publish event"}
+            </UiButton>
+          }
         >
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <form id={FORM_ID} onSubmit={handleSubmit} className="flex flex-col gap-5">
             <div className="grid gap-4 sm:grid-cols-2">
-              <DialogField label="Event type" name="eventType" required>
+              <DialogField label="Event type" name="eventType" required hint="Matches a workflow's trigger type.">
                 <select id="eventType" name="eventType" className={selectClass} defaultValue="alert.event.created">
                   {TRIGGER_TYPES.map((type) => (
                     <option key={type} value={type}>
@@ -231,30 +229,30 @@ export default function AutomationEventsPage() {
               </DialogField>
 
               <DialogField label="Source module" name="sourceModule" required hint="Module that owns the event.">
-                <input id="sourceModule" name="sourceModule" className={fieldInputClass} defaultValue="alerting" />
+                <input id="sourceModule" name="sourceModule" className={monoInput} defaultValue="alerting" />
               </DialogField>
 
               <DialogField
                 label="Dedupe key"
                 name="dedupeKey"
                 required
-                hint={`Unique per event, up to ${AUTOMATION_LIMITS.DEDUPE_KEY} chars.`}
+                hint={`Unique per event, up to ${AUTOMATION_LIMITS.DEDUPE_KEY} characters.`}
               >
                 <input
                   id="dedupeKey"
                   name="dedupeKey"
-                  className={fieldInputClass}
+                  className={monoInput}
                   maxLength={AUTOMATION_LIMITS.DEDUPE_KEY}
                   defaultValue={`manual-${Date.now()}`}
                 />
               </DialogField>
 
               <DialogField label="Source event id" name="sourceEventId" hint="Optional upstream identifier.">
-                <input id="sourceEventId" name="sourceEventId" className={fieldInputClass} maxLength={200} />
+                <input id="sourceEventId" name="sourceEventId" className={monoInput} maxLength={200} />
               </DialogField>
 
               <DialogField label="Project id" name="projectId" hint="Optional. Must belong to this organization.">
-                <input id="projectId" name="projectId" className={fieldInputClass} />
+                <input id="projectId" name="projectId" className={monoInput} />
               </DialogField>
             </div>
 
@@ -279,19 +277,15 @@ export default function AutomationEventsPage() {
             </DialogField>
 
             {error && (
-              <Notice tone="red" icon={AlertTriangle}>
-                {error}
-              </Notice>
+              <div role="alert">
+                <Notice tone="red" icon={AlertTriangle} title="Event not published">
+                  {error}
+                </Notice>
+              </div>
             )}
-
-            <div className="flex justify-end">
-              <UiButton type="submit" size="lg" disabled={ingest.isPending}>
-                <Send className="size-4" /> {ingest.isPending ? "Publishing…" : "Publish event"}
-              </UiButton>
-            </div>
           </form>
         </Panel>
       </SplitShell>
-    </div>
+    </WorkspacePage>
   );
 }

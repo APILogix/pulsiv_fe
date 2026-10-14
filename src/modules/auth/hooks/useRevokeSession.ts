@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { authApi } from '../api/auth.api';
 import { authQueryKeys } from '../api/auth.query';
 import { toast } from 'sonner';
+import { apiErrorMessage } from "@/infrastructure/api-client/api-error";
 
 export function useRevokeSession() {
   const queryClient = useQueryClient();
@@ -13,7 +14,7 @@ export function useRevokeSession() {
       queryClient.invalidateQueries({ queryKey: authQueryKeys.securitySummary });
     },
     onError: (error: any) => {
-      const message = error.response?.data?.error?.message || 'Failed to revoke session';
+      const message = apiErrorMessage(error) || 'Failed to revoke session';
       toast.error(message);
     }
   });
@@ -29,7 +30,7 @@ export function useRevokeAllSessions() {
       queryClient.invalidateQueries({ queryKey: authQueryKeys.securitySummary });
     },
     onError: (error: any) => {
-      const message = error.response?.data?.error?.message || 'Failed to revoke sessions';
+      const message = apiErrorMessage(error) || 'Failed to revoke sessions';
       toast.error(message);
     }
   });
@@ -45,7 +46,7 @@ export function useRevokeOtherSessions() {
       queryClient.invalidateQueries({ queryKey: authQueryKeys.securitySummary });
     },
     onError: (error: any) => {
-      const message = error.response?.data?.error?.message || 'Failed to revoke other sessions';
+      const message = apiErrorMessage(error) || 'Failed to revoke other sessions';
       toast.error(message);
     }
   });

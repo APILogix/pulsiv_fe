@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router';
-import { ChevronRight, Sparkles } from 'lucide-react';
+import { ArrowUpRight, ChevronRight } from 'lucide-react';
 import clsx from 'clsx';
 
 import {
@@ -21,6 +21,12 @@ import { prefetchRoute } from '@/app/router/route-prefetch';
 import { PrimaryRail } from './PrimaryRail';
 import { QuotaCardWidget } from './QuotaCardWidget';
 import { orgPath } from '@/app/router/org-routes';
+import {
+  navGroupChevronClass,
+  navGroupHeaderClass,
+  navRowClass,
+  navRowIconClass,
+} from '@/shared/ui/nav/nav-classes';
 
 
 /**
@@ -182,6 +188,19 @@ export function AppDualSidebar() {
   const flyoutContext =
     activeRailItem?.label === 'Organization' && activeOrg ? 'Organization' : undefined;
 
+  const groupedItems = Object.entries(
+    navItemsToRender.reduce(
+      (acc, child) => {
+        const groupName = child.group || activeRailItem?.label || 'Navigation';
+        (acc[groupName] ??= []).push(child);
+        return acc;
+      },
+      {} as Record<string, ModuleNavItem[]>,
+    ),
+  );
+  const isSingleGroup =
+    groupedItems.length === 1 && !navItemsToRender.some((child) => child.group);
+
   return (
     <>
       <PrimaryRail
@@ -203,85 +222,65 @@ export function AppDualSidebar() {
         // the accessibility tree. Without it, `aria-hidden` alone would leave
         // focusable links inside a hidden region — a WCAG failure, and the
         // reason a collapsed sidebar used to swallow Tab presses.
-        {...(!isFlyoutOpen ? { inert: true as any } : {})}
+        inert={!isFlyoutOpen}
       >
-        <div className="h-[var(--header-height)] flex items-center justify-between px-4 border-b border-[var(--border)] shrink-0">
-          <div className="flex items-center gap-2 min-w-0">
-            {activeRailItem?.label === 'AI' && (
-              <Sparkles className="size-4 text-[var(--brand)] shrink-0" />
-            )}
-            <div className="min-w-0">
-              {flyoutContext && (
-                <span className="block font-mono text-[10px] font-medium uppercase tracking-[0.09em] text-[var(--text3)]">
-                  {flyoutContext}
-                </span>
-              )}
-              <span className="block truncate text-[14px] font-semibold text-[var(--text)] tracking-normal">
-                {flyoutTitle}
+        <div className="h-[var(--header-height)] flex items-center justify-between gap-2 px-4 border-b border-[var(--border)] shrink-0">
+          <div className="min-w-0">
+            {flyoutContext && (
+              <span className="block text-[11px] leading-4 text-[var(--text3)]">
+                {flyoutContext}
               </span>
-            </div>
+            )}
+            <span className="block truncate text-[14px] font-semibold leading-5 tracking-[-0.01em] text-[var(--text)]">
+              {flyoutTitle}
+            </span>
           </div>
-          {activeRailItem?.label === 'AI' && (
-            <kbd className="hidden sm:inline-flex items-center rounded border border-[var(--border)] bg-[var(--bg2)] px-1.5 py-0.5 font-mono text-[10px] text-[var(--text3)]">
-              ⌘K
-            </kbd>
-          )}
         </div>
 
-        <div className="grow flex flex-col min-h-0">
+        <nav
+          aria-label={flyoutTitle ? `${flyoutTitle} navigation` : 'Section navigation'}
+          className="grow flex flex-col min-h-0"
+        >
           <div
             className={clsx(
-              'p-2',
+              'px-2 pt-2',
               activeRailItem?.label !== 'Workspaces'
-                ? 'grow overflow-y-auto sidebar-scroll'
-                : 'shrink-0 pb-0',
+                ? 'grow overflow-y-auto sidebar-scroll pb-3'
+                : 'shrink-0',
             )}
           >
-            {navItemsToRender.length > 0 ? (
-              <div className="category-view active">
-                {Object.entries(
-                  navItemsToRender.reduce(
-                    (acc, child) => {
-                      const groupName = child.group || activeRailItem?.label || 'Navigation';
-                      if (!acc[groupName]) acc[groupName] = [];
-                      acc[groupName].push(child);
-                      return acc;
-                    },
-                    {} as Record<string, ModuleNavItem[]>,
-                  ),
-                ).map(([groupName, items]) => (
-                  <div key={groupName} className="nav-group mb-1">
+            {groupedItems.map(([groupName, items], index) => {
+              // A module with a single, unnamed group lists its pages directly:
+              // a collapsible heading that repeats the flyout title is noise.
+              const showHeading = !isSingleGroup;
+              const expanded = !showHeading || (expandedGroups[groupName] ?? false);
+              const panelId = `flyout-group-${groupName.toLowerCase().replace(/\W+/g, '-')}`;
+
+              return (
+                <div key={groupName} className={clsx(showHeading && index > 0 && 'mt-3')}>
+                  {showHeading && (
                     <button
                       type="button"
-                      className={clsx(
-                        'w-full flex items-center justify-between px-3 h-[34px] rounded-[var(--radius)] cursor-pointer font-mono text-[10px] font-medium uppercase tracking-[0.09em] transition-colors duration-150 hover:bg-[var(--bg2)] hover:text-[var(--text2)]',
-                        expandedGroups[groupName]
-                          ? 'text-[var(--text2)]'
-                          : 'text-[var(--text3)]',
-                      )}
+                      className={navGroupHeaderClass(expanded)}
                       onClick={() => toggleGroup(groupName)}
-                      aria-expanded={expandedGroups[groupName] ?? false}
+                      aria-expanded={expanded}
+                      aria-controls={panelId}
                     >
-                      <div className="flex items-center gap-2.5">{groupName}</div>
-                      <ChevronRight
-                        size={14}
-                        className={clsx(
-                          'transition-transform duration-200',
-                          expandedGroups[groupName] && 'rotate-90',
-                        )}
-                      />
+                      <span className="truncate">{groupName}</span>
+                      <ChevronRight className={navGroupChevronClass(expanded)} aria-hidden="true" />
                     </button>
-                    <div
-                      className={clsx(
-                        'nav-group-children pl-3',
-                        expandedGroups[groupName] && 'open',
-                      )}
-                    >
-                      {/* Single grid child — the accordion animates
-                          `grid-template-rows: 0fr → 1fr` on the parent, so the
-                          open height always equals the real content height. */}
-                      <div className="nav-group-rows">
+                  )}
+                  <div
+                    id={panelId}
+                    className={clsx('nav-group-children', expanded && 'open')}
+                    inert={!expanded}
+                  >
+                    {/* Single grid child — the accordion animates
+                        `grid-template-rows: 0fr → 1fr` on the parent, so the
+                        open height always equals the real content height. */}
+                    <ul className="nav-group-rows flex flex-col gap-px pt-0.5">
                       {items.map((child) => {
+                        const Icon = child.icon;
                         const cp = matchPath(child.path);
                         const isChildActive = child.exact
                           ? location.pathname === cp
@@ -290,55 +289,50 @@ export function AppDualSidebar() {
 
                         if (child.external) {
                           return (
-                            <a
-                              key={child.path}
-                              href={child.path}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className={clsx(
-                                'flex items-center h-[34px] px-3 pl-6 my-0.5 rounded-[var(--radius)] cursor-pointer text-[13px] no-underline relative transition-colors duration-150',
-                                'text-[var(--text2)] hover:text-[var(--text)] hover:bg-[var(--bg2)]',
-                              )}
-                            >
-                              <div className="absolute left-2 top-0 bottom-0 w-[1px] bg-[var(--border)]" />
-                              {child.label}
-                            </a>
+                            <li key={child.path}>
+                              <a
+                                href={child.path}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                title={child.description}
+                                className={navRowClass(false)}
+                              >
+                                <Icon className={navRowIconClass(false)} aria-hidden="true" />
+                                <span className="truncate">{child.label}</span>
+                                <ArrowUpRight
+                                  className="ml-auto size-3.5 shrink-0 text-[var(--text3)]"
+                                  aria-hidden="true"
+                                />
+                                <span className="sr-only">(opens in a new tab)</span>
+                              </a>
+                            </li>
                           );
                         }
 
                         return (
-                          <Link
-                            key={child.path}
-                            to={matchPath(child.path)}
-                            aria-current={isChildActive ? 'page' : undefined}
-                            onPointerEnter={() => prefetchRoute(matchPath(child.path))}
-                            onFocus={() => prefetchRoute(matchPath(child.path))}
-                            className={clsx(
-                              'flex items-center h-[34px] px-3 pl-6 my-0.5 rounded-[var(--radius)] cursor-pointer text-[13px] no-underline relative transition-colors duration-150',
-                              isChildActive
-                                ? 'text-[var(--brand)] font-medium bg-[var(--brand-bg)]'
-                                : 'text-[var(--text2)] hover:text-[var(--text)] hover:bg-[var(--bg2)]',
-                            )}
-                          >
-                            {/* Hairline rail for every row; the active row swaps it
-                                for a brand indicator that scales in from the rail. */}
-                            {isChildActive ? (
-                              <div className="nav-row-indicator left-2" aria-hidden="true" />
-                            ) : (
-                              <div className="absolute left-2 top-0 bottom-0 w-[1px] bg-[var(--border)]" aria-hidden="true" />
-                            )}
-                            {child.label}
-                          </Link>
+                          <li key={child.path}>
+                            <Link
+                              to={cp}
+                              aria-current={isChildActive ? 'page' : undefined}
+                              title={child.description}
+                              onPointerEnter={() => prefetchRoute(cp)}
+                              onFocus={() => prefetchRoute(cp)}
+                              className={navRowClass(isChildActive)}
+                            >
+                              {isChildActive && (
+                                <span className="nav-row-indicator left-0" aria-hidden="true" />
+                              )}
+                              <Icon className={navRowIconClass(isChildActive)} aria-hidden="true" />
+                              <span className="truncate">{child.label}</span>
+                            </Link>
+                          </li>
                         );
                       })}
-                      </div>
-                    </div>
+                    </ul>
                   </div>
-                ))}
-              </div>
-            ) : (
-              <div className="p-4 text-[13px] text-[var(--text2)] text-center mt-4" />
-            )}
+                </div>
+              );
+            })}
           </div>
 
           {activeRailItem?.label === 'Workspaces' && (
@@ -350,7 +344,7 @@ export function AppDualSidebar() {
               )}
             </div>
           )}
-        </div>
+        </nav>
 
         {/* Fixed Ingest Quota / AI Credit flip widget at the bottom */}
         {navItemsToRender.length > 0 && <QuotaCardWidget />}

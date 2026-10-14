@@ -1,20 +1,5 @@
-import { useState } from "react";
-import {
-  Bell,
-  BellOff,
-  CheckCircle2,
-  Hash,
-  Mail,
-  MessageSquare,
-  Pencil,
-  Plus,
-  Send,
-  Settings2,
-  Star,
-  Trash2,
-  Webhook,
-} from "lucide-react";
-import type { LucideIcon } from "lucide-react";
+import { useState, type ReactNode } from "react";
+import { AlertTriangle, Pencil, Plus, SlidersHorizontal, Trash2 } from "lucide-react";
 import {
   useAlertChannelMutations,
   useAlertChannels,
@@ -28,24 +13,9 @@ import {
   type AlertChannelBody,
   type ChannelDigestMode,
   type ChannelSeverity,
+  type MemberChannelPreference,
   type ProjectAlertChannel,
 } from "@/modules/projects/api/types";
-import { useCurrentProject } from "./ProjectShellPage";
-import {
-  IconChip,
-  Notice,
-  Panel,
-  Pill,
-  RowStack,
-  SectionHeading,
-  StatCard,
-  Toggle,
-  Toolbar,
-  fieldInputClass,
-  fieldTextareaClass,
-} from "@/shared/ui/pulse";
-import { FilterSelect, Timestamp } from "@/shared/observe";
-import { Button as UiButton } from "@/components/ui/button";
 import {
   ConfirmDialog,
   DialogField,
@@ -53,23 +23,79 @@ import {
   apiErrorMessage,
   optionalText,
 } from "@/modules/projects/components/project-ui";
+import {
+  HIDE_BELOW_LG,
+  HIDE_BELOW_XL,
+  ProjectPageHeader,
+  Readouts,
+  RowActions,
+  RowTitle,
+  Sheet,
+  SheetCell,
+  SheetEmpty,
+  SheetError,
+  SheetList,
+  SheetListItem,
+  SheetLoading,
+  SheetRow,
+  SheetTable,
+  ToolbarCount,
+  WorkspacePage,
+  type Readout,
+  type SheetColumn,
+} from "@/modules/projects/components/project-page";
+import {
+  Notice,
+  Pill,
+  SegmentedControl,
+  Toggle,
+  fieldInputClass,
+  fieldMonoClass,
+  fieldTextareaClass,
+  type SegmentOption,
+} from "@/shared/ui/pulse";
+import { FilterSelect, Timestamp, formatNumber } from "@/shared/observe";
+import { Button as UiButton } from "@/components/ui/button";
+import { DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+import { useCurrentProject } from "./ProjectShellPage";
 
 // ── module-level constants (rules.md §1.2) ───────────────────
 
-const CHANNEL_TYPES: Array<{ value: string; label: string; icon: LucideIcon; hint: string }> = [
-  { value: "email", label: "Email", icon: Mail, hint: "Destination optional — falls back to member emails." },
-  { value: "slack", label: "Slack", icon: Hash, hint: "Use a connector or a channel webhook URL." },
-  { value: "webhook", label: "Webhook", icon: Webhook, hint: "HTTPS endpoint receiving the alert payload." },
-  { value: "teams", label: "Microsoft Teams", icon: MessageSquare, hint: "Incoming webhook URL." },
-  { value: "sms", label: "SMS", icon: Send, hint: "E.164 phone number." },
+const CHANNEL_TYPES: Array<{ value: string; label: string; hint: string; placeholder: string }> = [
+  {
+    value: "email",
+    label: "Email",
+    hint: "Optional. Without one, alerts go to members' email addresses.",
+    placeholder: "oncall@example.com",
+  },
+  {
+    value: "slack",
+    label: "Slack",
+    hint: "A channel webhook URL, or leave it empty and use a connector.",
+    placeholder: "https://hooks.example.com/…",
+  },
+  {
+    value: "webhook",
+    label: "Webhook",
+    hint: "The HTTPS endpoint that receives the alert payload.",
+    placeholder: "https://hooks.example.com/…",
+  },
+  {
+    value: "teams",
+    label: "Microsoft Teams",
+    hint: "The channel's incoming webhook URL.",
+    placeholder: "https://hooks.example.com/…",
+  },
+  { value: "sms", label: "SMS", hint: "A phone number in E.164 format.", placeholder: "+14155550100" },
 ];
 
-const CHANNEL_ICON: Record<string, LucideIcon> = {
-  email: Mail,
-  slack: Hash,
-  webhook: Webhook,
-  teams: MessageSquare,
-  sms: Send,
+// Display names for types the list can return but the form does not create.
+const TYPE_LABEL: Record<string, string> = {
+  ...Object.fromEntries(CHANNEL_TYPES.map((type) => [type.value, type.label])),
+  pagerduty: "PagerDuty",
+  discord: "Discord",
+  in_app: "In-app",
+  route: "Route",
 };
 
 const TYPE_FILTER_OPTIONS = [
@@ -77,13 +103,83 @@ const TYPE_FILTER_OPTIONS = [
   ...CHANNEL_TYPES.map((type) => ({ value: type.value, label: type.label })),
 ];
 
-const ENABLED_FILTER_OPTIONS = [
-  { value: "", label: "All" },
-  { value: "true", label: "Enabled" },
-  { value: "false", label: "Disabled" },
+const DIGEST_LABEL: Record<ChannelDigestMode, string> = {
+  immediate: "Immediate",
+  hourly: "Hourly digest",
+  daily: "Daily digest",
+  weekly: "Weekly digest",
+};
+
+/** The shared helpers stop at xl; the updated date only fits from 2xl. */
+const HIDE_BELOW_2XL = "hidden 2xl:table-cell";
+
+const COLUMNS: SheetColumn[] = [
+  { key: "channel", header: "Channel" },
+  { key: "destination", header: "Destination", className: `w-[240px] ${HIDE_BELOW_LG}` },
+  { key: "preference", header: "My delivery", className: `w-[184px] ${HIDE_BELOW_XL}` },
+  { key: "updated", header: "Updated", className: `w-[120px] ${HIDE_BELOW_2XL}` },
+  { key: "enabled", header: "Enabled", className: "w-[84px]" },
+  { key: "actions", header: "Actions", srOnly: true, className: "w-[60px]" },
 ];
 
-const asMessage = apiErrorMessage;
+const CHECKBOX_CLASS =
+  "size-4 shrink-0 cursor-pointer rounded-[4px] accent-[var(--text)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--border2)]";
+
+const sentenceCase = (value: string) => (value ? value.charAt(0).toUpperCase() + value.slice(1) : value);
+
+function channelTypeLabel(type: string) {
+  return TYPE_LABEL[type] ?? sentenceCase(type.replace(/_/g, " "));
+}
+
+/** "Warning+ · Hourly digest" in a row, the full sentence in a list or title. */
+function preferenceSummary(preference: MemberChannelPreference, form: "compact" | "full") {
+  const severity = sentenceCase(preference.severityThreshold);
+  const parts = [
+    form === "compact" ? `${severity}+` : `${severity} and above`,
+    DIGEST_LABEL[preference.digestMode] ?? preference.digestMode,
+  ];
+  if (form === "full") parts.push(preference.category === "all" ? "All categories" : preference.category);
+  else if (preference.category !== "all") parts.push(preference.category);
+  return parts.join(" · ");
+}
+
+// ── row pieces ───────────────────────────────────────────────
+
+function ChannelDestination({ channel }: { channel: ProjectAlertChannel }) {
+  if (channel.destination) {
+    return (
+      <span
+        className="block truncate font-[family-name:var(--mono)] text-[12px] text-[var(--text2)]"
+        title={channel.destination}
+      >
+        {channel.destination}
+      </span>
+    );
+  }
+  if (channel.connectorId) {
+    return (
+      <span className="block truncate text-[12px] text-[var(--text3)]" title={channel.connectorId}>
+        Connector{" "}
+        <span className="font-[family-name:var(--mono)] text-[var(--text2)]">{channel.connectorId.slice(0, 8)}</span>
+      </span>
+    );
+  }
+  return (
+    <span className="text-[12px] text-[var(--text3)]">
+      {channel.channelType === "email" ? "Member emails" : "Not set"}
+    </span>
+  );
+}
+
+function PreferenceCell({ preference }: { preference?: MemberChannelPreference }) {
+  if (!preference) return <span className="text-[12px] text-[var(--text3)]">Project defaults</span>;
+  if (!preference.enabled) return <Pill>Muted</Pill>;
+  return (
+    <span className="block truncate text-[12px] text-[var(--text2)]" title={preferenceSummary(preference, "full")}>
+      {preferenceSummary(preference, "compact")}
+    </span>
+  );
+}
 
 // ── channel form ─────────────────────────────────────────────
 
@@ -93,34 +189,37 @@ function ChannelFields({ channel }: { channel?: ProjectAlertChannel }) {
 
   return (
     <>
-      <DialogField label="Channel type" name="channelType" required>
-        <select
-          id="channelType"
-          name="channelType"
-          required
-          value={channelType}
-          onChange={(event) => setChannelType(event.target.value)}
-          className={fieldInputClass}
-        >
-          {CHANNEL_TYPES.map((type) => (
-            <option key={type.value} value={type.value}>
-              {type.label}
-            </option>
-          ))}
-        </select>
-      </DialogField>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <DialogField label="Channel type" name="channelType" required>
+          <select
+            id="channelType"
+            name="channelType"
+            required
+            value={channelType}
+            onChange={(event) => setChannelType(event.target.value)}
+            className={fieldInputClass}
+          >
+            {CHANNEL_TYPES.map((type) => (
+              <option key={type.value} value={type.value}>
+                {type.label}
+              </option>
+            ))}
+          </select>
+        </DialogField>
 
-      <DialogField label="Name" name="name" required>
-        <input
-          id="name"
-          name="name"
-          required
-          defaultValue={channel?.name}
-          maxLength={150}
-          placeholder="On-call Slack"
-          className={fieldInputClass}
-        />
-      </DialogField>
+        <DialogField label="Name" name="name" required>
+          <input
+            id="name"
+            name="name"
+            required
+            defaultValue={channel?.name}
+            maxLength={150}
+            autoComplete="off"
+            placeholder="On-call Slack"
+            className={fieldInputClass}
+          />
+        </DialogField>
+      </div>
 
       <DialogField label="Destination" name="destination" hint={active?.hint}>
         <input
@@ -128,8 +227,10 @@ function ChannelFields({ channel }: { channel?: ProjectAlertChannel }) {
           name="destination"
           defaultValue={channel?.destination ?? ""}
           maxLength={2048}
-          placeholder={channelType === "email" ? "oncall@example.com" : "https://hooks.example.com/…"}
-          className={fieldInputClass}
+          autoComplete="off"
+          spellCheck={false}
+          placeholder={active?.placeholder ?? "https://hooks.example.com/…"}
+          className={fieldMonoClass}
         />
       </DialogField>
 
@@ -142,8 +243,10 @@ function ChannelFields({ channel }: { channel?: ProjectAlertChannel }) {
           id="connectorId"
           name="connectorId"
           defaultValue={channel?.connectorId ?? ""}
+          autoComplete="off"
+          spellCheck={false}
           placeholder="UUID of an organization connector"
-          className={fieldInputClass}
+          className={fieldMonoClass}
         />
       </DialogField>
 
@@ -157,16 +260,22 @@ function ChannelFields({ channel }: { channel?: ProjectAlertChannel }) {
         />
       </DialogField>
 
-      <div className="flex flex-wrap gap-5 rounded-[10px] border border-[var(--border)] bg-[var(--bg2)] px-3.5 py-3">
-        <label className="flex items-center gap-2 text-[12.5px] text-[var(--text)]">
-          <input type="checkbox" name="enabled" defaultChecked={channel?.enabled ?? true} className="size-4" />
+      <fieldset className="flex flex-col gap-3 border-t border-[var(--border)] pt-4">
+        <legend className="sr-only">Channel options</legend>
+        <label className="flex items-center gap-2.5 text-[13px] text-[var(--text)]">
+          <input type="checkbox" name="enabled" defaultChecked={channel?.enabled ?? true} className={CHECKBOX_CLASS} />
           Enabled
         </label>
-        <label className="flex items-center gap-2 text-[12.5px] text-[var(--text)]">
-          <input type="checkbox" name="isDefault" defaultChecked={channel?.isDefault ?? false} className="size-4" />
+        <label className="flex items-center gap-2.5 text-[13px] text-[var(--text)]">
+          <input
+            type="checkbox"
+            name="isDefault"
+            defaultChecked={channel?.isDefault ?? false}
+            className={CHECKBOX_CLASS}
+          />
           Default channel for this project
         </label>
-      </div>
+      </fieldset>
     </>
   );
 }
@@ -191,11 +300,16 @@ export default function ProjectAlertChannelsPage() {
   const [channelType, setChannelType] = useState("");
   const [enabledFilter, setEnabledFilter] = useState("");
 
-  const { data, isLoading, error } = useAlertChannels(projectId, {
+  const { data, isLoading, error, refetch } = useAlertChannels(projectId, {
     ...(channelType ? { channelType } : {}),
     ...(enabledFilter ? { enabled: enabledFilter === "true" } : {}),
   });
   const channels = data?.data ?? [];
+
+  // Readings describe every channel in the project, never the filtered view.
+  // With no filter applied this is the same query as the list above.
+  const { data: summary, isLoading: summaryLoading, error: summaryError } = useAlertChannels(projectId);
+  const allChannels = summary?.data ?? [];
 
   const { data: preferences = [] } = useMyChannelPreferences(projectId);
   const {
@@ -216,187 +330,241 @@ export default function ProjectAlertChannelsPage() {
   const preferenceFor = (channelId: string) =>
     preferences.find((preference) => preference.projectAlertChannelId === channelId);
 
-  const { isRestricted, decision } = useNotificationEntitlement();
-  const enabledCount = channels.filter((channel) => channel.enabled).length;
-  const defaultChannel = channels.find((channel) => channel.isDefault);
+  const { isRestricted, decision, isLoading: entitlementLoading } = useNotificationEntitlement();
+  // Until entitlements load every provider reads as not allowed, so the plan
+  // badge waits for them instead of flashing on every row.
+  const blockedByPlan = (channel: ProjectAlertChannel) =>
+    !entitlementLoading && channel.channelType !== "email" && !decision.isProviderAllowed(channel.channelType);
 
-  return (
-    <div className="flex flex-col gap-6">
-      <SectionHeading
-        title="Alert channels"
-        description="Where this project delivers alerts. Each member can additionally tune severity, digest cadence, and quiet hours per channel."
-        actions={
-          <UiButton size="lg" onClick={() => setCreating(true)}>
-            <Plus className="mr-1.5 size-4" /> New channel
+  const totalChannels = summary?.total ?? allChannels.length;
+  const enabledCount = allChannels.filter((channel) => channel.enabled).length;
+  const disabledCount = allChannels.length - enabledCount;
+  const defaultChannels = allChannels.filter((channel) => channel.isDefault);
+  const blockedCount = allChannels.filter(blockedByPlan).length;
+
+  const filtered = Boolean(channelType) || Boolean(enabledFilter);
+  const clearFilters = () => {
+    setChannelType("");
+    setEnabledFilter("");
+  };
+
+  // A failed summary shows dashes, never zeros that read as "no channels".
+  const channelReading = (value: number) => (summaryError ? "—" : formatNumber(value));
+  const ofChannels = summaryError
+    ? "Could not load channels"
+    : allChannels.length > 0
+      ? `of ${formatNumber(allChannels.length)} channels`
+      : "None yet";
+  const readouts: Readout[] = [
+    {
+      label: "Channels",
+      value: channelReading(totalChannels),
+      sub: summaryError
+        ? "Could not load channels"
+        : defaultChannels.length === 1
+          ? `Default: ${defaultChannels[0].name}`
+          : defaultChannels.length > 1
+            ? `${formatNumber(defaultChannels.length)} default channels`
+            : totalChannels > 0
+              ? "No default channel"
+              : "None yet",
+    },
+    { label: "Enabled", value: channelReading(enabledCount), sub: ofChannels },
+    {
+      label: "Disabled",
+      value: channelReading(disabledCount),
+      sub: disabledCount > 0 || summaryError ? ofChannels : "None disabled",
+    },
+    {
+      label: "My preferences",
+      value: formatNumber(preferences.length),
+      sub: preferences.length > 0 ? "Overrides on your account" : "Using project defaults",
+    },
+  ];
+  if (blockedCount > 0) {
+    readouts.push({
+      label: "Unavailable on plan",
+      value: formatNumber(blockedCount),
+      sub: "Configured, but not in your plan",
+      tone: "warn",
+    });
+  }
+
+  const stateOptions: SegmentOption<string>[] = [
+    { value: "", label: "All", count: summary ? allChannels.length : undefined },
+    { value: "true", label: "Enabled", count: summary ? enabledCount : undefined },
+    { value: "false", label: "Disabled", count: summary ? disabledCount : undefined },
+  ];
+
+  const newChannelButton = (
+    <UiButton size="lg" onClick={() => setCreating(true)}>
+      <Plus className="size-4" aria-hidden="true" /> New channel
+    </UiButton>
+  );
+
+  let body: ReactNode;
+  if (isLoading) {
+    body = <SheetLoading rows={4} label="Loading channels" />;
+  } else if (error) {
+    body = <SheetError title="Could not load channels" message={apiErrorMessage(error)} onRetry={() => void refetch()} />;
+  } else if (channels.length === 0) {
+    body = filtered ? (
+      <SheetEmpty
+        title="No channels match"
+        description="No channel in this project has the selected type and state."
+        action={
+          <UiButton variant="outline" size="lg" onClick={clearFilters}>
+            Clear filters
           </UiButton>
         }
       />
+    ) : (
+      <SheetEmpty
+        title="Add your first channel"
+        description="Add an email or Slack channel so threshold breaches and alert routes have somewhere to go."
+        action={newChannelButton}
+      />
+    );
+  } else {
+    body = (
+      <SheetTable columns={COLUMNS} caption="Alert channels" className="[&_table]:table-fixed">
+        {channels.map((channel) => {
+          const preference = preferenceFor(channel.id);
+          const blocked = blockedByPlan(channel);
+          const typeLabel = channelTypeLabel(channel.channelType);
+          const subtitle = channel.description ? `${typeLabel} · ${channel.description}` : typeLabel;
+
+          return (
+            <SheetRow key={channel.id}>
+              <SheetCell>
+                <RowTitle
+                  title={channel.name}
+                  badges={
+                    (channel.isDefault || blocked) && (
+                      <span className="flex shrink-0 items-center gap-1.5">
+                        {channel.isDefault && <Pill>Default</Pill>}
+                        {blocked && <Pill tone="amber">Not in your plan</Pill>}
+                      </span>
+                    )
+                  }
+                  subtitle={<span title={subtitle}>{subtitle}</span>}
+                />
+              </SheetCell>
+              <SheetCell className={HIDE_BELOW_LG}>
+                <ChannelDestination channel={channel} />
+              </SheetCell>
+              <SheetCell className={HIDE_BELOW_XL}>
+                <PreferenceCell preference={preference} />
+              </SheetCell>
+              <SheetCell className={HIDE_BELOW_2XL}>
+                <Timestamp value={channel.updatedAt} />
+              </SheetCell>
+              <SheetCell>
+                <Toggle
+                  checked={channel.enabled}
+                  label={`${channel.name} enabled`}
+                  disabled={toggleChannel.isPending}
+                  onChange={(next) =>
+                    toggleChannel.mutate({ id: channel.id, enabled: next, version: channel.version })
+                  }
+                />
+              </SheetCell>
+              <SheetCell align="right">
+                <RowActions label={`Actions for ${channel.name}`}>
+                  <DropdownMenuItem
+                    onSelect={() => {
+                      setFormError(null);
+                      setEditing(channel);
+                    }}
+                  >
+                    <Pencil aria-hidden="true" /> Edit channel
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => setTuning(channel)}>
+                    <SlidersHorizontal aria-hidden="true" /> My delivery preferences
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem variant="destructive" onSelect={() => setDeleting(channel)}>
+                    <Trash2 aria-hidden="true" /> Delete channel
+                  </DropdownMenuItem>
+                </RowActions>
+              </SheetCell>
+            </SheetRow>
+          );
+        })}
+      </SheetTable>
+    );
+  }
+
+  return (
+    <WorkspacePage>
+      <ProjectPageHeader
+        title="Channels"
+        description="Where this project delivers alerts. Each member can also set their own minimum severity and digest cadence on any channel."
+        actions={newChannelButton}
+      />
+
+      <Readouts cells={readouts} loading={summaryLoading} label="Channels summary" />
 
       {isRestricted && <EntitlementRestrictedBanner projectId={projectId} />}
 
-      <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
-        <StatCard label="Channels" value={data?.total ?? channels.length} icon={Bell} tone="brand" />
-        <StatCard label="Enabled" value={enabledCount} icon={CheckCircle2} tone="green" />
-        <StatCard
-          label="Disabled"
-          value={channels.length - enabledCount}
-          icon={BellOff}
-          tone={channels.length - enabledCount > 0 ? "amber" : "neutral"}
-        />
-        <StatCard label="My preferences" value={preferences.length} icon={Settings2} tone="violet" />
-      </div>
-
-      {channels.length > 0 && !defaultChannel && (
-        <Notice tone="amber" icon={Star} title="No default channel">
-          Alerts without an explicit route fall back to the default channel. Mark one channel as default.
+      {allChannels.length > 0 && defaultChannels.length === 0 && (
+        <Notice tone="amber" icon={AlertTriangle} title="No default channel">
+          <span className="block max-w-[72ch]">
+            Alerts without a matching route fall back to the default channel. Edit a channel and turn on “Default
+            channel for this project”.
+          </span>
         </Notice>
       )}
 
-      <Toolbar>
-        <FilterSelect label="Type" value={channelType} onChange={setChannelType} options={TYPE_FILTER_OPTIONS} />
-        <FilterSelect label="State" value={enabledFilter} onChange={setEnabledFilter} options={ENABLED_FILTER_OPTIONS} />
-      </Toolbar>
-
-      {error && <Notice tone="red">{asMessage(error)}</Notice>}
-
-      {isLoading ? (
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-          {[0, 1].map((row) => (
-            <div key={row} className="h-40 animate-pulse rounded-[14px] bg-[var(--bg2)]" />
-          ))}
-        </div>
-      ) : channels.length === 0 ? (
-        <Panel>
-          <div className="flex flex-col items-center gap-3 py-10 text-center">
-            <IconChip icon={Bell} size="lg" tone="brand" />
-            <p className="text-[13.5px] font-semibold text-[var(--text)]">No alert channels yet</p>
-            <p className="max-w-[48ch] text-[12.5px] text-[var(--text2)]">
-              Add an email or Slack channel so threshold breaches and alert routes have somewhere to go.
-            </p>
-            <UiButton size="lg" onClick={() => setCreating(true)}>
-              <Plus className="mr-1.5 size-4" /> New channel
-            </UiButton>
-          </div>
-        </Panel>
-      ) : (
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-          {channels.map((channel) => {
-            const Icon = CHANNEL_ICON[channel.channelType] ?? Bell;
-            const preference = preferenceFor(channel.id);
-            return (
-              <div
-                key={channel.id}
-                className="pulse-edge flex flex-col gap-3.5 rounded-[14px] border border-[var(--border)] bg-[var(--bg1)] p-4"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex min-w-0 items-start gap-3">
-                    <IconChip icon={Icon} tone={channel.enabled ? "brand" : "neutral"} />
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <p className="truncate text-[14px] font-semibold text-[var(--text)]">{channel.name}</p>
-                        {channel.isDefault && (
-                          <Pill tone="brand">
-                            <Star className="size-3" aria-hidden="true" /> Default
-                          </Pill>
-                        )}
-                        {channel.channelType !== "email" && !decision.isProviderAllowed(channel.channelType) && (
-                          <span className="rounded bg-amber-500/10 px-2 py-0.5 text-[10.5px] font-medium text-amber-400 border border-amber-500/20">
-                            Configured · Unavailable on current plan
-                          </span>
-                        )}
-                      </div>
-                      <p className="truncate font-[family-name:var(--mono)] text-[11.5px] text-[var(--text3)]">
-                        {channel.channelType}
-                        {channel.destination ? ` · ${channel.destination}` : ""}
-                      </p>
-                    </div>
-                  </div>
-                  <Toggle
-                    checked={channel.enabled}
-                    label={`Toggle ${channel.name}`}
-                    disabled={toggleChannel.isPending}
-                    onChange={(next) =>
-                      toggleChannel.mutate({ id: channel.id, enabled: next, version: channel.version })
-                    }
-                  />
-                </div>
-
-                {channel.description && (
-                  <p className="text-[12.5px] leading-relaxed text-[var(--text2)]">{channel.description}</p>
-                )}
-
-                <div className="rounded-[10px] border border-[var(--border)] bg-[var(--bg2)] px-3.5 py-2.5">
-                  <p className="mb-1 text-[10.5px] font-semibold uppercase tracking-[0.1em] text-[var(--text3)]">
-                    My delivery preference
-                  </p>
-                  {preference ? (
-                    <p className="text-[12.5px] text-[var(--text2)]">
-                      <Pill tone={preference.enabled ? "green" : "neutral"} dot>
-                        {preference.enabled ? "on" : "muted"}
-                      </Pill>{" "}
-                      {preference.severityThreshold}+ · {preference.digestMode} · {preference.category}
-                    </p>
-                  ) : (
-                    <p className="text-[12px] text-[var(--text3)]">Using project defaults.</p>
-                  )}
-                </div>
-
-                <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[var(--border)] pt-3">
-                  <span className="text-[11.5px] text-[var(--text3)]">
-                    Updated <Timestamp value={channel.updatedAt} />
-                  </span>
-                  <div className="flex items-center gap-1.5">
-                    <UiButton variant="outline" size="sm" onClick={() => setTuning(channel)}>
-                      <Settings2 className="mr-1 size-3.5" /> Preferences
-                    </UiButton>
-                    <UiButton
-                      variant="outline"
-                      size="icon-sm"
-                      aria-label={`Edit ${channel.name}`}
-                      onClick={() => {
-                        setFormError(null);
-                        setEditing(channel);
-                      }}
-                    >
-                      <Pencil className="size-3.5" />
-                    </UiButton>
-                    <UiButton
-                      variant="outline"
-                      size="icon-sm"
-                      aria-label={`Delete ${channel.name}`}
-                      onClick={() => setDeleting(channel)}
-                    >
-                      <Trash2 className="size-3.5 text-[var(--red)]" />
-                    </UiButton>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
+      <Sheet
+        label="Alert channels"
+        toolbar={
+          <>
+            <SegmentedControl
+              value={enabledFilter}
+              onChange={setEnabledFilter}
+              options={stateOptions}
+              ariaLabel="Filter channels by state"
+            />
+            <FilterSelect label="Type" value={channelType} onChange={setChannelType} options={TYPE_FILTER_OPTIONS} />
+            {!isLoading && !error && (
+              <ToolbarCount>
+                {formatNumber(channels.length)} {channels.length === 1 ? "channel" : "channels"}
+              </ToolbarCount>
+            )}
+          </>
+        }
+      >
+        {body}
+      </Sheet>
 
       {preferences.length > 0 && (
-        <Panel
-          title="My channel preferences"
-          description="Personal overrides across every channel in this project."
-          icon={Settings2}
-          bodyClassName="p-0"
+        <Sheet
+          title="My delivery preferences"
+          description="Your overrides on this project's channels. They apply to your account only."
         >
-          <RowStack>
+          <SheetList label="My delivery preferences">
             {preferences.map((preference) => (
-              <div key={preference.id} className="flex flex-wrap items-center justify-between gap-3 px-5 py-3.5">
-                <div className="min-w-0">
-                  <p className="truncate text-[13px] font-medium text-[var(--text)]">
-                    {preference.channel?.name ?? preference.projectAlertChannelId}
-                  </p>
-                  <p className="text-[11.5px] text-[var(--text3)]">
-                    {preference.category} · {preference.severityThreshold}+ · {preference.digestMode}
-                  </p>
+              <SheetListItem key={preference.id}>
+                <div className="min-w-0 flex-1">
+                  {preference.channel?.name ? (
+                    <p className="truncate text-[13px] font-medium text-[var(--text)]">{preference.channel.name}</p>
+                  ) : (
+                    <p className="truncate font-[family-name:var(--mono)] text-[12px] text-[var(--text)]">
+                      {preference.projectAlertChannelId}
+                    </p>
+                  )}
+                  <div className="mt-1 flex min-w-0 items-center gap-2">
+                    {!preference.enabled && <Pill>Muted</Pill>}
+                    <span className="truncate text-[12px] text-[var(--text3)]">
+                      {preferenceSummary(preference, "full")}
+                    </span>
+                  </div>
                 </div>
                 <UiButton
-                  variant="ghost"
+                  variant="outline"
                   size="sm"
+                  aria-label={`Reset to default for ${preference.channel?.name ?? "this channel"}`}
                   onClick={() =>
                     deletePreference.mutate({
                       channelId: preference.projectAlertChannelId,
@@ -407,10 +575,10 @@ export default function ProjectAlertChannelsPage() {
                 >
                   Reset to default
                 </UiButton>
-              </div>
+              </SheetListItem>
             ))}
-          </RowStack>
-        </Panel>
+          </SheetList>
+        </Sheet>
       )}
 
       {/* ── create ── */}
@@ -420,7 +588,7 @@ export default function ProjectAlertChannelsPage() {
           setCreating(open);
           if (!open) setFormError(null);
         }}
-        title="New alert channel"
+        title="New channel"
         submitLabel="Create channel"
         pending={createChannel.isPending}
         error={formError}
@@ -428,7 +596,7 @@ export default function ProjectAlertChannelsPage() {
           setFormError(null);
           createChannel.mutate(readChannelForm(form), {
             onSuccess: () => setCreating(false),
-            onError: (mutationError) => setFormError(asMessage(mutationError)),
+            onError: (mutationError) => setFormError(apiErrorMessage(mutationError)),
           });
         }}
       >
@@ -455,7 +623,7 @@ export default function ProjectAlertChannelsPage() {
             { id: editing.id, payload: { ...readChannelForm(form), version: editing.version } },
             {
               onSuccess: () => setEditing(null),
-              onError: (mutationError) => setFormError(asMessage(mutationError)),
+              onError: (mutationError) => setFormError(apiErrorMessage(mutationError)),
             },
           );
         }}
@@ -472,7 +640,7 @@ export default function ProjectAlertChannelsPage() {
             setFormError(null);
           }
         }}
-        title={tuning ? `My preferences for ${tuning.name}` : "Channel preferences"}
+        title={tuning ? `My delivery preferences for ${tuning.name}` : "My delivery preferences"}
         description="These settings apply to your account only."
         submitLabel="Save preference"
         pending={upsertPreference.isPending}
@@ -492,23 +660,24 @@ export default function ProjectAlertChannelsPage() {
             },
             {
               onSuccess: () => setTuning(null),
-              onError: (mutationError) => setFormError(asMessage(mutationError)),
+              onError: (mutationError) => setFormError(apiErrorMessage(mutationError)),
             },
           );
         }}
       >
         {tuning && (
           <>
-            <DialogField label="Category" name="category" hint="Use 'all' to cover every alert category.">
+            <DialogField label="Category" name="category" hint="Enter “all” to cover every alert category.">
               <input
                 id="category"
                 name="category"
                 defaultValue={preferenceFor(tuning.id)?.category ?? "all"}
                 maxLength={100}
+                autoComplete="off"
                 className={fieldInputClass}
               />
             </DialogField>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <DialogField label="Minimum severity" name="severityThreshold">
                 <select
                   id="severityThreshold"
@@ -518,7 +687,7 @@ export default function ProjectAlertChannelsPage() {
                 >
                   {CHANNEL_SEVERITIES.map((severity) => (
                     <option key={severity} value={severity}>
-                      {severity}
+                      {sentenceCase(severity)}
                     </option>
                   ))}
                 </select>
@@ -532,18 +701,18 @@ export default function ProjectAlertChannelsPage() {
                 >
                   {CHANNEL_DIGEST_MODES.map((mode) => (
                     <option key={mode} value={mode}>
-                      {mode}
+                      {sentenceCase(mode)}
                     </option>
                   ))}
                 </select>
               </DialogField>
             </div>
-            <label className="flex items-center gap-2 rounded-[10px] border border-[var(--border)] bg-[var(--bg2)] px-3.5 py-3 text-[12.5px] text-[var(--text)]">
+            <label className="flex items-center gap-2.5 border-t border-[var(--border)] pt-4 text-[13px] text-[var(--text)]">
               <input
                 type="checkbox"
                 name="enabled"
                 defaultChecked={preferenceFor(tuning.id)?.enabled ?? true}
-                className="size-4"
+                className={CHECKBOX_CLASS}
               />
               Deliver alerts to me on this channel
             </label>
@@ -564,6 +733,6 @@ export default function ProjectAlertChannelsPage() {
           deleteChannel.mutate(deleting.id, { onSuccess: () => setDeleting(null) });
         }}
       />
-    </div>
+    </WorkspacePage>
   );
 }

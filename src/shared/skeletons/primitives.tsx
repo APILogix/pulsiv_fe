@@ -65,7 +65,13 @@ export function Block({
       )}
       style={
         delay
-          ? { animationDelay: `${delay}ms, ${delay}ms`, ...style }
+          ? {
+              // Rise delay, then shimmer delay offset by the shared phase so a
+              // skeleton that replaces another continues the same shimmer
+              // instead of restarting it (see RouteSkeleton).
+              animationDelay: `${delay}ms, calc(var(--sk-phase, 0ms) + ${delay}ms)`,
+              ...style,
+            }
           : style
       }
     />

@@ -4,6 +4,7 @@ import { useOrgStore } from "@/modules/organizations/store/org.store";
 import { useOrganizations } from "@/modules/organizations/hooks/useOrganizations";
 import { useBootstrapEffect } from "@/modules/bootstrap";
 import { AppLayout } from "./AppLayout";
+import { RouteSkeleton } from "@/shared/skeletons/RouteSkeleton";
 
 export function AuthenticatedAppLayout() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
@@ -17,6 +18,10 @@ export function AuthenticatedAppLayout() {
     return <Navigate to="/auth/login" replace />;
   }
 
+
+  if (isLoading && !organizations.length && !activeOrgId) {
+    return <RouteSkeleton framed />;
+  }
 
   if (!activeOrgId && !organizations.length) {
     return <Navigate to="/onboarding/organization" replace />;

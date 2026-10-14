@@ -44,6 +44,7 @@ export {
   WorkflowOverlay,
   WorkflowProgress,
 } from "./WorkflowProgress";
+export { CreationTransition, type CreationTransitionProps } from "./CreationTransition";
 export {
   stepStatus,
   useWorkflow,

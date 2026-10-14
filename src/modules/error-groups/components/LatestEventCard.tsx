@@ -1,91 +1,51 @@
-import { useState } from "react";
-import { ChevronDown, ChevronRight, GitBranch } from "lucide-react";
-import { StatusCodeBadge, EnvironmentBadge, Timestamp } from "@/shared/observe";
-import type { ErrorGroup } from "../types/error-group";
 import { Link } from "react-router";
+import { GitBranch } from "lucide-react";
+import { KeyValueList, Panel, StatusCodeBadge, Timestamp } from "@/shared/observe";
+import { ghostButtonClass } from "@/shared/observe/form";
+import { StackTraceViewer } from "@/pages/observe/error-detail/StackTraceViewer";
+import type { StackFrame } from "@/pages/observe/error-detail/types";
+import type { ErrorGroup } from "../types/error-group";
 
-interface LatestEventCardProps {
-  group: ErrorGroup;
-}
-
-export function LatestEventCard({ group }: LatestEventCardProps) {
-  const [isStackOpen, setIsStackOpen] = useState(true);
+export function LatestEventCard({ group }: { group: ErrorGroup }) {
+  const trace = group.latestEvent?.trace?.publicId ?? group.tracePublicId ?? group.latestEvent?.trace?.traceId ?? group.traceId ?? group.lastTraceId;
+  const latestId = group.latestEvent?.publicId;
+  const status = group.latestEvent?.statusCode ?? group.lastStatusCode;
 
   return (
-    <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] p-5 space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border)] pb-3">
-        <div>
-          <h3 className="text-[14px] font-semibold text-[var(--text)]">Latest Event Sample</h3>
-          <p className="text-[12px] text-[var(--text3)]">Captured stack trace and execution context</p>
-        </div>
-        {(group.tracePublicId || group.traceId) && (
-          <Link
-            to={`/observability/traces/${group.tracePublicId ?? group.traceId}`}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--violet)]/40 bg-[var(--violet-bg)] px-3 py-1.5 font-[family-name:var(--mono)] text-[12px] font-medium text-[var(--violet)] hover:underline cursor-pointer"
-          >
-            <GitBranch className="size-3.5" />
-            Open Trace ({group.tracePublicId ?? group.traceId?.slice(0, 7)})
-          </Link>
-        )}
+    <Panel
+      title="Latest event"
+      description="The most recent occurrence and the stack it was thrown from."
+      action={
+        <>
+          {trace && (
+            <Link to={`/observability/traces/${encodeURIComponent(trace)}`} className={ghostButtonClass}>
+              <GitBranch className="size-3.5 text-[var(--violet)]" aria-hidden="true" />
+              Trace
+            </Link>
+          )}
+          {latestId && (
+            <Link to={`/observability/errors/${encodeURIComponent(latestId)}`} className={ghostButtonClass}>
+              Open event
+            </Link>
+          )}
+        </>
+      }
+    >
+      <div className="flex flex-col gap-5">
+        <KeyValueList
+          columns={2}
+          hideEmpty
+          items={[
+            { label: "Event", value: latestId, mono: true, copyable: true },
+            { label: "Seen", value: group.occurrences?.lastSeenAt ?? group.lastSeen ? <Timestamp value={group.occurrences?.lastSeenAt ?? group.lastSeen} /> : null },
+            { label: "Route", value: group.route, mono: true },
+            { label: "Status", value: status ? <StatusCodeBadge code={status} /> : null },
+            { label: "Service", value: group.service },
+            { label: "Trace", value: trace, mono: true, copyable: true },
+          ]}
+        />
+        <StackTraceViewer frames={(group.stackFrames ?? []) as unknown as StackFrame[]} />
       </div>
-
-      <div className="grid grid-cols-2 gap-3 text-[12px] sm:grid-cols-4 font-[family-name:var(--mono)] bg-[var(--bg2)] p-3 rounded-lg border border-[var(--border)]">
-        <div>
-          <span className="text-[var(--text3)]">Status Code:</span>{" "}
-          {group.lastStatusCode ? <StatusCodeBadge code={group.lastStatusCode} /> : "—"}
-        </div>
-        <div>
-          <span className="text-[var(--text3)]">Route:</span>{" "}
-          <span className="text-[var(--text)]">{group.route ?? "—"}</span>
-        </div>
-        <div>
-          <span className="text-[var(--text3)]">Env:</span>{" "}
-          <EnvironmentBadge environment={group.environment} />
-        </div>
-        <div>
-          <span className="text-[var(--text3)]">Last Seen:</span>{" "}
-          <Timestamp value={group.lastSeen} />
-        </div>
-      </div>
-
-      {/* Stack Trace Preview */}
-      <div className="space-y-2">
-        <button
-          type="button"
-          onClick={() => setIsStackOpen(!isStackOpen)}
-          className="flex items-center gap-1.5 font-[family-name:var(--mono)] text-[12px] font-medium text-[var(--text2)] hover:text-[var(--text)] cursor-pointer select-none"
-        >
-          {isStackOpen ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
-          <span>Stack Frames ({group.stackFrames?.length ?? 0})</span>
-        </button>
-
-        {isStackOpen && (
-          <div className="rounded-lg border border-[var(--border)] bg-[var(--bg2)] p-3 font-[family-name:var(--mono)] text-[12px] space-y-1.5 overflow-x-auto">
-             {(group.stackFrames ?? []).map((frame, i) => (
-              <div
-                key={i}
-                className={`p-2 rounded border transition-colors ${
-                  frame.inApp
-                    ? "border-[var(--brand)]/30 bg-[var(--brand)]/5 text-[var(--text)]"
-                    : "border-transparent text-[var(--text3)]"
-                }`}
-              >
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span className="font-semibold text-[var(--amber)]">{frame.function}</span>
-                  <span className="text-[11px] text-[var(--text3)]">
-                    {frame.filename}:{frame.lineno}:{frame.colno}
-                  </span>
-                </div>
-                {frame.contextLine && (
-                  <pre className="mt-1 overflow-x-auto rounded bg-black/40 p-2 text-[11px] text-[var(--green)]">
-                    {frame.contextLine}
-                  </pre>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
+    </Panel>
   );
 }

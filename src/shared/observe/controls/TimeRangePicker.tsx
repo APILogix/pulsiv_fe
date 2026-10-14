@@ -116,7 +116,7 @@ export function TimeRangePicker({ className }: { className?: string }) {
 
       {/* Popover Menu */}
       {isOpen && (
-        <div className="absolute right-0 top-full z-50 mt-1.5 w-80 rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] shadow-xl animate-in fade-in zoom-in-95 duration-150 select-none">
+        <div className="absolute right-0 top-full z-50 mt-1.5 w-80 rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] animate-in fade-in zoom-in-95 duration-150 select-none">
           {/* Segment Switcher */}
           <div className="flex border-b border-[var(--border)] p-1 bg-[var(--bg2)]/60 rounded-t-[var(--radius-lg)]">
             <button
@@ -125,7 +125,7 @@ export function TimeRangePicker({ className }: { className?: string }) {
               className={cn(
                 "flex-1 rounded-[var(--radius)] py-1 text-center font-[family-name:var(--mono)] text-[11px] font-medium transition-colors cursor-pointer",
                 activeTab === "preset"
-                  ? "bg-[var(--bg1)] text-[var(--text)] shadow-xs"
+                  ? "bg-[var(--bg1)] text-[var(--text)] "
                   : "text-[var(--text3)] hover:text-[var(--text2)]"
               )}
             >
@@ -137,7 +137,7 @@ export function TimeRangePicker({ className }: { className?: string }) {
               className={cn(
                 "flex-1 rounded-[var(--radius)] py-1 text-center font-[family-name:var(--mono)] text-[11px] font-medium transition-colors cursor-pointer",
                 activeTab === "custom"
-                  ? "bg-[var(--bg1)] text-[var(--text)] shadow-xs"
+                  ? "bg-[var(--bg1)] text-[var(--text)] "
                   : "text-[var(--text3)] hover:text-[var(--text2)]"
               )}
             >
@@ -174,7 +174,7 @@ export function TimeRangePicker({ className }: { className?: string }) {
           {activeTab === "custom" && (
             <form onSubmit={handleApplyCustom} className="p-3 space-y-3">
               <div className="space-y-1">
-                <label htmlFor="customFrom" className="block text-[11px] font-mono font-medium text-[var(--text3)] uppercase tracking-wider">
+                <label htmlFor="customFrom" className="block text-[12px] font-medium text-[var(--text3)]">
                   From
                 </label>
                 <div className="relative flex items-center">
@@ -190,7 +190,7 @@ export function TimeRangePicker({ className }: { className?: string }) {
               </div>
 
               <div className="space-y-1">
-                <label htmlFor="customTo" className="block text-[11px] font-mono font-medium text-[var(--text3)] uppercase tracking-wider">
+                <label htmlFor="customTo" className="block text-[12px] font-medium text-[var(--text3)]">
                   To
                 </label>
                 <div className="relative flex items-center">
@@ -216,7 +216,7 @@ export function TimeRangePicker({ className }: { className?: string }) {
 
                 <button
                   type="submit"
-                  className="inline-flex items-center gap-1 rounded-[var(--radius)] bg-[var(--brand)] px-3 py-1 text-[11px] font-medium text-[var(--bg)] shadow-xs hover:opacity-90 transition-opacity cursor-pointer"
+                  className="inline-flex items-center gap-1 rounded-[var(--radius)] bg-[var(--brand)] px-3 py-1 text-[11px] font-medium text-[var(--bg)] hover:opacity-90 transition-opacity cursor-pointer"
                 >
                   <Calendar className="size-3" />
                   <span>Apply</span>

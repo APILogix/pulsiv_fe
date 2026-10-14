@@ -1,13 +1,46 @@
-import { lazy, useEffect } from "react";
+import { lazy, useEffect, Suspense } from "react";
 import { RouteObject, Navigate, Outlet, useParams, useLocation } from "react-router";
 import { RequireAuth } from "./route-guards";
 import NotFoundPage from "@/shared/components/NotFoundPage";
 
-import { AuthenticatedAppLayout } from "../layouts/AuthenticatedAppLayout";
 import { useOrganizations } from "@/modules/organizations/hooks/useOrganizations";
 import { useOrgStore } from "@/modules/organizations/store/org.store";
-import { orgRoutes } from "./org-routes";
-import { RouteSkeleton } from "@/shared/skeletons";
+import { AnimatedRoute } from "@/shared/motion/LoadingBoundary";
+
+const AuthenticatedAppLayout = lazy(() =>
+  import("../layouts/AuthenticatedAppLayout").then((m) => ({ default: m.AuthenticatedAppLayout }))
+);
+const ModuleLayout = lazy(() =>
+  import("../layouts/ModuleLayout").then((m) => ({ default: m.ModuleLayout }))
+);
+const SettingsLayout = lazy(() => import("../layouts/SettingsLayout"));
+const RouteSkeleton = lazy(() =>
+  import("@/shared/skeletons/RouteSkeleton").then((m) => ({ default: m.RouteSkeleton }))
+);
+
+function LazyAuthenticatedLayout() {
+  return (
+    <Suspense fallback={<Suspense fallback={null}><RouteSkeleton framed /></Suspense>}>
+      <AuthenticatedAppLayout />
+    </Suspense>
+  );
+}
+
+function LazyModuleLayout() {
+  return (
+    <Suspense fallback={<Suspense fallback={null}><RouteSkeleton framed /></Suspense>}>
+      <ModuleLayout />
+    </Suspense>
+  );
+}
+
+function LazySettingsLayout() {
+  return (
+    <Suspense fallback={<Suspense fallback={null}><RouteSkeleton framed /></Suspense>}>
+      <SettingsLayout />
+    </Suspense>
+  );
+}
 
 const DashboardPage = lazy(() => import("@/modules/dashboard/index").then((m) => ({ default: m.DashboardPage ?? (() => null) })));
 const SecurityCenterPage = lazy(() => import("@/modules/auth/pages/SecurityCenterPage").then((m) => ({ default: m.default })));
@@ -17,14 +50,13 @@ const CreateOrganizationPage = lazy(() => import("@/modules/organizations/pages/
 const CheckoutSuccessPage = lazy(() => import("@/modules/billing/pages/CheckoutSuccessPage"));
 const CheckoutCancelPage = lazy(() => import("@/modules/billing/pages/CheckoutCancelPage"));
 
-const SettingsLayout = lazy(() => import("../layouts/SettingsLayout"));
-const ModuleLayout = lazy(() => import("../layouts/ModuleLayout").then((m) => ({ default: m.ModuleLayout })));
 const EffectiveAuthPolicyPage = lazy(() => import("@/modules/auth/pages/EffectiveAuthPolicyPage"));
 
 const PersonalDetailsPanel = lazy(() => import("@/modules/auth/components/profile/PersonalDetailsPanel").then(m => ({ default: m.PersonalDetailsPanel })));
 const AccountOverviewPanel = lazy(() => import("@/modules/auth/components/profile/AccountOverviewPanel").then(m => ({ default: m.AccountOverviewPanel })));
 const ChangePasswordPanel = lazy(() => import("@/modules/auth/components/profile/ChangePasswordPanel").then(m => ({ default: m.ChangePasswordPanel })));
 const MfaSecurityPanel = lazy(() => import("@/modules/auth/components/profile/MfaSecurityPanel").then(m => ({ default: m.MfaSecurityPanel })));
+const PasskeysPanel = lazy(() => import("@/modules/auth/components/profile/PasskeysPanel").then(m => ({ default: m.PasskeysPanel })));
 const ActiveSessionsPanel = lazy(() => import("@/modules/auth/components/profile/ActiveSessionsPanel").then(m => ({ default: m.ActiveSessionsPanel })));
 const BackupCodesPanel = lazy(() => import("@/modules/auth/components/profile/BackupCodesPanel").then(m => ({ default: m.BackupCodesPanel })));
 const AuditLogsPanel = lazy(() => import("@/modules/auth/components/profile/AuditLogsPanel").then(m => ({ default: m.AuditLogsPanel })));
@@ -197,6 +229,13 @@ function OrgRouteGuard() {
   const { organizations, activeOrgId, activeOrgSlug, isLoading } = useOrganizations();
   const setActiveOrg = useOrgStore((s) => s.setActiveOrg);
 
+  if (orgSlug && organizations.length > 0) {
+    const matchingOrg = organizations.find((o) => o.slug?.toLowerCase() === orgSlug.toLowerCase());
+    if (matchingOrg && (activeOrgId !== matchingOrg.id || activeOrgSlug !== matchingOrg.slug)) {
+      setActiveOrg({ id: matchingOrg.id, slug: matchingOrg.slug });
+    }
+  }
+
   useEffect(() => {
     if (!orgSlug || isLoading || !organizations.length) return;
 
@@ -209,7 +248,13 @@ function OrgRouteGuard() {
   }, [orgSlug, organizations, activeOrgId, activeOrgSlug, setActiveOrg, isLoading]);
 
   if (isLoading && !organizations.length) {
-    return <RouteSkeleton padded className="w-full px-6 py-6" />;
+    // Framed like the destination layout, so the page's own boundary takes
+    // over this skeleton in place (no jump, no second entrance).
+    return (
+      <Suspense fallback={null}>
+        <RouteSkeleton framed />
+      </Suspense>
+    );
   }
 
   if (orgSlug && organizations.length > 0) {
@@ -235,7 +280,13 @@ function OrgScopedRedirect({ target = "dashboard", wildcard = false }: { target?
   const { organizations, isLoading } = useOrganizations();
   const location = useLocation();
 
-  if (isLoading && !activeOrgSlug) return <RouteSkeleton padded className="w-full px-6 py-6" />;
+  if (isLoading && !activeOrgSlug) {
+    return (
+      <Suspense fallback={null}>
+        <RouteSkeleton framed />
+      </Suspense>
+    );
+  }
 
   const orgSlug = activeOrgSlug ?? organizations[0]?.slug ?? null;
   if (!orgSlug) {
@@ -253,7 +304,7 @@ function OrgScopedRedirect({ target = "dashboard", wildcard = false }: { target?
 
 export const protectedRoutes: RouteObject[] = [
   {
-    element: <AuthenticatedAppLayout />,
+    element: <LazyAuthenticatedLayout />,
     children: [
       // Top-level /:orgSlug organization-scoped route tree
       {
@@ -261,11 +312,11 @@ export const protectedRoutes: RouteObject[] = [
         element: <OrgRouteGuard />,
         children: [
           { index: true, element: <Navigate to="dashboard" replace /> },
-          { path: "dashboard", element: <DashboardPage /> },
+          { path: "dashboard", element: <AnimatedRoute><DashboardPage /></AnimatedRoute> },
 
           {
             path: "dashboards",
-            element: <ModuleLayout />,
+            element: <LazyModuleLayout />,
             children: [
               { index: true, element: <DashboardsOverview /> },
               { path: "overview", element: <DashboardsOverview /> },
@@ -286,7 +337,7 @@ export const protectedRoutes: RouteObject[] = [
 
           {
             path: "observability",
-            element: <ModuleLayout />,
+            element: <LazyModuleLayout />,
             children: [
               { index: true, element: <ExecutiveDashboard /> },
               { path: "requests", element: <RequestsPage /> },
@@ -318,7 +369,7 @@ export const protectedRoutes: RouteObject[] = [
 
           {
             path: "services",
-            element: <ModuleLayout />,
+            element: <LazyModuleLayout />,
             children: [
               { index: true, element: <ServiceCatalogPage /> },
               { path: "dependencies", element: <ServiceDependenciesPage /> },
@@ -330,7 +381,7 @@ export const protectedRoutes: RouteObject[] = [
             path: "projects",
             children: [
               {
-                element: <ModuleLayout />,
+                element: <LazyModuleLayout />,
                 children: [
                   { index: true, element: <ProjectsPage /> },
                   { path: "new", element: <CreateProjectWizardPage /> },
@@ -384,7 +435,7 @@ export const protectedRoutes: RouteObject[] = [
 
           {
             path: "alerts",
-            element: <ModuleLayout />,
+            element: <LazyModuleLayout />,
             children: [
               { index: true, element: <IncidentsPage /> },
               { path: "overview", element: <AlertOverviewPage /> },
@@ -412,7 +463,7 @@ export const protectedRoutes: RouteObject[] = [
 
           {
             path: "automation",
-            element: <ModuleLayout />,
+            element: <LazyModuleLayout />,
             children: [
               { index: true, element: <AutomationOverviewPage /> },
               { path: "workflows", element: <AutomationWorkflowsPage /> },
@@ -429,7 +480,7 @@ export const protectedRoutes: RouteObject[] = [
 
           {
             path: "ingestion",
-            element: <ModuleLayout />,
+            element: <LazyModuleLayout />,
             children: [
               { index: true, element: <ConnectionsOverview /> },
               { path: "endpoints", element: <ApiEndpointsPage /> },
@@ -442,7 +493,7 @@ export const protectedRoutes: RouteObject[] = [
 
           {
             path: "ai",
-            element: <ModuleLayout />,
+            element: <LazyModuleLayout />,
             children: [
               { index: true, element: <AiOverviewPage /> },
               { path: "assistant", element: <AiAssistantPage /> },
@@ -456,7 +507,7 @@ export const protectedRoutes: RouteObject[] = [
 
           {
             path: "admin",
-            element: <ModuleLayout />,
+            element: <LazyModuleLayout />,
             children: [
               { index: true, element: <OrgProfilePage /> },
               { path: "settings", element: <OrgSettingsPage /> },
@@ -478,7 +529,7 @@ export const protectedRoutes: RouteObject[] = [
 
           {
             path: "super-admin",
-            element: <ModuleLayout />,
+            element: <LazyModuleLayout />,
             children: [
               { path: "billing", element: <BillingPlansPage /> },
             ],
@@ -486,7 +537,7 @@ export const protectedRoutes: RouteObject[] = [
 
           {
             path: "billing",
-            element: <ModuleLayout />,
+            element: <LazyModuleLayout />,
             children: [
               { index: true, element: <PlanPage /> },
               { path: "usage", element: <BillingUsagePage /> },
@@ -498,7 +549,7 @@ export const protectedRoutes: RouteObject[] = [
 
           {
             path: "connectors",
-            element: <ModuleLayout />,
+            element: <LazyModuleLayout />,
             children: [
               { path: "webhooks", element: <WebhooksPage /> },
               { path: "webhooks/:webhookId", element: <WebhookDetailPage /> },
@@ -512,7 +563,7 @@ export const protectedRoutes: RouteObject[] = [
 
           {
             path: "developer",
-            element: <ModuleLayout />,
+            element: <LazyModuleLayout />,
             children: [
               { path: "data-retention", element: <DataRetentionPage /> },
               { path: "custom-settings", element: <SdkConfigPage /> },
@@ -521,7 +572,7 @@ export const protectedRoutes: RouteObject[] = [
 
           {
             path: "settings",
-            element: <SettingsLayout />,
+            element: <LazySettingsLayout />,
             children: [
               { index: true, element: <Navigate to="../account/overview" replace /> },
               { path: "profile", element: <Navigate to="../account/profile" replace /> },
@@ -542,7 +593,7 @@ export const protectedRoutes: RouteObject[] = [
 
           {
             path: "account",
-            element: <SettingsLayout />,
+            element: <LazySettingsLayout />,
             children: [
               { index: true, element: <Navigate to="overview" replace /> },
               { path: "overview", element: <AccountOverviewPanel /> },
@@ -550,7 +601,7 @@ export const protectedRoutes: RouteObject[] = [
               { path: "email", element: <Navigate to="profile" replace /> },
               { path: "security/password", element: <ChangePasswordPanel /> },
               { path: "security/mfa", element: <MfaSecurityPanel /> },
-              { path: "security/passkeys", element: <MfaSecurityPanel /> },
+              { path: "security/passkeys", element: <PasskeysPanel /> },
               { path: "security/recovery-codes", element: <BackupCodesPanel /> },
               { path: "activity/active-sessions", element: <ActiveSessionsPanel /> },
               { path: "activity/login-history", element: <AuditLogsPanel /> },
@@ -580,9 +631,9 @@ export const protectedRoutes: RouteObject[] = [
       { path: "settings/*", element: <OrgScopedRedirect wildcard /> },
       { path: "account/*", element: <OrgScopedRedirect wildcard /> },
 
-      { path: "auth/security", element: <SecurityCenterPage /> },
-      { path: "auth/sessions", element: <SessionsPage /> },
-      { path: "auth/step-up", element: <StepUpPage /> },
+      { path: "auth/security", element: <AnimatedRoute><SecurityCenterPage /></AnimatedRoute> },
+      { path: "auth/sessions", element: <AnimatedRoute><SessionsPage /></AnimatedRoute> },
+      { path: "auth/step-up", element: <AnimatedRoute><StepUpPage /></AnimatedRoute> },
 
       // Catch-all for unmatched paths within the authenticated app shell
       { path: "*", element: <NotFoundPage /> },

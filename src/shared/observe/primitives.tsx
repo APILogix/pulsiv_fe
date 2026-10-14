@@ -51,17 +51,17 @@ export function SeverityBadge({ severity, size }: { severity?: string | null; si
     dot = "var(--blue)";
   }
 
-  const px = size === "sm" ? "px-1.5" : "px-2";
+  // Border colour is intentionally dropped: a tint alone carries the state.
+  void border;
   const py = size === "sm" ? "py-0" : "py-0.5";
-  const textSz = size === "sm" ? "text-[10px]" : "text-[11px]";
 
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-full border ${px} ${py} ${textSz} font-medium uppercase tracking-wider`}
-      style={{ color, backgroundColor: bg, borderColor: border }}
+      className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-[4px] px-1.5 ${py} text-[11px] font-medium leading-[1.35]`}
+      style={{ color, backgroundColor: bg }}
     >
       <span className="size-1.5 rounded-full" style={{ backgroundColor: dot }} />
-      {severity}
+      <span className="inline-block first-letter:uppercase">{s}</span>
     </span>
   );
 }
@@ -74,7 +74,7 @@ export function StatusCodeBadge({ code }: { code?: number | null }) {
     : safeCode >= 300 ? "bg-[var(--blue-bg)] text-[var(--blue)]"
     : safeCode >= 200 ? "bg-[var(--green-bg)] text-[var(--green)]"
     : "bg-[var(--bg3)] text-[var(--text3)]";
-  return <span className={cn("inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium tabular-nums font-[family-name:var(--mono)]", tone)}>{safeCode > 0 ? safeCode : "—"}</span>;
+  return <span className={cn("inline-flex items-center rounded-[4px] px-1.5 py-0.5 text-[11px] font-medium leading-[1.35] tabular-nums font-[family-name:var(--mono)]", tone)}>{safeCode > 0 ? safeCode : "—"}</span>;
 }
 
 /* §2.6 — method badges are a tinted background plus saturated text. */
@@ -88,7 +88,7 @@ const METHOD_TONE: Record<string, string> = {
 export function MethodBadge({ method }: { method?: string | null }) {
   const safeMethod = method ?? "GET";
   return (
-    <span className={cn("inline-flex items-center rounded-full px-2 py-0.5 font-[family-name:var(--mono)] text-[10px] font-medium uppercase tracking-[0.08em]", METHOD_TONE[safeMethod] ?? "bg-[var(--bg3)] text-[var(--text2)]")}>
+    <span className={cn("inline-flex items-center rounded-[4px] px-1.5 py-0.5 font-[family-name:var(--mono)] text-[11px] font-medium leading-[1.35]", METHOD_TONE[safeMethod] ?? "bg-[var(--bg3)] text-[var(--text2)]")}>
       {safeMethod}
     </span>
   );
@@ -130,9 +130,9 @@ const STATUS_TONE: Record<string, string> = {
 export function StatusBadge({ status }: { status?: string | null }) {
   const safeStatus = status ?? "unknown";
   return (
-    <span className={cn("inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 font-[family-name:var(--mono)] text-[10px] font-medium uppercase tracking-[0.08em]", STATUS_TONE[safeStatus] ?? "bg-[var(--bg3)] text-[var(--text2)]")}>
+    <span className={cn("inline-flex items-center gap-1.5 whitespace-nowrap rounded-[4px] px-1.5 py-0.5 text-[11px] font-medium leading-[1.35]", STATUS_TONE[safeStatus] ?? "bg-[var(--bg3)] text-[var(--text2)]")}>
       <span className="size-1.5 rounded-full bg-current" />
-      {safeStatus.replace(/[-_]/g, " ")}
+      <span className="inline-block first-letter:uppercase">{safeStatus.replace(/[-_]/g, " ")}</span>
     </span>
   );
 }
@@ -153,9 +153,9 @@ export function EventTypeBadge({ type }: { type?: string | null }) {
   const entry = EVENT_ICONS[safeType] ?? EVENT_ICONS.log;
   const Icon = entry.icon;
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--bg2)] px-2 py-0.5 font-[family-name:var(--mono)] text-[10px] font-medium uppercase tracking-[0.08em] text-[var(--text2)]">
+    <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-[4px] bg-[var(--bg3)] px-1.5 py-0.5 text-[11px] font-medium leading-[1.35] text-[var(--text2)]">
       <Icon className={cn("size-3", entry.tone)} />
-      {safeType.replace("_", " ")}
+      <span className="inline-block first-letter:uppercase">{safeType.replace("_", " ")}</span>
     </span>
   );
 }
@@ -183,11 +183,11 @@ export function EnvironmentBadge({ environment }: { environment?: string | null 
   const tone = ENVIRONMENT_TONE[safeEnv] ?? DEFAULT_ENVIRONMENT_TONE;
   return (
     <span
-      className="inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 font-[family-name:var(--mono)] text-[10px] font-medium uppercase tracking-[0.08em]"
-      style={{ backgroundColor: tone.bg, borderColor: tone.border, color: tone.text }}
+      className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-[4px] px-1.5 py-0.5 text-[11px] font-medium leading-[1.35]"
+      style={{ backgroundColor: tone.bg, color: tone.text }}
     >
       <span className="size-1.5 rounded-full bg-current" />
-      {safeEnv.replace(/_/g, " ")}
+      <span className="inline-block first-letter:uppercase">{safeEnv.replace(/_/g, " ")}</span>
     </span>
   );
 }
@@ -237,8 +237,8 @@ export function PageHeader({ title, description, breadcrumbs, actions }: {
   actions?: React.ReactNode;
 }) {
   return (
-    <div className="flex items-start justify-between gap-4">
-      <div>
+    <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+      <div className="min-w-0">
         {breadcrumbs && breadcrumbs.length > 0 && (
           <div className="mb-2 flex items-center gap-1 text-[12px] text-[var(--text3)]">
             {breadcrumbs.map((b, i) => {
@@ -258,10 +258,10 @@ export function PageHeader({ title, description, breadcrumbs, actions }: {
             })}
           </div>
         )}
-        <h1 className="font-[family-name:var(--display)] text-[22px] font-semibold tracking-[-0.02em] text-[var(--text)]">{title}</h1>
-        {description && <p className="mt-1.5 text-[13px] leading-[1.6] text-[var(--text2)]">{description}</p>}
+        <h1 className="text-[22px] font-semibold leading-[1.2] tracking-[-0.025em] text-[var(--text)]">{title}</h1>
+        {description && <p className="mt-1.5 max-w-[72ch] text-[13px] leading-[1.6] text-[var(--text2)]">{description}</p>}
       </div>
-      {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
+      {actions && <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>}
     </div>
   );
 }
@@ -274,17 +274,17 @@ export function SectionCard({ title, description, action, children, className }:
   className?: string;
 }) {
   return (
-    <div className={cn("rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)]", className)}>
+    <div className={cn("min-w-0 rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)]", className)}>
       {(title || description || action) && (
-        <div className="flex items-center justify-between border-b border-[var(--border)] px-6 py-4">
-          <div>
-            {title && <h3 className="text-[14px] font-semibold text-[var(--text)]">{title}</h3>}
-            {description && <p className="mt-1 text-[12px] text-[var(--text2)]">{description}</p>}
+        <div className="flex items-center justify-between gap-3 border-b border-[var(--border)] px-5 py-3.5">
+          <div className="min-w-0">
+            {title && <h3 className="truncate text-[14px] font-semibold tracking-[-0.01em] text-[var(--text)]">{title}</h3>}
+            {description && <p className="mt-0.5 text-[12px] text-[var(--text2)]">{description}</p>}
           </div>
           {action}
         </div>
       )}
-      <div className="p-6">{children}</div>
+      <div className="p-5">{children}</div>
     </div>
   );
 }
@@ -302,29 +302,27 @@ export function FillPage({ children, className }: { children: React.ReactNode; c
 const TREND_TONE: Record<string, string> = {
   up: "text-[var(--green)]",
   down: "text-[var(--red)]",
-  neutral: "text-[var(--text2)]",
+  neutral: "text-[var(--text3)]",
 };
-export function KpiCard({ label, value, delta, trend = "neutral", icon: Icon }: {
+export function KpiCard({ label, value, delta, trend = "neutral" }: {
   label: string;
   value: string | number;
   delta?: string;
   trend?: "up" | "down" | "neutral";
+  /** @deprecated KPI tiles carry no icon (design/dashboards/DESIGN.md). */
   icon?: LucideIcon;
 }) {
   return (
-    <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] p-5">
-      <div className="flex items-center justify-between">
-        <span className="font-[family-name:var(--mono)] text-[10px] font-medium uppercase tracking-[0.09em] text-[var(--text3)]">{label}</span>
-        {Icon && <Icon className="size-4 text-[var(--text3)]" />}
-      </div>
-      <div className="mt-2.5 font-[family-name:var(--mono)] text-[26px] font-medium leading-[1.1] tracking-[-0.02em] tabular-nums text-[var(--text)]">{value}</div>
-      {delta && <div className={cn("mt-1.5 font-[family-name:var(--mono)] text-[11px] font-medium tabular-nums", TREND_TONE[trend])}>{delta}</div>}
+    <div className="min-w-0 rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] px-5 py-4">
+      <div className="truncate text-[12px] text-[var(--text2)]">{label}</div>
+      <div className="mt-2.5 truncate font-[family-name:var(--mono)] text-[24px] font-medium leading-none tracking-[-0.02em] tabular-nums text-[var(--text)]">{value}</div>
+      {delta && <div className={cn("mt-2 truncate font-[family-name:var(--mono)] text-[12px] tabular-nums", TREND_TONE[trend])}>{delta}</div>}
     </div>
   );
 }
 
 // Tiny inline sparkline (SVG, no deps).
-export function MetricSparkline({ data, color = "var(--brand)", width = 120, height = 32 }: {
+export function MetricSparkline({ data, color = "var(--text2)", width = 120, height = 32 }: {
   data: number[];
   color?: string;
   width?: number;

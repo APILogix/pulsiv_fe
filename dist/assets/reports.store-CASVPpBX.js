@@ -1,0 +1,1 @@
+import{M as a,Y as d,Z as c}from"./index-H8Lp2HUj.js";const f=a()(d((s,t)=>({records:[],add:r=>s(e=>({records:[r,...e.records.filter(o=>o.jobId!==r.jobId)]})),remove:r=>s(e=>({records:e.records.filter(o=>o.jobId!==r)})),forOrg:r=>t().records.filter(e=>e.orgId===r)}),{name:"ai-report-history",storage:c(()=>localStorage)}));export{f as u};

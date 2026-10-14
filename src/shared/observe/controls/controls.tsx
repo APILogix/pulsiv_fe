@@ -44,7 +44,7 @@ export function FilterSelect({ value, onChange, options, label }: {
 }) {
   return (
     <label className="flex items-center gap-2">
-      {label && <span className="font-[family-name:var(--mono)] text-[10px] font-medium uppercase tracking-[0.09em] text-[var(--text3)]">{label}</span>}
+      {label && <span className="text-[12px] text-[var(--text3)]">{label}</span>}
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -89,7 +89,7 @@ export function Table({
         <thead className="sticky top-0 z-10 bg-[var(--bg2)]">
           <tr className="border-b border-[var(--border)] text-left">
             {headers.map((h) => (
-              <th key={h} className="truncate bg-[var(--bg2)] px-5 py-3 font-[family-name:var(--mono)] text-[10px] font-medium uppercase tracking-[0.09em] text-[var(--text3)]">{h}</th>
+              <th key={h} className="truncate bg-[var(--bg2)] px-5 py-3 text-[12px] text-[var(--text3)]">{h}</th>
             ))}
           </tr>
         </thead>

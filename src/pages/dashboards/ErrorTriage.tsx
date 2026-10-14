@@ -1,332 +1,198 @@
 import { useState } from "react";
-import { useNavigate } from "react-router";
-import { AlertTriangle, Check, EyeOff, BookOpen, ExternalLink } from "lucide-react";
-import { useTimeRangeStore, TIME_RANGES } from "@/stores/timeRangeStore";
+import { toast } from "sonner";
+import { AiActionButton } from "@/shared/ui/sentinel";
 import {
-  useErrorGroupsAnalytics,
-  useErrorSummary,
-  type ErrorGroupRow,
-} from "@/modules/analytics";
-import {
-  PageHeader, FilterSelect, FilterBar,
-  SeverityBadge, MonospaceText, Timestamp, formatCompact,
-} from "@/shared/observe";
-import { AnimatedEmptyState } from "@/shared/motion";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Donut, StackedBars, ChartCard, HeroBand, ZoneLabel, CHART_COLORS } from "./widgets";
+  BoardButton,
+  BoardPage,
+  Facts,
+  Ledger,
+  ModelNote,
+  Panel,
+  RankList,
+  Readouts,
+  Segmented,
+  SplitBar,
+  Tag,
+  TimeChart,
+  Trend,
+  stateText,
+  type State,
+  type VerdictItem,
+} from "./board/kit";
+import { ERROR_GROUPS, HOURS_24, type ErrorGroup, type IssueStatus, type Mechanism } from "./board/fixtures";
+import { compact } from "./board/format";
 
-const TIME_OPTIONS = TIME_RANGES.map((r) => ({ value: r, label: r }));
-const SORT_OPTIONS = [
-  { value: "lastSeen", label: "Last seen" },
-  { value: "occurrences", label: "Frequency" },
-  { value: "users", label: "Users affected" },
-  { value: "firstSeen", label: "First seen" },
-  { value: "regressionScore", label: "Regression score" },
-];
-const MECHANISMS = ["uncaughtException", "unhandledRejection", "console.error", "express", "fastify", "manual"];
+/*
+ * Error overview: what to fix first. The triage queue ranks error groups by
+ * state, then by events; each row unfolds to its hourly shape, frame and a
+ * model-suggested cause.
+ * Sample data only; getErrorBoard() is the seam a live API replaces.
+ */
 
-export default function ErrorTriage() {
-  const navigate = useNavigate();
-  const timeRange = useTimeRangeStore((s) => s.timeRange);
-  const setTimeRange = useTimeRangeStore((s) => s.setTimeRange);
-  const [sort, setSort] = useState("lastSeen");
-  const [mechanismFilter, setMechanismFilter] = useState("all");
+const MECHANISMS: Mechanism[] = ["Unhandled", "Handled", "Promise rejection", "HTTP 5xx"];
+const STATUS_STATE: Record<IssueStatus, State> = { New: "bad", Regressed: "warn", Ongoing: "idle", Resolving: "ok" };
 
-  const { data: errorGroupsRes, isLoading: isGroupsLoading } = useErrorGroupsAnalytics({
-    mechanism: mechanismFilter === "all" ? undefined : mechanismFilter,
-    limit: 100,
-  });
-  const { data: errorSummaryRes, isLoading: isSummaryLoading } = useErrorSummary();
+const CAUSES: Record<string, string> = {
+  "ERR-4F2A": "Consumers stopped scaling after v3.8.2 lowered max workers from 32 to 8. The queue fills within four minutes of peak traffic.",
+  "ERR-19C7": "Timeouts follow the queue backlog: dispatcher retries hold connections to ingest-gateway past the 2s client deadline.",
+  "ERR-2D55": "SDK 4.12 batches up to 8 MB when offline buffering flushes. The gateway limit is still 5 MB.",
+  "ERR-A031": "Traces with zero spans reach assemble() since v2.41.0 removed the empty-trace guard.",
+};
 
-  const isLoading = isGroupsLoading || isSummaryLoading;
+function getErrorBoard() {
+  const events = ERROR_GROUPS.reduce((a, e) => a + e.events, 0);
+  const users = ERROR_GROUPS.reduce((a, e) => a + e.users, 0);
+  const byMechanism = MECHANISMS.map((m) => ({ m, value: ERROR_GROUPS.filter((e) => e.mechanism === m).reduce((a, e) => a + e.events, 0) }));
+  const byService = Object.entries(
+    ERROR_GROUPS.reduce<Record<string, { events: number; state: State }>>((acc, e) => {
+      const cur = acc[e.service] ?? { events: 0, state: "ok" };
+      cur.events += e.events;
+      if (e.state === "bad" || (e.state === "warn" && cur.state !== "bad")) cur.state = e.state;
+      acc[e.service] = cur;
+      return acc;
+    }, {}),
+  ).sort((a, b) => b[1].events - a[1].events);
+  const byRelease = Object.entries(
+    ERROR_GROUPS.reduce<Record<string, number>>((acc, e) => {
+      const k = `${e.service} ${e.release}`;
+      acc[k] = (acc[k] ?? 0) + (e.status === "New" || e.status === "Regressed" ? 1 : 0);
+      return acc;
+    }, {}),
+  )
+    .filter(([, n]) => n > 0)
+    .sort((a, b) => b[1] - a[1]);
+  return { events, users, byMechanism, byService, byRelease };
+}
 
-  const groupList: ErrorGroupRow[] = errorGroupsRes?.data?.table?.rows ?? [];
+const hourLabel = (i: number) => `${String(i).padStart(2, "0")}:00`;
 
-  const summaryCards = errorSummaryRes?.data?.cards ?? [];
-  const totalErrorsCard = summaryCards.find((c) => c.key === "errors.total");
-  const affectedUsersCard = summaryCards.find((c) => c.key === "errors.affected_users");
-
-  const totalErrors = totalErrorsCard?.value ?? groupList.reduce((s, g) => s + g.occurrences, 0);
-  const affectedUsers = affectedUsersCard?.value ?? groupList.reduce((s, g) => s + (g.affectedUsers ?? 0), 0);
-  const fatalErrors = groupList.filter((g) => g.severity === "fatal" || g.severity === "critical").reduce((s, g) => s + g.occurrences, 0);
-
-  const sorted = [...groupList].sort((a, b) => {
-    if (sort === "occurrences") return b.occurrences - a.occurrences;
-    if (sort === "users") return (b.affectedUsers ?? 0) - (a.affectedUsers ?? 0);
-    if (sort === "firstSeen") return new Date(b.firstSeen).getTime() - new Date(a.firstSeen).getTime();
-    if (sort === "regressionScore") return (b.regressionScore ?? 0) - (a.regressionScore ?? 0);
-    return new Date(b.lastSeen).getTime() - new Date(a.lastSeen).getTime();
-  });
-
-  const mechanismSegments = MECHANISMS.map((m, i) => {
-    const count = groupList.filter((g) => g.mechanism === m).reduce((s, g) => s + g.occurrences, 0);
-    return {
-      label: m,
-      value: count,
-      color: CHART_COLORS[i % CHART_COLORS.length],
-    };
-  }).filter((s) => s.value > 0);
-
-  const services = [...new Set(groupList.flatMap((g) => g.services ?? []))].slice(0, 6);
-  const serviceImpact = services.map((svc) => {
-    const svcGroups = groupList.filter((g) => g.services?.includes(svc));
-    return {
-      label: svc,
-      segments: [
-        { value: svcGroups.filter((g) => g.severity === "fatal" || g.severity === "critical").reduce((s, g) => s + g.occurrences, 0), color: "var(--red)" },
-        { value: svcGroups.filter((g) => g.severity === "error").reduce((s, g) => s + g.occurrences, 0), color: "var(--amber)" },
-        { value: svcGroups.filter((g) => g.severity === "warning" || g.severity === "warn").reduce((s, g) => s + g.occurrences, 0), color: "var(--blue)" },
-      ],
-    };
-  });
-
-  if (isLoading) {
-    return <ErrorTriageSkeleton timeRange={timeRange} setTimeRange={setTimeRange} />;
-  }
-
-  if (!isLoading && groupList.length === 0) {
-    return (
-      <div className="mx-auto flex w-full max-w-[1400px] flex-col gap-6">
-        <PageHeader
-          title="Error Triage & Root Cause"
-          description="Group, prioritize, investigate, and resolve errors efficiently · auto-refreshing continuously."
-          actions={<FilterSelect label="Range" value={timeRange} onChange={setTimeRange} options={TIME_OPTIONS} />}
+function IssueDetail({ e }: { e: ErrorGroup }) {
+  const cause = CAUSES[e.id];
+  return (
+    <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
+      <div className="min-w-0">
+        <Facts
+          items={[
+            { label: "First seen", value: e.firstSeen },
+            { label: "Release", value: e.release },
+            { label: "Mechanism", value: e.mechanism },
+            { label: "Issue", value: e.id },
+          ]}
         />
-        <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] p-8">
-          <AnimatedEmptyState
-            illustration="bell"
-            title="No Errors Captured"
-            description="No runtime errors, uncaught exceptions, or unhandled promise rejections have been recorded for the selected time range."
-            action={
-              <button
-                type="button"
-                onClick={() => navigate("/settings/quickstart")}
-                className="inline-flex items-center gap-2 rounded-[8px] bg-[var(--brand)] px-4 py-2 text-[13px] font-semibold text-[var(--bg)] transition hover:opacity-90"
-              >
-                <BookOpen className="size-4" />
-                SDK Setup Guide
-              </button>
-            }
-            secondaryAction={
-              <button
-                type="button"
-                onClick={() => navigate("/observability/logs")}
-                className="inline-flex items-center gap-2 rounded-[8px] border border-[var(--border)] bg-[var(--bg2)] px-4 py-2 text-[13px] font-medium text-[var(--text)] transition hover:bg-[var(--bg3)]"
-              >
-                <ExternalLink className="size-4" />
-                View Raw Logs
-              </button>
-            }
-            hint="Errors captured via @pulsiv/node, @pulsiv/browser, or OpenTelemetry collectors will appear here automatically with root-cause analysis."
+        <div className="mt-4 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg1)] px-3 py-2.5 font-mono text-[12px] leading-[1.6]">
+          <p className="text-[var(--text)]">
+            {e.name}: {e.message}
+          </p>
+          <p className="text-[var(--text3)]">  at {e.frame}</p>
+        </div>
+        <div className="mt-5">
+          <TimeChart
+            label={`${e.name} events per hour over 24 hours`}
+            height={170}
+            xLabels={HOURS_24}
+            format={compact}
+            pointLabel={hourLabel}
+            series={[{ label: "Events", color: e.state === "bad" ? "var(--red)" : "var(--text)", data: e.hourly, area: true }]}
           />
         </div>
       </div>
-    );
-  }
+      <div className="flex flex-col gap-3">
+        {cause && (
+          <ModelNote
+            title="Likely cause"
+            confidence={e.state === "bad" ? 88 : 70}
+            action={<AiActionButton onClick={() => toast("Fix suggestion drafted (sample)")}>Draft fix</AiActionButton>}
+          >
+            {cause}
+          </ModelNote>
+        )}
+        <div className="flex flex-wrap gap-2">
+          <BoardButton onClick={() => toast(`${e.id} assigned to you (sample)`)}>Assign to me</BoardButton>
+          <BoardButton onClick={() => toast(`${e.id} marked resolved in next release (sample)`)}>Resolve in next release</BoardButton>
+          <BoardButton onClick={() => toast(`${e.id} ignored for 24h (sample)`)}>Ignore for 24h</BoardButton>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function ErrorTriage() {
+  const [mechanism, setMechanism] = useState<"all" | Mechanism>("all");
+  const { events, users, byMechanism, byService, byRelease } = getErrorBoard();
+  const rows = mechanism === "all" ? ERROR_GROUPS : ERROR_GROUPS.filter((e) => e.mechanism === mechanism);
+  const fresh = ERROR_GROUPS.filter((e) => e.status === "New").length;
+  const regressed = ERROR_GROUPS.filter((e) => e.status === "Regressed").length;
+
+  const verdict: VerdictItem[] = [
+    { state: "bad", text: `${fresh} new issues since this morning` },
+    { state: "warn", text: `${regressed} regressed` },
+    { state: "ok", text: `${ERROR_GROUPS.length - fresh - regressed} known and stable` },
+  ];
 
   return (
-    <div className="mx-auto flex w-full max-w-[1400px] flex-col gap-5">
-      <PageHeader
-        title="Error Triage & Root Cause"
-        description="Group, prioritize, investigate, and resolve errors efficiently · auto-refreshing continuously."
-        actions={<FilterSelect label="Range" value={timeRange} onChange={setTimeRange} options={TIME_OPTIONS} />}
-      />
-
-      <HeroBand
-        metrics={[
-          { label: `Total errors (${timeRange})`, value: formatCompact(totalErrors), delta: `${groupList.length} unique groups`, trend: "down", sparkColor: "var(--red)" },
-          { label: "Unique error groups", value: formatCompact(groupList.length), delta: "Active groups", trend: "neutral" },
-          { label: "Affected users", value: formatCompact(affectedUsers), delta: "Total affected", trend: "down", sparkColor: "var(--amber)" },
-          { label: "Fatal errors", value: formatCompact(fatalErrors), delta: "Priority 1", trend: fatalErrors > 0 ? "down" : "neutral", sparkColor: "var(--red)" },
+    <BoardPage title="Error overview" description="Every error group ranked by what it is doing to customers now. Fix from the top." verdict={verdict}>
+      <Readouts
+        items={[
+          { label: "Error events", value: compact(events), delta: "+184%", verdict: "bad", note: "vs previous 24h", state: "bad" },
+          { label: "Affected users", value: users.toLocaleString("en-US"), delta: "+1,106", verdict: "bad" },
+          { label: "New groups", value: String(fresh), note: "since 00:00", state: fresh ? "bad" : undefined },
+          { label: "Regressed", value: String(regressed), note: "reopened by a release", state: regressed ? "warn" : undefined },
+          { label: "Crash-free sessions", value: "99.12%", delta: "−0.41%", verdict: "bad", note: "target 99.5%" },
+          { label: "5xx rate", value: "0.38%", delta: "+0.21%", verdict: "bad" },
         ]}
       />
 
-      <ZoneLabel>Impact analysis</ZoneLabel>
-
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <ChartCard title="Error mechanism breakdown" headline={formatCompact(totalErrors)} headlineLabel="total errors">
-          <Donut
-            segments={mechanismSegments.length > 0 ? mechanismSegments : [{ label: "No errors", value: 1, color: "var(--green)" }]}
-            centerLabel={formatCompact(totalErrors)}
-            centerSub="errors"
-          />
-        </ChartCard>
-        <ChartCard
-          title="Error impact by service"
-          legend={[
-            { label: "Fatal", color: "var(--red)" },
-            { label: "Error", color: "var(--amber)" },
-            { label: "Warning", color: "var(--blue)" },
-          ]}
-        >
-          {serviceImpact.length > 0 ? (
-            <StackedBars groups={serviceImpact} horizontal />
-          ) : (
-            <div className="py-12 text-center text-[13px] text-[var(--text3)]">No service error distributions to display</div>
-          )}
-        </ChartCard>
-      </div>
-
-      <ZoneLabel>Triage queue · {sorted.length} groups</ZoneLabel>
-
-      <div className="max-w-[800px]">
-        <FilterBar onClear={() => { setSort("lastSeen"); setMechanismFilter("all"); }}>
-          <FilterSelect label="Sort" value={sort} onChange={setSort} options={SORT_OPTIONS} />
-          <FilterSelect
+      <Ledger
+        id="issue"
+        title="Triage queue"
+        meta="New and regressed first, then by events"
+        rows={rows}
+        rowId={(e) => e.id}
+        rowState={(e) => e.state}
+        attention={(e) => e.events}
+        action={
+          <Segmented
             label="Mechanism"
-            value={mechanismFilter}
-            onChange={setMechanismFilter}
-            options={[{ value: "all", label: "All" }, ...MECHANISMS.map((m) => ({ value: m, label: m }))]}
+            value={mechanism}
+            onChange={setMechanism}
+            options={[{ value: "all" as const, label: "All" }, ...MECHANISMS.map((m) => ({ value: m, label: m === "Promise rejection" ? "Promise" : m }))]}
           />
-        </FilterBar>
-      </div>
-
-      <div className="flex flex-col gap-3">
-        {sorted.map((g) => (
-          <ErrorGroupCardItem key={g.fingerprint} group={g} onOpen={() => navigate(g.href || `/observability/errors/${encodeURIComponent(g.fingerprint)}`)} />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function ErrorGroupCardItem({ group, onOpen }: { group: ErrorGroupRow; onOpen: () => void }) {
-  const [status, setStatus] = useState<string>(group.status || "unresolved");
-
-  const StatusIcon = status === "resolved" ? Check : status === "ignored" ? EyeOff : AlertTriangle;
-  const statusTone = status === "resolved" ? "var(--green)" : status === "ignored" ? "var(--text3)" : "var(--red)";
-
-  return (
-    <div className="rounded-[12px] border border-[var(--border)] bg-[var(--bg1)] p-4 transition-colors hover:border-[var(--border2)]">
-      <div className="flex items-start gap-3">
-        <StatusIcon className="mt-0.5 size-4 shrink-0" style={{ color: statusTone }} />
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <button type="button" onClick={onOpen} className="truncate text-left text-[14px] font-semibold text-[var(--text)] hover:text-[var(--brand)]">
-              {group.errorName}
-            </button>
-            <SeverityBadge severity={group.severity} />
-            <span className="rounded-[5px] bg-[var(--bg2)] px-2 py-0.5 text-[11px] text-[var(--text2)]">{group.mechanism || "sdk"}</span>
-            <MonospaceText value={group.fingerprint.slice(0, 8)} className="text-[var(--text3)]" />
-          </div>
-          <div className="mt-1 truncate text-[12px] text-[var(--text3)]">{group.message}</div>
-
-          <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-[var(--text3)]">
-            <span>Occurrences <strong className="text-[var(--text2)]">{group.occurrences.toLocaleString()}</strong></span>
-            <span>Affected Users <strong className="text-[var(--text2)]">{(group.affectedUsers ?? 0).toLocaleString()}</strong></span>
-            <span>First seen <Timestamp value={group.firstSeen} /></span>
-            <span>Last seen <Timestamp value={group.lastSeen} /></span>
-            <span className="flex items-center gap-1">
-              {(group.services ?? []).slice(0, 3).map((s) => (
-                <span key={s} className="rounded-full bg-[var(--bg3)] px-1.5 py-0.5 text-[10px] text-[var(--text2)]">{s}</span>
-              ))}
-            </span>
-          </div>
-        </div>
-
-        <div className="flex shrink-0 flex-col items-end gap-2">
-          <div className="flex items-center gap-1.5">
-            <button
-              type="button"
-              onClick={() => setStatus(status === "resolved" ? "unresolved" : "resolved")}
-              className="rounded-[6px] border border-[var(--border)] px-2 py-1 text-[11px] text-[var(--text2)] hover:text-[var(--brand)]"
-            >
-              {status === "resolved" ? "Unresolve" : "Resolve"}
-            </button>
-            <button
-              type="button"
-              onClick={() => setStatus(status === "ignored" ? "unresolved" : "ignored")}
-              className="rounded-[6px] border border-[var(--border)] px-2 py-1 text-[11px] text-[var(--text2)] hover:text-[var(--text)]"
-            >
-              {status === "ignored" ? "Unignore" : "Ignore"}
-            </button>
-            <button type="button" onClick={onOpen} className="rounded-[6px] border border-[var(--border)] px-2 py-1 text-[11px] text-[var(--brand)]">
-              Details
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function ErrorTriageSkeleton({ timeRange, setTimeRange }: { timeRange: string; setTimeRange: (r: any) => void }) {
-  return (
-    <div className="mx-auto flex w-full max-w-[1400px] flex-col gap-5 animate-in fade-in duration-300">
-      <PageHeader
-        title="Error Triage & Root Cause"
-        description="Group, prioritize, investigate, and resolve errors efficiently · auto-refreshing continuously."
-        actions={<FilterSelect label="Range" value={timeRange} onChange={setTimeRange} options={TIME_OPTIONS} />}
+        }
+        primary={{ header: "Issue", cell: (e) => <span className="font-mono">{e.name}</span>, sub: (e) => e.message }}
+        columns={[
+          { key: "status", header: "Status", className: "font-sans", cell: (e) => <Tag state={STATUS_STATE[e.status]}>{e.status}</Tag> },
+          { key: "trend", header: "Events, 24h", hide: "lg", cell: (e) => <Trend data={e.hourly} state={e.state} label={`${e.name} events per hour`} /> },
+          { key: "events", header: "Events", align: "right", sortValue: (e) => e.events, cell: (e) => <span style={{ color: stateText(e.state) }}>{compact(e.events)}</span> },
+          { key: "users", header: "Users", align: "right", sortValue: (e) => e.users, cell: (e) => e.users.toLocaleString("en-US") },
+          { key: "svc", header: "Service", hide: "xl", cell: (e) => e.service },
+          { key: "last", header: "Last seen", align: "right", hide: "md", cell: (e) => e.lastSeen },
+        ]}
+        detail={(e) => <IssueDetail e={e} />}
       />
 
-      <div className="grid grid-cols-2 divide-[var(--border)] overflow-hidden rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] max-lg:gap-px max-lg:bg-[var(--border)] lg:grid-cols-none lg:auto-cols-fr lg:grid-flow-col lg:divide-x">
-        {[0, 1, 2, 3].map((i) => (
-          <div key={i} className="flex flex-col gap-2 bg-[var(--bg1)] px-5 py-4">
-            <Skeleton className="h-3 w-28" />
-            <Skeleton className="h-7 w-20" />
-            <Skeleton className="h-3 w-24" />
-          </div>
-        ))}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <Panel title="By mechanism" meta="Events, 24h">
+          <SplitBar
+            label="Error events by mechanism"
+            format={compact}
+            segments={byMechanism.map(({ m, value }, i) => ({ label: m, value, color: ["var(--text)", "var(--text3)", "var(--violet)", "var(--red)"][i] }))}
+          />
+        </Panel>
+        <Panel title="By service" meta="Events, 24h">
+          <RankList
+            label="Services ranked by error events"
+            format={compact}
+            items={byService.map(([svc, v]) => ({ label: svc, value: v.events, state: v.state === "ok" ? undefined : v.state }))}
+          />
+        </Panel>
+        <Panel title="By release" meta="New or regressed groups introduced">
+          <RankList
+            label="Releases ranked by new or regressed error groups"
+            format={(v) => `${v} ${v === 1 ? "group" : "groups"}`}
+            items={byRelease.map(([rel, n]) => ({ label: rel, value: n, state: n > 1 ? "bad" : "warn" }))}
+          />
+        </Panel>
       </div>
-
-      <ZoneLabel>Impact analysis</ZoneLabel>
-
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <div className="flex flex-col rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] p-5">
-          <Skeleton className="mb-4 h-4 w-44" />
-          <div className="flex items-center justify-center py-8">
-            <Skeleton className="size-36 rounded-full" />
-          </div>
-        </div>
-        <div className="flex flex-col rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] p-5">
-          <Skeleton className="mb-4 h-4 w-44" />
-          <div className="flex flex-col gap-3 py-4">
-            {[0, 1, 2, 3, 4].map((i) => (
-              <div key={i} className="flex items-center gap-3">
-                <Skeleton className="h-3 w-24" />
-                <Skeleton className="h-5 flex-1 rounded-[5px]" />
-                <Skeleton className="h-3 w-10" />
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      <ZoneLabel>Triage queue</ZoneLabel>
-
-      <div className="max-w-[800px]">
-        <div className="flex flex-wrap items-center gap-2 rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg1)] p-2">
-          <Skeleton className="h-8 w-36" />
-          <Skeleton className="h-8 w-36" />
-        </div>
-      </div>
-
-      <div className="flex flex-col gap-3">
-        {[0, 1, 2, 3, 4].map((i) => (
-          <div key={i} className="flex flex-col gap-3 rounded-[12px] border border-[var(--border)] bg-[var(--bg1)] p-4">
-            <div className="flex items-start gap-3">
-              <Skeleton className="mt-0.5 size-4 shrink-0 rounded-full" />
-              <div className="flex min-w-0 flex-1 flex-col gap-2">
-                <div className="flex items-center gap-2">
-                  <Skeleton className="h-4 w-48" />
-                  <Skeleton className="h-4 w-16 rounded-full" />
-                  <Skeleton className="h-4 w-20" />
-                </div>
-                <Skeleton className="h-3 w-3/4" />
-                <div className="flex items-center gap-4 pt-1">
-                  <Skeleton className="h-3 w-24" />
-                  <Skeleton className="h-3 w-24" />
-                  <Skeleton className="h-3 w-24" />
-                </div>
-              </div>
-              <div className="flex gap-1.5">
-                <Skeleton className="h-6 w-16 rounded-[6px]" />
-                <Skeleton className="h-6 w-14 rounded-[6px]" />
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
+    </BoardPage>
   );
 }

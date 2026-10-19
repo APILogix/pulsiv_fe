@@ -1,12 +1,9 @@
-import { useEffect, useState, type FormEvent, type ReactNode } from "react";
+import { type ReactNode } from "react";
 import { useParams } from "react-router";
-import { AlertTriangle } from "lucide-react";
-import { toast } from "sonner";
 
-import { Button as UiButton } from "@/components/ui/button";
-import { useOrganizationAlertPolicy, useOrganizationAlertPolicyMutations } from "@/modules/alerting/hooks/useAlerting";
+import { useOrganizationAlertPolicy } from "@/modules/alerting/hooks/useAlerting";
 import { EnabledPill, labelize } from "@/modules/alerting/components/alerting-ui";
-import { apiErrorMessage, DialogField } from "@/modules/projects/components/project-ui";
+import { apiErrorMessage } from "@/modules/projects/components/project-ui";
 import {
   ProjectPageHeader,
   Readouts,
@@ -17,7 +14,7 @@ import {
   WorkspacePage,
   type Readout,
 } from "@/modules/projects/components/project-page";
-import { Notice, Panel, Pill, fieldTextareaClass } from "@/shared/ui/pulse";
+import { Panel, Pill } from "@/shared/ui/pulse";
 import {
   CodeBlock,
   EmptyNote,
@@ -28,13 +25,11 @@ import {
   formatRelativeTime,
   type KeyValueItem,
 } from "@/shared/observe";
-import { cn } from "@/lib/utils";
 
 // ── module-level helpers ─────────────────────────────────────
 
 const RULES_PATH = "/alerts/rules";
 const CRUMB_ROOT = { label: "Alert rules", to: RULES_PATH };
-const DEFINITION_FIELD = "policy-definition-json";
 
 /** 45s, 5m, 1h 30m, 2d 4h. Two units at most. */
 function formatSeconds(total: number | null | undefined): string {
@@ -78,13 +73,6 @@ function PolicyShell({ title, children }: { title: string; children: ReactNode }
 export default function OrgPolicyDetailPage() {
   const { policyId = "" } = useParams();
   const { data: policy, isLoading, error: loadError, refetch } = useOrganizationAlertPolicy(policyId);
-  const { createVersion } = useOrganizationAlertPolicyMutations();
-  const [definition, setDefinition] = useState("{}");
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (policy?.currentDefinition) setDefinition(JSON.stringify(policy.currentDefinition, null, 2));
-  }, [policy]);
 
   if (isLoading) {
     return (
@@ -122,23 +110,6 @@ export default function OrgPolicyDetailPage() {
       </PolicyShell>
     );
   }
-
-  const saveVersion = (event: FormEvent) => {
-    event.preventDefault();
-    setError(null);
-    try {
-      const parsed = JSON.parse(definition);
-      createVersion.mutate(
-        { policyId: policy.id, definition: parsed },
-        {
-          onSuccess: () => toast.success(`Version ${policy.currentVersion ? policy.currentVersion + 1 : 2} created`),
-          onError: (requestError) => setError(apiErrorMessage(requestError, "Could not create policy version.")),
-        }
-      );
-    } catch {
-      setError("The policy definition must be valid JSON. Fix the syntax and create the version again.");
-    }
-  };
 
   const version = policy.currentVersion ?? policy.version ?? 1;
   const dependencies = Array.isArray(policy.dependencies) ? policy.dependencies : null;
@@ -223,35 +194,6 @@ export default function OrgPolicyDetailPage() {
           <KeyValueList items={configuration} columns={1} labelWidth={140} />
         </Panel>
       </div>
-
-      <form onSubmit={saveVersion} className="min-w-0">
-        <Panel
-          title="Create a new version"
-          description="Saving creates a new immutable policy version. Active projects using this policy can migrate gradually without breaking runtime evaluation."
-          footer={
-            <UiButton type="submit" size="lg" disabled={createVersion.isPending}>
-              {createVersion.isPending ? "Creating version…" : "Create version"}
-            </UiButton>
-          }
-        >
-          <DialogField label="Policy definition" name={DEFINITION_FIELD} hint="Must be valid JSON.">
-            <textarea
-              id={DEFINITION_FIELD}
-              value={definition}
-              onChange={(e) => setDefinition(e.target.value)}
-              className={cn(fieldTextareaClass, "min-h-[360px] resize-y font-[family-name:var(--mono)] text-[12px] leading-[1.6]")}
-              spellCheck={false}
-            />
-          </DialogField>
-          {error && (
-            <div role="alert" className="mt-4">
-              <Notice tone="red" icon={AlertTriangle}>
-                {error}
-              </Notice>
-            </div>
-          )}
-        </Panel>
-      </form>
     </WorkspacePage>
   );
 }

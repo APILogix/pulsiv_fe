@@ -15,6 +15,7 @@ import {
   eventsApi,
   incidentsApi,
   projectAlertsApi,
+  alertCatalogApi,
   orgPoliciesApi,
   projectSubscriptionsApi,
   effectivePolicyApi,
@@ -89,8 +90,13 @@ export const alertingKeys = {
   routingRules: (orgId: string | null) => ["alerting", "routing-rules", orgId] as const,
   metrics: (orgId: string | null, query?: unknown) => ["alerting", "metrics", orgId, query] as const,
   workspace: (orgId: string | null) => ["alerting", "workspace", orgId] as const,
+  catalog: (orgId: string | null) => ["alerting", "catalog", orgId] as const,
   orgPolicies: (orgId: string | null, query?: unknown) => ["alerting", "org-policies", orgId, query] as const,
   orgPolicy: (orgId: string | null, id: string) => ["alerting", "org-policy", orgId, id] as const,
+  projectSubscriptions: (orgId: string | null, projectId: string | undefined) =>
+    ["alerting", "project-subscriptions", orgId, projectId] as const,
+  projectEffectivePolicies: (orgId: string | null, projectId: string | undefined) =>
+    ["alerting", "effective-policies", orgId, projectId] as const,
   incidents: (orgId: string | null, query?: unknown) => ["alerting", "incidents", orgId, query] as const,
 };
 
@@ -100,7 +106,18 @@ function useInvalidateAlerting() {
   return () => queryClient.invalidateQueries({ queryKey: alertingKeys.all, exact: false });
 }
 
-// ── Workspace and V2 policies ───────────────────────────────
+// ── Global Catalog and V2 policies ───────────────────────────────
+
+export function useAlertCatalog() {
+  const { activeOrgId } = useAlertingScope();
+  return useQuery({
+    queryKey: alertingKeys.catalog(activeOrgId),
+    queryFn: () => alertCatalogApi.list(activeOrgId!),
+    enabled: !!activeOrgId,
+    staleTime: 5 * 60 * 1000, // 5 min cache for catalog
+    gcTime: 15 * 60 * 1000,
+  });
+}
 
 export function useAlertingWorkspace() {
   const { activeOrgId } = useAlertingScope();
@@ -117,6 +134,8 @@ export function useOrganizationAlertPolicies(query: { limit?: number; offset?: n
     queryKey: alertingKeys.orgPolicies(activeOrgId, query),
     queryFn: () => orgPoliciesApi.list(activeOrgId!, query),
     enabled: !!activeOrgId,
+    staleTime: 60_000,
+    gcTime: 5 * 60 * 1000,
     placeholderData: (previous) => previous,
   });
 }
@@ -127,23 +146,23 @@ export function useOrganizationAlertPolicy(policyId: string | undefined) {
     queryKey: alertingKeys.orgPolicy(activeOrgId, policyId ?? ""),
     queryFn: () => orgPoliciesApi.getById(activeOrgId!, policyId!),
     enabled: !!activeOrgId && !!policyId,
+    staleTime: 60_000,
+    gcTime: 5 * 60 * 1000,
+  });
+}
+
+export function useOrgEffectiveRules(query: { projectId?: string; status?: string; search?: string } = {}) {
+  const { activeOrgId } = useAlertingScope();
+  return useQuery({
+    queryKey: ["alerting", "org-effective", activeOrgId, query],
+    queryFn: () => effectivePolicyApi.getOrgEffective(activeOrgId!, query),
+    enabled: !!activeOrgId,
+    staleTime: 10_000,
   });
 }
 
 export function useOrganizationAlertPolicyMutations() {
-  const { requireOrgId } = useAlertingScope();
-  const invalidate = useInvalidateAlerting();
-  return {
-    create: useMutation({
-      mutationFn: (body: Partial<OrganizationAlertPolicy>) => orgPoliciesApi.create(requireOrgId(), body),
-      onSuccess: invalidate,
-    }),
-    createVersion: useMutation({
-      mutationFn: ({ policyId, definition }: { policyId: string; definition: Json }) =>
-        orgPoliciesApi.createVersion(requireOrgId(), policyId, definition),
-      onSuccess: invalidate,
-    }),
-  };
+  return {};
 }
 
 // ── Incidents ───────────────────────────────────────────────────────────────
@@ -255,31 +274,54 @@ export function useIncidentMutations(incidentId?: string) {
 export function useProjectPolicySubscriptions(projectId: string | undefined) {
   const { activeOrgId } = useAlertingScope();
   return useQuery({
-    queryKey: ["alerting", "project-subscriptions", activeOrgId, projectId],
+    queryKey: alertingKeys.projectSubscriptions(activeOrgId, projectId),
     queryFn: () => projectSubscriptionsApi.list(activeOrgId!, projectId!),
     enabled: !!activeOrgId && !!projectId,
+    staleTime: 30_000,
+    gcTime: 5 * 60 * 1000,
+    placeholderData: (previous) => previous,
   });
 }
 
 export function useProjectPolicyMutations(projectId: string) {
   const { activeOrgId, requireOrgId } = useAlertingScope();
   const queryClient = useQueryClient();
-  const key = ["alerting", "project-subscriptions", activeOrgId, projectId];
-  const invalidate = () => queryClient.invalidateQueries({ queryKey: key });
+  const key = alertingKeys.projectSubscriptions(activeOrgId, projectId);
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: key });
+    queryClient.invalidateQueries({ queryKey: alertingKeys.orgPolicies(activeOrgId) });
+  };
   return {
-    subscribe: useMutation({ mutationFn: (policyId: string) => projectSubscriptionsApi.subscribe(requireOrgId(), projectId, policyId), onSuccess: invalidate }),
-    updateState: useMutation({ mutationFn: ({ subscriptionId, state }: { subscriptionId: string; state: import("../api/types").SubscriptionState }) => projectSubscriptionsApi.updateState(requireOrgId(), projectId, subscriptionId, state), onSuccess: invalidate }),
-    updateOverride: useMutation({ mutationFn: ({ subscriptionId, override }: { subscriptionId: string; override: Record<string, unknown> }) => projectSubscriptionsApi.updateOverride(requireOrgId(), projectId, subscriptionId, override), onSuccess: invalidate }),
-    remove: useMutation({ mutationFn: (subscriptionId: string) => projectSubscriptionsApi.delete(requireOrgId(), projectId, subscriptionId), onSuccess: invalidate }),
+    subscribe: useMutation({
+      mutationFn: (policyId: string) => projectSubscriptionsApi.subscribe(requireOrgId(), projectId, policyId),
+      onSuccess: invalidate,
+    }),
+    updateState: useMutation({
+      mutationFn: ({ subscriptionId, state }: { subscriptionId: string; state: import("../api/types").SubscriptionState }) =>
+        projectSubscriptionsApi.updateState(requireOrgId(), projectId, subscriptionId, state),
+      onSuccess: invalidate,
+    }),
+    updateOverride: useMutation({
+      mutationFn: ({ subscriptionId, override }: { subscriptionId: string; override: Record<string, unknown> }) =>
+        projectSubscriptionsApi.updateOverride(requireOrgId(), projectId, subscriptionId, override),
+      onSuccess: invalidate,
+    }),
+    remove: useMutation({
+      mutationFn: (subscriptionId: string) => projectSubscriptionsApi.delete(requireOrgId(), projectId, subscriptionId),
+      onSuccess: invalidate,
+    }),
   };
 }
 
 export function useProjectEffectivePolicies(projectId: string | undefined) {
   const { activeOrgId } = useAlertingScope();
   return useQuery({
-    queryKey: ["alerting", "effective-policies", activeOrgId, projectId],
+    queryKey: alertingKeys.projectEffectivePolicies(activeOrgId, projectId),
     queryFn: () => effectivePolicyApi.listAll(activeOrgId!, projectId!),
     enabled: !!activeOrgId && !!projectId,
+    staleTime: 30_000,
+    gcTime: 5 * 60 * 1000,
+    placeholderData: (previous) => previous,
   });
 }
 
@@ -288,8 +330,22 @@ export function useProjectEffectivePolicies(projectId: string | undefined) {
 export function useAlertRules(query: RuleListQuery = {}) {
   const { activeOrgId } = useAlertingScope();
   return useQuery({
-    queryKey: alertingKeys.rules(activeOrgId, query),
-    queryFn: () => rulesApi.list(activeOrgId!, query),
+    queryKey: ["alerting", "rules-catalog", activeOrgId, query],
+    queryFn: async () => {
+      const res = await orgPoliciesApi.list(activeOrgId!, { limit: query.limit ?? 100, offset: query.offset ?? 0 });
+      return {
+        data: res.data.map((p) => ({
+          id: p.id,
+          name: p.name,
+          slug: p.slug,
+          enabled: p.enabled !== false,
+          severity: p.severity,
+          cooldownSeconds: p.cooldownSeconds,
+          evaluationIntervalSeconds: p.evaluationWindowSeconds,
+        })),
+        total: res.total,
+      };
+    },
     enabled: !!activeOrgId,
     placeholderData: (previous) => previous,
   });
@@ -298,8 +354,19 @@ export function useAlertRules(query: RuleListQuery = {}) {
 export function useAlertRule(ruleId: string | undefined) {
   const { activeOrgId } = useAlertingScope();
   return useQuery({
-    queryKey: alertingKeys.rule(activeOrgId, ruleId ?? ""),
-    queryFn: () => rulesApi.get(activeOrgId!, ruleId!),
+    queryKey: ["alerting", "rule-catalog", activeOrgId, ruleId ?? ""],
+    queryFn: async () => {
+      const p = await orgPoliciesApi.getById(activeOrgId!, ruleId!);
+      return {
+        id: p.id,
+        name: p.name,
+        slug: p.slug,
+        enabled: p.enabled !== false,
+        severity: p.severity,
+        cooldownSeconds: p.cooldownSeconds,
+        evaluationIntervalSeconds: p.evaluationWindowSeconds,
+      };
+    },
     enabled: !!activeOrgId && !!ruleId,
   });
 }

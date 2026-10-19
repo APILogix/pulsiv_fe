@@ -10,6 +10,7 @@
 import { apiClient } from "@/infrastructure/api-client/axios";
 import type {
   AcknowledgeEventBody,
+  AlertCatalogItem,
   AlertDeadLetter,
   AlertDeliveryAttempt,
   AlertEscalationPolicy,
@@ -18,6 +19,7 @@ import type {
   AlertMetric,
   AlertRoutingRule,
   AlertRule,
+  AlertSeverity,
   AlertingWorkspaceSnapshot,
   AlertRuleBinding,
   AlertRuleRevision,
@@ -418,29 +420,216 @@ export const workspaceApi = {
   },
 };
 
+// ── Global Alert Catalog API ────────────────────────────────────────
+
+export function mapCatalogItemToPolicy(item: AlertCatalogItem, orgId: string): OrganizationAlertPolicy {
+  const defConfig = (item.defaultConfig || {}) as Record<string, unknown>;
+  const thresholdVal = defConfig.thresholdValue ?? defConfig.value ?? defConfig.threshold ?? 0;
+  const operator = String(defConfig.operator || "gte");
+  const lookbackMins = Number(defConfig.lookbackMinutes ?? 5);
+  const cooldownSecs = Number(defConfig.cooldownSeconds ?? 300);
+  const severity = (defConfig.severity as AlertSeverity) || (item.tier === "critical" ? "critical" : "warning");
+
+  return {
+    id: item.key,
+    organizationId: orgId,
+    slug: item.key,
+    name: item.title,
+    description: item.description,
+    version: item.version,
+    currentVersion: item.version,
+    category: item.category || "general",
+    metricSource: (defConfig.metric as string) || (defConfig.metricSource as string) || item.category || "metrics",
+    expression: (defConfig.expression as string) || `${item.category}.${item.key} ${operator} ${thresholdVal}`,
+    defaultThreshold: { value: thresholdVal, operator, unit: (defConfig.unit as string) || "" },
+    recoveryThreshold: {},
+    cooldownSeconds: cooldownSecs,
+    evaluationWindowSeconds: lookbackMins * 60,
+    severity,
+    enabled: item.active !== false,
+    isSystem: item.source !== "custom",
+    createdAt: item.createdAt || new Date().toISOString(),
+    updatedAt: item.updatedAt || new Date().toISOString(),
+  };
+}
+
+export function mapProjectSubscription(raw: any, orgId?: string, projectId?: string): ProjectSubscription {
+  if (!raw) return raw;
+  const item = camelizeDeep(raw);
+  const catalogKey = String(item.catalogKey || item.catalog_key || item.key || item.policyId || item.slug || "");
+  const subId = String(item.id || catalogKey);
+  const isEnabled = item.enabled !== false;
+  const state: SubscriptionState = item.state || (isEnabled ? "subscribed" : "disabled");
+
+  const overrides = item.configOverrides || item.config_overrides || item.override || null;
+  const thresholdVal = overrides?.thresholdValue ?? overrides?.threshold ?? overrides?.value ?? item.threshold ?? null;
+  const cooldownSecs = overrides?.cooldownSeconds ?? item.cooldownSeconds ?? null;
+  const evalWindowSecs = overrides?.lookbackMinutes != null
+    ? Number(overrides.lookbackMinutes) * 60
+    : (overrides?.evaluationWindowSeconds ?? item.evaluationWindowSeconds ?? null);
+  const severity = (overrides?.severity as AlertSeverity) ?? item.severity ?? null;
+  const channels = overrides?.channels ?? item.channels ?? null;
+  const environment = overrides?.environment ?? item.environment ?? null;
+
+  const hasOverrideValues =
+    (thresholdVal != null && (typeof thresholdVal !== "object" || Object.keys(thresholdVal).length > 0)) ||
+    cooldownSecs != null ||
+    evalWindowSecs != null ||
+    severity != null ||
+    (channels != null && channels.length > 0) ||
+    environment != null;
+
+  const projectOverride: ProjectOverride | null = hasOverrideValues
+    ? {
+        id: subId,
+        subscriptionId: subId,
+        projectId: item.projectId || item.project_id || projectId,
+        policyId: catalogKey,
+        threshold: thresholdVal,
+        cooldownSeconds: cooldownSecs,
+        evaluationWindowSeconds: evalWindowSecs,
+        severity,
+        channels,
+        environment,
+        createdAt: item.createdAt || item.created_at || new Date().toISOString(),
+        updatedAt: item.updatedAt || item.updated_at || new Date().toISOString(),
+      }
+    : null;
+
+  return {
+    ...item,
+    id: subId,
+    organizationId: item.organizationId || item.org_id || orgId,
+    projectId: item.projectId || item.project_id || projectId,
+    catalogKey,
+    policyId: catalogKey,
+    ruleId: catalogKey,
+    catalogPolicyId: catalogKey,
+    presetKey: catalogKey,
+    state,
+    enabled: isEnabled,
+    mode: hasOverrideValues ? "override" : (item.mode || "inherit"),
+    override: projectOverride,
+    threshold: thresholdVal,
+    cooldownSeconds: cooldownSecs,
+    evaluationWindowSeconds: evalWindowSecs,
+    severity,
+    channels,
+    createdAt: item.createdAt || item.created_at || new Date().toISOString(),
+    updatedAt: item.updatedAt || item.updated_at || new Date().toISOString(),
+  };
+}
+
+export const alertCatalogApi = {
+  list: async (orgId: string): Promise<AlertCatalogItem[]> => {
+    let payload: any;
+    try {
+      const res = await apiClient.get<any>(`${alertingBase(orgId)}/catalog`);
+      payload = res.data;
+    } catch {
+      // Fallback to org-level alias
+      try {
+        const res = await apiClient.get<any>(`/organizations/${orgId}/catalog`);
+        payload = res.data;
+      } catch {
+        // Last-resort fallback to root catalog if available
+        const res = await apiClient.get<any>(`/catalog`);
+        payload = res.data;
+      }
+    }
+
+    const list = Array.isArray(payload)
+      ? payload
+      : Array.isArray(payload?.data)
+        ? payload.data
+        : Array.isArray(payload?.catalog)
+          ? payload.catalog
+          : (payload?.data?.catalog ?? []);
+
+    return camelizeDeep(list);
+  },
+
+  getByKey: async (orgId: string, catalogKey: string): Promise<AlertCatalogItem | null> => {
+    const list = await alertCatalogApi.list(orgId);
+    return list.find((item) => item.key === catalogKey) ?? null;
+  },
+};
+
 export const orgPoliciesApi = {
-  list: async (orgId: string, query: { limit?: number; offset?: number } = {}): Promise<Paged<OrganizationAlertPolicy>> => {
-    const { data } = await apiClient.get(`/organizations/${orgId}/alert-policies`, { params: query });
-    return paged<OrganizationAlertPolicy>(camelizeDeep(data), query.limit ?? 15);
+  list: async (
+    orgId: string,
+    query: { limit?: number; offset?: number; category?: string } = {},
+  ): Promise<Paged<OrganizationAlertPolicy>> => {
+    // 1. Fetch global alert catalog
+    let catalogItems: AlertCatalogItem[] = [];
+    try {
+      catalogItems = await alertCatalogApi.list(orgId);
+    } catch (err) {
+      console.error("Failed to load alert catalog:", err);
+    }
+
+    const catalogPolicies = catalogItems.map((item) => mapCatalogItemToPolicy(item, orgId));
+
+    // 2. Fetch custom organization alert policies from workspace API if present
+    let customPolicies: OrganizationAlertPolicy[] = [];
+    try {
+      const { data } = await apiClient.get(`/organizations/${orgId}/alert-policies`, { params: query });
+      const rawData = camelizeDeep(data);
+      if (Array.isArray(rawData)) {
+        customPolicies = rawData;
+      } else if (rawData && Array.isArray(rawData.data)) {
+        customPolicies = rawData.data;
+      }
+    } catch {
+      // workspace policies are optional
+    }
+
+    const seen = new Set<string>();
+    const merged: OrganizationAlertPolicy[] = [];
+
+    for (const p of customPolicies) {
+      if (p.slug) seen.add(p.slug);
+      merged.push(p);
+    }
+
+    for (const p of catalogPolicies) {
+      if (!seen.has(p.slug)) {
+        seen.add(p.slug);
+        merged.push(p);
+      }
+    }
+
+    let result = merged;
+    if (query.category && query.category !== "all") {
+      result = result.filter((p) => p.category?.toLowerCase() === query.category?.toLowerCase());
+    }
+
+    const limit = query.limit ?? 15;
+    const offset = query.offset ?? 0;
+    const total = result.length;
+    const pagedSlice = result.slice(offset, offset + limit);
+
+    return {
+      data: pagedSlice,
+      total,
+      limit,
+      offset,
+    };
   },
 
   getById: async (orgId: string, policyId: string): Promise<OrganizationAlertPolicy> => {
+    try {
+      const catalog = await alertCatalogApi.list(orgId);
+      const found = catalog.find((item) => item.key === policyId || item.title === policyId);
+      if (found) {
+        return mapCatalogItemToPolicy(found, orgId);
+      }
+    } catch {
+      // fallback
+    }
+
     const { data } = await apiClient.get(`/organizations/${orgId}/alert-policies/${policyId}`);
-    return camelizeDeep(data.data);
-  },
-
-  create: async (orgId: string, body: Partial<OrganizationAlertPolicy>): Promise<OrganizationAlertPolicy> => {
-    const { data } = await apiClient.post(`/organizations/${orgId}/alert-policies`, body);
-    return camelizeDeep(data.data);
-  },
-
-  createVersion: async (orgId: string, policyId: string, definition: Json): Promise<OrganizationAlertPolicy> => {
-    const { data } = await apiClient.post(`/organizations/${orgId}/alert-policies/${policyId}/versions`, { definition });
-    return camelizeDeep(data.data);
-  },
-
-  delete: async (orgId: string, policyId: string): Promise<void> => {
-    await apiClient.delete(`/organizations/${orgId}/alert-policies/${policyId}`);
+    return camelizeDeep(data.data ?? data);
   },
 };
 
@@ -448,27 +637,106 @@ export const orgPoliciesApi = {
 
 export const projectSubscriptionsApi = {
   list: async (orgId: string, projectId: string): Promise<ProjectSubscription[]> => {
-    const { data } = await apiClient.get(`/organizations/${orgId}/projects/${projectId}/subscriptions`);
-    return camelizeDeep(data.data ?? []);
+    const { data } = await apiClient.get<any>(`${alertingBase(orgId)}/projects/${projectId}/subscriptions`);
+    const rawList = Array.isArray(data)
+      ? data
+      : Array.isArray(data?.data)
+        ? data.data
+        : Array.isArray(data?.subscriptions)
+          ? data.subscriptions
+          : (data?.data?.subscriptions ?? []);
+    return rawList.map((item: any) => mapProjectSubscription(item, orgId, projectId));
   },
 
-  subscribe: async (orgId: string, projectId: string, policyId: string): Promise<ProjectSubscription> => {
-    const { data } = await apiClient.post(`/organizations/${orgId}/projects/${projectId}/subscriptions`, { policyId });
-    return camelizeDeep(data.data);
+  subscribe: async (
+    orgId: string,
+    projectId: string,
+    policyId: string,
+    configOverrides?: Record<string, unknown>,
+  ): Promise<ProjectSubscription> => {
+    const { data } = await apiClient.post<any>(
+      `${alertingBase(orgId)}/projects/${projectId}/subscriptions`,
+      {
+        catalogKey: policyId,
+        configOverrides,
+      },
+    );
+    const sub = data?.subscription ?? data?.data?.subscription ?? data?.data ?? data;
+    return mapProjectSubscription(sub, orgId, projectId);
   },
 
-  updateState: async (orgId: string, projectId: string, subscriptionId: string, state: SubscriptionState): Promise<ProjectSubscription> => {
-    const { data } = await apiClient.patch(`/organizations/${orgId}/projects/${projectId}/subscriptions/${subscriptionId}`, { state });
-    return camelizeDeep(data.data);
+  updateState: async (
+    orgId: string,
+    projectId: string,
+    subscriptionId: string,
+    state: SubscriptionState,
+  ): Promise<ProjectSubscription> => {
+    const { data } = await apiClient.patch(
+      `${alertingBase(orgId)}/projects/${projectId}/subscriptions/${subscriptionId}`,
+      { state },
+    );
+    const sub = data.subscription ?? data.data ?? data;
+    return mapProjectSubscription(sub, orgId, projectId);
   },
 
-  updateOverride: async (orgId: string, projectId: string, subscriptionId: string, override: Partial<ProjectOverride>): Promise<ProjectOverride> => {
-    const { data } = await apiClient.post(`/organizations/${orgId}/projects/${projectId}/subscriptions/${subscriptionId}/overrides`, override);
-    return camelizeDeep(data.data);
+  updateOverride: async (
+    orgId: string,
+    projectId: string,
+    subscriptionId: string,
+    override: Partial<ProjectOverride> | Record<string, unknown>,
+  ): Promise<ProjectOverride> => {
+    const formattedOverrides: Record<string, unknown> = {};
+    if (override) {
+      const o = override as any;
+      if (o.threshold != null) {
+        if (typeof o.threshold === "object" && o.threshold.value != null) {
+          formattedOverrides.thresholdValue = o.threshold.value;
+          if (o.threshold.operator) formattedOverrides.operator = o.threshold.operator;
+        } else if (typeof o.threshold === "number" || typeof o.threshold === "string") {
+          formattedOverrides.thresholdValue = Number(o.threshold);
+        }
+      }
+      if (o.thresholdValue != null) formattedOverrides.thresholdValue = o.thresholdValue;
+      if (o.value != null) formattedOverrides.thresholdValue = o.value;
+      if (o.operator != null) formattedOverrides.operator = o.operator;
+      if (o.evaluationWindowSeconds != null) {
+        formattedOverrides.lookbackMinutes = Math.max(1, Math.round(Number(o.evaluationWindowSeconds) / 60));
+      }
+      if (o.lookbackMinutes != null) formattedOverrides.lookbackMinutes = Number(o.lookbackMinutes);
+      if (o.cooldownSeconds != null) formattedOverrides.cooldownSeconds = Number(o.cooldownSeconds);
+      if (o.severity != null) formattedOverrides.severity = o.severity;
+      if (o.channels != null) formattedOverrides.channels = o.channels;
+      if (o.environment != null) formattedOverrides.environment = o.environment;
+    }
+
+    const { data } = await apiClient.put(
+      `${alertingBase(orgId)}/projects/${projectId}/subscriptions/${subscriptionId}/overrides`,
+      { configOverrides: formattedOverrides },
+    );
+    const sub = data.subscription ?? data.data ?? data;
+    const mapped = mapProjectSubscription(sub, orgId, projectId);
+    return (
+      mapped.override ?? ({
+        id: subscriptionId,
+        subscriptionId,
+        projectId,
+        policyId: mapped.catalogKey,
+        threshold: (formattedOverrides.thresholdValue as any) ?? null,
+        cooldownSeconds: (formattedOverrides.cooldownSeconds as number) ?? null,
+        evaluationWindowSeconds: formattedOverrides.lookbackMinutes
+          ? (formattedOverrides.lookbackMinutes as number) * 60
+          : null,
+        severity: (formattedOverrides.severity as AlertSeverity) ?? null,
+        channels: (formattedOverrides.channels as string[]) ?? null,
+        environment: (formattedOverrides.environment as string) ?? null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      } as ProjectOverride)
+    );
   },
 
   delete: async (orgId: string, projectId: string, subscriptionId: string): Promise<void> => {
-    await apiClient.delete(`/organizations/${orgId}/projects/${projectId}/subscriptions/${subscriptionId}`);
+    await apiClient.delete(`${alertingBase(orgId)}/projects/${projectId}/subscriptions/${subscriptionId}`);
   },
 };
 
@@ -476,13 +744,90 @@ export const projectSubscriptionsApi = {
 
 export const effectivePolicyApi = {
   resolve: async (orgId: string, projectId: string, policyId: string): Promise<EffectivePolicy> => {
-    const { data } = await apiClient.get(`/organizations/${orgId}/projects/${projectId}/effective-policies/${policyId}`);
-    return camelizeDeep(data.data);
+    const [policies, subscriptions] = await Promise.all([
+      orgPoliciesApi.list(orgId, { limit: 100 }),
+      projectSubscriptionsApi.list(orgId, projectId),
+    ]);
+    const basePolicy = policies.data.find((p) => p.id === policyId || p.slug === policyId);
+    const sub = subscriptions.find((s) => s.catalogKey === policyId || s.policyId === policyId);
+    const override = sub?.override ?? null;
+
+    if (!basePolicy) {
+      throw new Error(`Policy ${policyId} not found`);
+    }
+
+    return {
+      policyId,
+      projectId,
+      effectiveThreshold: (override?.threshold as any)?.value ?? override?.threshold ?? (basePolicy.defaultThreshold as any)?.value ?? "0",
+      effectiveCooldown: String(override?.cooldownSeconds ?? basePolicy.cooldownSeconds),
+      effectiveSeverity: override?.severity ?? basePolicy.severity,
+      effectiveChannels: override?.channels ?? [],
+      effectiveEscalationPolicyId: override?.escalationPolicyId ?? null,
+      isOverridden: Boolean(override),
+      overrides: override,
+      basePolicy,
+    };
   },
 
   listAll: async (orgId: string, projectId: string): Promise<EffectivePolicy[]> => {
-    const { data } = await apiClient.get(`/organizations/${orgId}/projects/${projectId}/effective-policies`);
-    return camelizeDeep(data.data ?? []);
+    const [policies, subscriptions] = await Promise.all([
+      orgPoliciesApi.list(orgId, { limit: 100 }),
+      projectSubscriptionsApi.list(orgId, projectId),
+    ]);
+    return policies.data.map((basePolicy) => {
+      const sub = subscriptions.find((s) => s.catalogKey === basePolicy.id || s.policyId === basePolicy.id);
+      const override = sub?.override ?? null;
+      return {
+        policyId: basePolicy.id,
+        projectId,
+        effectiveThreshold: (override?.threshold as any)?.value ?? override?.threshold ?? (basePolicy.defaultThreshold as any)?.value ?? "0",
+        effectiveCooldown: String(override?.cooldownSeconds ?? basePolicy.cooldownSeconds),
+        effectiveSeverity: override?.severity ?? basePolicy.severity,
+        effectiveChannels: override?.channels ?? [],
+        effectiveEscalationPolicyId: override?.escalationPolicyId ?? null,
+        isOverridden: Boolean(override),
+        overrides: override,
+        basePolicy,
+      };
+    });
+  },
+
+  getOrgEffective: async (
+    orgId: string,
+    query: { projectId?: string; status?: string; search?: string } = {},
+  ): Promise<{
+    projects: Array<{ id: string; name: string; slug: string }>;
+    items: Array<{
+      catalogId: string;
+      catalogKey: string;
+      title: string;
+      category: string;
+      projectId: string;
+      projectName: string;
+      projectSlug: string;
+      subscriptionId: string | null;
+      status: "using" | "opted_out" | "overridden";
+      enabled: boolean;
+      configOverrides: Record<string, unknown> | null;
+      effectiveSeverity: AlertSeverity;
+      effectiveThreshold: number | null;
+      effectiveOperator: string;
+      effectiveCooldownSeconds: number;
+      effectiveWindowSeconds: number;
+      updatedAt: string;
+    }>;
+    summary: {
+      totalProjects: number;
+      totalCatalogRules: number;
+      totalEffectiveRules: number;
+      usingCount: number;
+      optedOutCount: number;
+      overriddenCount: number;
+    };
+  }> => {
+    const { data } = await apiClient.get(`${alertingBase(orgId)}/effective`, { params: query });
+    return data.data ?? data;
   },
 };
 

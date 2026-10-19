@@ -106,7 +106,6 @@ const ProfilingPage = lazy(() => import("@/pages/observe/ProfilingPage"));
 const ProfileDetailPage = lazy(() => import("@/pages/observe/ProfileDetailPage"));
 const CronsPage = lazy(() => import("@/pages/observe/CronsPage"));
 const CronDetailPage = lazy(() => import("@/pages/observe/CronDetailPage"));
-const ReplayPage = lazy(() => import("@/pages/observe/ReplayPage"));
 const RuntimeMetricsPage = lazy(() => import("@/pages/observe/RuntimeMetricsPage"));
 const EventLoopPage = lazy(() => import("@/pages/observe/EventLoopPage"));
 const GcMonitoringPage = lazy(() => import("@/pages/observe/GcMonitoringPage"));
@@ -146,7 +145,6 @@ const IncidentsPage = lazy(() => import("@/pages/act/IncidentsPage"));
 const IncidentDetailPage = lazy(() => import("@/pages/act/IncidentDetailPage"));
 const AlertRulesPage = lazy(() => import("@/pages/act/AlertRulesPage"));
 const OrgPolicyDetailPage = lazy(() => import("@/pages/act/OrgPolicyDetailPage"));
-const AlertRuleDetailPage = lazy(() => import("@/pages/act/AlertRuleDetailPage"));
 const EscalationsPage = lazy(() => import("@/pages/act/EscalationsPage"));
 const EscalationDetailPage = lazy(() => import("@/pages/act/EscalationDetailPage"));
 const AlertTemplatesPage = lazy(() => import("@/pages/act/ChannelsPage"));
@@ -360,7 +358,6 @@ export const protectedRoutes: RouteObject[] = [
               { path: "profiling/:profileId", element: <ProfileDetailPage /> },
               { path: "crons", element: <CronsPage /> },
               { path: "crons/:checkinId", element: <CronDetailPage /> },
-              { path: "replay", element: <ReplayPage /> },
               { path: "runtime-metrics", element: <RuntimeMetricsPage /> },
               { path: "event-loop", element: <EventLoopPage /> },
               { path: "gc-monitoring", element: <GcMonitoringPage /> },
@@ -448,7 +445,6 @@ export const protectedRoutes: RouteObject[] = [
               { path: "events/:eventId", element: <AlertEventDetailPage /> },
               { path: "rules", element: <AlertRulesPage /> },
               { path: "policies/:policyId", element: <OrgPolicyDetailPage /> },
-              { path: "rules/:ruleId", element: <AlertRuleDetailPage /> },
               { path: "escalations", element: <EscalationsPage /> },
               { path: "escalations/:policyId", element: <EscalationDetailPage /> },
               { path: "templates", element: <AlertTemplatesPage /> },
@@ -458,6 +454,7 @@ export const protectedRoutes: RouteObject[] = [
               { path: "dead-letters", element: <AlertDeadLettersPage /> },
               { path: "channels", element: <Navigate to="../templates" replace /> },
               { path: "channels/:channelId", element: <Navigate to="../templates" replace /> },
+              { path: ":incidentId", element: <IncidentDetailPage /> },
             ],
           },
 

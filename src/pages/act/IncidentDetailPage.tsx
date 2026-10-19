@@ -307,8 +307,8 @@ export default function IncidentDetailPage() {
           description="What the rule observed when it opened this incident."
           actions={
             incident.ruleId ? (
-              <TextLink to={`/alerts/rules/${incident.ruleId}`} size="sm" arrow>
-                View alert rule
+              <TextLink to={`/alerts/policies/${incident.ruleId}`} size="sm" arrow>
+                View alert policy
               </TextLink>
             ) : undefined
           }

@@ -1,20 +1,34 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router";
-import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Sliders,
+  CheckCircle2,
+  Ban,
+  Layers,
+  Sparkles,
+} from "lucide-react";
 import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
 
 import {
   useOrganizationAlertPolicies,
-  useOrganizationAlertPolicyMutations,
+  useOrgEffectiveRules,
+  useAlertingScope,
 } from "@/modules/alerting/hooks/useAlerting";
+import {
+  projectSubscriptionsApi,
+} from "@/modules/alerting/api/alerting.api";
 import {
   ALERT_SEVERITIES,
   type AlertSeverity,
   type OrganizationAlertPolicy,
-  type PolicyCategory,
+  type ProjectSubscription,
 } from "@/modules/alerting/api/types";
 import { EnabledPill, labelize } from "@/modules/alerting/components/alerting-ui";
-import { DialogField, FormDialog, apiErrorMessage } from "@/modules/projects/components/project-ui";
+import { ProjectOverrideModal } from "@/modules/alerting/components/ProjectOverrideModal";
+import { apiErrorMessage } from "@/modules/projects/components/project-ui";
 import {
   HIDE_BELOW_LG,
   HIDE_BELOW_MD,
@@ -38,13 +52,13 @@ import {
   type Readout,
   type SheetColumn,
 } from "@/modules/projects/components/project-page";
-import { Pill, fieldInputClass, fieldMonoClass, fieldTextareaClass } from "@/shared/ui/pulse";
+import { Pill } from "@/shared/ui/pulse";
 import { FilterSelect, SeverityBadge, formatNumber } from "@/shared/observe";
 import { Button as UiButton } from "@/components/ui/button";
 
 // ── module-level constants ───────────────────────────────────
 
-type TabFilter = "catalog" | "custom" | "effective";
+type TabFilter = "catalog" | "effective";
 type SortOption = "created_at" | "updated_at" | "name";
 
 const PAGE_SIZE = 15;
@@ -56,7 +70,6 @@ const SORT_OPTIONS: Array<{ value: SortOption; label: string }> = [
   { value: "name", label: "Name" },
 ];
 
-/** Categories offered by the filter and the create form. */
 const POLICY_CATEGORIES = [
   { value: "errors", label: "Errors" },
   { value: "performance", label: "Performance" },
@@ -74,7 +87,14 @@ const SEVERITY_FILTER_OPTIONS = [
   ...[...ALERT_SEVERITIES].reverse().map((value) => ({ value, label: labelize(value) })),
 ];
 
-const COLUMNS: SheetColumn[] = [
+const STATUS_FILTER_OPTIONS = [
+  { value: "all", label: "All Statuses" },
+  { value: "using", label: "Using" },
+  { value: "overridden", label: "Overridden" },
+  { value: "opted_out", label: "Opted Out" },
+];
+
+const CATALOG_COLUMNS: SheetColumn[] = [
   { key: "policy", header: "Policy" },
   { key: "category", header: "Category", className: `w-[132px] ${HIDE_BELOW_MD}` },
   { key: "severity", header: "Severity", className: "w-[108px]" },
@@ -84,14 +104,20 @@ const COLUMNS: SheetColumn[] = [
   { key: "state", header: "State", className: "w-[80px]" },
 ];
 
+const EFFECTIVE_COLUMNS: SheetColumn[] = [
+  { key: "rule", header: "Rule & Key" },
+  { key: "project", header: "Project", className: `w-[140px] ${HIDE_BELOW_MD}` },
+  { key: "status", header: "Project Status", className: "w-[130px]" },
+  { key: "severity", header: "Severity", className: "w-[100px]" },
+  { key: "threshold", header: "Effective Threshold", className: `w-[140px] ${HIDE_BELOW_LG}` },
+  { key: "timing", header: "Window / Cooldown", className: `w-[140px] ${HIDE_BELOW_XL}` },
+  { key: "actions", header: "Actions", className: "w-[160px] text-right" },
+];
+
 const policyPath = (id: string) => `/alerts/policies/${id}`;
 
 // ── data helpers ─────────────────────────────────────────────
 
-/** Same rule the custom tab has always used. */
-const isCustomPolicy = (policy: OrganizationAlertPolicy) => !policy.isSystem || policy.category === "custom";
-
-/** `{ value: 500, unit: "ms" }` → `500 ms`; `null` when nothing is set. */
 function formatPolicyThreshold(value: unknown): { text: string; mono: boolean } | null {
   if (value == null) return null;
   if (typeof value === "number" || typeof value === "string" || typeof value === "boolean") {
@@ -114,14 +140,6 @@ function formatSeconds(seconds?: number | null): string | null {
   return `${seconds}s`;
 }
 
-function toSlug(value: string): string {
-  return value
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, "_")
-    .replace(/^_|_$/g, "");
-}
-
 function NotSet() {
   return <span className="text-[12px] text-[var(--text3)]">Not set</span>;
 }
@@ -134,244 +152,328 @@ function MonoValue({ children }: { children: ReactNode }) {
 
 export default function AlertRulesPage() {
   const navigate = useNavigate();
-  const [page, setPage] = useState(0);
+  const queryClient = useQueryClient();
+  const { activeOrgId } = useAlertingScope();
+
+  // Tab State
+  const [activeTab, setActiveTab] = useState<TabFilter>("catalog");
+
+  // Catalog Tab State
+  const [catalogPage, setCatalogPage] = useState(0);
+  const [catalogSortBy, setCatalogSortBy] = useState<SortOption>("name");
+  const [catalogSearch, setCatalogSearch] = useState("");
+  const [catalogCategory, setCatalogCategory] = useState("all");
+  const [catalogSeverity, setCatalogSeverity] = useState("all");
+
+  // Effective Tab State
+  const [effectiveProject, setEffectiveProject] = useState("all");
+  const [effectiveStatus, setEffectiveStatus] = useState("all");
+  const [effectiveSearch, setEffectiveSearch] = useState("");
+
+  // Override Modal State
+  const [modalOpen, setModalOpen] = useState(false);
+  const [selectedEffectiveItem, setSelectedEffectiveItem] = useState<any>(null);
+  const [isSavingOverride, setIsSavingOverride] = useState(false);
+
+  // Queries
   const {
     data: policiesPage,
-    isLoading,
-    error,
-    refetch,
-  } = useOrganizationAlertPolicies({ limit: PAGE_SIZE, offset: page * PAGE_SIZE });
+    isLoading: catalogLoading,
+    error: catalogError,
+    refetch: refetchCatalog,
+  } = useOrganizationAlertPolicies({ limit: PAGE_SIZE, offset: catalogPage * PAGE_SIZE });
+
+  const {
+    data: effectiveData,
+    isLoading: effectiveLoading,
+    error: effectiveError,
+    refetch: refetchEffective,
+  } = useOrgEffectiveRules({
+    projectId: effectiveProject === "all" ? undefined : effectiveProject,
+    status: effectiveStatus === "all" ? undefined : effectiveStatus,
+    search: effectiveSearch.trim() || undefined,
+  });
+
   const policies = useMemo(() => policiesPage?.data ?? [], [policiesPage]);
   const totalPolicies = policiesPage?.total ?? policies.length;
-  const { create } = useOrganizationAlertPolicyMutations();
 
-  const [activeTab, setActiveTab] = useState<TabFilter>("catalog");
-  const [sortBy, setSortBy] = useState<SortOption>("created_at");
-  const [search, setSearch] = useState("");
-  const [category, setCategory] = useState("all");
-  const [severityFilter, setSeverityFilter] = useState("all");
-  const [open, setOpen] = useState(false);
+  const effectiveItems = useMemo(() => effectiveData?.items ?? [], [effectiveData]);
+  const effectiveProjects = useMemo(() => effectiveData?.projects ?? [], [effectiveData]);
+  const effectiveSummary = effectiveData?.summary;
 
-  // Form state
-  const [name, setName] = useState("");
-  const [slug, setSlug] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState<PolicyCategory>("custom");
-  const [severity, setSeverity] = useState<AlertSeverity>("warning");
-  const [metricSource, setMetricSource] = useState("");
-  const [expression, setExpression] = useState("");
-  const [threshold, setThreshold] = useState("0");
-  const [cooldownSeconds, setCooldownSeconds] = useState("900");
-  const [windowSeconds, setWindowSeconds] = useState("300");
-  const [documentation, setDocumentation] = useState("");
+  const projectFilterOptions = useMemo(() => {
+    return [
+      { value: "all", label: "All Projects" },
+      ...effectiveProjects.map((p) => ({ value: p.id, label: p.name })),
+    ];
+  }, [effectiveProjects]);
 
-  const filteredPolicies = useMemo(() => {
-    let list = policies.filter((policy) => {
+  const filteredCatalogPolicies = useMemo(() => {
+    const list = policies.filter((policy) => {
       const matchesSearch = `${policy.name} ${policy.slug} ${policy.description}`
         .toLowerCase()
-        .includes(search.toLowerCase());
-      const matchesCategory = category === "all" || policy.category.toLowerCase() === category;
-      const matchesSeverity = severityFilter === "all" || policy.severity === severityFilter;
+        .includes(catalogSearch.toLowerCase());
+      const matchesCategory = catalogCategory === "all" || policy.category.toLowerCase() === catalogCategory;
+      const matchesSeverity = catalogSeverity === "all" || policy.severity === catalogSeverity;
       return matchesSearch && matchesCategory && matchesSeverity;
     });
 
-    if (activeTab === "custom") {
-      list = list.filter(isCustomPolicy);
-    }
-
     return list.sort((a, b) => {
-      if (sortBy === "name") return a.name.localeCompare(b.name);
-      if (sortBy === "updated_at") return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+      if (catalogSortBy === "name") return a.name.localeCompare(b.name);
+      if (catalogSortBy === "updated_at") return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
-  }, [activeTab, category, policies, search, severityFilter, sortBy]);
+  }, [catalogCategory, catalogSearch, catalogSeverity, catalogSortBy, policies]);
 
-  const activeCount = useMemo(() => policies.filter((p) => p.enabled !== false).length, [policies]);
-  const customCount = useMemo(() => policies.filter(isCustomPolicy).length, [policies]);
-  const criticalCount = useMemo(() => policies.filter((p) => p.severity === "critical").length, [policies]);
-
-  const loading = isLoading && !policiesPage;
-  const loadFailed = Boolean(error) && !policiesPage;
-  // The endpoint pages at 15, so per-policy readings only cover this page.
-  const partial = totalPolicies > policies.length;
-  const paged = totalPolicies > PAGE_SIZE;
-  const hasFilters = search.trim() !== "" || category !== "all" || severityFilter !== "all";
-  const tabPolicies = activeTab === "custom" ? policies.filter(isCustomPolicy) : policies;
-  const pageScope = "Among policies on this page";
-
-  const clearFilters = () => {
-    setSearch("");
-    setCategory("all");
-    setSeverityFilter("all");
-  };
-
+  // Overall Readouts
   const readouts: Readout[] = [
     {
-      label: "Policies",
+      label: "Global Catalog",
       value: formatNumber(totalPolicies),
-      sub: partial ? `${formatNumber(policies.length)} loaded on this page` : "In the organization catalog",
+      sub: "Platform catalog definitions",
     },
     {
-      label: "Enabled",
-      value: formatNumber(activeCount),
-      sub: partial
-        ? pageScope
-        : policies.length === 0
-          ? "No policies yet"
-          : activeCount === policies.length
-            ? "Every policy is on"
-            : `${formatNumber(policies.length - activeCount)} turned off`,
+      label: "Active In Projects",
+      value: formatNumber(effectiveSummary?.usingCount ?? 0),
+      sub: "Currently evaluating",
     },
     {
-      label: "Custom",
-      value: formatNumber(customCount),
-      sub: partial ? pageScope : "Listed in the Custom tab",
+      label: "Custom Overrides",
+      value: formatNumber(effectiveSummary?.overriddenCount ?? 0),
+      sub: "Tuned threshold or window",
     },
     {
-      label: "Critical",
-      value: formatNumber(criticalCount),
-      sub: partial ? pageScope : "Highest severity",
+      label: "Opted Out",
+      value: formatNumber(effectiveSummary?.optedOutCount ?? 0),
+      sub: "Disabled by projects",
     },
   ];
 
   const tabs: PageTab<TabFilter>[] = [
-    { value: "catalog", label: "Catalog", count: policiesPage ? totalPolicies : undefined },
-    // Custom policies are only countable when the whole catalog is loaded.
-    { value: "custom", label: "Custom", count: policiesPage && !partial ? customCount : undefined },
-    { value: "effective", label: "Effective" },
+    { value: "catalog", label: "Catalog", count: totalPolicies || undefined },
+    { value: "effective", label: "Effective", count: effectiveSummary?.totalEffectiveRules || undefined },
   ];
 
-  const handleCreate = () => {
-    create.mutate(
-      {
-        slug,
-        name,
-        description: documentation || `Organization policy for ${metricSource}`,
-        category: selectedCategory,
-        severity,
-        metricSource,
-        expression,
-        defaultThreshold: { value: Number(threshold) || 0 },
-        recoveryThreshold: {},
-        cooldownSeconds: Number(cooldownSeconds),
-        evaluationWindowSeconds: Number(windowSeconds),
-        documentation,
-        dependencies: [],
-      },
-      {
-        onSuccess: () => {
-          toast.success("Policy created");
-          setOpen(false);
-          setName("");
-          setSlug("");
-          setMetricSource("");
-          setExpression("");
-        },
-        onError: (mutationError) =>
-          toast.error(apiErrorMessage(mutationError, "Could not create the policy. Check the fields and try again.")),
-      },
-    );
+  // ── Actions on Effective Rules ──
+
+  const handleToggleOpt = async (item: any) => {
+    if (!activeOrgId) return;
+    try {
+      if (item.status === "opted_out") {
+        // Opt back in / subscribe
+        await projectSubscriptionsApi.subscribe(activeOrgId, item.projectId, item.catalogKey);
+        toast.success(`Project ${item.projectName} subscribed to ${item.title}`);
+      } else {
+        // Opt out / disable
+        if (item.subscriptionId) {
+          await projectSubscriptionsApi.delete(activeOrgId, item.projectId, item.subscriptionId);
+        } else {
+          // Explicitly subscribe then disable
+          const sub = await projectSubscriptionsApi.subscribe(activeOrgId, item.projectId, item.catalogKey);
+          if (sub?.id) {
+            await projectSubscriptionsApi.delete(activeOrgId, item.projectId, sub.id);
+          }
+        }
+        toast.info(`Project ${item.projectName} opted out of ${item.title}`);
+      }
+      void queryClient.invalidateQueries({ queryKey: ["alerting"] });
+    } catch (err) {
+      toast.error(apiErrorMessage(err, "Failed to update project subscription"));
+    }
   };
 
-  const createButton = (
-    <UiButton size="lg" onClick={() => setOpen(true)}>
-      <Plus className="size-4" aria-hidden="true" />
-      Create policy
-    </UiButton>
-  );
+  const handleOpenTuneModal = (item: any) => {
+    setSelectedEffectiveItem(item);
+    setModalOpen(true);
+  };
 
-  // ── policy sheet body (catalog and custom) ──
+  const handleSaveOverride = async (payload: {
+    subscriptionId: string;
+    override: {
+      threshold?: Record<string, unknown> | null;
+      cooldownSeconds?: number | null;
+      evaluationWindowSeconds?: number | null;
+      severity?: AlertSeverity | null;
+      channels?: string[] | null;
+      environment?: string | null;
+    };
+  }) => {
+    if (!activeOrgId || !selectedEffectiveItem) return;
+    setIsSavingOverride(true);
+    try {
+      const subId = selectedEffectiveItem.subscriptionId;
+      if (subId) {
+        await projectSubscriptionsApi.updateOverride(
+          activeOrgId,
+          selectedEffectiveItem.projectId,
+          subId,
+          payload.override,
+        );
+      } else {
+        await projectSubscriptionsApi.subscribe(
+          activeOrgId,
+          selectedEffectiveItem.projectId,
+          selectedEffectiveItem.catalogKey,
+          payload.override as any,
+        );
+      }
+      toast.success("Project override saved");
+      setModalOpen(false);
+      void queryClient.invalidateQueries({ queryKey: ["alerting"] });
+    } catch (err) {
+      toast.error(apiErrorMessage(err, "Could not save project override"));
+    } finally {
+      setIsSavingOverride(false);
+    }
+  };
 
-  let body: ReactNode;
-  if (loading) {
-    body = <SheetLoading rows={6} label="Loading alert policies" />;
-  } else if (loadFailed) {
-    body = (
+  const handleRemoveOverride = async (subscriptionId: string) => {
+    if (!activeOrgId || !selectedEffectiveItem) return;
+    setIsSavingOverride(true);
+    try {
+      if (subscriptionId) {
+        await projectSubscriptionsApi.updateOverride(
+          activeOrgId,
+          selectedEffectiveItem.projectId,
+          subscriptionId,
+          {},
+        );
+      }
+      toast.success("Reset to catalog defaults");
+      setModalOpen(false);
+      void queryClient.invalidateQueries({ queryKey: ["alerting"] });
+    } catch (err) {
+      toast.error(apiErrorMessage(err, "Could not reset override"));
+    } finally {
+      setIsSavingOverride(false);
+    }
+  };
+
+  // Convert selectedEffectiveItem into shape ProjectOverrideModal expects
+  const modalSubscription: ProjectSubscription | null = useMemo(() => {
+    if (!selectedEffectiveItem || !activeOrgId) return null;
+    return {
+      id: selectedEffectiveItem.subscriptionId || `synth-${selectedEffectiveItem.projectId}-${selectedEffectiveItem.catalogKey}`,
+      organizationId: activeOrgId,
+      projectId: selectedEffectiveItem.projectId,
+      policyId: selectedEffectiveItem.catalogKey,
+      catalogKey: selectedEffectiveItem.catalogKey,
+      state: selectedEffectiveItem.status === "opted_out" ? "disabled" : "subscribed",
+      override: selectedEffectiveItem.configOverrides
+        ? {
+            id: selectedEffectiveItem.subscriptionId || "",
+            subscriptionId: selectedEffectiveItem.subscriptionId || "",
+            projectId: selectedEffectiveItem.projectId,
+            policyId: selectedEffectiveItem.catalogKey,
+            threshold: selectedEffectiveItem.effectiveThreshold,
+            cooldownSeconds: selectedEffectiveItem.effectiveCooldownSeconds,
+            evaluationWindowSeconds: selectedEffectiveItem.effectiveWindowSeconds,
+            severity: selectedEffectiveItem.effectiveSeverity,
+            channels: (selectedEffectiveItem.configOverrides.channels as string[]) || [],
+            environment: null,
+            createdAt: selectedEffectiveItem.updatedAt,
+            updatedAt: selectedEffectiveItem.updatedAt,
+          }
+        : null,
+      createdAt: selectedEffectiveItem.updatedAt,
+      updatedAt: selectedEffectiveItem.updatedAt,
+    };
+  }, [selectedEffectiveItem, activeOrgId]);
+
+  const modalPolicy: OrganizationAlertPolicy | null = useMemo(() => {
+    if (!selectedEffectiveItem || !activeOrgId) return null;
+    return {
+      id: selectedEffectiveItem.catalogId,
+      organizationId: activeOrgId,
+      version: 1,
+      slug: selectedEffectiveItem.catalogKey,
+      name: selectedEffectiveItem.title,
+      description: selectedEffectiveItem.title,
+      category: selectedEffectiveItem.category as any,
+      severity: selectedEffectiveItem.effectiveSeverity,
+      metricSource: selectedEffectiveItem.catalogKey,
+      expression: `${selectedEffectiveItem.catalogKey} ${selectedEffectiveItem.effectiveOperator} threshold`,
+      defaultThreshold: { value: selectedEffectiveItem.effectiveThreshold },
+      recoveryThreshold: {},
+      cooldownSeconds: selectedEffectiveItem.effectiveCooldownSeconds,
+      evaluationWindowSeconds: selectedEffectiveItem.effectiveWindowSeconds,
+      isSystem: true,
+      enabled: true,
+      createdAt: selectedEffectiveItem.updatedAt,
+      updatedAt: selectedEffectiveItem.updatedAt,
+    };
+  }, [selectedEffectiveItem, activeOrgId]);
+
+  // ── Catalog Body ──
+
+  let catalogBody: ReactNode;
+  if (catalogLoading && !policiesPage) {
+    catalogBody = <SheetLoading rows={6} label="Loading global alert catalog" />;
+  } else if (catalogError && !policiesPage) {
+    catalogBody = (
       <SheetError
-        title="Could not load alert policies"
-        message={apiErrorMessage(error, "The policy catalog is unavailable right now.")}
-        onRetry={() => void refetch()}
+        title="Could not load alert catalog"
+        message={apiErrorMessage(catalogError, "The global catalog is unavailable right now.")}
+        onRetry={() => void refetchCatalog()}
       />
     );
-  } else if (tabPolicies.length === 0) {
-    body =
-      activeTab === "custom" ? (
-        <SheetEmpty
-          title={partial ? "No custom policies on this page" : "No custom policies yet"}
-          description={
-            partial
-              ? "Custom policies may be on another page of the catalog. Use Previous and Next below, or create one."
-              : "Custom policies are the ones your organization defines: a metric source, a condition, and a threshold. Create one to alert on something the system policies don't cover."
-          }
-          action={createButton}
-        />
-      ) : (
-        <SheetEmpty
-          title="No policies in the catalog yet"
-          description="A policy names a metric source, the condition that breaches it, and how often it can alert. Create one to start."
-          action={createButton}
-        />
-      );
-  } else if (filteredPolicies.length === 0) {
-    body = (
+  } else if (policies.length === 0) {
+    catalogBody = (
       <SheetEmpty
-        title="No policies match"
-        description={
-          search.trim()
-            ? `Nothing on this page matches “${search.trim()}” with the current filters.`
-            : "No policy on this page matches the current category and severity filters."
-        }
+        title="No alert catalog policies found"
+        description="The platform global alert catalog is populated during deployment. Check your database connectivity."
+      />
+    );
+  } else if (filteredCatalogPolicies.length === 0) {
+    catalogBody = (
+      <SheetEmpty
+        title="No catalog policies match your filters"
+        description="Try searching for a different keyword or resetting your filters."
         action={
-          hasFilters ? (
-            <UiButton variant="outline" size="lg" onClick={clearFilters}>
-              Clear filters
-            </UiButton>
-          ) : undefined
+          <UiButton
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setCatalogSearch("");
+              setCatalogCategory("all");
+              setCatalogSeverity("all");
+            }}
+          >
+            Clear filters
+          </UiButton>
         }
       />
     );
   } else {
-    body = (
-      <SheetTable
-        columns={COLUMNS}
-        caption={activeTab === "custom" ? "Custom alert policies" : "Alert policy catalog"}
-        minWidth={520}
-      >
-        {filteredPolicies.map((policy) => {
-          const to = policyPath(policy.id);
-          const thresholdValue = formatPolicyThreshold(policy.defaultThreshold);
+    catalogBody = (
+      <SheetTable columns={CATALOG_COLUMNS} caption="Global alert catalog">
+        {filteredCatalogPolicies.map((policy) => {
+          const thresholdSpec = formatPolicyThreshold(policy.defaultThreshold);
           const windowValue = formatSeconds(policy.evaluationWindowSeconds);
           const cooldownValue = formatSeconds(policy.cooldownSeconds);
-          const condition = policy.expression || policy.metricSource;
+
           return (
-            <SheetRow key={policy.id} onActivate={() => navigate(to)}>
-              <SheetCell className="w-full max-w-0">
+            <SheetRow key={policy.id} onActivate={() => navigate(policyPath(policy.id))}>
+              <SheetCell>
                 <RowTitle
                   title={policy.name}
-                  to={to}
-                  badges={policy.isSystem ? <Pill>System</Pill> : undefined}
-                  subtitle={
-                    condition ? (
-                      <span title={condition}>{condition}</span>
-                    ) : (
-                      <span className="font-[family-name:var(--sans)]">No metric source</span>
-                    )
-                  }
-                  subtitleMono
+                  subtitle={policy.description || undefined}
+                  to={policyPath(policy.id)}
                 />
               </SheetCell>
               <SheetCell className={HIDE_BELOW_MD}>
-                <Pill>{labelize(policy.category || "general")}</Pill>
+                <span className="text-[12px] text-[var(--text2)]">{labelize(policy.category)}</span>
               </SheetCell>
               <SheetCell>
                 <SeverityBadge severity={policy.severity} />
               </SheetCell>
               <SheetCell className={HIDE_BELOW_LG}>
-                {thresholdValue === null ? (
+                {thresholdSpec === null ? (
                   <NotSet />
-                ) : thresholdValue.mono ? (
-                  <MonoValue>{thresholdValue.text}</MonoValue>
+                ) : thresholdSpec.mono ? (
+                  <MonoValue>{thresholdSpec.text}</MonoValue>
                 ) : (
-                  <span className="text-[12px] text-[var(--text2)]">{thresholdValue.text}</span>
+                  <span className="text-[12px] text-[var(--text2)]">{thresholdSpec.text}</span>
                 )}
               </SheetCell>
               <SheetCell className={HIDE_BELOW_XL}>
@@ -390,262 +492,253 @@ export default function AlertRulesPage() {
     );
   }
 
-  const rangeStart = page * PAGE_SIZE + 1;
-  const rangeEnd = Math.min(page * PAGE_SIZE + (policies.length || PAGE_SIZE), totalPolicies);
+  // ── Effective Body ──
 
-  const footer =
-    paged && !loadFailed ? (
-      <>
-        <span>
-          Showing{" "}
-          <span className="font-[family-name:var(--mono)] tabular-nums">
-            {formatNumber(rangeStart)}–{formatNumber(rangeEnd)}
-          </span>{" "}
-          of <span className="font-[family-name:var(--mono)] tabular-nums">{formatNumber(totalPolicies)}</span>.
-          Search and filters apply to this page.
-        </span>
-        <div className="flex items-center gap-2">
+  let effectiveBody: ReactNode;
+  if (effectiveLoading && !effectiveData) {
+    effectiveBody = <SheetLoading rows={8} label="Resolving effective project policies" />;
+  } else if (effectiveError && !effectiveData) {
+    effectiveBody = (
+      <SheetError
+        title="Could not resolve effective policies"
+        message={apiErrorMessage(effectiveError, "The effective policies endpoint is unavailable right now.")}
+        onRetry={() => void refetchEffective()}
+      />
+    );
+  } else if (effectiveItems.length === 0) {
+    effectiveBody = (
+      <SheetEmpty
+        title="No effective policies match your selection"
+        description="Try changing your project or status filter, or clearing your search."
+        action={
           <UiButton
             variant="outline"
             size="sm"
-            aria-label="Previous page"
-            onClick={() => setPage((current) => Math.max(0, current - 1))}
-            disabled={page === 0}
+            onClick={() => {
+              setEffectiveProject("all");
+              setEffectiveStatus("all");
+              setEffectiveSearch("");
+            }}
           >
-            <ChevronLeft className="size-3.5" aria-hidden="true" />
-            Previous
+            Reset effective filters
           </UiButton>
-          <UiButton
-            variant="outline"
-            size="sm"
-            aria-label="Next page"
-            onClick={() => setPage((current) => current + 1)}
-            disabled={(page + 1) * PAGE_SIZE >= totalPolicies}
-          >
-            Next
-            <ChevronRight className="size-3.5" aria-hidden="true" />
-          </UiButton>
-        </div>
-      </>
-    ) : undefined;
+        }
+      />
+    );
+  } else {
+    effectiveBody = (
+      <SheetTable columns={EFFECTIVE_COLUMNS} caption="Effective alert rules by project">
+        {effectiveItems.map((item) => {
+          const isOptedOut = item.status === "opted_out";
+          const isOverridden = item.status === "overridden";
+
+          return (
+            <SheetRow key={`${item.projectId}-${item.catalogKey}`}>
+              {/* Rule & Key */}
+              <SheetCell>
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-[13px] font-medium text-[var(--text)]">{item.title}</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-[family-name:var(--mono)] text-[11px] text-[var(--text3)]">
+                      {item.catalogKey}
+                    </span>
+                    <Pill>{labelize(item.category)}</Pill>
+                  </div>
+                </div>
+              </SheetCell>
+
+              {/* Project */}
+              <SheetCell className={HIDE_BELOW_MD}>
+                <div className="flex flex-col">
+                  <span className="text-[12.5px] font-medium text-[var(--text2)]">{item.projectName}</span>
+                  <span className="font-[family-name:var(--mono)] text-[11px] text-[var(--text3)]">
+                    {item.projectSlug}
+                  </span>
+                </div>
+              </SheetCell>
+
+              {/* Status Badge */}
+              <SheetCell>
+                {item.status === "using" && (
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[11.5px] font-medium text-emerald-400">
+                    <CheckCircle2 className="size-3" />
+                    Using
+                  </span>
+                )}
+                {isOverridden && (
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-violet-500/10 px-2.5 py-0.5 text-[11.5px] font-medium text-violet-400">
+                    <Sliders className="size-3" />
+                    Overridden
+                  </span>
+                )}
+                {isOptedOut && (
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-zinc-500/10 px-2.5 py-0.5 text-[11.5px] font-medium text-zinc-400">
+                    <Ban className="size-3" />
+                    Opted Out
+                  </span>
+                )}
+              </SheetCell>
+
+              {/* Severity */}
+              <SheetCell>
+                <SeverityBadge severity={item.effectiveSeverity} />
+              </SheetCell>
+
+              {/* Effective Threshold */}
+              <SheetCell className={HIDE_BELOW_LG}>
+                <div className="flex items-center gap-1.5">
+                  <span className="font-[family-name:var(--mono)] text-[12px] font-medium text-[var(--text2)]">
+                    {item.effectiveOperator} {item.effectiveThreshold != null ? item.effectiveThreshold : "Default"}
+                  </span>
+                  {isOverridden && (
+                    <span className="rounded bg-violet-500/15 px-1 py-0.5 text-[10px] font-semibold uppercase text-violet-300">
+                      Tuned
+                    </span>
+                  )}
+                </div>
+              </SheetCell>
+
+              {/* Timing */}
+              <SheetCell className={HIDE_BELOW_XL}>
+                <span className="font-[family-name:var(--mono)] text-[12px] tabular-nums text-[var(--text2)]">
+                  {formatSeconds(item.effectiveWindowSeconds)} · {formatSeconds(item.effectiveCooldownSeconds)}
+                </span>
+              </SheetCell>
+
+              {/* Actions */}
+              <SheetCell className="text-right">
+                <div className="flex items-center justify-end gap-1.5">
+                  <UiButton
+                    variant={isOptedOut ? "default" : "outline"}
+                    size="sm"
+                    className="h-7 text-[11.5px]"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      void handleToggleOpt(item);
+                    }}
+                  >
+                    {isOptedOut ? "Opt In" : "Opt Out"}
+                  </UiButton>
+                  <UiButton
+                    variant="outline"
+                    size="sm"
+                    className="h-7 text-[11.5px]"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleOpenTuneModal(item);
+                    }}
+                  >
+                    <Sliders className="size-3 mr-1" />
+                    Tune
+                  </UiButton>
+                </div>
+              </SheetCell>
+            </SheetRow>
+          );
+        })}
+      </SheetTable>
+    );
+  }
 
   return (
     <WorkspacePage>
       <ProjectPageHeader
-        title="Alert rules"
-        description="Every organization alert policy, with the metric it evaluates, its severity, and how often it can alert. Open a policy to manage thresholds, triggers, and project subscriptions."
-        actions={createButton}
+        title="Alert Catalog & Effective Rules"
+        description="Global alert catalog provided by the platform. Organizations cannot author custom conditions; projects subscribe to catalog rules and tune thresholds within bounded limits."
       />
 
-      {!loadFailed && <Readouts cells={readouts} loading={loading} label="Policy summary" />}
+      <Readouts cells={readouts} loading={catalogLoading && effectiveLoading} label="Catalog & Effective summary" />
 
-      <PageTabs tabs={tabs} value={activeTab} onChange={setActiveTab} label="Policy views" idBase={TABS_ID} />
+      <PageTabs tabs={tabs} value={activeTab} onChange={setActiveTab} label="Alert views" idBase={TABS_ID} />
 
       <div {...pageTabPanelProps(TABS_ID, activeTab)}>
-        {activeTab === "effective" ? (
-          <Sheet label="Effective policies">
-            <SheetEmpty
-              title="Effective policies live on each project"
-              description="Effective policies are the merged rules generated when a project subscribes to an organization alert policy or applies project-level overrides. This page lists the organization catalog only; subscribe a project and set its overrides from that project's Alert rules tab."
-              action={
-                <UiButton variant="outline" size="lg" onClick={() => setActiveTab("catalog")}>
-                  Browse the catalog
-                </UiButton>
-              }
-            />
-          </Sheet>
-        ) : (
+        {activeTab === "catalog" ? (
           <Sheet
-            label={activeTab === "custom" ? "Custom policies" : "Policy catalog"}
+            label="Global Alert Catalog"
             toolbar={
               <>
                 <SearchField
-                  value={search}
-                  onChange={setSearch}
-                  placeholder="Search by name, slug, or description"
-                  label="Search policies"
+                  value={catalogSearch}
+                  onChange={setCatalogSearch}
+                  placeholder="Search catalog by name, slug, or description"
+                  label="Search catalog"
                 />
-                <FilterSelect label="Category" value={category} onChange={setCategory} options={CATEGORY_FILTER_OPTIONS} />
+                <FilterSelect
+                  label="Category"
+                  value={catalogCategory}
+                  onChange={setCatalogCategory}
+                  options={CATEGORY_FILTER_OPTIONS}
+                />
                 <FilterSelect
                   label="Severity"
-                  value={severityFilter}
-                  onChange={setSeverityFilter}
+                  value={catalogSeverity}
+                  onChange={setCatalogSeverity}
                   options={SEVERITY_FILTER_OPTIONS}
                 />
                 <FilterSelect
                   label="Sort"
-                  value={sortBy}
-                  onChange={(next) => setSortBy(next as SortOption)}
+                  value={catalogSortBy}
+                  onChange={(next) => setCatalogSortBy(next as SortOption)}
                   options={SORT_OPTIONS}
                 />
-                {!loading && !loadFailed && (
+                {!catalogLoading && !catalogError && (
                   <ToolbarCount>
-                    {formatNumber(filteredPolicies.length)} {filteredPolicies.length === 1 ? "policy" : "policies"}
-                    {paged ? " on this page" : ""}
+                    {formatNumber(filteredCatalogPolicies.length)}{" "}
+                    {filteredCatalogPolicies.length === 1 ? "catalog policy" : "catalog policies"}
                   </ToolbarCount>
                 )}
               </>
             }
-            footer={footer}
           >
-            {body}
+            {catalogBody}
+          </Sheet>
+        ) : (
+          <Sheet
+            label="Effective Project Rules"
+            toolbar={
+              <>
+                <SearchField
+                  value={effectiveSearch}
+                  onChange={setEffectiveSearch}
+                  placeholder="Search rules, catalog keys, or projects..."
+                  label="Search effective rules"
+                />
+                <FilterSelect
+                  label="Project"
+                  value={effectiveProject}
+                  onChange={setEffectiveProject}
+                  options={projectFilterOptions}
+                />
+                <FilterSelect
+                  label="Status"
+                  value={effectiveStatus}
+                  onChange={setEffectiveStatus}
+                  options={STATUS_FILTER_OPTIONS}
+                />
+                {!effectiveLoading && !effectiveError && (
+                  <ToolbarCount>
+                    {formatNumber(effectiveItems.length)}{" "}
+                    {effectiveItems.length === 1 ? "effective rule" : "effective rules"}
+                  </ToolbarCount>
+                )}
+              </>
+            }
+          >
+            {effectiveBody}
           </Sheet>
         )}
       </div>
 
-      <FormDialog
-        open={open}
-        onOpenChange={setOpen}
-        title="Create organization policy"
-        description="Name the metric to evaluate, the condition that breaches it, and how often it can alert."
-        submitLabel={create.isPending ? "Creating policy" : "Create policy"}
-        pending={create.isPending}
-        onSubmit={handleCreate}
-        width="sm:max-w-[680px]"
-      >
-        <div className="grid gap-4 sm:grid-cols-2">
-          <DialogField label="Name" name="policy-name" required>
-            <input
-              id="policy-name"
-              name="policy-name"
-              required
-              value={name}
-              onChange={(e) => {
-                setName(e.target.value);
-                setSlug(toSlug(e.target.value));
-              }}
-              placeholder="High API latency p99"
-              className={fieldInputClass}
-            />
-          </DialogField>
-
-          <DialogField label="Slug" name="policy-slug" hint="Filled in from the name. You can edit it." required>
-            <input
-              id="policy-slug"
-              name="policy-slug"
-              required
-              value={slug}
-              onChange={(e) => setSlug(e.target.value)}
-              placeholder="high_api_latency_p99"
-              className={fieldMonoClass}
-            />
-          </DialogField>
-        </div>
-
-        <div className="grid gap-4 sm:grid-cols-3">
-          <DialogField label="Category" name="policy-category">
-            <select
-              id="policy-category"
-              name="policy-category"
-              value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
-              className={fieldInputClass}
-            >
-              {POLICY_CATEGORIES.map((item) => (
-                <option key={item.value} value={item.value}>
-                  {item.label}
-                </option>
-              ))}
-            </select>
-          </DialogField>
-
-          <DialogField label="Severity" name="policy-severity">
-            <select
-              id="policy-severity"
-              name="policy-severity"
-              value={severity}
-              onChange={(e) => setSeverity(e.target.value as AlertSeverity)}
-              className={fieldInputClass}
-            >
-              {ALERT_SEVERITIES.map((sev) => (
-                <option key={sev} value={sev}>
-                  {labelize(sev)}
-                </option>
-              ))}
-            </select>
-          </DialogField>
-
-          <DialogField label="Metric source" name="policy-metric" required>
-            <input
-              id="policy-metric"
-              name="policy-metric"
-              required
-              value={metricSource}
-              onChange={(e) => setMetricSource(e.target.value)}
-              placeholder="http.request.duration"
-              className={fieldMonoClass}
-            />
-          </DialogField>
-        </div>
-
-        <DialogField label="Condition expression" name="policy-expression" required>
-          <input
-            id="policy-expression"
-            name="policy-expression"
-            required
-            value={expression}
-            onChange={(e) => setExpression(e.target.value)}
-            placeholder="p99(http.request.duration) > 500ms for 5m"
-            className={fieldMonoClass}
-          />
-        </DialogField>
-
-        <div className="grid gap-4 sm:grid-cols-3">
-          <DialogField label="Threshold" name="policy-threshold">
-            <input
-              id="policy-threshold"
-              name="policy-threshold"
-              value={threshold}
-              onChange={(e) => setThreshold(e.target.value)}
-              type="number"
-              placeholder="500"
-              className={fieldMonoClass}
-            />
-          </DialogField>
-
-          <DialogField label="Cooldown (seconds)" name="policy-cooldown">
-            <input
-              id="policy-cooldown"
-              name="policy-cooldown"
-              value={cooldownSeconds}
-              onChange={(e) => setCooldownSeconds(e.target.value)}
-              type="number"
-              min="0"
-              placeholder="900"
-              className={fieldMonoClass}
-            />
-          </DialogField>
-
-          <DialogField label="Evaluation window (seconds)" name="policy-window">
-            <input
-              id="policy-window"
-              name="policy-window"
-              value={windowSeconds}
-              onChange={(e) => setWindowSeconds(e.target.value)}
-              type="number"
-              min="1"
-              placeholder="300"
-              className={fieldMonoClass}
-            />
-          </DialogField>
-        </div>
-
-        <DialogField
-          label="Documentation"
-          name="policy-documentation"
-          hint="Also used as the description. Left empty, the description names the metric source."
-        >
-          <textarea
-            id="policy-documentation"
-            name="policy-documentation"
-            value={documentation}
-            onChange={(e) => setDocumentation(e.target.value)}
-            rows={3}
-            placeholder="What this rule catches, how to remediate, and runbook links"
-            className={fieldTextareaClass}
-          />
-        </DialogField>
-      </FormDialog>
+      {/* Project Override / Tuning Modal */}
+      <ProjectOverrideModal
+        open={modalOpen}
+        onOpenChange={setModalOpen}
+        subscription={modalSubscription}
+        policy={modalPolicy}
+        isSaving={isSavingOverride}
+        onSave={handleSaveOverride}
+        onRemoveOverride={handleRemoveOverride}
+      />
     </WorkspacePage>
   );
 }

@@ -142,7 +142,7 @@ const RULES: readonly Rule[] = [
   [new RegExp(`^/observability/profiling/${ID}$`), DetailSkeleton],
   [new RegExp(`^/observability/crons/${ID}$`), DetailSkeleton],
   [/^\/observability\/(latency|metrics|profiling|runtime-metrics|event-loop|gc-monitoring)$/, MetricsSkeleton],
-  [/^\/observability\/(crons|replay)$/, ListSkeleton],
+  [/^\/observability\/crons$/, ListSkeleton],
   [/^\/observability$/, DashboardSkeleton],
 
   /* ── services ────────────────────────────────────────────────────────── */
@@ -156,7 +156,6 @@ const RULES: readonly Rule[] = [
   [new RegExp(`^/alerts/events/${ID}$`), DetailSkeleton],
   [/^\/alerts\/events$/, LogsSkeleton],
   [new RegExp(`^/alerts/policies/${ID}$`), DetailSkeleton],
-  [new RegExp(`^/alerts/rules/${ID}$`), DetailSkeleton],
   [/^\/alerts\/rules$/, RulesSkeleton],
   [new RegExp(`^/alerts/escalations/${ID}$`), DetailSkeleton],
   [/^\/alerts\/(escalations|routing)$/, RulesSkeleton],

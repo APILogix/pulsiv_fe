@@ -8,6 +8,7 @@ import {
   Ban,
   Layers,
   Sparkles,
+  Plus,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
@@ -28,6 +29,14 @@ import {
 } from "@/modules/alerting/api/types";
 import { EnabledPill, labelize } from "@/modules/alerting/components/alerting-ui";
 import { ProjectOverrideModal } from "@/modules/alerting/components/ProjectOverrideModal";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { apiErrorMessage } from "@/modules/projects/components/project-ui";
 import {
   HIDE_BELOW_LG,
@@ -102,6 +111,7 @@ const CATALOG_COLUMNS: SheetColumn[] = [
   { key: "window", header: "Window", className: `w-[88px] ${HIDE_BELOW_XL}` },
   { key: "cooldown", header: "Cooldown", className: `w-[96px] ${HIDE_BELOW_LG}` },
   { key: "state", header: "State", className: "w-[80px]" },
+  { key: "actions", header: "Action", className: "w-[110px] text-right" },
 ];
 
 const EFFECTIVE_COLUMNS: SheetColumn[] = [
@@ -174,6 +184,12 @@ export default function AlertRulesPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedEffectiveItem, setSelectedEffectiveItem] = useState<any>(null);
   const [isSavingOverride, setIsSavingOverride] = useState(false);
+
+  // Subscribe Modal State
+  const [isSubscribeOpen, setIsSubscribeOpen] = useState(false);
+  const [subscribeTargetProjectId, setSubscribeTargetProjectId] = useState<string>("");
+  const [subscribeTargetCatalogKey, setSubscribeTargetCatalogKey] = useState<string>("");
+  const [isSubscribing, setIsSubscribing] = useState(false);
 
   // Queries
   const {
@@ -349,6 +365,49 @@ export default function AlertRulesPage() {
     }
   };
 
+  const handleOpenSubscribeDialog = (catalogKey?: string, projectId?: string) => {
+    if (catalogKey) {
+      setSubscribeTargetCatalogKey(catalogKey);
+    } else if (policies.length > 0) {
+      setSubscribeTargetCatalogKey(policies[0].slug || policies[0].id);
+    }
+
+    if (projectId) {
+      setSubscribeTargetProjectId(projectId);
+    } else if (effectiveProject !== "all") {
+      setSubscribeTargetProjectId(effectiveProject);
+    } else if (effectiveProjects.length > 0) {
+      setSubscribeTargetProjectId(effectiveProjects[0].id);
+    }
+
+    setIsSubscribeOpen(true);
+  };
+
+  const handleConfirmSubscribe = async () => {
+    if (!activeOrgId || !subscribeTargetProjectId || !subscribeTargetCatalogKey) return;
+    setIsSubscribing(true);
+    try {
+      await projectSubscriptionsApi.subscribe(
+        activeOrgId,
+        subscribeTargetProjectId,
+        subscribeTargetCatalogKey,
+      );
+      const targetProject = effectiveProjects.find((p) => p.id === subscribeTargetProjectId);
+      const targetPolicy = policies.find((p) => (p.slug || p.id) === subscribeTargetCatalogKey);
+      toast.success(`Subscribed ${targetProject?.name || "project"} to ${targetPolicy?.name || subscribeTargetCatalogKey}`);
+      setIsSubscribeOpen(false);
+      void queryClient.invalidateQueries({ queryKey: ["alerting"] });
+    } catch (err) {
+      toast.error(apiErrorMessage(err, "Failed to subscribe project to rule"));
+    } finally {
+      setIsSubscribing(false);
+    }
+  };
+
+  const selectedSubscribePolicy = useMemo(() => {
+    return policies.find((p) => (p.slug || p.id) === subscribeTargetCatalogKey) ?? policies[0] ?? null;
+  }, [policies, subscribeTargetCatalogKey]);
+
   // Convert selectedEffectiveItem into shape ProjectOverrideModal expects
   const modalSubscription: ProjectSubscription | null = useMemo(() => {
     if (!selectedEffectiveItem || !activeOrgId) return null;
@@ -485,6 +544,20 @@ export default function AlertRulesPage() {
               <SheetCell>
                 <EnabledPill enabled={policy.enabled !== false} />
               </SheetCell>
+              <SheetCell className="text-right">
+                <UiButton
+                  variant="outline"
+                  size="xs"
+                  className="h-6 text-[11px] px-2"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleOpenSubscribeDialog(policy.slug || policy.id);
+                  }}
+                >
+                  <Plus className="size-3 mr-1" />
+                  Subscribe
+                </UiButton>
+              </SheetCell>
             </SheetRow>
           );
         })}
@@ -506,22 +579,46 @@ export default function AlertRulesPage() {
       />
     );
   } else if (effectiveItems.length === 0) {
+    const isFiltered = effectiveStatus !== "all" || effectiveSearch.trim() !== "";
     effectiveBody = (
       <SheetEmpty
-        title="No effective policies match your selection"
-        description="Try changing your project or status filter, or clearing your search."
+        title={isFiltered ? "No effective alert rules match your filters" : "No subscribed alert rules for this project"}
+        description={
+          isFiltered
+            ? "Try changing your status filter or clearing your search query."
+            : "This project has not subscribed to any alert rules yet. Browse the Global Catalog tab or click below to activate rules for this project."
+        }
         action={
-          <UiButton
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              setEffectiveProject("all");
-              setEffectiveStatus("all");
-              setEffectiveSearch("");
-            }}
-          >
-            Reset effective filters
-          </UiButton>
+          isFiltered ? (
+            <UiButton
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setEffectiveStatus("all");
+                setEffectiveSearch("");
+              }}
+            >
+              Reset filters
+            </UiButton>
+          ) : (
+            <div className="flex items-center gap-2">
+              <UiButton
+                variant="default"
+                size="sm"
+                onClick={() => handleOpenSubscribeDialog()}
+              >
+                <Plus className="size-3.5 mr-1" />
+                Subscribe Project to Rule
+              </UiButton>
+              <UiButton
+                variant="outline"
+                size="sm"
+                onClick={() => setActiveTab("catalog")}
+              >
+                Browse Global Catalog
+              </UiButton>
+            </div>
+          )
         }
       />
     );
@@ -721,6 +818,15 @@ export default function AlertRulesPage() {
                     {effectiveItems.length === 1 ? "effective rule" : "effective rules"}
                   </ToolbarCount>
                 )}
+                <UiButton
+                  variant="default"
+                  size="sm"
+                  className="ml-auto h-8 text-[12px] font-medium"
+                  onClick={() => handleOpenSubscribeDialog()}
+                >
+                  <Plus className="size-3.5 mr-1" />
+                  Subscribe Rule
+                </UiButton>
               </>
             }
           >
@@ -739,6 +845,80 @@ export default function AlertRulesPage() {
         onSave={handleSaveOverride}
         onRemoveOverride={handleRemoveOverride}
       />
+
+      {/* Subscribe Project to Catalog Rule Dialog */}
+      <Dialog open={isSubscribeOpen} onOpenChange={setIsSubscribeOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Subscribe Project to Alert Rule</DialogTitle>
+            <DialogDescription>
+              Activate an alert rule from the platform global catalog for a project. The rule will start evaluating in real time.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex flex-col gap-4 py-2">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[12px] font-medium text-[var(--text2)]">Target Project</label>
+              <select
+                className="h-9 w-full rounded-[var(--radius-sm)] border border-[var(--border2)] bg-[var(--bg2)] px-3 text-[13px] text-[var(--text)] outline-none focus:border-[var(--focus)]"
+                value={subscribeTargetProjectId}
+                onChange={(e) => setSubscribeTargetProjectId(e.target.value)}
+              >
+                {effectiveProjects.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name} ({p.slug})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[12px] font-medium text-[var(--text2)]">Catalog Alert Rule</label>
+              <select
+                className="h-9 w-full rounded-[var(--radius-sm)] border border-[var(--border2)] bg-[var(--bg2)] px-3 text-[13px] text-[var(--text)] outline-none focus:border-[var(--focus)]"
+                value={subscribeTargetCatalogKey}
+                onChange={(e) => setSubscribeTargetCatalogKey(e.target.value)}
+              >
+                {policies.map((p) => (
+                  <option key={p.slug || p.id} value={p.slug || p.id}>
+                    {p.name} [{labelize(p.category)}]
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {selectedSubscribePolicy && (
+              <div className="flex flex-col gap-2 rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--bg2)]/50 p-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-[12px] font-medium text-[var(--text)]">{selectedSubscribePolicy.name}</span>
+                  <SeverityBadge severity={selectedSubscribePolicy.severity} />
+                </div>
+                <p className="text-[12px] text-[var(--text3)] leading-relaxed">
+                  {selectedSubscribePolicy.description}
+                </p>
+                <div className="flex items-center gap-3 pt-1 text-[11px] font-[family-name:var(--mono)] text-[var(--text3)]">
+                  <span>Category: {labelize(selectedSubscribePolicy.category)}</span>
+                  <span>Cooldown: {formatSeconds(selectedSubscribePolicy.cooldownSeconds)}</span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <UiButton variant="outline" size="sm" onClick={() => setIsSubscribeOpen(false)}>
+              Cancel
+            </UiButton>
+            <UiButton
+              variant="default"
+              size="sm"
+              disabled={isSubscribing || !subscribeTargetProjectId || !subscribeTargetCatalogKey}
+              onClick={() => void handleConfirmSubscribe()}
+            >
+              {isSubscribing ? "Subscribing..." : "Subscribe Project"}
+            </UiButton>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </WorkspacePage>
   );
 }

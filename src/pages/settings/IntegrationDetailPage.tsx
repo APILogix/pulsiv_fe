@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router";
+import { toast } from "sonner";
 import {
   Activity,
   Clock,
@@ -33,7 +34,8 @@ import {
   type SetupStepItem,
 } from "@/shared/ui/pulse";
 import { KeyValueGrid, type KeyValueItem } from "@/shared/ui/pulse";
-import { Button, DetailSkeleton, StatusBadge, Tabs, Timestamp, demoSuccess, formatLatency } from "@/shared/observe";
+import { Button, DetailSkeleton, StatusBadge, Tabs, Timestamp, formatLatency } from "@/shared/observe";
+import { apiErrorMessage } from "@/infrastructure/api-client/api-error";
 import { IntegrationRoutes } from "./components/IntegrationRoutes";
 import { IntegrationDeliveries } from "./components/IntegrationDeliveries";
 import { IntegrationAudit } from "./components/IntegrationAudit";
@@ -91,10 +93,10 @@ export default function IntegrationDetailPage() {
     if (window.confirm("Are you sure you want to delete this integration?")) {
       try {
         await deleteConnector.mutateAsync(integrationId);
-        demoSuccess("Integration deleted successfully");
+        toast.success("Integration deleted successfully");
         navigate("/connectors/integrations");
-      } catch (err: any) {
-        demoSuccess(`Failed to delete integration: ${err.message}`);
+      } catch (err) {
+        toast.error(apiErrorMessage(err));
       }
     }
   };
@@ -103,9 +105,9 @@ export default function IntegrationDetailPage() {
     setIsTesting(true);
     try {
       await testConnector.mutateAsync(integrationId);
-      demoSuccess("Test connection successful");
-    } catch (err: any) {
-      demoSuccess(`Test failed: ${err.message}`);
+      toast.success("Connection test started");
+    } catch (err) {
+      toast.error(apiErrorMessage(err));
     } finally {
       setIsTesting(false);
     }
@@ -117,13 +119,13 @@ export default function IntegrationDetailPage() {
       await sendTest.mutateAsync({
         id: integrationId,
         payload: {
-          title: "Pulse Integration Test Successful",
-          body: "Hello! This is a test message from Pulse. Your integration is correctly configured and ready to receive real alerts.",
+          title: "LynkTrace Integration Test Successful",
+          body: "Hello! This is a test message from LynkTrace. Your integration is correctly configured and ready to receive real alerts.",
         },
       });
-      demoSuccess("Test message sent successfully");
-    } catch (err: any) {
-      demoSuccess(`Failed to send message: ${err.message}`);
+      toast.success("Test message sent");
+    } catch (err) {
+      toast.error(apiErrorMessage(err));
     } finally {
       setIsSending(false);
     }
@@ -131,12 +133,16 @@ export default function IntegrationDetailPage() {
 
   const handleToggleState = async () => {
     const isActive = i?.status === "active";
-    if (isActive) {
-      await disableConnector.mutateAsync(integrationId);
-      demoSuccess("Connector disabled");
-    } else {
-      await enableConnector.mutateAsync(integrationId);
-      demoSuccess("Connector enabled");
+    try {
+      if (isActive) {
+        await disableConnector.mutateAsync(integrationId);
+        toast.success("Connector disabled");
+      } else {
+        await enableConnector.mutateAsync(integrationId);
+        toast.success("Connector enabled");
+      }
+    } catch (err) {
+      toast.error(apiErrorMessage(err));
     }
   };
 
@@ -205,7 +211,7 @@ export default function IntegrationDetailPage() {
     },
     {
       title: "Verify connectivity",
-      description: "Run a test connection to confirm Sentinel can reach the destination.",
+      description: "Run a test connection to confirm LynkTrace can reach the destination.",
       done: testRuns.length > 0,
     },
     {
@@ -266,7 +272,7 @@ export default function IntegrationDetailPage() {
           label={isActive ? "Connector enabled" : "Connector disabled"}
           description={
             isActive
-              ? "Sentinel is delivering matching events to this connector."
+              ? "LynkTrace is delivering matching events to this connector."
               : "Deliveries are paused. Existing configuration and routes are preserved."
           }
           htmlFor="connector-enabled"
@@ -283,7 +289,7 @@ export default function IntegrationDetailPage() {
 
       <Panel
         title="Recent test runs"
-        description="Connectivity checks and the latency Sentinel measured."
+        description="Connectivity checks and the latency LynkTrace measured."
         icon={Clock}
         bodyClassName={testRuns.length === 0 ? undefined : "p-0"}
         actions={

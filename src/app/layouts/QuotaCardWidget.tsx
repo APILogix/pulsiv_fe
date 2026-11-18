@@ -100,22 +100,20 @@ export function QuotaCardWidget() {
     });
   }, [quota.data, updateUsage]);
 
-  // Priority: Override -> Bootstrap Zustand Store -> Safe Fallbacks
-  const totalEvents = overrideData?.totalEvents ?? bootstrapUsage?.monthlyEvents.limit ?? 1000000;
-  const isUnlimitedEvents = totalEvents < 0;
-  const eventsLeft = overrideData?.eventsLeft ?? bootstrapUsage?.monthlyEvents.remaining ?? (isUnlimitedEvents ? -1 : totalEvents);
+  // Priority: Override -> Bootstrap Zustand Store -> Safe Fallbacks (Calibrated for v6.3)
+  const totalEvents = overrideData?.totalEvents ?? bootstrapUsage?.monthlyEvents.limit ?? 50000000;
+  const eventsLeft = overrideData?.eventsLeft ?? bootstrapUsage?.monthlyEvents.remaining ?? totalEvents;
   const eventsUsed = overrideData
-    ? (isUnlimitedEvents ? 0 : Math.max(0, totalEvents - (eventsLeft < 0 ? 0 : eventsLeft)))
-    : (bootstrapUsage?.monthlyEvents.used ?? (isUnlimitedEvents ? 0 : Math.max(0, totalEvents - eventsLeft)));
-  const ingestPercent = bootstrapUsage?.monthlyEvents.percentage ?? (isUnlimitedEvents ? 0 : (totalEvents > 0 ? Math.min(100, Math.round((eventsUsed / totalEvents) * 100)) : 0));
+    ? Math.max(0, totalEvents - Math.max(0, eventsLeft))
+    : (bootstrapUsage?.monthlyEvents.used ?? Math.max(0, totalEvents - eventsLeft));
+  const ingestPercent = bootstrapUsage?.monthlyEvents.percentage ?? (totalEvents > 0 ? Math.min(100, Math.round((eventsUsed / totalEvents) * 100)) : 0);
 
-  const aiCreditsTotal = overrideData?.aiCreditsTotal ?? bootstrapUsage?.aiCredits.limit ?? 500;
-  const isUnlimitedAi = aiCreditsTotal < 0;
-  const aiCreditsLeft = overrideData?.aiCreditsLeft ?? bootstrapUsage?.aiCredits.remaining ?? (isUnlimitedAi ? -1 : aiCreditsTotal);
+  const aiCreditsTotal = overrideData?.aiCreditsTotal ?? bootstrapUsage?.aiCredits.limit ?? 5000;
+  const aiCreditsLeft = overrideData?.aiCreditsLeft ?? bootstrapUsage?.aiCredits.remaining ?? aiCreditsTotal;
   const aiCreditsUsed = overrideData
-    ? (isUnlimitedAi ? 0 : Math.max(0, aiCreditsTotal - (aiCreditsLeft < 0 ? 0 : aiCreditsLeft)))
-    : (bootstrapUsage?.aiCredits.used ?? (isUnlimitedAi ? 0 : Math.max(0, aiCreditsTotal - aiCreditsLeft)));
-  const aiPercent = bootstrapUsage?.aiCredits.percentage ?? (isUnlimitedAi ? 0 : (aiCreditsTotal > 0 ? Math.min(100, Math.round((aiCreditsUsed / aiCreditsTotal) * 100)) : 0));
+    ? Math.max(0, aiCreditsTotal - Math.max(0, aiCreditsLeft))
+    : (bootstrapUsage?.aiCredits.used ?? Math.max(0, aiCreditsTotal - aiCreditsLeft));
+  const aiPercent = bootstrapUsage?.aiCredits.percentage ?? (aiCreditsTotal > 0 ? Math.min(100, Math.round((aiCreditsUsed / aiCreditsTotal) * 100)) : 0);
 
   const endDateStr = overrideData?.billingCycleEndDate ?? bootstrapBilling?.currentPeriodEnd ?? null;
   const resetDays = endDateStr
@@ -142,9 +140,9 @@ export function QuotaCardWidget() {
             <div className="text-[11px] font-mono tabular-nums text-[var(--text3)] flex justify-between items-center gap-1.5 min-w-0">
               <span
                 className="truncate"
-                title={`${eventsUsed.toLocaleString()} / ${isUnlimitedEvents ? 'Unlimited' : totalEvents.toLocaleString()} credits`}
+                title={`${eventsUsed.toLocaleString()} / ${totalEvents.toLocaleString()} credits`}
               >
-                {formatQuotaValue(eventsUsed)} / {isUnlimitedEvents ? '∞' : `${formatQuotaValue(totalEvents)} credits`}
+                {formatQuotaValue(eventsUsed)} / {formatQuotaValue(totalEvents)} credits
               </span>
               <span className="shrink-0 whitespace-nowrap text-[10.5px]">&middot; resets in {resetDays}d</span>
             </div>
@@ -172,9 +170,9 @@ export function QuotaCardWidget() {
             <div className="text-[11px] font-mono tabular-nums text-[var(--text3)] flex justify-between items-center gap-1.5 min-w-0">
               <span
                 className="truncate"
-                title={`${aiCreditsUsed.toLocaleString()} / ${isUnlimitedAi ? 'Unlimited' : aiCreditsTotal.toLocaleString()} credits`}
+                title={`${aiCreditsUsed.toLocaleString()} / ${aiCreditsTotal.toLocaleString()} credits`}
               >
-                {formatQuotaValue(aiCreditsUsed)} / {isUnlimitedAi ? '∞' : `${formatQuotaValue(aiCreditsTotal)} credits`}
+                {formatQuotaValue(aiCreditsUsed)} / {formatQuotaValue(aiCreditsTotal)} credits
               </span>
               <span className="shrink-0 whitespace-nowrap text-[10.5px]">&middot; resets in {resetDays}d</span>
             </div>

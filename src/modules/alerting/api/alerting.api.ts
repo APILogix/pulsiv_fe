@@ -560,13 +560,9 @@ export const orgPoliciesApi = {
     orgId: string,
     query: { limit?: number; offset?: number; category?: string } = {},
   ): Promise<Paged<OrganizationAlertPolicy>> => {
-    // 1. Fetch global alert catalog
-    let catalogItems: AlertCatalogItem[] = [];
-    try {
-      catalogItems = await alertCatalogApi.list(orgId);
-    } catch (err) {
-      console.error("Failed to load alert catalog:", err);
-    }
+    // The global catalog is required. Let failures reach React Query so the
+    // page can show a retryable error instead of presenting a false empty list.
+    const catalogItems = await alertCatalogApi.list(orgId);
 
     const catalogPolicies = catalogItems.map((item) => mapCatalogItemToPolicy(item, orgId));
 

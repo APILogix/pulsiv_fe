@@ -36,7 +36,7 @@ export function EntitlementRestrictedBanner({
   // Older member endpoints returned `{ members }` instead of `{ data }`.
   const legacy = memberPage as unknown as { members?: ProjectMember[] } | undefined;
   const members: ProjectMember[] = memberPage?.data ?? legacy?.members ?? [];
-  const ownerMember = members.find((m) => m.role === "owner") ?? members[0];
+  const ownerMember = members[0];
   const ownerUser = ownerMember?.user;
   const ownerEmail = alertingStatus?.projectOwner?.email || ownerUser?.email;
   const ownerName = ownerUser?.fullName || (ownerEmail ? ownerEmail.split("@")[0] : "Project owner");

@@ -42,7 +42,7 @@ const PROVIDERS = [
   {
     id: 'google' as const,
     label: 'Google',
-    description: 'Use your Google account to log into Sentinel without entering a separate password.',
+    description: 'Use your Google account to log into LynkTrace without entering a separate password.',
     icon: GoogleIcon,
   },
   {
@@ -160,7 +160,7 @@ export function LinkedAccountsPanel() {
               OAuth Identity Providers
             </h2>
             <p className="text-[12px] text-[var(--text2)] mt-0.5">
-              Personal authentication accounts connected to your Sentinel profile.
+              Personal authentication accounts connected to your LynkTrace profile.
             </p>
           </div>
         </div>
@@ -269,7 +269,7 @@ export function LinkedAccountsPanel() {
               Disconnect {unlinkTarget?.provider ? unlinkTarget.provider.charAt(0).toUpperCase() + unlinkTarget.provider.slice(1) : 'Account'}?
             </DialogTitle>
             <DialogDescription className="text-[12px] text-[var(--text2)] leading-relaxed">
-              You will no longer be able to use this social account to log in to Sentinel. Make sure you have a working password or another authentication method enabled before disconnecting.
+              You will no longer be able to use this social account to log in to LynkTrace. Make sure you have a working password or another authentication method enabled before disconnecting.
             </DialogDescription>
           </DialogHeader>
 

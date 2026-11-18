@@ -48,9 +48,6 @@ export const SAMPLING_RATE_BOUND: NumericBound = { min: 0, max: 1, integer: fals
 export const MAX_SCRUB_PATTERNS = 500;
 export const MAX_PATTERN_BYTES = 512;
 
-export const COMPRESSION_MODES = ["gzip", "none"] as const;
-export type CompressionMode = (typeof COMPRESSION_MODES)[number];
-
 export const TRANSPORT_PRIORITIES = ["critical", "high", "normal", "low"] as const;
 export type TransportPriority = (typeof TRANSPORT_PRIORITIES)[number];
 

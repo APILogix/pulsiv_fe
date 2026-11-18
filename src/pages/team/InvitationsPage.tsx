@@ -125,7 +125,7 @@ export default function InvitationsPage() {
         <form action={inviteAction} className="flex flex-wrap items-end gap-3">
           <div className="min-w-[260px] flex-1">
             <Field label="Email">
-              <input name="email" type="email" required placeholder="teammate@company.com" className={inputClass} />
+              <input name="email" type="email" required placeholder="member@company.com" className={inputClass} />
             </Field>
           </div>
           <div className="w-40">

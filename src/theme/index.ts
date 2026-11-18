@@ -16,6 +16,7 @@ export {
   normalizeTheme,
   THEME_META,
   THEME_STORAGE_KEY,
+  LYNKTRACE_THEMES,
   SENTINEL_THEMES,
   DEFAULT_THEME,
 } from './ThemeProvider';

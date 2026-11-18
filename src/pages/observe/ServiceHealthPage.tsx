@@ -1,98 +1,54 @@
-import { useObservabilityList } from "./hooks/useObservabilityApi";
-import {
-  PageHeader, KpiCard, SectionCard, Table, Tr, Td, StatusBadge, MetricSparkline,
-  TimeRangePicker, useTimeRangeParams,
-} from "@/shared/observe";
-
-const SERVICES = ["api-gateway", "user-service", "payment-service", "notification-service", "analytics-service"];
-const DEPENDENCIES = [
-  { name: "PostgreSQL", status: "healthy", latency: "4ms" },
-  { name: "Redis", status: "healthy", latency: "1ms" },
-  { name: "MongoDB", status: "degraded", latency: "82ms" },
-  { name: "Kafka", status: "healthy", latency: "12ms" },
-  { name: "S3", status: "healthy", latency: "28ms" },
-];
+import { useServicesAnalytics } from "@/modules/analytics/hooks/useAnalyticsV2";
+import { useIncidentSummary } from "@/modules/alerting/hooks/useAlerting";
+import { PageHeader, KpiCard, SectionCard, Table, Tr, Td, StatusBadge, TimeRangePicker, formatCompact } from "@/shared/observe";
 
 export default function ServiceHealthPage() {
-  const { timeRangeState } = useTimeRangeParams();
-  const { data: requests } = useObservabilityList<any>("requests", {
-    range: timeRangeState.mode === "preset" ? timeRangeState.range : undefined,
-    from: timeRangeState.from,
-    to: timeRangeState.to,
-  });
-  const { data: errors } = useObservabilityList<any>("errors", {
-    range: timeRangeState.mode === "preset" ? timeRangeState.range : undefined,
-    from: timeRangeState.from,
-    to: timeRangeState.to,
-  });
-  
-  const reqList = requests?.items ?? [];
-  const errList = errors?.items ?? [];
+  const { data, isLoading, error, refetch } = useServicesAnalytics();
+  const { data: incidentSummary } = useIncidentSummary();
+  const services = data?.data?.table?.rows ?? [];
+  const healthyCount = services.filter((service) => service.status === "healthy").length;
+  const availabilityValues = services.flatMap((service) => service.availabilityPct == null ? [] : [service.availabilityPct]);
+  const meanAvailability = availabilityValues.length
+    ? availabilityValues.reduce((sum, value) => sum + value, 0) / availabilityValues.length
+    : null;
 
   return (
     <div className="flex flex-col gap-5">
-      <PageHeader
-        title="Service Health"
-        description="Project health plus platform readiness signals."
-        actions={<TimeRangePicker />}
-      />
+      <PageHeader title="Service health" actions={<TimeRangePicker />} />
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <KpiCard label="Healthy services" value="4 / 5" trend="up" delta="all SLOs met" />
-        <KpiCard label="Uptime (30d)" value="99.94%" />
-        <KpiCard label="Open incidents" value="3" trend="down" />
-        <KpiCard label="Apdex" value="0.96" trend="up" />
+        <KpiCard label="Healthy services" value={isLoading ? "—" : `${healthyCount} / ${services.length}`} />
+        <KpiCard label="Mean availability" value={meanAvailability == null ? "—" : `${meanAvailability.toFixed(2)}%`} />
+        <KpiCard label="Open incidents" value={incidentSummary?.activeTotal ?? "—"} />
+        <KpiCard label="Observed requests" value={formatCompact(services.reduce((sum, service) => sum + service.requests, 0))} />
       </div>
 
-      <SectionCard title="Service grid">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {SERVICES.map((svc, i) => {
-            const score = 99.9 - i * 0.7;
-            const tone = score > 99 ? "var(--green)" : score > 97 ? "var(--amber)" : "var(--red)";
-            const svcErrors = errList.filter((e: any) => (e.service ?? e.metadata?.service) === svc).length;
-            return (
-              <div key={svc} className="rounded-[10px] border border-[var(--border)] bg-[var(--bg2)] p-4">
-                <div className="flex items-center justify-between">
-                  <span className="font-medium text-[var(--text)]">{svc}</span>
-                  <span className="size-2.5 rounded-full pulse-dot" style={{ background: tone }} />
-                </div>
-                <div className="mt-2 flex items-end justify-between">
-                  <div>
-                    <div className="text-2xl font-semibold tabular-nums text-[var(--text)]">{score.toFixed(2)}%</div>
-                    <div className="text-[12px] text-[var(--text3)]">{svcErrors} errors · {reqList.length} req</div>
-                  </div>
-                  <MetricSparkline data={Array.from({ length: 16 }, () => 50 + Math.random() * 40)} color={tone} />
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </SectionCard>
-
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <SectionCard title="Readiness checks" className="p-0">
-          <Table headers={["Check", "Status", "Latency"]}>
-            {DEPENDENCIES.map((d) => (
-              <Tr key={d.name}>
-                <Td>{d.name}</Td>
-                <Td><StatusBadge status={d.status} /></Td>
-                <Td className="font-[family-name:var(--mono)] text-[12px] text-[var(--text2)]">{d.latency}</Td>
+      <SectionCard title="Service measurements" className="p-0">
+        {isLoading ? (
+          <p className="p-5 text-[13px] text-[var(--text3)]">Loading service metrics…</p>
+        ) : error ? (
+          <div className="flex items-center justify-between gap-4 p-5">
+            <p role="alert" className="text-[13px] text-[var(--red)]">Service metrics could not be loaded.</p>
+            <button type="button" onClick={() => void refetch()} className="text-[13px] font-medium text-[var(--brand)]">Retry</button>
+          </div>
+        ) : services.length === 0 ? (
+          <p className="p-5 text-[13px] text-[var(--text3)]">No service traffic was recorded for this time range.</p>
+        ) : (
+          <Table headers={["Service", "Status", "Requests", "Error rate", "p95 latency", "Availability", "Apdex"]}>
+            {services.map((service) => (
+              <Tr key={service.service}>
+                <Td className="font-medium">{service.service}</Td>
+                <Td><StatusBadge status={service.status ?? "unknown"} /></Td>
+                <Td className="tabular-nums">{formatCompact(service.requests)}</Td>
+                <Td className="tabular-nums">{service.errorRatePct == null ? "—" : `${service.errorRatePct.toFixed(2)}%`}</Td>
+                <Td className="tabular-nums">{service.p95Ms == null ? "—" : `${Math.round(service.p95Ms)}ms`}</Td>
+                <Td className="tabular-nums">{service.availabilityPct == null ? "—" : `${service.availabilityPct.toFixed(2)}%`}</Td>
+                <Td className="tabular-nums">{service.apdex == null ? "—" : service.apdex.toFixed(2)}</Td>
               </Tr>
             ))}
           </Table>
-        </SectionCard>
-
-        <SectionCard title="Dependency map">
-          <div className="flex min-h-[200px] flex-col items-center justify-center gap-3 text-center">
-            <div className="grid grid-cols-3 gap-2">
-              {DEPENDENCIES.map((d) => (
-                <div key={d.name} className="rounded-[8px] border border-[var(--border)] bg-[var(--bg2)] px-3 py-2 text-[12px] text-[var(--text2)]">{d.name}</div>
-              ))}
-            </div>
-            <p className="text-[12px] text-[var(--text3)]">Interactive topology graph renders here with live edge latencies.</p>
-          </div>
-        </SectionCard>
-      </div>
+        )}
+      </SectionCard>
     </div>
   );
 }

@@ -20,7 +20,7 @@ export default function ServiceDependenciesPage() {
         </div>
         <h3 className="font-semibold text-base text-[var(--text)]">Telemetry graph loading...</h3>
         <p className="text-sm text-[var(--text3)] mt-1 max-w-sm text-center">
-          Pulse is constructing the active connection topology from your service mesh traffic logs.
+          LynkTrace is constructing the active connection topology from your service mesh traffic logs.
         </p>
       </SectionCard>
     </div>

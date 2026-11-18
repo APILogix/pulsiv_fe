@@ -103,7 +103,7 @@ export default function SettingsLayout() {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-1.5">
                     <span className="truncate text-[14px] font-semibold text-[var(--text)]">
-                      {fullName || 'Sentinel Member'}
+                      {fullName || 'LynkTrace Member'}
                     </span>
                     <CheckCircle2 className="size-3.5 shrink-0 text-[var(--green)]" />
                   </div>

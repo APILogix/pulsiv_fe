@@ -205,26 +205,40 @@ export interface QuotaRequest {
   createdAt: string;
 }
 
+export interface BillingSummaryUsageBucket {
+  used?: number | null;
+  limit?: number | null;
+  remaining?: number | null;
+  enabled?: boolean;
+}
+
 export interface OrganizationBillingSummary {
-  subscription: {
+  orgId?: string;
+  subscriptionStatus?: string;
+  planTier?: string;
+  eventLimitMonthly?: number;
+  hardCap?: boolean;
+  subscription?: {
     id: string | null;
     status: string;
   };
-  plan: {
-    id: string | null;
-    key: string | null;
-    tier: string | null;
+  plan?: {
+    id?: string | null;
+    key?: string | null;
+    tier?: string | null;
     eventLimitMonthly: number;
     hardCap: boolean;
-    features: Record<string, unknown> | null;
+    features?: Record<string, unknown> | null;
   };
-  usage: {
-    activeMembers: number;
-    pendingInvitations: number;
-    environments: number;
-    apiKeys: number;
-    ssoProviders: number;
-    scimTokens: number;
+  usage?: {
+    activeMembers?: BillingSummaryUsageBucket | number;
+    eventsMonthly?: BillingSummaryUsageBucket & { remaining?: number };
+    aiCredits?: BillingSummaryUsageBucket & { remaining?: number };
+    ssoProviders?: BillingSummaryUsageBucket & { enabled?: boolean };
+    scimTokens?: BillingSummaryUsageBucket & { enabled?: boolean };
+    pendingInvitations?: number;
+    environments?: number;
+    apiKeys?: number;
   };
 }
 
@@ -232,6 +246,7 @@ export interface UsageLimitBucket {
   used: number | null;
   pending?: number;
   limit: number | null;
+  remaining?: number;
   enabled?: boolean;
   hardCap?: boolean;
 }
@@ -240,13 +255,88 @@ export interface UsageLimitsResponse {
   subscriptionStatus: string;
   planKey: string | null;
   limits: {
-    members: UsageLimitBucket;
-    environments: UsageLimitBucket;
-    apiKeys: UsageLimitBucket;
-    ssoProviders: UsageLimitBucket;
-    scimTokens: UsageLimitBucket;
-    eventsMonthly: UsageLimitBucket;
+    members?: UsageLimitBucket;
+    projects?: UsageLimitBucket;
+    apiKeys?: UsageLimitBucket;
+    connectors?: UsageLimitBucket;
+    alertRules?: UsageLimitBucket;
+    dashboards?: UsageLimitBucket;
+    ssoProviders?: UsageLimitBucket;
+    scimTokens?: UsageLimitBucket;
+    eventsMonthly?: UsageLimitBucket;
+    aiCredits?: UsageLimitBucket;
+    environments?: UsageLimitBucket;
   };
+}
+
+export interface BillingPlanPrice {
+  id: string;
+  provider: string;
+  interval: 'monthly' | 'annual';
+  currency: string;
+  amountMinor: number;
+  isDefault: boolean;
+}
+
+export interface BillingPlan {
+  id: string;
+  key: string;
+  name: string;
+  displayName: string;
+  tier: string;
+  description: string;
+  trialDays: number;
+  sortOrder: number;
+  queuePriority: string;
+  queueWeight: number;
+  monthlyPriceMinor: number | null;
+  annualPriceMinor: number | null;
+  pricing: {
+    monthlyPriceMinor: number | null;
+    annualPriceMinor: number | null;
+  };
+  baseQuotas: Record<string, number>;
+  quotaPolicies: {
+    overage_allowed?: boolean;
+    hard_cap?: boolean;
+    ceiling_multiplier?: number;
+    throttle_on_breach?: boolean;
+  };
+  sdkBounds?: Record<string, unknown>;
+  dashboards?: Record<string, unknown>;
+  integrations?: Record<string, boolean>;
+  prices: BillingPlanPrice[];
+  features: Record<string, {
+    name: string;
+    type: string;
+    value: boolean | number | string | null;
+  }>;
+}
+
+export interface AddonCatalogItem {
+  id: string;
+  key: string;
+  name: string;
+  description: string;
+  resourceType: string;
+  amount: number;
+  unitPriceMinor: number;
+  currency: string;
+  category: string;
+  billingInterval: string;
+  maxPerSubscription: number;
+  isActive: boolean;
+  sortOrder: number;
+}
+
+export interface SubscriptionAddon {
+  addonId: string;
+  key: string;
+  name: string;
+  quantity: number;
+  unitPriceMinor: number;
+  active: boolean;
+  addedAt?: string;
 }
 
 export interface BillingUsageOverview {

@@ -4,7 +4,7 @@ import { RegisterForm } from '../components/RegisterForm';
 import { SocialProviderButtons, type SocialProvider } from '../components/SocialProviders';
 import { authApi } from '../api/auth.api';
 import { getErrorMessage } from '@/infrastructure/api-client/error.interceptor';
-import { AuthDivider, AuthHeading, AuthLink } from '@/shared/ui/pulse';
+import { AuthDivider, AuthHeading, AuthLink } from '@/shared/ui/pulse/auth';
 
 export default function RegisterPage() {
   const [socialProvider, setSocialProvider] = useState<SocialProvider | null>(null);
@@ -25,7 +25,7 @@ export default function RegisterPage() {
   return (
     <div className="w-full">
       <AuthHeading
-        title="Create your Sentinel account"
+        title="Create your LynkTrace account"
         description={
           <>
             No card required. Already have an account? <AuthLink to="/auth/login">Sign in</AuthLink>

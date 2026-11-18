@@ -1,3 +1,4 @@
+import { X } from "lucide-react";
 import { ENVIRONMENT_OPTIONS, FilterSelect, SearchInput } from "@/shared/observe";
 import type { ErrorGroupFilterState } from "../types/error-group";
 
@@ -45,13 +46,18 @@ export function ErrorGroupFilters({ filters, onChange, onClear }: ErrorGroupFilt
         onSearch={(val) => onChange("search", val)}
         defaultValue={filters.search}
       />
-      <FilterSelect value={filters.environment ?? ""} onChange={(val) => onChange("environment", val)} options={ENVIRONMENT_OPTIONS} />
-      <FilterSelect value={filters.status} onChange={(val) => onChange("status", val)} options={STATUS_OPTS} />
-      <FilterSelect value={filters.severity} onChange={(val) => onChange("severity", val)} options={SEVERITY_OPTS} />
-      <FilterSelect value={filters.isRegression} onChange={(val) => onChange("isRegression", val)} options={REGRESSION_OPTS} />
-      <FilterSelect value={filters.minOccurrences ?? ""} onChange={(val) => onChange("minOccurrences", val)} options={OCCURRENCE_OPTS} />
+      <FilterSelect label="Environment" value={filters.environment ?? ""} onChange={(val) => onChange("environment", val)} options={ENVIRONMENT_OPTIONS} />
+      <FilterSelect label="Status" value={filters.status} onChange={(val) => onChange("status", val)} options={STATUS_OPTS} />
+      <FilterSelect label="Severity" value={filters.severity} onChange={(val) => onChange("severity", val)} options={SEVERITY_OPTS} />
+      <FilterSelect label="Regression" value={filters.isRegression} onChange={(val) => onChange("isRegression", val)} options={REGRESSION_OPTS} />
+      <FilterSelect label="Volume" value={filters.minOccurrences ?? ""} onChange={(val) => onChange("minOccurrences", val)} options={OCCURRENCE_OPTS} />
       {active && (
-        <button type="button" onClick={onClear} className="h-9 px-2 text-[12px] text-[var(--text2)] transition-colors hover:text-[var(--text)]">
+        <button
+          type="button"
+          onClick={onClear}
+          className="inline-flex h-8 items-center gap-1.5 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg2)]/60 px-2.5 text-[12px] text-[var(--text2)] transition-colors hover:border-[var(--border2)] hover:bg-[var(--bg2)] hover:text-[var(--text)] cursor-pointer"
+        >
+          <X className="size-3" />
           Clear filters
         </button>
       )}

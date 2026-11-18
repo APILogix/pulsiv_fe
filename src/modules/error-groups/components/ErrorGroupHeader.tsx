@@ -1,7 +1,6 @@
-import { CheckCircle2, EyeOff, GitMerge, RotateCcw, Sparkles } from "lucide-react";
+import { CheckCircle2, EyeOff, GitMerge, RotateCcw } from "lucide-react";
 import { DetailHeader, EnvironmentBadge, SeverityBadge, Timestamp } from "@/shared/observe";
-import { aiButtonClass, ghostButtonClass } from "@/shared/observe/form";
-import { useAiDrawerStore } from "@/modules/ai/store/ai-drawer.store";
+import { ghostButtonClass } from "@/shared/observe/form";
 import type { ErrorGroup } from "../types/error-group";
 import { ErrorGroupStatusBadge, RegressionBadge } from "./ErrorGroupStatusBadge";
 
@@ -59,14 +58,6 @@ export function ErrorGroupHeader({ group, onResolve, onIgnore, onMerge }: ErrorG
           <button type="button" onClick={onMerge} className={ghostButtonClass}>
             <GitMerge className="size-3.5" aria-hidden="true" />
             Merge
-          </button>
-          <button
-            type="button"
-            className={aiButtonClass}
-            onClick={() => useAiDrawerStore.getState().openInvestigate({ resourceType: "error", publicId: group.latestEvent?.publicId ?? id })}
-          >
-            <Sparkles className="size-3.5" aria-hidden="true" />
-            Investigate
           </button>
         </>
       }

@@ -253,7 +253,7 @@ export default function AiSettingsPage() {
                     perUserDailyLimit: e.target.value === "" ? null : Number(e.target.value),
                   }))
                 }
-                placeholder="Unlimited"
+                placeholder="No per-user cap"
               />
             </SettingRow>
           </Row>

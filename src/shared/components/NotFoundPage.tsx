@@ -5,7 +5,7 @@ import { ParticleField } from './ParticleField';
 
 export default function NotFoundPage() {
   useEffect(() => {
-    document.title = "Page Not Found — Sentinel";
+    document.title = "Page Not Found — LynkTrace";
   }, []);
   return (
     <div className="min-h-screen w-full bg-[var(--bg)] flex flex-col items-center justify-center p-8 relative overflow-hidden font-[family-name:var(--sans)]">

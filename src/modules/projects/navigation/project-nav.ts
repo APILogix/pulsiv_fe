@@ -165,8 +165,8 @@ export const PROJECT_NAV: ProjectNavGroup[] = [
     ],
   },
   {
-    id: "team",
-    label: "Team",
+    id: "members",
+    label: "Members",
     icon: Users,
     items: [
       {
@@ -210,6 +210,7 @@ export const PROJECT_SEGMENT_ALIASES: Record<string, string> = {
   settings: "settings/general",
   thresholds: "alert-rules",
   channels: "alert-channels",
+  team: "members",
 };
 
 /**

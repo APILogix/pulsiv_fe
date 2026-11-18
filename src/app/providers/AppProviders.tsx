@@ -1,18 +1,15 @@
-import { ReactNode } from 'react';
-import { Toaster } from '@/components/ui/sonner';
+import { lazy, Suspense, type ReactNode } from 'react';
 import { QueryProvider } from './QueryProvider';
 import { ThemeProvider } from '../../theme/ThemeProvider';
-import { TooltipProvider } from '@/components/ui/tooltip';
-import { MotionProvider } from '@/shared/motion/MotionProvider';
+import { MotionPreferenceProvider } from '@/shared/motion/MotionPreferenceContext';
+
+const Toaster = lazy(() => import('@/components/ui/sonner').then((m) => ({ default: m.Toaster })));
 
 /**
  * Provider order matters for render cost:
- *   ThemeProvider  — writes CSS variables on <html>, must be outermost.
- *   MotionProvider — one MotionConfig for the whole tree + the resolved
- *                    prefers-reduced-motion value. Cheap context, near-static
- *                    value, so it sits high without causing cascade renders.
- *   QueryProvider  — server state.
- *   TooltipProvider— Radix, needs to wrap anything with a tooltip.
+ *   ThemeProvider            — writes CSS variables on <html>, must be outermost.
+ *   MotionPreferenceProvider — motion preference context without heavy framer-motion runtime.
+ *   QueryProvider            — server state.
  *
  * The Toaster is intentionally a sibling of `children`, not a wrapper: toasts
  * must not re-render the app tree when they mount.
@@ -20,14 +17,12 @@ import { MotionProvider } from '@/shared/motion/MotionProvider';
 export function AppProviders({ children }: { children: ReactNode }) {
   return (
     <ThemeProvider>
-      <MotionProvider>
-        <QueryProvider>
-          <TooltipProvider>
-            {children}
-          </TooltipProvider>
+      <QueryProvider>
+        <MotionPreferenceProvider>{children}</MotionPreferenceProvider>
+        <Suspense fallback={null}>
           <Toaster />
-        </QueryProvider>
-      </MotionProvider>
+        </Suspense>
+      </QueryProvider>
     </ThemeProvider>
   );
 }

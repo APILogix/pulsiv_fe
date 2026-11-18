@@ -723,7 +723,7 @@ export const MOCK_GROUP_HISTORY: Record<string, ErrorGroupHistoryItem[]> = {
     {
       id: "hist_101",
       groupId: "grp_01h8x901",
-      actor: "System Sentinel",
+      actor: "System LynkTrace",
       timestamp: "2026-08-05T12:00:00Z",
       action: "regression_detected",
       oldValue: "resolved",
@@ -855,7 +855,7 @@ export function getMockGroupHistory(groupId: string): ErrorGroupHistoryItem[] {
       {
         id: `hist_${groupId}_1`,
         groupId,
-        actor: "System Sentinel",
+        actor: "System LynkTrace",
         timestamp: new Date().toISOString(),
         action: "created",
         newValue: "open",

@@ -1,13 +1,13 @@
-import { useState, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
+import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
-import { Crown, UserPlus } from "lucide-react";
+import { UserPlus, Copy } from "lucide-react";
+import type { Member } from "@/modules/organizations/types/org.types";
 
 import { useMemberMutations, useProjectMembers } from "@/modules/projects/hooks/useMembers";
-import {
-  PROJECT_MEMBER_ROLES,
-  type ProjectMember,
-  type ProjectMemberRole,
-  type ProjectMemberStatus,
+import type {
+  ProjectMember,
+  ProjectMemberStatus,
 } from "@/modules/projects/api/types";
 import { orgApi } from "@/modules/organizations/api/org.api";
 import { orgQueryKeys } from "@/modules/organizations/hooks/useOrganizations";
@@ -15,10 +15,11 @@ import { useOrgStore } from "@/modules/organizations/store/org.store";
 import { ConfirmDialog, DialogField, FormDialog, apiErrorMessage } from "@/modules/projects/components/project-ui";
 import {
   HIDE_BELOW_MD,
+  HIDE_BELOW_SM,
   ProjectPageHeader,
   Readouts,
   RowActions,
-  RowTitle,
+  SearchField,
   Sheet,
   SheetCell,
   SheetEmpty,
@@ -31,31 +32,14 @@ import {
   type Readout,
   type SheetColumn,
 } from "@/modules/projects/components/project-page";
-import { Notice, Panel, Pill, fieldInputClass, type SurfaceTone } from "@/shared/ui/pulse";
-import { FilterSelect, Timestamp, formatNumber } from "@/shared/observe";
+import { Notice, Pill, fieldInputClass, type SurfaceTone } from "@/shared/ui/pulse";
+import { FilterSelect, formatDate, formatNumber, formatRelativeTime } from "@/shared/observe";
 import { Button as UiButton } from "@/components/ui/button";
-import { DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { useCurrentProject } from "./ProjectShellPage";
 
 // ── module-level constants (rules.md §1.2) ───────────────────
 
-const ROLE_LABEL: Record<ProjectMemberRole, string> = {
-  owner: "Owner",
-  admin: "Admin",
-  developer: "Developer",
-  qa: "QA",
-  viewer: "Viewer",
-};
-
-const ROLE_DESCRIPTION: Record<ProjectMemberRole, string> = {
-  owner: "Full control including deletion and ownership transfer.",
-  admin: "Manage settings, keys, members, and alerting.",
-  developer: "Manage keys and alerting; read all telemetry.",
-  qa: "Read telemetry and acknowledge alerts.",
-  viewer: "Read-only access to telemetry and dashboards.",
-};
-
-// Status is the only coloured reading. Roles are categories, so they stay neutral.
 const STATUS_TONE: Record<ProjectMemberStatus, SurfaceTone> = {
   active: "green",
   pending: "amber",
@@ -71,22 +55,31 @@ const STATUS_FILTER_OPTIONS = [
   { value: "removed", label: "Removed" },
 ];
 
-const ROLE_FILTER_OPTIONS = [
-  { value: "", label: "All roles" },
-  ...PROJECT_MEMBER_ROLES.map((role) => ({ value: role, label: ROLE_LABEL[role] })),
-];
-
-// The identity column takes the free width and truncates; the rest hug their content.
+// Impeccable balanced horizontal layout: Member identity, adjacent email, role, status, and formatted joined date.
 const COLUMNS: SheetColumn[] = [
-  { key: "member", header: "Member", className: "w-full" },
-  { key: "role", header: "Role", className: "w-[120px]" },
-  { key: "status", header: "Status", className: "w-[112px]" },
-  { key: "joined", header: "Joined", className: `w-[120px] ${HIDE_BELOW_MD}` },
-  { key: "actions", header: "Actions", srOnly: true, align: "right", className: "w-px" },
+  { key: "member", header: "Member", className: "w-[24%] min-w-[200px]" },
+  { key: "email", header: "Email", className: `w-[28%] min-w-[220px] ${HIDE_BELOW_SM}` },
+  { key: "role", header: "Role", className: `w-[14%] min-w-[120px] ${HIDE_BELOW_SM}` },
+  { key: "status", header: "Status", className: "w-[14%] min-w-[110px]" },
+  { key: "joined", header: "Date joined", className: `w-[16%] min-w-[140px] ${HIDE_BELOW_MD}` },
+  { key: "actions", header: "Actions", srOnly: true, align: "right", className: "w-[56px]" },
 ];
 
 function memberLabel(member: ProjectMember) {
   return member.user?.fullName || member.user?.email || member.userId;
+}
+
+function memberInitials(member: ProjectMember) {
+  const name = member.user?.fullName?.trim();
+  if (name) {
+    const parts = name.split(/\s+/);
+    if (parts.length >= 2 && parts[0] && parts[1]) {
+      return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+    }
+    return name.slice(0, 2).toUpperCase();
+  }
+  const email = member.user?.email || member.userId;
+  return email.slice(0, 2).toUpperCase();
 }
 
 // ── page ─────────────────────────────────────────────────────
@@ -95,30 +88,37 @@ export default function ProjectMembersPage() {
   const { projectId, project } = useCurrentProject();
   const activeOrgId = useOrgStore((state) => state.activeOrgId);
 
+  const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
-  const [role, setRole] = useState("");
+
   const { data, isLoading, error, refetch } = useProjectMembers(projectId, {
     ...(status ? { status: status as ProjectMemberStatus } : {}),
-    ...(role ? { role: role as ProjectMemberRole } : {}),
+    ...(search ? { search } : {}),
   });
   const members = data?.data ?? [];
 
-  // The table is filtered through the API, so the readings come from the whole
-  // roster. Without filters this is the same query and cache entry as the table.
+  // Overall roster for header counters.
   const { data: roster, isLoading: rosterLoading } = useProjectMembers(projectId);
   const everyone = roster?.data ?? [];
 
-  const { addMember, updateMemberRole, removeMember, transferOwnership } = useMemberMutations(projectId);
+  const { addMember, removeMember } = useMemberMutations(projectId);
 
-  // Project members are drawn from the organization roster.
+  // Candidates drawn directly from active organization roster.
   const { data: orgMembers } = useQuery({
     queryKey: [...orgQueryKeys.members(activeOrgId ?? ""), "project-add-candidates"],
     queryFn: () => orgApi.listMembers(activeOrgId!, { limit: 100, status: "active" }),
     enabled: !!activeOrgId,
   });
 
+  const orgMemberMap = useMemo(() => {
+    const map = new Map<string, Member>();
+    for (const m of orgMembers?.data ?? []) {
+      map.set(m.userId, m);
+    }
+    return map;
+  }, [orgMembers]);
+
   const [adding, setAdding] = useState(false);
-  const [transferring, setTransferring] = useState(false);
   const [removingMember, setRemovingMember] = useState<ProjectMember | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -127,36 +127,44 @@ export default function ProjectMembersPage() {
   const alreadyMember = new Set(members.map((member) => member.userId));
   const candidates = (orgMembers?.data ?? []).filter((orgMember) => !alreadyMember.has(orgMember.userId));
 
-  const owners = everyone.filter((member) => member.role === "owner");
-  const ownerNames = owners.map(memberLabel).join(", ");
+  // Client-side instant filter to keep UI responsive while typing.
+  const queryLower = search.trim().toLowerCase();
+  const displayedMembers = queryLower
+    ? members.filter(
+        (member) =>
+          memberLabel(member).toLowerCase().includes(queryLower) ||
+          member.user?.email?.toLowerCase().includes(queryLower) ||
+          member.userId.toLowerCase().includes(queryLower),
+      )
+    : members;
+
   const readouts: Readout[] = [
     {
-      label: "Members",
+      label: "Total members",
       value: formatNumber(roster?.total ?? everyone.length),
-      sub: `${formatNumber(everyone.filter((member) => member.status === "active").length)} active`,
+      sub: "Enrolled in project",
     },
     {
-      label: "Owners",
-      value: formatNumber(owners.length),
-      sub: ownerNames || "No owner assigned",
-      title: ownerNames || undefined,
-    },
-    {
-      label: "Admins",
-      value: formatNumber(everyone.filter((member) => member.role === "admin").length),
-      sub: "Manage settings, keys, and members",
+      label: "Active",
+      value: formatNumber(everyone.filter((member) => member.status === "active").length),
+      sub: "Workspace access granted",
     },
     {
       label: "Pending",
       value: formatNumber(everyone.filter((member) => member.status === "pending").length),
-      sub: "Added but not active yet",
+      sub: "Awaiting activation",
+    },
+    {
+      label: "Eligible org members",
+      value: formatNumber(candidates.length),
+      sub: "Available to add",
     },
   ];
 
-  const filtered = Boolean(status || role);
+  const filtered = Boolean(status || search);
   const clearFilters = () => {
     setStatus("");
-    setRole("");
+    setSearch("");
   };
 
   const addAction = (
@@ -170,11 +178,11 @@ export default function ProjectMembersPage() {
     body = <SheetLoading rows={4} label="Loading members" />;
   } else if (error) {
     body = <SheetError title="Could not load members" message={asMessage(error)} onRetry={() => void refetch()} />;
-  } else if (members.length === 0) {
+  } else if (displayedMembers.length === 0) {
     body = filtered ? (
       <SheetEmpty
         title="No members match"
-        description="Nobody in this project has that combination of status and role."
+        description="Nobody in this project matches your search and filter criteria."
         action={
           <UiButton variant="outline" size="lg" onClick={clearFilters}>
             Clear filters
@@ -184,46 +192,97 @@ export default function ProjectMembersPage() {
     ) : (
       <SheetEmpty
         title="No members yet"
-        description="Add people from the organization roster. They get access to this project as soon as you add them."
+        description="Add people from the organization roster. They get immediate access to this project."
         action={addAction}
       />
     );
   } else {
     body = (
-      <SheetTable columns={COLUMNS} caption="Project members" minWidth={520}>
-        {members.map((member) => {
+      <SheetTable columns={COLUMNS} caption="Project members" minWidth={760}>
+        {displayedMembers.map((member) => {
           const label = memberLabel(member);
+          const email = member.user?.email;
+          const joinedDate = member.joinedAt ?? member.createdAt;
+          const initials = memberInitials(member);
+          const orgRole = (member as any).role || orgMemberMap.get(member.userId)?.role || "member";
+
           return (
             <SheetRow key={member.id} muted={member.status === "removed" || member.status === "inactive"}>
-              <SheetCell className="w-full max-w-0">
-                <RowTitle
-                  title={label}
-                  subtitle={member.user?.fullName && member.user.email ? member.user.email : undefined}
-                />
+              {/* Member identity with avatar initials */}
+              <SheetCell className="w-[24%] min-w-[200px]">
+                <div className="flex items-center gap-3">
+                  <div
+                    aria-hidden="true"
+                    className="flex size-8 shrink-0 select-none items-center justify-center rounded-full border border-[var(--border)] bg-[var(--bg2)] text-[11.5px] font-semibold tracking-wide text-[var(--text2)] ring-1 ring-inset ring-[var(--border)]"
+                  >
+                    {initials}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="truncate text-[13px] font-medium text-[var(--text)]">
+                      {label}
+                    </p>
+                    {email && (
+                      <p className="truncate font-[family-name:var(--mono)] text-[11.5px] text-[var(--text3)] sm:hidden">
+                        {email}
+                      </p>
+                    )}
+                  </div>
+                </div>
               </SheetCell>
-              <SheetCell>
-                <Pill>{ROLE_LABEL[member.role]}</Pill>
+
+              {/* Direct email column */}
+              <SheetCell className={`w-[28%] min-w-[220px] ${HIDE_BELOW_SM}`}>
+                {email ? (
+                  <div className="group/email flex items-center gap-1.5 min-w-0">
+                    <span className="truncate font-[family-name:var(--mono)] text-[12px] text-[var(--text2)] select-all">
+                      {email}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        void navigator.clipboard.writeText(email);
+                        toast.success("Email copied to clipboard");
+                      }}
+                      title="Copy email"
+                      aria-label={`Copy email for ${label}`}
+                      className="opacity-0 group-hover/email:opacity-100 transition-opacity p-0.5 rounded text-[var(--text3)] hover:text-[var(--text)] hover:bg-[var(--bg2)] shrink-0"
+                    >
+                      <Copy className="size-3" />
+                    </button>
+                  </div>
+                ) : (
+                  <span className="text-[12px] text-[var(--text3)]">—</span>
+                )}
               </SheetCell>
-              <SheetCell>
+
+              {/* Role pill */}
+              <SheetCell className={`w-[14%] min-w-[120px] ${HIDE_BELOW_SM}`}>
+                <Pill>{orgRole.charAt(0).toUpperCase() + orgRole.slice(1)}</Pill>
+              </SheetCell>
+
+              {/* Status pill */}
+              <SheetCell className="w-[14%] min-w-[110px]">
                 <Pill tone={STATUS_TONE[member.status]} dot>
-                  {member.status}
+                  {member.status.charAt(0).toUpperCase() + member.status.slice(1)}
                 </Pill>
               </SheetCell>
-              <SheetCell className={HIDE_BELOW_MD}>
-                <Timestamp value={member.joinedAt ?? member.createdAt} />
+
+              {/* Formatted Date joined */}
+              <SheetCell className={`w-[16%] min-w-[140px] ${HIDE_BELOW_MD}`}>
+                <div className="flex flex-col">
+                  <span className="text-[12.5px] font-medium tabular-nums text-[var(--text)]">
+                    {formatDate(joinedDate)}
+                  </span>
+                  <span className="font-[family-name:var(--mono)] text-[11px] text-[var(--text3)]">
+                    {formatRelativeTime(joinedDate)}
+                  </span>
+                </div>
               </SheetCell>
-              <SheetCell align="right">
+
+              {/* Action menu */}
+              <SheetCell align="right" className="w-[56px]">
                 <RowActions label={`Actions for ${label}`}>
-                  <DropdownMenuLabel className="text-[12px] font-normal text-[var(--text3)]">Change role</DropdownMenuLabel>
-                  {PROJECT_MEMBER_ROLES.filter((candidate) => candidate !== member.role).map((candidate) => (
-                    <DropdownMenuItem
-                      key={candidate}
-                      onSelect={() => updateMemberRole.mutate({ memberId: member.id, role: candidate })}
-                    >
-                      {ROLE_LABEL[candidate]}
-                    </DropdownMenuItem>
-                  ))}
-                  <DropdownMenuSeparator />
                   <DropdownMenuItem variant="destructive" onSelect={() => setRemovingMember(member)}>
                     Remove from project
                   </DropdownMenuItem>
@@ -240,50 +299,35 @@ export default function ProjectMembersPage() {
     <WorkspacePage>
       <ProjectPageHeader
         title="Members"
-        description="Members come from the organization roster and get access as soon as they're added. A person must belong to the organization before they can join a project."
-        actions={
-          <>
-            <UiButton variant="outline" size="lg" onClick={() => setTransferring(true)}>
-              <Crown className="size-4" aria-hidden="true" /> Transfer ownership
-            </UiButton>
-            {addAction}
-          </>
-        }
+        actions={addAction}
       />
 
       <Readouts cells={readouts} loading={rosterLoading} label="Members summary" />
 
-      <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
-        <Sheet
-          label="Member list"
-          toolbar={
-            <>
-              <FilterSelect label="Status" value={status} onChange={setStatus} options={STATUS_FILTER_OPTIONS} />
-              <FilterSelect label="Role" value={role} onChange={setRole} options={ROLE_FILTER_OPTIONS} />
-              {!isLoading && !error && (
-                <ToolbarCount>
-                  {formatNumber(data?.total ?? members.length)} {(data?.total ?? members.length) === 1 ? "member" : "members"}
-                </ToolbarCount>
-              )}
-            </>
-          }
-        >
-          {body}
-        </Sheet>
+      {/* Full-width horizontal data table sheet — no cramping side blocks */}
+      <Sheet
+        label="Member list"
+        toolbar={
+          <>
+            <SearchField
+              value={search}
+              onChange={setSearch}
+              placeholder="Search members by name or email…"
+              className="max-w-[320px]"
+            />
+            <FilterSelect label="Status" value={status} onChange={setStatus} options={STATUS_FILTER_OPTIONS} />
+            {!isLoading && !error && (
+              <ToolbarCount>
+                {formatNumber(displayedMembers.length)} {displayedMembers.length === 1 ? "member" : "members"}
+              </ToolbarCount>
+            )}
+          </>
+        }
+      >
+        {body}
+      </Sheet>
 
-        <Panel title="Roles" description="What each project role can do.">
-          <dl className="divide-y divide-[var(--border)]">
-            {PROJECT_MEMBER_ROLES.map((projectRole) => (
-              <div key={projectRole} className="flex flex-col gap-1 py-3 first:pt-0 last:pb-0">
-                <dt className="text-[13px] font-medium text-[var(--text)]">{ROLE_LABEL[projectRole]}</dt>
-                <dd className="text-[12px] leading-[1.55] text-[var(--text2)]">{ROLE_DESCRIPTION[projectRole]}</dd>
-              </div>
-            ))}
-          </dl>
-        </Panel>
-      </div>
-
-      {/* ── add member ── */}
+      {/* ── add member dialog ── */}
       <FormDialog
         open={adding}
         onOpenChange={(open) => {
@@ -291,7 +335,7 @@ export default function ProjectMembersPage() {
           if (!open) setFormError(null);
         }}
         title="Add project member"
-        description={`Grant an existing member of this organization immediate access to ${project.name}. No invitation is sent.`}
+        description={`Grant an active member of this organization access to ${project.name}.`}
         submitLabel="Add member"
         pending={addMember.isPending}
         error={formError}
@@ -302,7 +346,7 @@ export default function ProjectMembersPage() {
             return;
           }
           addMember.mutate(
-            { userId, role: String(form.get("role") ?? "viewer") as ProjectMemberRole },
+            { userId },
             {
               onSuccess: () => setAdding(false),
               onError: (mutationError) => setFormError(asMessage(mutationError)),
@@ -316,75 +360,30 @@ export default function ProjectMembersPage() {
             then add them here.
           </Notice>
         ) : (
-          <DialogField label="Organization member" name="userId" required>
+          <DialogField
+            label="Organization member"
+            name="userId"
+            required
+            hint="Selected member will receive immediate access to this project workspace."
+          >
             <select id="userId" name="userId" required className={fieldInputClass}>
               <option value="">Select a member…</option>
               {candidates.map((candidate) => (
                 <option key={candidate.userId} value={candidate.userId}>
-                  {candidate.fullName || candidate.email} · {candidate.role}
+                  {candidate.fullName ? `${candidate.fullName} (${candidate.email})` : candidate.email}
                 </option>
               ))}
             </select>
           </DialogField>
         )}
-        <DialogField label="Project role" name="role" hint={ROLE_DESCRIPTION.viewer}>
-          <select id="role" name="role" defaultValue="viewer" className={fieldInputClass}>
-            {PROJECT_MEMBER_ROLES.map((projectRole) => (
-              <option key={projectRole} value={projectRole}>
-                {ROLE_LABEL[projectRole]}
-              </option>
-            ))}
-          </select>
-        </DialogField>
       </FormDialog>
 
-      {/* ── transfer ownership ── */}
-      <FormDialog
-        open={transferring}
-        onOpenChange={(open) => {
-          setTransferring(open);
-          if (!open) setFormError(null);
-        }}
-        title="Transfer project ownership"
-        description="The new owner gains full control. Your role is downgraded to admin."
-        submitLabel="Transfer ownership"
-        pending={transferOwnership.isPending}
-        error={formError}
-        onSubmit={(form) => {
-          const userId = String(form.get("newOwnerUserId") ?? "");
-          if (!userId) {
-            setFormError("Select the new owner.");
-            return;
-          }
-          transferOwnership.mutate(userId, {
-            onSuccess: () => setTransferring(false),
-            onError: (mutationError) => setFormError(asMessage(mutationError)),
-          });
-        }}
-      >
-        <Notice tone="amber" icon={Crown}>
-          Ownership transfer takes effect immediately and is recorded in the organization audit log.
-        </Notice>
-        <DialogField label="New owner" name="newOwnerUserId" required hint="Must already be an active project member.">
-          <select id="newOwnerUserId" name="newOwnerUserId" required className={fieldInputClass}>
-            <option value="">Select a project member…</option>
-            {members
-              .filter((member) => member.role !== "owner" && member.status === "active")
-              .map((member) => (
-                <option key={member.userId} value={member.userId}>
-                  {memberLabel(member)} · {ROLE_LABEL[member.role]}
-                </option>
-              ))}
-          </select>
-        </DialogField>
-      </FormDialog>
-
-      {/* ── remove ── */}
+      {/* ── remove member dialog ── */}
       <ConfirmDialog
         open={!!removingMember}
         onOpenChange={(open) => !open && setRemovingMember(null)}
         title={`Remove ${removingMember ? memberLabel(removingMember) : "member"}?`}
-        description="They lose access to this project immediately. Organization membership is unaffected."
+        description="They will lose access to this project immediately. Their organization membership is unaffected."
         confirmLabel="Remove member"
         pending={removeMember.isPending}
         onConfirm={() => {

@@ -10,9 +10,15 @@ import { projectKeys, useProjectScope } from "./useProjectScope";
 
 type Lifecycle = "archive" | "unarchive" | "pause" | "resume" | "restore";
 
-// ── Queries ──────────────────────────────────────────────────
+const DEFAULT_PROJECTS_QUERY: ListProjectsQuery = Object.freeze({});
 
-export function useProjects(query: ListProjectsQuery = {}) {
+export const RECENT_PROJECTS_QUERY: ListProjectsQuery = Object.freeze({
+  limit: 100,
+  sortBy: "updated_at",
+  sortOrder: "desc",
+});
+
+export function useProjects(query: ListProjectsQuery = DEFAULT_PROJECTS_QUERY) {
   const { activeOrgId } = useProjectScope();
   return useQuery({
     queryKey: projectKeys.list(activeOrgId, query),
@@ -33,13 +39,16 @@ export function useProject(projectId: string) {
   });
 }
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export function useProjectByPublicId(publicId: string) {
   const { activeOrgId } = useProjectScope();
   return useQuery({
     queryKey: [...projectKeys.all, "by-public-id", activeOrgId, publicId] as const,
     queryFn: () => projectsApi.getByPublicId(activeOrgId!, publicId),
-    enabled: !!activeOrgId && !!publicId && publicId.startsWith("prj_"),
+    enabled: !!activeOrgId && !!publicId && !UUID_REGEX.test(publicId),
     staleTime: 5 * 60 * 1000,
+    meta: { nonBlocking: true },
   });
 }
 
@@ -101,8 +110,13 @@ export function useProjectMutations(projectId?: string) {
 
   return {
     createProject: useMutation({
-      mutationFn: (payload: CreateProjectBody) => projectsApi.create(requireOrgId(), payload),
-      onSuccess: invalidateLists,
+      mutationFn: ({ payload, idempotencyKey }: { payload: CreateProjectBody; idempotencyKey: string }) =>
+        projectsApi.create(requireOrgId(), payload, idempotencyKey),
+      onSuccess: () => {
+        // Refresh project lists in the background. Do not keep the create
+        // dialog waiting on unrelated list queries after the API has committed.
+        void invalidateLists();
+      },
     }),
 
     updateProject: useMutation({

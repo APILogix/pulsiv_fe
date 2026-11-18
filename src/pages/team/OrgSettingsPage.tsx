@@ -188,7 +188,7 @@ export default function OrgSettingsPage() {
   if ((orgFailed && !org) || (settingsFailed && !settings)) {
     return (
       <WorkspacePage>
-        <ProjectPageHeader title="Settings" description={PAGE_DESCRIPTION} />
+        <ProjectPageHeader title="Settings" />
         <div className={SETTINGS_COLUMN}>
           <Sheet label="Settings">
             <SheetError
@@ -208,7 +208,7 @@ export default function OrgSettingsPage() {
   if (orgLoading || settingsLoading || !org || !settings) {
     return (
       <WorkspacePage>
-        <ProjectPageHeader title="Settings" description={PAGE_DESCRIPTION} />
+        <ProjectPageHeader title="Settings" />
         <div className={cn(SETTINGS_COLUMN, "flex flex-col gap-6")}>
           <Sheet title="Organization profile">
             <SheetLoading rows={3} label="Loading organization profile" />
@@ -236,7 +236,6 @@ export default function OrgSettingsPage() {
     <WorkspacePage>
       <ProjectPageHeader
         title="Settings"
-        description={PAGE_DESCRIPTION}
         // Saved values, so the header matches the dashboard's access controls ledger.
         meta={[
           { label: "MFA", value: settings.enforceMfa ? "Required" : "Optional" },

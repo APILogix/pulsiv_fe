@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Pause, Play } from "lucide-react";
 import {
   BoardButton,
@@ -80,7 +80,7 @@ function RouteDetail({ r, tick }: { r: Route; tick: number }) {
 }
 
 export default function RealtimeTraffic() {
-  const { routes, total, errors, clients } = getTrafficBoard();
+  const { routes, total, errors, clients } = useMemo(() => getTrafficBoard(), []);
   const [tick, setTick] = useState(WINDOW);
   const [live, setLive] = useState(true);
 

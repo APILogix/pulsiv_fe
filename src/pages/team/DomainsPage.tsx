@@ -347,7 +347,6 @@ export default function DomainsPage() {
             </Pill>
           ) : undefined
         }
-        description={PAGE_DESCRIPTION}
         meta={[
           {
             label: "Verification",

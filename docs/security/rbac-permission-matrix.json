@@ -146,8 +146,14 @@
       "id": "billing_manager",
       "label": "Billing Manager",
       "scope": "organization",
-      "assignableToCoreRoles": ["admin", "member", "viewer"],
-      "includedByDefaultInCoreRoles": ["owner"],
+      "assignableToCoreRoles": [
+        "admin",
+        "member",
+        "viewer"
+      ],
+      "includedByDefaultInCoreRoles": [
+        "owner"
+      ],
       "description": "Additive permission bundle granting full visibility and management of subscriptions, plans, payment methods, invoices, billing alerts, and quota increase requests without granting engineering or project admin privileges.",
       "permissions": [
         "billing.read",
@@ -160,8 +166,14 @@
       "id": "incident_responder",
       "label": "Incident Responder (On-Call)",
       "scope": "organization",
-      "assignableToCoreRoles": ["member", "viewer"],
-      "includedByDefaultInCoreRoles": ["owner", "admin"],
+      "assignableToCoreRoles": [
+        "member",
+        "viewer"
+      ],
+      "includedByDefaultInCoreRoles": [
+        "owner",
+        "admin"
+      ],
       "description": "Additive permission bundle for on-call operators and NOC engineers. Enables acknowledging/resolving incidents, managing alert silences, triaging errors, executing/approving remediation workflows, retrying alert DLQs, and running AI root-cause investigations.",
       "permissions": [
         "incidents.read",
@@ -201,27 +213,38 @@
     "organizationRoles": {
       "owner": {
         "targetCoreRole": "owner",
-        "targetBundles": ["billing_manager", "incident_responder"],
+        "targetBundles": [
+          "billing_manager",
+          "incident_responder"
+        ],
         "notes": "Direct 1:1 mapping."
       },
       "admin": {
         "targetCoreRole": "admin",
-        "targetBundles": ["incident_responder"],
+        "targetBundles": [
+          "incident_responder"
+        ],
         "notes": "Direct 1:1 mapping. Does not include billing_manager by default unless explicitly granted."
       },
       "developer": {
         "targetCoreRole": "member",
-        "targetBundles": ["incident_responder"],
+        "targetBundles": [
+          "incident_responder"
+        ],
         "notes": "Consolidated into 'member' core role with 'incident_responder' bundle to preserve existing on-call/error-triage capabilities."
       },
       "security": {
         "targetCoreRole": "admin",
-        "targetBundles": ["incident_responder"],
+        "targetBundles": [
+          "incident_responder"
+        ],
         "notes": "Mapped to 'admin' (or 'member' + audit/compliance read if fine-grained custom roles are later introduced) because all security/compliance/SSO/audit endpoints require admin-tier access."
       },
       "billing": {
         "targetCoreRole": "viewer",
-        "targetBundles": ["billing_manager"],
+        "targetBundles": [
+          "billing_manager"
+        ],
         "notes": "Eliminates the linear hierarchy flaw where 'billing' (rank 50) had higher privileges than 'member' (rank 40) on engineering resources. Maps to read-only 'viewer' + 'billing_manager' bundle."
       },
       "member": {
@@ -276,7 +299,12 @@
       "description": "Manage own profile, password, MFA, passkeys, active sessions, and linked OAuth accounts.",
       "risk": "low",
       "stepUpMfaRecommended": false,
-      "allowedRoles": ["owner", "admin", "member", "viewer"]
+      "allowedRoles": [
+        "owner",
+        "admin",
+        "member",
+        "viewer"
+      ]
     },
     {
       "id": "organization.read",
@@ -285,7 +313,12 @@
       "description": "Read organization profile, slug, settings, and general metadata.",
       "risk": "low",
       "stepUpMfaRecommended": false,
-      "allowedRoles": ["owner", "admin", "member", "viewer"]
+      "allowedRoles": [
+        "owner",
+        "admin",
+        "member",
+        "viewer"
+      ]
     },
     {
       "id": "organization.update",
@@ -294,7 +327,10 @@
       "description": "Update organization profile, name, avatar, general settings, and notification policies.",
       "risk": "medium",
       "stepUpMfaRecommended": false,
-      "allowedRoles": ["owner", "admin"]
+      "allowedRoles": [
+        "owner",
+        "admin"
+      ]
     },
     {
       "id": "organization.delete",
@@ -303,7 +339,9 @@
       "description": "Permanently delete the organization and all associated projects and telemetry.",
       "risk": "critical",
       "stepUpMfaRecommended": true,
-      "allowedRoles": ["owner"]
+      "allowedRoles": [
+        "owner"
+      ]
     },
     {
       "id": "organization.transfer_ownership",
@@ -312,7 +350,9 @@
       "description": "Transfer primary organization ownership to another active member.",
       "risk": "critical",
       "stepUpMfaRecommended": true,
-      "allowedRoles": ["owner"]
+      "allowedRoles": [
+        "owner"
+      ]
     },
     {
       "id": "domains.read",
@@ -321,7 +361,12 @@
       "description": "View custom domains and DNS verification status.",
       "risk": "low",
       "stepUpMfaRecommended": false,
-      "allowedRoles": ["owner", "admin", "member", "viewer"]
+      "allowedRoles": [
+        "owner",
+        "admin",
+        "member",
+        "viewer"
+      ]
     },
     {
       "id": "domains.manage",
@@ -330,7 +375,10 @@
       "description": "Add, verify, configure auto-join/SSO enforcement, and delete custom domains.",
       "risk": "high",
       "stepUpMfaRecommended": false,
-      "allowedRoles": ["owner", "admin"]
+      "allowedRoles": [
+        "owner",
+        "admin"
+      ]
     },
     {
       "id": "members.read",
@@ -339,7 +387,12 @@
       "description": "View organization members, roles, and pending invitations.",
       "risk": "low",
       "stepUpMfaRecommended": false,
-      "allowedRoles": ["owner", "admin", "member", "viewer"]
+      "allowedRoles": [
+        "owner",
+        "admin",
+        "member",
+        "viewer"
+      ]
     },
     {
       "id": "members.invite",
@@ -348,7 +401,10 @@
       "description": "Invite new members to the organization (up to caller's own role rank) and resend/revoke invitations.",
       "risk": "high",
       "stepUpMfaRecommended": false,
-      "allowedRoles": ["owner", "admin"]
+      "allowedRoles": [
+        "owner",
+        "admin"
+      ]
     },
     {
       "id": "members.manage",
@@ -357,7 +413,10 @@
       "description": "Update roles, assign permission bundles (billing_manager, incident_responder), suspend, unsuspend, or remove non-owner members.",
       "risk": "high",
       "stepUpMfaRecommended": false,
-      "allowedRoles": ["owner", "admin"]
+      "allowedRoles": [
+        "owner",
+        "admin"
+      ]
     },
     {
       "id": "members.manage_owners",
@@ -366,7 +425,9 @@
       "description": "Promote a member to owner, demote an owner, or remove another owner (when ownerCount > 1).",
       "risk": "critical",
       "stepUpMfaRecommended": true,
-      "allowedRoles": ["owner"]
+      "allowedRoles": [
+        "owner"
+      ]
     },
     {
       "id": "security.sso.read",
@@ -375,7 +436,10 @@
       "description": "View SAML/OIDC SSO provider configurations.",
       "risk": "medium",
       "stepUpMfaRecommended": false,
-      "allowedRoles": ["owner", "admin"]
+      "allowedRoles": [
+        "owner",
+        "admin"
+      ]
     },
     {
       "id": "security.sso.manage",
@@ -384,7 +448,9 @@
       "description": "Create, update, test, toggle, and delete SAML/OIDC SSO identity providers.",
       "risk": "critical",
       "stepUpMfaRecommended": true,
-      "allowedRoles": ["owner"]
+      "allowedRoles": [
+        "owner"
+      ]
     },
     {
       "id": "security.scim.read",
@@ -393,7 +459,10 @@
       "description": "View SCIM provisioning status, token metadata, and sync logs.",
       "risk": "medium",
       "stepUpMfaRecommended": false,
-      "allowedRoles": ["owner", "admin"]
+      "allowedRoles": [
+        "owner",
+        "admin"
+      ]
     },
     {
       "id": "security.scim.manage",
@@ -402,7 +471,9 @@
       "description": "Generate, rotate, and revoke SCIM bearer tokens.",
       "risk": "critical",
       "stepUpMfaRecommended": true,
-      "allowedRoles": ["owner"]
+      "allowedRoles": [
+        "owner"
+      ]
     },
     {
       "id": "audit_logs.read",
@@ -411,7 +482,10 @@
       "description": "View organization audit logs, security events, and automation/connector audit trails.",
       "risk": "medium",
       "stepUpMfaRecommended": false,
-      "allowedRoles": ["owner", "admin"]
+      "allowedRoles": [
+        "owner",
+        "admin"
+      ]
     },
     {
       "id": "audit_logs.export",
@@ -420,7 +494,10 @@
       "description": "Export organization audit logs (CSV/JSON).",
       "risk": "medium",
       "stepUpMfaRecommended": false,
-      "allowedRoles": ["owner", "admin"]
+      "allowedRoles": [
+        "owner",
+        "admin"
+      ]
     },
     {
       "id": "compliance.read",
@@ -429,7 +506,10 @@
       "description": "View GDPR/compliance status, data retention policies, and export/deletion request history.",
       "risk": "medium",
       "stepUpMfaRecommended": false,
-      "allowedRoles": ["owner", "admin"]
+      "allowedRoles": [
+        "owner",
+        "admin"
+      ]
     },
     {
       "id": "compliance.export",
@@ -438,7 +518,10 @@
       "description": "Trigger organization data export for compliance/GDPR.",
       "risk": "high",
       "stepUpMfaRecommended": true,
-      "allowedRoles": ["owner", "admin"]
+      "allowedRoles": [
+        "owner",
+        "admin"
+      ]
     },
     {
       "id": "compliance.delete_request",
@@ -447,7 +530,9 @@
       "description": "Submit a formal GDPR/compliance tenant data deletion request.",
       "risk": "critical",
       "stepUpMfaRecommended": true,
-      "allowedRoles": ["owner"]
+      "allowedRoles": [
+        "owner"
+      ]
     },
     {
       "id": "quotas.read",
@@ -456,7 +541,13 @@
       "description": "View organization rate limits, ingestion quotas, and quota request status.",
       "risk": "low",
       "stepUpMfaRecommended": false,
-      "allowedRoles": ["owner", "admin", "member", "viewer", "billing_manager"]
+      "allowedRoles": [
+        "owner",
+        "admin",
+        "member",
+        "viewer",
+        "billing_manager"
+      ]
     },
     {
       "id": "quotas.request",
@@ -465,7 +556,11 @@
       "description": "Submit a request to increase organization ingestion or resource quotas.",
       "risk": "medium",
       "stepUpMfaRecommended": false,
-      "allowedRoles": ["owner", "admin", "billing_manager"]
+      "allowedRoles": [
+        "owner",
+        "admin",
+        "billing_manager"
+      ]
     },
     {
       "id": "billing.read",
@@ -474,7 +569,11 @@
       "description": "View current subscription plan, billing usage, cost breakdown, invoices, payment methods, and billing audit logs.",
       "risk": "medium",
       "stepUpMfaRecommended": false,
-      "allowedRoles": ["owner", "admin", "billing_manager"]
+      "allowedRoles": [
+        "owner",
+        "admin",
+        "billing_manager"
+      ]
     },
     {
       "id": "billing.manage",
@@ -483,7 +582,10 @@
       "description": "Upgrade/downgrade/cancel/reactivate subscriptions, initiate checkout, add/remove/set-default payment methods, manage add-ons/coupons, and configure billing alerts.",
       "risk": "critical",
       "stepUpMfaRecommended": true,
-      "allowedRoles": ["owner", "billing_manager"]
+      "allowedRoles": [
+        "owner",
+        "billing_manager"
+      ]
     },
     {
       "id": "projects.read",
@@ -492,7 +594,12 @@
       "description": "View project overview, environments, analytics, usage, and activity feed.",
       "risk": "low",
       "stepUpMfaRecommended": false,
-      "allowedRoles": ["owner", "admin", "member", "viewer"]
+      "allowedRoles": [
+        "owner",
+        "admin",
+        "member",
+        "viewer"
+      ]
     },
     {
       "id": "projects.create",
@@ -501,7 +608,10 @@
       "description": "Create new projects within the organization.",
       "risk": "medium",
       "stepUpMfaRecommended": false,
-      "allowedRoles": ["owner", "admin"]
+      "allowedRoles": [
+        "owner",
+        "admin"
+      ]
     },
     {
       "id": "projects.update",
@@ -510,7 +620,10 @@
       "description": "Update project settings, name, description, retention, scrubbing rules, and archive/restore project.",
       "risk": "high",
       "stepUpMfaRecommended": false,
-      "allowedRoles": ["owner", "admin"]
+      "allowedRoles": [
+        "owner",
+        "admin"
+      ]
     },
     {
       "id": "projects.delete",
@@ -519,7 +632,10 @@
       "description": "Permanently delete or transfer a project.",
       "risk": "critical",
       "stepUpMfaRecommended": true,
-      "allowedRoles": ["owner", "admin"]
+      "allowedRoles": [
+        "owner",
+        "admin"
+      ]
     },
     {
       "id": "projects.members.manage",
@@ -528,7 +644,10 @@
       "description": "Add, update role overrides, or remove project members.",
       "risk": "high",
       "stepUpMfaRecommended": false,
-      "allowedRoles": ["owner", "admin"]
+      "allowedRoles": [
+        "owner",
+        "admin"
+      ]
     },
     {
       "id": "environments.read",
@@ -537,7 +656,12 @@
       "description": "View project environments (production, staging, development).",
       "risk": "low",
       "stepUpMfaRecommended": false,
-      "allowedRoles": ["owner", "admin", "member", "viewer"]
+      "allowedRoles": [
+        "owner",
+        "admin",
+        "member",
+        "viewer"
+      ]
     },
     {
       "id": "environments.manage",
@@ -546,7 +670,10 @@
       "description": "Create, update, lock/unlock, and delete project environments.",
       "risk": "high",
       "stepUpMfaRecommended": false,
-      "allowedRoles": ["owner", "admin"]
+      "allowedRoles": [
+        "owner",
+        "admin"
+      ]
     },
     {
       "id": "api_keys.read",
@@ -555,7 +682,10 @@
       "description": "View project/ingestion API key metadata (prefixes, scopes, last used, expiration).",
       "risk": "medium",
       "stepUpMfaRecommended": false,
-      "allowedRoles": ["owner", "admin"]
+      "allowedRoles": [
+        "owner",
+        "admin"
+      ]
     },
     {
       "id": "api_keys.create",
@@ -564,7 +694,10 @@
       "description": "Create or rotate project and ingestion API keys.",
       "risk": "high",
       "stepUpMfaRecommended": false,
-      "allowedRoles": ["owner", "admin"]
+      "allowedRoles": [
+        "owner",
+        "admin"
+      ]
     },
     {
       "id": "api_keys.revoke",
@@ -573,7 +706,10 @@
       "description": "Revoke or delete project and ingestion API keys.",
       "risk": "high",
       "stepUpMfaRecommended": false,
-      "allowedRoles": ["owner", "admin"]
+      "allowedRoles": [
+        "owner",
+        "admin"
+      ]
     },
     {
       "id": "sdk_config.read",
@@ -582,7 +718,12 @@
       "description": "View remote SDK configuration versions, rules, and rollout history.",
       "risk": "low",
       "stepUpMfaRecommended": false,
-      "allowedRoles": ["owner", "admin", "member", "viewer"]
+      "allowedRoles": [
+        "owner",
+        "admin",
+        "member",
+        "viewer"
+      ]
     },
     {
       "id": "sdk_config.draft",
@@ -591,7 +732,11 @@
       "description": "Validate and save draft remote SDK configurations without publishing to live environments.",
       "risk": "medium",
       "stepUpMfaRecommended": false,
-      "allowedRoles": ["owner", "admin", "member"]
+      "allowedRoles": [
+        "owner",
+        "admin",
+        "member"
+      ]
     },
     {
       "id": "sdk_config.publish",
@@ -600,7 +745,10 @@
       "description": "Publish, rollback, or toggle emergency kill-switch on remote SDK configurations.",
       "risk": "critical",
       "stepUpMfaRecommended": false,
-      "allowedRoles": ["owner", "admin"]
+      "allowedRoles": [
+        "owner",
+        "admin"
+      ]
     },
     {
       "id": "ingestion.read",
@@ -609,7 +757,12 @@
       "description": "View ingestion pipeline health, endpoint metrics, rate limits, and dead-letter statistics.",
       "risk": "low",
       "stepUpMfaRecommended": false,
-      "allowedRoles": ["owner", "admin", "member", "viewer"]
+      "allowedRoles": [
+        "owner",
+        "admin",
+        "member",
+        "viewer"
+      ]
     },
     {
       "id": "ingestion.manage",
@@ -618,7 +771,10 @@
       "description": "Configure ingestion pipeline rules, sampling rates, and replay dead-letter ingestion batches.",
       "risk": "high",
       "stepUpMfaRecommended": false,
-      "allowedRoles": ["owner", "admin"]
+      "allowedRoles": [
+        "owner",
+        "admin"
+      ]
     },
     {
       "id": "connectors.read",
@@ -627,7 +783,12 @@
       "description": "View configured third-party integrations (Slack, PagerDuty, Jira, etc.) and webhook endpoints.",
       "risk": "low",
       "stepUpMfaRecommended": false,
-      "allowedRoles": ["owner", "admin", "member", "viewer"]
+      "allowedRoles": [
+        "owner",
+        "admin",
+        "member",
+        "viewer"
+      ]
     },
     {
       "id": "connectors.manage",
@@ -636,7 +797,10 @@
       "description": "Create, update, test, rotate secrets, and delete webhooks and third-party integrations.",
       "risk": "high",
       "stepUpMfaRecommended": false,
-      "allowedRoles": ["owner", "admin"]
+      "allowedRoles": [
+        "owner",
+        "admin"
+      ]
     },
     {
       "id": "dashboards.read",
@@ -645,7 +809,12 @@
       "description": "View home dashboard, executive command center, domain dashboards, service catalog/SLOs, and scheduled reports.",
       "risk": "low",
       "stepUpMfaRecommended": false,
-      "allowedRoles": ["owner", "admin", "member", "viewer"]
+      "allowedRoles": [
+        "owner",
+        "admin",
+        "member",
+        "viewer"
+      ]
     },
     {
       "id": "dashboards.manage",
@@ -654,7 +823,10 @@
       "description": "Create, update, and delete custom dashboards and scheduled email/Slack reports.",
       "risk": "medium",
       "stepUpMfaRecommended": false,
-      "allowedRoles": ["owner", "admin"]
+      "allowedRoles": [
+        "owner",
+        "admin"
+      ]
     },
     {
       "id": "telemetry.read",
@@ -663,7 +835,12 @@
       "description": "Query and stream logs, metrics, traces, requests, spans, profiles, cron monitors, runtime metrics, and session replays.",
       "risk": "low",
       "stepUpMfaRecommended": false,
-      "allowedRoles": ["owner", "admin", "member", "viewer"]
+      "allowedRoles": [
+        "owner",
+        "admin",
+        "member",
+        "viewer"
+      ]
     },
     {
       "id": "errors.read",
@@ -672,7 +849,13 @@
       "description": "View error groups, stack traces, occurrences, and correlation insights.",
       "risk": "low",
       "stepUpMfaRecommended": false,
-      "allowedRoles": ["owner", "admin", "member", "viewer", "incident_responder"]
+      "allowedRoles": [
+        "owner",
+        "admin",
+        "member",
+        "viewer",
+        "incident_responder"
+      ]
     },
     {
       "id": "errors.triage",
@@ -681,7 +864,12 @@
       "description": "Resolve, ignore, unresolve, merge, assign error groups, link external issues, and post triage comments.",
       "risk": "medium",
       "stepUpMfaRecommended": false,
-      "allowedRoles": ["owner", "admin", "member", "incident_responder"]
+      "allowedRoles": [
+        "owner",
+        "admin",
+        "member",
+        "incident_responder"
+      ]
     },
     {
       "id": "errors.delete",
@@ -690,7 +878,10 @@
       "description": "Permanently delete error groups and their occurrence history.",
       "risk": "high",
       "stepUpMfaRecommended": false,
-      "allowedRoles": ["owner", "admin"]
+      "allowedRoles": [
+        "owner",
+        "admin"
+      ]
     },
     {
       "id": "incidents.read",
@@ -699,7 +890,13 @@
       "description": "View incidents, incident timelines, alert events, and alert metrics.",
       "risk": "low",
       "stepUpMfaRecommended": false,
-      "allowedRoles": ["owner", "admin", "member", "viewer", "incident_responder"]
+      "allowedRoles": [
+        "owner",
+        "admin",
+        "member",
+        "viewer",
+        "incident_responder"
+      ]
     },
     {
       "id": "incidents.acknowledge",
@@ -708,7 +905,12 @@
       "description": "Acknowledge triggered incidents and assign incident responders.",
       "risk": "medium",
       "stepUpMfaRecommended": false,
-      "allowedRoles": ["owner", "admin", "member", "incident_responder"]
+      "allowedRoles": [
+        "owner",
+        "admin",
+        "member",
+        "incident_responder"
+      ]
     },
     {
       "id": "incidents.resolve",
@@ -717,7 +919,12 @@
       "description": "Resolve active incidents and record root-cause resolution summaries.",
       "risk": "medium",
       "stepUpMfaRecommended": false,
-      "allowedRoles": ["owner", "admin", "member", "incident_responder"]
+      "allowedRoles": [
+        "owner",
+        "admin",
+        "member",
+        "incident_responder"
+      ]
     },
     {
       "id": "incidents.comment",
@@ -726,7 +933,12 @@
       "description": "Add timeline notes and investigation comments to an incident.",
       "risk": "low",
       "stepUpMfaRecommended": false,
-      "allowedRoles": ["owner", "admin", "member", "incident_responder"]
+      "allowedRoles": [
+        "owner",
+        "admin",
+        "member",
+        "incident_responder"
+      ]
     },
     {
       "id": "incidents.manage",
@@ -735,7 +947,10 @@
       "description": "Delete incidents or modify historical incident audit state.",
       "risk": "high",
       "stepUpMfaRecommended": false,
-      "allowedRoles": ["owner", "admin"]
+      "allowedRoles": [
+        "owner",
+        "admin"
+      ]
     },
     {
       "id": "alerts.read",
@@ -744,7 +959,13 @@
       "description": "View alert rules, thresholds, routing rules, escalation policies, channels, templates, silences, and delivery logs.",
       "risk": "low",
       "stepUpMfaRecommended": false,
-      "allowedRoles": ["owner", "admin", "member", "viewer", "incident_responder"]
+      "allowedRoles": [
+        "owner",
+        "admin",
+        "member",
+        "viewer",
+        "incident_responder"
+      ]
     },
     {
       "id": "alerts.silence",
@@ -753,7 +974,12 @@
       "description": "Create, update, and expire alert silence windows / maintenance windows.",
       "risk": "medium",
       "stepUpMfaRecommended": false,
-      "allowedRoles": ["owner", "admin", "member", "incident_responder"]
+      "allowedRoles": [
+        "owner",
+        "admin",
+        "member",
+        "incident_responder"
+      ]
     },
     {
       "id": "alerts.dlq.retry",
@@ -762,7 +988,11 @@
       "description": "Retry or re-drive failed alert notifications from the dead-letter queue.",
       "risk": "medium",
       "stepUpMfaRecommended": false,
-      "allowedRoles": ["owner", "admin", "incident_responder"]
+      "allowedRoles": [
+        "owner",
+        "admin",
+        "incident_responder"
+      ]
     },
     {
       "id": "alerts.manage",
@@ -771,7 +1001,10 @@
       "description": "Create, update, toggle, and delete alert rules, thresholds, routing rules, escalation policies, notification channels, and templates.",
       "risk": "high",
       "stepUpMfaRecommended": false,
-      "allowedRoles": ["owner", "admin"]
+      "allowedRoles": [
+        "owner",
+        "admin"
+      ]
     },
     {
       "id": "alerts.preferences.manage_own",
@@ -780,7 +1013,12 @@
       "description": "Manage the authenticated user's own personal alert notification preferences for a project.",
       "risk": "low",
       "stepUpMfaRecommended": false,
-      "allowedRoles": ["owner", "admin", "member", "viewer"]
+      "allowedRoles": [
+        "owner",
+        "admin",
+        "member",
+        "viewer"
+      ]
     },
     {
       "id": "automation.read",
@@ -789,7 +1027,13 @@
       "description": "View automation workflows, run history, step logs, templates, approvals, and events.",
       "risk": "low",
       "stepUpMfaRecommended": false,
-      "allowedRoles": ["owner", "admin", "member", "viewer", "incident_responder"]
+      "allowedRoles": [
+        "owner",
+        "admin",
+        "member",
+        "viewer",
+        "incident_responder"
+      ]
     },
     {
       "id": "automation.execute",
@@ -798,7 +1042,12 @@
       "description": "Manually trigger workflow runs, retry failed runs, cancel active runs, and replay automation events.",
       "risk": "medium",
       "stepUpMfaRecommended": false,
-      "allowedRoles": ["owner", "admin", "member", "incident_responder"]
+      "allowedRoles": [
+        "owner",
+        "admin",
+        "member",
+        "incident_responder"
+      ]
     },
     {
       "id": "automation.approve",
@@ -807,7 +1056,11 @@
       "description": "Approve or reject pending human-in-the-loop workflow execution gates.",
       "risk": "high",
       "stepUpMfaRecommended": false,
-      "allowedRoles": ["owner", "admin", "incident_responder"]
+      "allowedRoles": [
+        "owner",
+        "admin",
+        "incident_responder"
+      ]
     },
     {
       "id": "automation.manage",
@@ -816,7 +1069,10 @@
       "description": "Create, edit, publish, toggle, and delete automation workflows and templates.",
       "risk": "high",
       "stepUpMfaRecommended": false,
-      "allowedRoles": ["owner", "admin"]
+      "allowedRoles": [
+        "owner",
+        "admin"
+      ]
     },
     {
       "id": "ai.read",
@@ -825,7 +1081,13 @@
       "description": "View past AI root-cause investigations, generated reports, AI token usage, and knowledge base articles.",
       "risk": "low",
       "stepUpMfaRecommended": false,
-      "allowedRoles": ["owner", "admin", "member", "viewer", "incident_responder"]
+      "allowedRoles": [
+        "owner",
+        "admin",
+        "member",
+        "viewer",
+        "incident_responder"
+      ]
     },
     {
       "id": "ai.use",
@@ -834,7 +1096,12 @@
       "description": "Send prompts to AI Assistant, trigger new AI root-cause investigations, and generate AI telemetry/error explanations (consumes AI credits).",
       "risk": "medium",
       "stepUpMfaRecommended": false,
-      "allowedRoles": ["owner", "admin", "member", "incident_responder"]
+      "allowedRoles": [
+        "owner",
+        "admin",
+        "member",
+        "incident_responder"
+      ]
     },
     {
       "id": "ai.settings.manage",
@@ -843,7 +1110,10 @@
       "description": "Configure AI model settings, token budgets, data-sharing guardrails, and manage AI knowledge base sources.",
       "risk": "high",
       "stepUpMfaRecommended": false,
-      "allowedRoles": ["owner", "admin"]
+      "allowedRoles": [
+        "owner",
+        "admin"
+      ]
     },
     {
       "id": "platform.billing.manage",
@@ -852,7 +1122,9 @@
       "description": "Create, update, activate, and archive global SaaS billing plans and issue platform refunds.",
       "risk": "critical",
       "stepUpMfaRecommended": true,
-      "allowedRoles": ["platform_admin"]
+      "allowedRoles": [
+        "platform_admin"
+      ]
     },
     {
       "id": "platform.quotas.review",
@@ -861,7 +1133,9 @@
       "description": "Approve or reject customer organization quota increase requests across the platform.",
       "risk": "critical",
       "stepUpMfaRecommended": true,
-      "allowedRoles": ["platform_admin"]
+      "allowedRoles": [
+        "platform_admin"
+      ]
     },
     {
       "id": "platform.users.manage",
@@ -870,7 +1144,9 @@
       "description": "Inspect, lock, unlock, or manage users across the entire SaaS platform.",
       "risk": "critical",
       "stepUpMfaRecommended": true,
-      "allowedRoles": ["platform_admin"]
+      "allowedRoles": [
+        "platform_admin"
+      ]
     },
     {
       "id": "platform.system.read",
@@ -879,7 +1155,9 @@
       "description": "View global platform health, dead-letter queues, and cross-tenant operational metrics.",
       "risk": "high",
       "stepUpMfaRecommended": false,
-      "allowedRoles": ["platform_admin"]
+      "allowedRoles": [
+        "platform_admin"
+      ]
     }
   ],
   "routeMatrix": [
@@ -899,12 +1177,22 @@
       "module": "auth_account",
       "scope": "account",
       "pagePermission": "account.manage_own",
-      "allowedPageRoles": ["owner", "admin", "member", "viewer"],
+      "allowedPageRoles": [
+        "owner",
+        "admin",
+        "member",
+        "viewer"
+      ],
       "actions": [
         {
           "action": "Update personal profile, password, MFA, passkeys, sessions, personal account deletion",
           "permission": "account.manage_own",
-          "allowedRoles": ["owner", "admin", "member", "viewer"],
+          "allowedRoles": [
+            "owner",
+            "admin",
+            "member",
+            "viewer"
+          ],
           "backendEndpoints": [
             "GET /user/account",
             "PATCH /user/account/profile",
@@ -919,38 +1207,65 @@
     },
     {
       "route": "/:orgSlug/admin/profile",
-      "frontendFiles": ["src/modules/organizations/pages/OrgProfilePage.tsx"],
+      "frontendFiles": [
+        "src/modules/organizations/pages/OrgProfilePage.tsx"
+      ],
       "module": "organization",
       "scope": "organization",
       "pagePermission": "organization.read",
-      "allowedPageRoles": ["owner", "admin", "member", "viewer"],
+      "allowedPageRoles": [
+        "owner",
+        "admin",
+        "member",
+        "viewer"
+      ],
       "actions": [
         {
           "action": "Read organization profile",
           "permission": "organization.read",
-          "allowedRoles": ["owner", "admin", "member", "viewer"],
-          "backendEndpoints": ["GET /organizations/:orgId"]
+          "allowedRoles": [
+            "owner",
+            "admin",
+            "member",
+            "viewer"
+          ],
+          "backendEndpoints": [
+            "GET /organizations/:orgId"
+          ]
         },
         {
           "action": "Update organization profile, slug, and metadata",
           "permission": "organization.update",
-          "allowedRoles": ["owner", "admin"],
-          "backendEndpoints": ["PATCH /organizations/:orgId"]
+          "allowedRoles": [
+            "owner",
+            "admin"
+          ],
+          "backendEndpoints": [
+            "PATCH /organizations/:orgId"
+          ]
         }
       ]
     },
     {
       "route": "/:orgSlug/admin/settings",
-      "frontendFiles": ["src/modules/organizations/pages/OrgSettingsPage.tsx"],
+      "frontendFiles": [
+        "src/modules/organizations/pages/OrgSettingsPage.tsx"
+      ],
       "module": "organization",
       "scope": "organization",
       "pagePermission": "organization.update",
-      "allowedPageRoles": ["owner", "admin"],
+      "allowedPageRoles": [
+        "owner",
+        "admin"
+      ],
       "actions": [
         {
           "action": "Update organization general/security settings",
           "permission": "organization.update",
-          "allowedRoles": ["owner", "admin"],
+          "allowedRoles": [
+            "owner",
+            "admin"
+          ],
           "backendEndpoints": [
             "GET /organizations/:orgId/settings",
             "PATCH /organizations/:orgId/settings"
@@ -959,35 +1274,60 @@
         {
           "action": "Transfer organization ownership",
           "permission": "organization.transfer_ownership",
-          "allowedRoles": ["owner"],
-          "backendEndpoints": ["POST /organizations/:orgId/transfer-ownership"]
+          "allowedRoles": [
+            "owner"
+          ],
+          "backendEndpoints": [
+            "POST /organizations/:orgId/transfer-ownership"
+          ]
         },
         {
           "action": "Delete organization",
           "permission": "organization.delete",
-          "allowedRoles": ["owner"],
-          "backendEndpoints": ["DELETE /organizations/:orgId"]
+          "allowedRoles": [
+            "owner"
+          ],
+          "backendEndpoints": [
+            "DELETE /organizations/:orgId"
+          ]
         }
       ]
     },
     {
       "route": "/:orgSlug/admin/domains",
-      "frontendFiles": ["src/modules/organizations/pages/DomainsPage.tsx"],
+      "frontendFiles": [
+        "src/modules/organizations/pages/DomainsPage.tsx"
+      ],
       "module": "organization",
       "scope": "organization",
       "pagePermission": "domains.read",
-      "allowedPageRoles": ["owner", "admin", "member", "viewer"],
+      "allowedPageRoles": [
+        "owner",
+        "admin",
+        "member",
+        "viewer"
+      ],
       "actions": [
         {
           "action": "List custom domains",
           "permission": "domains.read",
-          "allowedRoles": ["owner", "admin", "member", "viewer"],
-          "backendEndpoints": ["GET /organizations/:orgId/domains"]
+          "allowedRoles": [
+            "owner",
+            "admin",
+            "member",
+            "viewer"
+          ],
+          "backendEndpoints": [
+            "GET /organizations/:orgId/domains"
+          ]
         },
         {
           "action": "Add, verify, update settings, or delete custom domain",
           "permission": "domains.manage",
-          "allowedRoles": ["owner", "admin"],
+          "allowedRoles": [
+            "owner",
+            "admin"
+          ],
           "backendEndpoints": [
             "POST /organizations/:orgId/domains",
             "POST /organizations/:orgId/domains/:domainId/verify",
@@ -1006,12 +1346,22 @@
       "module": "organization",
       "scope": "organization",
       "pagePermission": "members.read",
-      "allowedPageRoles": ["owner", "admin", "member", "viewer"],
+      "allowedPageRoles": [
+        "owner",
+        "admin",
+        "member",
+        "viewer"
+      ],
       "actions": [
         {
           "action": "View team members and pending invitations",
           "permission": "members.read",
-          "allowedRoles": ["owner", "admin", "member", "viewer"],
+          "allowedRoles": [
+            "owner",
+            "admin",
+            "member",
+            "viewer"
+          ],
           "backendEndpoints": [
             "GET /organizations/:orgId/members",
             "GET /organizations/:orgId/invitations"
@@ -1020,7 +1370,10 @@
         {
           "action": "Invite members and revoke/resend invitations",
           "permission": "members.invite",
-          "allowedRoles": ["owner", "admin"],
+          "allowedRoles": [
+            "owner",
+            "admin"
+          ],
           "backendEndpoints": [
             "POST /organizations/:orgId/invitations",
             "POST /organizations/:orgId/invitations/bulk",
@@ -1030,7 +1383,10 @@
         {
           "action": "Change non-owner role, suspend, unsuspend, or remove non-owner member",
           "permission": "members.manage",
-          "allowedRoles": ["owner", "admin"],
+          "allowedRoles": [
+            "owner",
+            "admin"
+          ],
           "backendEndpoints": [
             "PATCH /organizations/:orgId/members/:userId/role",
             "POST /organizations/:orgId/members/:userId/suspend",
@@ -1041,7 +1397,9 @@
         {
           "action": "Promote to owner, demote owner, or remove another owner",
           "permission": "members.manage_owners",
-          "allowedRoles": ["owner"],
+          "allowedRoles": [
+            "owner"
+          ],
           "backendEndpoints": [
             "PATCH /organizations/:orgId/members/:userId/role",
             "DELETE /organizations/:orgId/members/:userId"
@@ -1051,22 +1409,34 @@
     },
     {
       "route": "/:orgSlug/admin/sso",
-      "frontendFiles": ["src/modules/organizations/pages/SsoPage.tsx"],
+      "frontendFiles": [
+        "src/modules/organizations/pages/SsoPage.tsx"
+      ],
       "module": "organization",
       "scope": "organization",
       "pagePermission": "security.sso.read",
-      "allowedPageRoles": ["owner", "admin"],
+      "allowedPageRoles": [
+        "owner",
+        "admin"
+      ],
       "actions": [
         {
           "action": "View SSO configuration",
           "permission": "security.sso.read",
-          "allowedRoles": ["owner", "admin"],
-          "backendEndpoints": ["GET /organizations/:orgId/sso"]
+          "allowedRoles": [
+            "owner",
+            "admin"
+          ],
+          "backendEndpoints": [
+            "GET /organizations/:orgId/sso"
+          ]
         },
         {
           "action": "Configure, update, toggle, or delete SSO provider",
           "permission": "security.sso.manage",
-          "allowedRoles": ["owner"],
+          "allowedRoles": [
+            "owner"
+          ],
           "backendEndpoints": [
             "POST /organizations/:orgId/sso",
             "PATCH /organizations/:orgId/sso/:providerId",
@@ -1077,22 +1447,34 @@
     },
     {
       "route": "/:orgSlug/admin/scim",
-      "frontendFiles": ["src/modules/organizations/pages/ScimPage.tsx"],
+      "frontendFiles": [
+        "src/modules/organizations/pages/ScimPage.tsx"
+      ],
       "module": "organization",
       "scope": "organization",
       "pagePermission": "security.scim.read",
-      "allowedPageRoles": ["owner", "admin"],
+      "allowedPageRoles": [
+        "owner",
+        "admin"
+      ],
       "actions": [
         {
           "action": "View SCIM tokens and provisioning logs",
           "permission": "security.scim.read",
-          "allowedRoles": ["owner", "admin"],
-          "backendEndpoints": ["GET /organizations/:orgId/scim/tokens"]
+          "allowedRoles": [
+            "owner",
+            "admin"
+          ],
+          "backendEndpoints": [
+            "GET /organizations/:orgId/scim/tokens"
+          ]
         },
         {
           "action": "Generate or revoke SCIM bearer tokens",
           "permission": "security.scim.manage",
-          "allowedRoles": ["owner"],
+          "allowedRoles": [
+            "owner"
+          ],
           "backendEndpoints": [
             "POST /organizations/:orgId/scim/tokens",
             "DELETE /organizations/:orgId/scim/tokens/:tokenId"
@@ -1102,16 +1484,28 @@
     },
     {
       "route": "/:orgSlug/admin/roles",
-      "frontendFiles": ["src/modules/organizations/pages/RolesPermissionsPage.tsx"],
+      "frontendFiles": [
+        "src/modules/organizations/pages/RolesPermissionsPage.tsx"
+      ],
       "module": "organization",
       "scope": "organization",
       "pagePermission": "members.read",
-      "allowedPageRoles": ["owner", "admin", "member", "viewer"],
+      "allowedPageRoles": [
+        "owner",
+        "admin",
+        "member",
+        "viewer"
+      ],
       "actions": [
         {
           "action": "Inspect role definitions and permission matrix",
           "permission": "members.read",
-          "allowedRoles": ["owner", "admin", "member", "viewer"],
+          "allowedRoles": [
+            "owner",
+            "admin",
+            "member",
+            "viewer"
+          ],
           "backendEndpoints": []
         }
       ]
@@ -1125,12 +1519,18 @@
       "module": "organization",
       "scope": "organization",
       "pagePermission": "audit_logs.read",
-      "allowedPageRoles": ["owner", "admin"],
+      "allowedPageRoles": [
+        "owner",
+        "admin"
+      ],
       "actions": [
         {
           "action": "Query audit logs and security events",
           "permission": "audit_logs.read",
-          "allowedRoles": ["owner", "admin"],
+          "allowedRoles": [
+            "owner",
+            "admin"
+          ],
           "backendEndpoints": [
             "GET /organizations/:orgId/audit-logs",
             "GET /organizations/:orgId/audit-logs/security-events"
@@ -1139,8 +1539,13 @@
         {
           "action": "Export audit logs",
           "permission": "audit_logs.export",
-          "allowedRoles": ["owner", "admin"],
-          "backendEndpoints": ["GET /organizations/:orgId/audit-logs/export"]
+          "allowedRoles": [
+            "owner",
+            "admin"
+          ],
+          "backendEndpoints": [
+            "GET /organizations/:orgId/audit-logs/export"
+          ]
         }
       ]
     },
@@ -1153,25 +1558,42 @@
       "module": "organization",
       "scope": "organization",
       "pagePermission": "compliance.read",
-      "allowedPageRoles": ["owner", "admin"],
+      "allowedPageRoles": [
+        "owner",
+        "admin"
+      ],
       "actions": [
         {
           "action": "View compliance status and data retention policies",
           "permission": "compliance.read",
-          "allowedRoles": ["owner", "admin"],
-          "backendEndpoints": ["GET /organizations/:orgId/compliance/status"]
+          "allowedRoles": [
+            "owner",
+            "admin"
+          ],
+          "backendEndpoints": [
+            "GET /organizations/:orgId/compliance/status"
+          ]
         },
         {
           "action": "Request compliance data export",
           "permission": "compliance.export",
-          "allowedRoles": ["owner", "admin"],
-          "backendEndpoints": ["POST /organizations/:orgId/compliance/export"]
+          "allowedRoles": [
+            "owner",
+            "admin"
+          ],
+          "backendEndpoints": [
+            "POST /organizations/:orgId/compliance/export"
+          ]
         },
         {
           "action": "Request GDPR organization data deletion",
           "permission": "compliance.delete_request",
-          "allowedRoles": ["owner"],
-          "backendEndpoints": ["POST /organizations/:orgId/compliance/delete-request"]
+          "allowedRoles": [
+            "owner"
+          ],
+          "backendEndpoints": [
+            "POST /organizations/:orgId/compliance/delete-request"
+          ]
         }
       ]
     },
@@ -1187,12 +1609,20 @@
       "module": "billing",
       "scope": "organization",
       "pagePermission": "billing.read",
-      "allowedPageRoles": ["owner", "admin", "billing_manager"],
+      "allowedPageRoles": [
+        "owner",
+        "admin",
+        "billing_manager"
+      ],
       "actions": [
         {
           "action": "View subscription plan, entitlements, usage, invoices, and payment methods",
           "permission": "billing.read",
-          "allowedRoles": ["owner", "admin", "billing_manager"],
+          "allowedRoles": [
+            "owner",
+            "admin",
+            "billing_manager"
+          ],
           "backendEndpoints": [
             "GET /billing/subscriptions",
             "GET /billing/entitlements",
@@ -1206,7 +1636,10 @@
         {
           "action": "Change plan, cancel/reactivate subscription, create checkout, add/delete/set-default payment method, apply coupons/addons",
           "permission": "billing.manage",
-          "allowedRoles": ["owner", "billing_manager"],
+          "allowedRoles": [
+            "owner",
+            "billing_manager"
+          ],
           "backendEndpoints": [
             "POST /billing/checkout",
             "POST /billing/subscriptions/change-plan",
@@ -1222,23 +1655,35 @@
         {
           "action": "Request organization quota increase",
           "permission": "quotas.request",
-          "allowedRoles": ["owner", "admin", "billing_manager"],
-          "backendEndpoints": ["POST /organizations/:orgId/quotas/requests"]
+          "allowedRoles": [
+            "owner",
+            "admin",
+            "billing_manager"
+          ],
+          "backendEndpoints": [
+            "POST /organizations/:orgId/quotas/requests"
+          ]
         }
       ]
     },
     {
       "route": "/:orgSlug/super-admin/billing",
-      "frontendFiles": ["src/modules/platform/pages/BillingPlansPage.tsx"],
+      "frontendFiles": [
+        "src/modules/platform/pages/BillingPlansPage.tsx"
+      ],
       "module": "platform_admin",
       "scope": "platform",
       "pagePermission": "platform.billing.manage",
-      "allowedPageRoles": ["platform_admin"],
+      "allowedPageRoles": [
+        "platform_admin"
+      ],
       "actions": [
         {
           "action": "Create, update, activate, or archive global SaaS billing plans",
           "permission": "platform.billing.manage",
-          "allowedRoles": ["platform_admin"],
+          "allowedRoles": [
+            "platform_admin"
+          ],
           "backendEndpoints": [
             "POST /billing/plans",
             "PATCH /billing/plans/:id",
@@ -1249,8 +1694,12 @@
         {
           "action": "Review and approve/reject customer quota requests",
           "permission": "platform.quotas.review",
-          "allowedRoles": ["platform_admin"],
-          "backendEndpoints": ["PATCH /organizations/:orgId/quotas/requests/:requestId"]
+          "allowedRoles": [
+            "platform_admin"
+          ],
+          "backendEndpoints": [
+            "PATCH /organizations/:orgId/quotas/requests/:requestId"
+          ]
         }
       ]
     },
@@ -1263,18 +1712,33 @@
       "module": "projects",
       "scope": "organization",
       "pagePermission": "projects.read",
-      "allowedPageRoles": ["owner", "admin", "member", "viewer"],
+      "allowedPageRoles": [
+        "owner",
+        "admin",
+        "member",
+        "viewer"
+      ],
       "actions": [
         {
           "action": "List organization projects",
           "permission": "projects.read",
-          "allowedRoles": ["owner", "admin", "member", "viewer"],
-          "backendEndpoints": ["GET /projects"]
+          "allowedRoles": [
+            "owner",
+            "admin",
+            "member",
+            "viewer"
+          ],
+          "backendEndpoints": [
+            "GET /projects"
+          ]
         },
         {
           "action": "Create new project with initial environments and API key",
           "permission": "projects.create",
-          "allowedRoles": ["owner", "admin"],
+          "allowedRoles": [
+            "owner",
+            "admin"
+          ],
           "backendEndpoints": [
             "POST /projects",
             "POST /projects/:projectId/environments",
@@ -1294,12 +1758,22 @@
       "module": "projects",
       "scope": "project",
       "pagePermission": "projects.read",
-      "allowedPageRoles": ["owner", "admin", "member", "viewer"],
+      "allowedPageRoles": [
+        "owner",
+        "admin",
+        "member",
+        "viewer"
+      ],
       "actions": [
         {
           "action": "View project overview, health, usage, and activity logs",
           "permission": "projects.read",
-          "allowedRoles": ["owner", "admin", "member", "viewer"],
+          "allowedRoles": [
+            "owner",
+            "admin",
+            "member",
+            "viewer"
+          ],
           "backendEndpoints": [
             "GET /projects/by-slug/:slug",
             "GET /projects/:projectId",
@@ -1313,22 +1787,39 @@
     },
     {
       "route": "/:orgSlug/p/:projectPublicId/environments",
-      "frontendFiles": ["src/pages/workspaces/ProjectEnvironmentsPage.tsx"],
+      "frontendFiles": [
+        "src/pages/workspaces/ProjectEnvironmentsPage.tsx"
+      ],
       "module": "projects",
       "scope": "project",
       "pagePermission": "environments.read",
-      "allowedPageRoles": ["owner", "admin", "member", "viewer"],
+      "allowedPageRoles": [
+        "owner",
+        "admin",
+        "member",
+        "viewer"
+      ],
       "actions": [
         {
           "action": "List project environments",
           "permission": "environments.read",
-          "allowedRoles": ["owner", "admin", "member", "viewer"],
-          "backendEndpoints": ["GET /projects/:projectId/environments"]
+          "allowedRoles": [
+            "owner",
+            "admin",
+            "member",
+            "viewer"
+          ],
+          "backendEndpoints": [
+            "GET /projects/:projectId/environments"
+          ]
         },
         {
           "action": "Create, update, lock/unlock, or delete environment",
           "permission": "environments.manage",
-          "allowedRoles": ["owner", "admin"],
+          "allowedRoles": [
+            "owner",
+            "admin"
+          ],
           "backendEndpoints": [
             "POST /projects/:projectId/environments",
             "PATCH /projects/:projectId/environments/:envId",
@@ -1346,12 +1837,18 @@
       "module": "projects",
       "scope": "project",
       "pagePermission": "api_keys.read",
-      "allowedPageRoles": ["owner", "admin"],
+      "allowedPageRoles": [
+        "owner",
+        "admin"
+      ],
       "actions": [
         {
           "action": "List project and ingestion API keys",
           "permission": "api_keys.read",
-          "allowedRoles": ["owner", "admin"],
+          "allowedRoles": [
+            "owner",
+            "admin"
+          ],
           "backendEndpoints": [
             "GET /projects/:projectId/api-keys",
             "GET /ingestion/keys"
@@ -1360,7 +1857,10 @@
         {
           "action": "Create or rotate API key",
           "permission": "api_keys.create",
-          "allowedRoles": ["owner", "admin"],
+          "allowedRoles": [
+            "owner",
+            "admin"
+          ],
           "backendEndpoints": [
             "POST /projects/:projectId/api-keys",
             "POST /projects/:projectId/api-keys/:keyId/rotate",
@@ -1371,7 +1871,10 @@
         {
           "action": "Revoke API key",
           "permission": "api_keys.revoke",
-          "allowedRoles": ["owner", "admin"],
+          "allowedRoles": [
+            "owner",
+            "admin"
+          ],
           "backendEndpoints": [
             "DELETE /projects/:projectId/api-keys/:keyId",
             "DELETE /ingestion/keys/:id"
@@ -1388,12 +1891,22 @@
       "module": "sdk_config",
       "scope": "project",
       "pagePermission": "sdk_config.read",
-      "allowedPageRoles": ["owner", "admin", "member", "viewer"],
+      "allowedPageRoles": [
+        "owner",
+        "admin",
+        "member",
+        "viewer"
+      ],
       "actions": [
         {
           "action": "Read SDK remote config versions and audit history",
           "permission": "sdk_config.read",
-          "allowedRoles": ["owner", "admin", "member", "viewer"],
+          "allowedRoles": [
+            "owner",
+            "admin",
+            "member",
+            "viewer"
+          ],
           "backendEndpoints": [
             "GET /projects/:projectId/sdk-config",
             "GET /organizations/:orgId/sdk-config/:environmentId"
@@ -1402,7 +1915,11 @@
         {
           "action": "Save draft or validate SDK remote config",
           "permission": "sdk_config.draft",
-          "allowedRoles": ["owner", "admin", "member"],
+          "allowedRoles": [
+            "owner",
+            "admin",
+            "member"
+          ],
           "backendEndpoints": [
             "PUT /projects/:projectId/sdk-config/draft",
             "POST /organizations/:orgId/sdk-config/:environmentId/draft"
@@ -1411,7 +1928,10 @@
         {
           "action": "Publish, rollback, or toggle kill-switch on SDK remote config",
           "permission": "sdk_config.publish",
-          "allowedRoles": ["owner", "admin"],
+          "allowedRoles": [
+            "owner",
+            "admin"
+          ],
           "backendEndpoints": [
             "POST /projects/:projectId/sdk-config/publish",
             "POST /projects/:projectId/sdk-config/rollback",
@@ -1424,22 +1944,39 @@
     },
     {
       "route": "/:orgSlug/p/:projectPublicId/members",
-      "frontendFiles": ["src/pages/workspaces/ProjectMembersPage.tsx"],
+      "frontendFiles": [
+        "src/pages/workspaces/ProjectMembersPage.tsx"
+      ],
       "module": "projects",
       "scope": "project",
       "pagePermission": "projects.read",
-      "allowedPageRoles": ["owner", "admin", "member", "viewer"],
+      "allowedPageRoles": [
+        "owner",
+        "admin",
+        "member",
+        "viewer"
+      ],
       "actions": [
         {
           "action": "List project members",
           "permission": "projects.read",
-          "allowedRoles": ["owner", "admin", "member", "viewer"],
-          "backendEndpoints": ["GET /projects/:projectId/members"]
+          "allowedRoles": [
+            "owner",
+            "admin",
+            "member",
+            "viewer"
+          ],
+          "backendEndpoints": [
+            "GET /projects/:projectId/members"
+          ]
         },
         {
           "action": "Add, update role override, or remove project member",
           "permission": "projects.members.manage",
-          "allowedRoles": ["owner", "admin"],
+          "allowedRoles": [
+            "owner",
+            "admin"
+          ],
           "backendEndpoints": [
             "POST /projects/:projectId/members",
             "PATCH /projects/:projectId/members/:userId",
@@ -1450,16 +1987,24 @@
     },
     {
       "route": "/:orgSlug/p/:projectPublicId/settings",
-      "frontendFiles": ["src/pages/workspaces/ProjectSettingsPage.tsx"],
+      "frontendFiles": [
+        "src/pages/workspaces/ProjectSettingsPage.tsx"
+      ],
       "module": "projects",
       "scope": "project",
       "pagePermission": "projects.update",
-      "allowedPageRoles": ["owner", "admin"],
+      "allowedPageRoles": [
+        "owner",
+        "admin"
+      ],
       "actions": [
         {
           "action": "Update project settings, archive, or restore project",
           "permission": "projects.update",
-          "allowedRoles": ["owner", "admin"],
+          "allowedRoles": [
+            "owner",
+            "admin"
+          ],
           "backendEndpoints": [
             "PATCH /projects/:projectId",
             "PATCH /projects/:projectId/settings",
@@ -1470,7 +2015,10 @@
         {
           "action": "Delete or transfer project",
           "permission": "projects.delete",
-          "allowedRoles": ["owner", "admin"],
+          "allowedRoles": [
+            "owner",
+            "admin"
+          ],
           "backendEndpoints": [
             "DELETE /projects/:projectId",
             "POST /projects/:projectId/transfer"
@@ -1490,12 +2038,22 @@
       "module": "ingestion",
       "scope": "organization",
       "pagePermission": "ingestion.read",
-      "allowedPageRoles": ["owner", "admin", "member", "viewer"],
+      "allowedPageRoles": [
+        "owner",
+        "admin",
+        "member",
+        "viewer"
+      ],
       "actions": [
         {
           "action": "View ingestion health, pipeline metrics, and rate limits",
           "permission": "ingestion.read",
-          "allowedRoles": ["owner", "admin", "member", "viewer"],
+          "allowedRoles": [
+            "owner",
+            "admin",
+            "member",
+            "viewer"
+          ],
           "backendEndpoints": [
             "GET /ingestion/overview",
             "GET /ingestion/health",
@@ -1506,7 +2064,10 @@
         {
           "action": "Update pipeline configuration or replay dead-letter batches",
           "permission": "ingestion.manage",
-          "allowedRoles": ["owner", "admin"],
+          "allowedRoles": [
+            "owner",
+            "admin"
+          ],
           "backendEndpoints": [
             "PUT /ingestion/pipeline",
             "POST /ingestion/dlq/replay"
@@ -1526,12 +2087,22 @@
       "module": "connectors",
       "scope": "organization",
       "pagePermission": "connectors.read",
-      "allowedPageRoles": ["owner", "admin", "member", "viewer"],
+      "allowedPageRoles": [
+        "owner",
+        "admin",
+        "member",
+        "viewer"
+      ],
       "actions": [
         {
           "action": "View integrations, webhooks, and delivery history",
           "permission": "connectors.read",
-          "allowedRoles": ["owner", "admin", "member", "viewer"],
+          "allowedRoles": [
+            "owner",
+            "admin",
+            "member",
+            "viewer"
+          ],
           "backendEndpoints": [
             "GET /organizations/:orgId/connectors",
             "GET /organizations/:orgId/webhooks",
@@ -1541,7 +2112,10 @@
         {
           "action": "Create, update, test, rotate secret, or delete integration/webhook",
           "permission": "connectors.manage",
-          "allowedRoles": ["owner", "admin"],
+          "allowedRoles": [
+            "owner",
+            "admin"
+          ],
           "backendEndpoints": [
             "POST /organizations/:orgId/connectors",
             "PATCH /organizations/:orgId/connectors/:id",
@@ -1569,12 +2143,22 @@
       "module": "dashboards",
       "scope": "organization",
       "pagePermission": "dashboards.read",
-      "allowedPageRoles": ["owner", "admin", "member", "viewer"],
+      "allowedPageRoles": [
+        "owner",
+        "admin",
+        "member",
+        "viewer"
+      ],
       "actions": [
         {
           "action": "View dashboards, service catalog, dependency maps, and SLOs",
           "permission": "dashboards.read",
-          "allowedRoles": ["owner", "admin", "member", "viewer"],
+          "allowedRoles": [
+            "owner",
+            "admin",
+            "member",
+            "viewer"
+          ],
           "backendEndpoints": [
             "GET /analytics/overview",
             "GET /analytics/requests",
@@ -1584,7 +2168,10 @@
         {
           "action": "Create, update, or delete scheduled reports and custom dashboards",
           "permission": "dashboards.manage",
-          "allowedRoles": ["owner", "admin"],
+          "allowedRoles": [
+            "owner",
+            "admin"
+          ],
           "backendEndpoints": []
         }
       ]
@@ -1598,18 +2185,27 @@
         "src/pages/observe/RequestsPage.tsx",
         "src/pages/observe/ProfilingPage.tsx",
         "src/pages/observe/CronsPage.tsx",
-        "src/pages/observe/ReplayPage.tsx",
         "src/pages/observe/RuntimeMetricsPage.tsx"
       ],
       "module": "observability",
       "scope": "project",
       "pagePermission": "telemetry.read",
-      "allowedPageRoles": ["owner", "admin", "member", "viewer"],
+      "allowedPageRoles": [
+        "owner",
+        "admin",
+        "member",
+        "viewer"
+      ],
       "actions": [
         {
           "action": "Query and stream logs, metrics, traces, profiles, cron monitors, and session replays",
           "permission": "telemetry.read",
-          "allowedRoles": ["owner", "admin", "member", "viewer"],
+          "allowedRoles": [
+            "owner",
+            "admin",
+            "member",
+            "viewer"
+          ],
           "backendEndpoints": [
             "GET /observability/logs",
             "GET /observability/logs/stream",
@@ -1634,12 +2230,24 @@
       "module": "observability",
       "scope": "project",
       "pagePermission": "errors.read",
-      "allowedPageRoles": ["owner", "admin", "member", "viewer", "incident_responder"],
+      "allowedPageRoles": [
+        "owner",
+        "admin",
+        "member",
+        "viewer",
+        "incident_responder"
+      ],
       "actions": [
         {
           "action": "View error groups, occurrences, and stack traces",
           "permission": "errors.read",
-          "allowedRoles": ["owner", "admin", "member", "viewer", "incident_responder"],
+          "allowedRoles": [
+            "owner",
+            "admin",
+            "member",
+            "viewer",
+            "incident_responder"
+          ],
           "backendEndpoints": [
             "GET /observability/errors",
             "GET /api/v1/errors/groups",
@@ -1649,7 +2257,12 @@
         {
           "action": "Resolve, ignore, unresolve, merge, assign, or comment on error groups",
           "permission": "errors.triage",
-          "allowedRoles": ["owner", "admin", "member", "incident_responder"],
+          "allowedRoles": [
+            "owner",
+            "admin",
+            "member",
+            "incident_responder"
+          ],
           "backendEndpoints": [
             "PATCH /observability/errors/:errorGroupId/status",
             "POST /api/v1/errors/groups/:groupId/resolve",
@@ -1663,8 +2276,13 @@
         {
           "action": "Permanently delete error group",
           "permission": "errors.delete",
-          "allowedRoles": ["owner", "admin"],
-          "backendEndpoints": ["DELETE /api/v1/errors/groups/:groupId"]
+          "allowedRoles": [
+            "owner",
+            "admin"
+          ],
+          "backendEndpoints": [
+            "DELETE /api/v1/errors/groups/:groupId"
+          ]
         }
       ]
     },
@@ -1681,12 +2299,24 @@
       "module": "alerting",
       "scope": "organization",
       "pagePermission": "incidents.read",
-      "allowedPageRoles": ["owner", "admin", "member", "viewer", "incident_responder"],
+      "allowedPageRoles": [
+        "owner",
+        "admin",
+        "member",
+        "viewer",
+        "incident_responder"
+      ],
       "actions": [
         {
           "action": "View incidents, timelines, alert events, and metrics",
           "permission": "incidents.read",
-          "allowedRoles": ["owner", "admin", "member", "viewer", "incident_responder"],
+          "allowedRoles": [
+            "owner",
+            "admin",
+            "member",
+            "viewer",
+            "incident_responder"
+          ],
           "backendEndpoints": [
             "GET /organizations/:orgId/alerting/incidents",
             "GET /organizations/:orgId/alerting/incidents/:incidentId",
@@ -1697,7 +2327,12 @@
         {
           "action": "Acknowledge incident",
           "permission": "incidents.acknowledge",
-          "allowedRoles": ["owner", "admin", "member", "incident_responder"],
+          "allowedRoles": [
+            "owner",
+            "admin",
+            "member",
+            "incident_responder"
+          ],
           "backendEndpoints": [
             "POST /organizations/:orgId/alerting/incidents/:incidentId/acknowledge"
           ]
@@ -1705,7 +2340,12 @@
         {
           "action": "Resolve incident",
           "permission": "incidents.resolve",
-          "allowedRoles": ["owner", "admin", "member", "incident_responder"],
+          "allowedRoles": [
+            "owner",
+            "admin",
+            "member",
+            "incident_responder"
+          ],
           "backendEndpoints": [
             "POST /organizations/:orgId/alerting/incidents/:incidentId/resolve"
           ]
@@ -1713,7 +2353,12 @@
         {
           "action": "Add incident timeline note",
           "permission": "incidents.comment",
-          "allowedRoles": ["owner", "admin", "member", "incident_responder"],
+          "allowedRoles": [
+            "owner",
+            "admin",
+            "member",
+            "incident_responder"
+          ],
           "backendEndpoints": [
             "POST /organizations/:orgId/alerting/incidents/:incidentId/notes"
           ]
@@ -1740,12 +2385,24 @@
       "module": "alerting",
       "scope": "organization",
       "pagePermission": "alerts.read",
-      "allowedPageRoles": ["owner", "admin", "member", "viewer", "incident_responder"],
+      "allowedPageRoles": [
+        "owner",
+        "admin",
+        "member",
+        "viewer",
+        "incident_responder"
+      ],
       "actions": [
         {
           "action": "View alert rules, escalations, channels, silences, routing rules, and DLQ",
           "permission": "alerts.read",
-          "allowedRoles": ["owner", "admin", "member", "viewer", "incident_responder"],
+          "allowedRoles": [
+            "owner",
+            "admin",
+            "member",
+            "viewer",
+            "incident_responder"
+          ],
           "backendEndpoints": [
             "GET /organizations/:orgId/alerting/rules",
             "GET /organizations/:orgId/alerting/escalations",
@@ -1759,7 +2416,12 @@
         {
           "action": "Create, update, or expire alert silences",
           "permission": "alerts.silence",
-          "allowedRoles": ["owner", "admin", "member", "incident_responder"],
+          "allowedRoles": [
+            "owner",
+            "admin",
+            "member",
+            "incident_responder"
+          ],
           "backendEndpoints": [
             "POST /organizations/:orgId/alerting/silences",
             "PATCH /organizations/:orgId/alerting/silences/:silenceId",
@@ -1769,7 +2431,11 @@
         {
           "action": "Retry failed alert notifications in Dead-Letter Queue",
           "permission": "alerts.dlq.retry",
-          "allowedRoles": ["owner", "admin", "incident_responder"],
+          "allowedRoles": [
+            "owner",
+            "admin",
+            "incident_responder"
+          ],
           "backendEndpoints": [
             "POST /organizations/:orgId/alerting/dlq/:id/retry",
             "POST /projects/:projectId/alerts/dlq/:id/retry"
@@ -1778,7 +2444,10 @@
         {
           "action": "Create, update, toggle, or delete alert rules, thresholds, escalations, channels, templates, and routing rules",
           "permission": "alerts.manage",
-          "allowedRoles": ["owner", "admin"],
+          "allowedRoles": [
+            "owner",
+            "admin"
+          ],
           "backendEndpoints": [
             "POST /organizations/:orgId/alerting/rules",
             "PATCH /organizations/:orgId/alerting/rules/:ruleId",
@@ -1794,8 +2463,15 @@
         {
           "action": "Update own personal alert notification preferences",
           "permission": "alerts.preferences.manage_own",
-          "allowedRoles": ["owner", "admin", "member", "viewer"],
-          "backendEndpoints": ["PUT /projects/:projectId/alerts/preferences"]
+          "allowedRoles": [
+            "owner",
+            "admin",
+            "member",
+            "viewer"
+          ],
+          "backendEndpoints": [
+            "PUT /projects/:projectId/alerts/preferences"
+          ]
         }
       ]
     },
@@ -1815,12 +2491,24 @@
       "module": "automation",
       "scope": "organization",
       "pagePermission": "automation.read",
-      "allowedPageRoles": ["owner", "admin", "member", "viewer", "incident_responder"],
+      "allowedPageRoles": [
+        "owner",
+        "admin",
+        "member",
+        "viewer",
+        "incident_responder"
+      ],
       "actions": [
         {
           "action": "View workflows, runs, approvals, templates, and automation events",
           "permission": "automation.read",
-          "allowedRoles": ["owner", "admin", "member", "viewer", "incident_responder"],
+          "allowedRoles": [
+            "owner",
+            "admin",
+            "member",
+            "viewer",
+            "incident_responder"
+          ],
           "backendEndpoints": [
             "GET /automation/workflows",
             "GET /automation/runs",
@@ -1832,7 +2520,12 @@
         {
           "action": "Execute workflow, cancel/retry run, or replay automation event",
           "permission": "automation.execute",
-          "allowedRoles": ["owner", "admin", "member", "incident_responder"],
+          "allowedRoles": [
+            "owner",
+            "admin",
+            "member",
+            "incident_responder"
+          ],
           "backendEndpoints": [
             "POST /automation/runs/:runId/cancel",
             "POST /automation/runs/:runId/retry",
@@ -1843,7 +2536,11 @@
         {
           "action": "Approve or reject pending workflow approval gate",
           "permission": "automation.approve",
-          "allowedRoles": ["owner", "admin", "incident_responder"],
+          "allowedRoles": [
+            "owner",
+            "admin",
+            "incident_responder"
+          ],
           "backendEndpoints": [
             "POST /automation/approvals/:approvalId/approve",
             "POST /automation/approvals/:approvalId/reject"
@@ -1852,7 +2549,10 @@
         {
           "action": "Create, update, publish, toggle, or delete automation workflows",
           "permission": "automation.manage",
-          "allowedRoles": ["owner", "admin"],
+          "allowedRoles": [
+            "owner",
+            "admin"
+          ],
           "backendEndpoints": [
             "POST /automation/workflows",
             "PATCH /automation/workflows/:id",
@@ -1877,12 +2577,24 @@
       "module": "ai",
       "scope": "organization",
       "pagePermission": "ai.read",
-      "allowedPageRoles": ["owner", "admin", "member", "viewer", "incident_responder"],
+      "allowedPageRoles": [
+        "owner",
+        "admin",
+        "member",
+        "viewer",
+        "incident_responder"
+      ],
       "actions": [
         {
           "action": "View past AI conversations, investigations, reports, and token usage",
           "permission": "ai.read",
-          "allowedRoles": ["owner", "admin", "member", "viewer", "incident_responder"],
+          "allowedRoles": [
+            "owner",
+            "admin",
+            "member",
+            "viewer",
+            "incident_responder"
+          ],
           "backendEndpoints": [
             "GET /ai/conversations",
             "GET /ai/usage",
@@ -1892,7 +2604,12 @@
         {
           "action": "Chat with AI assistant, trigger root-cause investigation, or run telemetry AI explain",
           "permission": "ai.use",
-          "allowedRoles": ["owner", "admin", "member", "incident_responder"],
+          "allowedRoles": [
+            "owner",
+            "admin",
+            "member",
+            "incident_responder"
+          ],
           "backendEndpoints": [
             "POST /ai/chat",
             "POST /ai/investigate",
@@ -1904,7 +2621,10 @@
         {
           "action": "Configure AI settings, budgets, and knowledge base sources",
           "permission": "ai.settings.manage",
-          "allowedRoles": ["owner", "admin"],
+          "allowedRoles": [
+            "owner",
+            "admin"
+          ],
           "backendEndpoints": []
         }
       ]

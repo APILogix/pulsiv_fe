@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router';
 import { ArrowUpRight, ChevronRight } from 'lucide-react';
 import clsx from 'clsx';
@@ -47,61 +47,92 @@ function getDynamicChildren(
 export function AppDualSidebar() {
   const { setHasInnerItems, isFlyoutOpen, setIsFlyoutOpen } = useSidebarStore();
   const location = useLocation();
+  const [hasMounted, setHasMounted] = useState(false);
+  useEffect(() => {
+    setHasMounted(true);
+  }, []);
+
   const accountRoute =
     location.pathname === '/account' ||
     location.pathname.startsWith('/account/') ||
     location.pathname === '/settings' ||
-    location.pathname.startsWith('/settings/');
+    location.pathname.startsWith('/settings/') ||
+    /^\/[^/]+\/(account|settings)($|\/)/.test(location.pathname);
 
   const activeOrgSlug = useOrgStore((s) => s.activeOrgSlug);
   const matchPath = (p: string) => (activeOrgSlug ? orgPath(activeOrgSlug, p) : p);
 
   // Project pages live inside this flyout as an "Active project" section —
   // there is no third sidebar.
-  const activeProjectId = activeProjectIdFromPath(location.pathname);
+  const activeProjectId =
+    activeProjectIdFromPath(location.pathname) ||
+    (() => {
+      const match = location.pathname.match(/^\/([^/]+)\/p\/([a-zA-Z0-9_-]+)(?:\/|$)/);
+      return match ? { publicId: match[2], orgSlug: match[1] } : null;
+    })();
 
-  const derivedActive = accountRoute
-    ? null
-    : activeProjectId
-    ? mainNavigation.find((item) => item.label === 'Workspaces')
-    : mainNavigation.find(
-        (item) => {
-          const p = matchPath(item.path);
-          if (location.pathname === p || location.pathname.startsWith(`${p}/`)) {
-            return true;
-          }
-          return item.children?.some((child) => {
-            const cp = matchPath(child.path);
-            if (child.exact) {
-              return location.pathname === cp;
-            }
-            return (
-              location.pathname === cp ||
-              location.pathname.startsWith(`${cp}/`)
-            );
-          });
+  const derivedActive = useMemo(() => {
+    if (accountRoute) return null;
+    if (
+      activeProjectId ||
+      location.pathname === '/projects' ||
+      location.pathname.startsWith('/projects/') ||
+      /^\/[^/]+\/p\//.test(location.pathname)
+    ) {
+      return mainNavigation.find((item) => item.label === 'Workspaces') ?? null;
+    }
+    return (
+      mainNavigation.find((item) => {
+        const p = matchPath(item.path);
+        if (
+          location.pathname === p ||
+          location.pathname.startsWith(`${p}/`) ||
+          location.pathname === item.path ||
+          location.pathname.startsWith(`${item.path}/`)
+        ) {
+          return true;
         }
-      ) ??
+        return item.children?.some((child) => {
+          const cp = matchPath(child.path);
+          if (child.exact) {
+            return location.pathname === cp || location.pathname === child.path;
+          }
+          return (
+            location.pathname === cp ||
+            location.pathname.startsWith(`${cp}/`) ||
+            location.pathname === child.path ||
+            location.pathname.startsWith(`${child.path}/`)
+          );
+        });
+      }) ??
       mainNavigation[0] ??
-      null;
+      null
+    );
+  }, [accountRoute, activeProjectId, activeOrgSlug, location.pathname]);
 
   const [selectedRailItemLabel, setSelectedRailItemLabel] = useState<string | null>(
     () => sessionStorage.getItem('sentinel_selected_rail'),
   );
-  const [previousPathname, setPreviousPathname] = useState(location.pathname);
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
 
-  if (previousPathname !== location.pathname) {
-    setPreviousPathname(location.pathname);
+  useEffect(() => {
     setSelectedRailItemLabel(null);
     sessionStorage.removeItem('sentinel_selected_rail');
-  }
+  }, [location.pathname]);
 
   const selectedRailItem = selectedRailItemLabel
     ? mainNavigation.find((item) => item.label === selectedRailItemLabel) ?? null
     : null;
   const activeRailItem = accountRoute ? null : selectedRailItem ?? derivedActive ?? null;
-  const navItemsToRender = getDynamicChildren(activeRailItem, location.pathname);
+  const navItemsToRender = useMemo(
+    () => getDynamicChildren(activeRailItem, location.pathname),
+    [activeRailItem, location.pathname],
+  );
+
+  const hasInnerItems = Boolean(
+    activeRailItem && (navItemsToRender.length > 0 || activeRailItem.label === 'Workspaces'),
+  );
+  const isEffectiveFlyoutOpen = isFlyoutOpen && hasInnerItems;
 
   const { organizations, activeOrgId } = useOrganizations();
   const flyoutRef = useRef<HTMLDivElement>(null);
@@ -139,8 +170,8 @@ export function AppDualSidebar() {
   }, [activeRailItem, location.pathname, setIsFlyoutOpen]);
 
   useEffect(() => {
-    setHasInnerItems(navItemsToRender.length > 0);
-  }, [navItemsToRender.length, setHasInnerItems]);
+    setHasInnerItems(hasInnerItems);
+  }, [hasInnerItems, setHasInnerItems]);
 
   useEffect(() => {
     const handleToggleMobileSidebar = () => {
@@ -188,18 +219,24 @@ export function AppDualSidebar() {
   const flyoutContext =
     activeRailItem?.label === 'Organization' && activeOrg ? 'Organization' : undefined;
 
-  const groupedItems = Object.entries(
-    navItemsToRender.reduce(
-      (acc, child) => {
-        const groupName = child.group || activeRailItem?.label || 'Navigation';
-        (acc[groupName] ??= []).push(child);
-        return acc;
-      },
-      {} as Record<string, ModuleNavItem[]>,
-    ),
+  const groupedItems = useMemo(
+    () =>
+      Object.entries(
+        navItemsToRender.reduce(
+          (acc, child) => {
+            const groupName = child.group || activeRailItem?.label || 'Navigation';
+            (acc[groupName] ??= []).push(child);
+            return acc;
+          },
+          {} as Record<string, ModuleNavItem[]>,
+        ),
+      ),
+    [navItemsToRender, activeRailItem?.label],
   );
-  const isSingleGroup =
-    groupedItems.length === 1 && !navItemsToRender.some((child) => child.group);
+  const isSingleGroup = useMemo(
+    () => groupedItems.length === 1 && !navItemsToRender.some((child) => child.group),
+    [groupedItems.length, navItemsToRender],
+  );
 
   return (
     <>
@@ -211,18 +248,16 @@ export function AppDualSidebar() {
       <div
         ref={flyoutRef}
         className={clsx(
-          // Only `width` and `opacity` transition. The previous `transition-all`
-          // put every animatable property (colours, borders, shadows, transforms)
-          // on the clock for 300ms each time the flyout toggled.
-          'flyout-container font-sans bg-[var(--sidebar)] border-r border-[var(--border)] flex flex-col z-[90] transition-[width,opacity] duration-[240ms] ease-[cubic-bezier(0.22,1,0.36,1)] overflow-hidden whitespace-nowrap relative shrink-0 motion-reduce:transition-none',
-          isFlyoutOpen ? 'w-[var(--flyout-width)] opacity-100' : 'w-0 opacity-0 border-r-0',
+          'flyout-container font-sans bg-[var(--sidebar)] border-r border-[var(--border)] flex flex-col z-[90] overflow-hidden whitespace-nowrap relative shrink-0 motion-reduce:transition-none',
+          hasMounted && 'transition-[width,opacity] duration-[240ms] ease-[cubic-bezier(0.22,1,0.36,1)]',
+          isEffectiveFlyoutOpen ? 'w-[var(--flyout-width)] opacity-100' : 'w-0 opacity-0 border-r-0',
         )}
-        aria-hidden={!isFlyoutOpen}
+        aria-hidden={!isEffectiveFlyoutOpen}
         // `inert` (React 19) removes the collapsed flyout from the tab order and
         // the accessibility tree. Without it, `aria-hidden` alone would leave
         // focusable links inside a hidden region — a WCAG failure, and the
         // reason a collapsed sidebar used to swallow Tab presses.
-        inert={!isFlyoutOpen}
+        inert={!isEffectiveFlyoutOpen}
       >
         <div className="h-[var(--header-height)] flex items-center justify-between gap-2 px-4 border-b border-[var(--border)] shrink-0">
           <div className="min-w-0">
@@ -253,7 +288,7 @@ export function AppDualSidebar() {
               // A module with a single, unnamed group lists its pages directly:
               // a collapsible heading that repeats the flyout title is noise.
               const showHeading = !isSingleGroup;
-              const expanded = !showHeading || (expandedGroups[groupName] ?? false);
+              const expanded = !showHeading || (expandedGroups[groupName] ?? true);
               const panelId = `flyout-group-${groupName.toLowerCase().replace(/\W+/g, '-')}`;
 
               return (

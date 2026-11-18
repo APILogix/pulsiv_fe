@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "react-router";
-import { Globe, Sparkles, Copy, MoreHorizontal } from "lucide-react";
+import { Globe, Copy, MoreHorizontal } from "lucide-react";
 import {
   DetailHeader,
   EnvironmentBadge,
@@ -8,7 +8,7 @@ import {
   formatAbsoluteTime,
   NEUTRAL_CHIP,
 } from "@/shared/observe";
-import { aiButtonClass, ghostButtonClass } from "@/shared/observe/form";
+import { ghostButtonClass } from "@/shared/observe/form";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,12 +20,8 @@ import type { TraceDetailData } from "./types";
 
 export function StickyTraceHeader({
   detail,
-  onAnalyze,
-  analyzing,
 }: {
   detail: TraceDetailData;
-  onAnalyze: () => void;
-  analyzing: boolean;
 }) {
   const navigate = useNavigate();
   const entity = detail.entity;
@@ -68,34 +64,28 @@ export function StickyTraceHeader({
         entity.sdkName ? { label: "SDK", value: `${entity.sdkName}${entity.sdkVersion ? `@${entity.sdkVersion}` : ""}`, mono: true } : null,
       ]}
       actions={
-        <>
-          <button type="button" className={aiButtonClass} onClick={onAnalyze} disabled={analyzing}>
-            <Sparkles className="size-3.5" aria-hidden="true" />
-            {analyzing ? "Analyzing…" : "Investigate"}
-          </button>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button type="button" aria-label="More actions" className={`${ghostButtonClass} w-9 px-0`}>
-                <MoreHorizontal className="size-4" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="min-w-[190px]">
-              <DropdownMenuItem onClick={() => navigator.clipboard?.writeText(publicId)}>
-                <Copy className="size-3.5" /> Copy trace ID
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button type="button" aria-label="More actions" className={`${ghostButtonClass} w-9 px-0`}>
+              <MoreHorizontal className="size-4" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="min-w-[190px]">
+            <DropdownMenuItem onClick={() => navigator.clipboard?.writeText(publicId)}>
+              <Copy className="size-3.5" /> Copy trace ID
+            </DropdownMenuItem>
+            {entity.traceId && entity.traceId !== publicId && (
+              <DropdownMenuItem onClick={() => navigator.clipboard?.writeText(entity.traceId!)}>
+                <Copy className="size-3.5" /> Copy W3C trace ID
               </DropdownMenuItem>
-              {entity.traceId && entity.traceId !== publicId && (
-                <DropdownMenuItem onClick={() => navigator.clipboard?.writeText(entity.traceId!)}>
-                  <Copy className="size-3.5" /> Copy W3C trace ID
-                </DropdownMenuItem>
-              )}
-              {requestPath && (
-                <DropdownMenuItem onClick={() => navigate(requestPath)}>
-                  <Globe className="size-3.5" /> Open request
-                </DropdownMenuItem>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </>
+            )}
+            {requestPath && (
+              <DropdownMenuItem onClick={() => navigate(requestPath)}>
+                <Globe className="size-3.5" /> Open request
+              </DropdownMenuItem>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
       }
     />
   );

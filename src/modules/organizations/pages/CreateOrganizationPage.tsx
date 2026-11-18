@@ -1,13 +1,13 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, Check, Loader2 } from 'lucide-react';
+import { LynkTraceLogo } from '@/shared/components/LynkTraceLogo';
 
 import { orgApi } from '../api/org.api';
 import { orgQueryKeys, useOrganizations } from '../hooks/useOrganizations';
 import { useOrganizationCreation } from '../hooks/useOrganizationCreation';
 import { useOrgStore } from '../store/org.store';
-import { CreationTransition, ORGANIZATION_WORKFLOW, useWorkflow } from '@/shared/motion';
 import { bootstrapService, type BootstrapOwnedOrganization } from '@/modules/bootstrap';
 import { useLogout } from '@/modules/auth/hooks/useLogout';
 import { markOrganizationSetup } from '@/modules/auth/services/post-login-setup-flag';
@@ -55,9 +55,12 @@ function errorMessage(error: unknown): string {
 
 function Wordmark() {
   return (
-    <span className="inline-flex items-baseline gap-2">
-      <span className="text-[17px] font-semibold tracking-[-0.02em] text-[var(--text)]">Sentinel</span>
-      <span className="text-[13px] text-[var(--text3)]">Console</span>
+    <span className="inline-flex items-center gap-2.5 select-none">
+      <LynkTraceLogo size={24} variant="badge" />
+      <span className="inline-flex items-baseline gap-1.5">
+        <span className="text-[17px] font-bold tracking-[-0.02em] text-[var(--text)]">Lynk<span className="font-medium text-[var(--text2)]">Trace</span></span>
+        <span className="text-[11px] font-mono text-[var(--text3)] uppercase tracking-wider px-1.5 py-0.5 rounded-[4px] bg-[var(--bg2)] border border-[var(--border)]">Console</span>
+      </span>
     </span>
   );
 }
@@ -73,21 +76,47 @@ function WorkspaceUrl({
   onRetry: () => void;
 }) {
   return (
-    <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1 text-[12px]" aria-live="polite">
-      <span className="text-[var(--text3)]">Workspace URL</span>
-      <span className="min-w-0 truncate font-[family-name:var(--mono)] text-[var(--text2)]">/{slug}</span>
-      {status === 'checking' && <span className="text-[var(--text3)]">Checking…</span>}
-      {status === 'available' && <span className="text-[var(--green)]">Available</span>}
-      {status === 'taken' && <span className="text-[var(--red)]">Taken</span>}
-      {status === 'short' && <span className="text-[var(--text3)]">Use at least two letters or numbers</span>}
-      {status === 'unknown' && (
-        <span className="text-[var(--text3)]">
-          Could not check.{' '}
-          <button type="button" onClick={onRetry} className={cn(authTextActionClass, 'text-[12px]')}>
-            Check again
-          </button>
+    <div
+      className="flex min-w-0 items-center justify-between gap-3 rounded-lg border border-[var(--border)] bg-[var(--bg1)] px-3 py-2 text-[12.5px] transition-colors"
+      aria-live="polite"
+    >
+      <div className="flex min-w-0 items-center gap-2">
+        <span className="shrink-0 text-[11.5px] font-medium text-[var(--text3)]">URL</span>
+        <span className="truncate font-mono font-medium text-[var(--text)]">
+          app.pulse.dev/<span className="font-semibold text-emerald-400">{slug}</span>
         </span>
-      )}
+      </div>
+
+      <div className="flex shrink-0 items-center gap-1.5">
+        {status === 'checking' && (
+          <span className="inline-flex items-center gap-1.5 text-[11.5px] font-medium text-[var(--text3)]">
+            <Loader2 className="size-3 animate-spin text-emerald-400" aria-hidden="true" />
+            Checking…
+          </span>
+        )}
+        {status === 'available' && (
+          <span className="inline-flex items-center gap-1 rounded-md border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-400">
+            <Check className="size-3 stroke-[2.5]" aria-hidden="true" />
+            Available
+          </span>
+        )}
+        {status === 'taken' && (
+          <span className="inline-flex items-center gap-1 rounded-md border border-rose-500/20 bg-rose-500/10 px-2 py-0.5 text-[11px] font-medium text-rose-400">
+            <AlertTriangle className="size-3" aria-hidden="true" />
+            Taken
+          </span>
+        )}
+        {status === 'short' && (
+          <span className="text-[11px] text-[var(--text3)]">Min. 2 characters</span>
+        )}
+        {status === 'unknown' && (
+          <span className="text-[11px] text-[var(--text3)]">
+            <button type="button" onClick={onRetry} className={cn(authTextActionClass, 'text-[11px]')}>
+              Check again
+            </button>
+          </span>
+        )}
+      </div>
     </div>
   );
 }
@@ -160,9 +189,7 @@ export default function CreateOrganizationPage() {
   const [nameError, setNameError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
 
-  // The setup scene plays for at least `minDuration`, then holds the finished
-  // state and zooms through (`successHold`) before navigation takes over.
-  const workflow = useWorkflow(ORGANIZATION_WORKFLOW, { pace: 650, minDuration: 3000, successHold: 1300 });
+  const [creating, setCreating] = useState(false);
   const submittingRef = useRef(false);
   // One key per attempt, so a retried request after a timeout cannot create twice.
   const idempotencyKeyRef = useRef<string | null>(null);
@@ -199,7 +226,6 @@ export default function CreateOrganizationPage() {
   // When the check itself fails, let the server decide: it appends a number to a taken slug.
   const slugUsable = slugStatus === 'available' || slugStatus === 'unknown';
 
-  const creating = workflow.isRunning || workflow.isDone;
   const canSubmit = orgName.trim().length > 0 && slugUsable && !creating;
 
   const submitLabel = creating
@@ -220,41 +246,31 @@ export default function CreateOrganizationPage() {
         : `org_create_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
     const idempotencyKey = idempotencyKeyRef.current;
 
-    await workflow.run(
-      async () => {
-        const created = await orgApi
-          .createOrganization(
-            {
-              name: orgName.trim(),
-              slug: derivedSlug || undefined,
-            },
-            { idempotencyKey, silent: true },
-          )
-          .catch((error: unknown) => {
-            // Surface the backend's envelope message in the overlay.
-            throw new Error(errorMessage(error));
-          });
-
-        setActiveOrgId(created.id);
-        setActiveOrgSlug(created.slug ?? null);
-        markOrganizationSetup();
-        void queryClient.invalidateQueries({ queryKey: orgQueryKeys.lists() });
-
-        // Move the session and the bootstrap snapshot to the new organization.
-        // Without this, the route guard still sees the old organization list and
-        // bounces the new slug back to the previous organization.
-        await bootstrapService.switchOrganization(created.id).catch(() => undefined);
-        return created;
-      },
-      {
-        onSuccess: (created) => {
-          navigate(created.slug ? `/${created.slug}/dashboard` : '/dashboard', { replace: true });
+    setCreating(true);
+    try {
+      const created = await orgApi.createOrganization(
+        {
+          name: orgName.trim(),
+          slug: derivedSlug || undefined,
         },
-        onError: () => {
-          submittingRef.current = false;
-        },
-      },
-    );
+        { idempotencyKey, silent: true },
+      );
+
+      setActiveOrgId(created.id);
+      setActiveOrgSlug(created.slug ?? null);
+      markOrganizationSetup();
+      void queryClient.invalidateQueries({ queryKey: orgQueryKeys.lists() });
+
+      // Move the session and bootstrap snapshot before entering the new org.
+      await bootstrapService.switchOrganization(created.id).catch(() => undefined);
+      idempotencyKeyRef.current = null;
+      navigate(created.slug ? `/${created.slug}/dashboard` : '/dashboard', { replace: true });
+    } catch (error) {
+      setFormError(errorMessage(error));
+    } finally {
+      submittingRef.current = false;
+      setCreating(false);
+    }
   };
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
@@ -277,11 +293,7 @@ export default function CreateOrganizationPage() {
   const backTo = activeOrgSlug ?? organizations[0]?.slug ?? null;
   const backName = organizations.find((org) => org.slug === backTo)?.name;
 
-  // Once creation starts, the setup scene owns the screen. Creating flips the
-  // flag to "already owns one", and that must not swap the form out mid-flow.
-  const idle = !workflow.isActive;
-  const resolvingEligibility = creation.isResolving && idle;
-  const ownerLimitReached = !creation.allowed && idle;
+  const ownerLimitReached = !creation.allowed && !creating;
 
   return (
     <div className="flex min-h-[100dvh] flex-col bg-[var(--bg)] font-sans text-[var(--text)] antialiased caret-[var(--text)] selection:bg-[var(--text)] selection:text-[var(--bg)]">
@@ -322,6 +334,7 @@ export default function CreateOrganizationPage() {
                     onChange={(event) => {
                       setOrgName(event.target.value);
                       setNameError(null);
+                      idempotencyKeyRef.current = null;
                     }}
                     placeholder="Acme"
                     autoComplete="organization"
@@ -353,25 +366,6 @@ export default function CreateOrganizationPage() {
         </div>
       </main>
 
-      <CreationTransition
-        open={workflow.isActive}
-        steps={ORGANIZATION_WORKFLOW}
-        state={workflow}
-        name={orgName}
-        caption={derivedSlug ? `/${derivedSlug}` : undefined}
-        title={`Setting up ${orgName.trim() || 'your organization'}`}
-        successTitle={`${orgName.trim() || 'Your organization'} is ready`}
-        errorTitle={`${orgName.trim() || 'Your organization'} was not created`}
-        successDescription="Opening your dashboard…"
-        // A retry reuses the idempotency key, so a request that timed out but
-        // landed cannot create a second organization.
-        onRetry={() => void create()}
-        onCancel={() => {
-          // Back to editing: the next submit is a new request with its own key.
-          idempotencyKeyRef.current = null;
-          workflow.reset();
-        }}
-      />
     </div>
   );
 }

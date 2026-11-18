@@ -51,10 +51,10 @@ export default function OrgOverviewPage() {
     enabled: !!activeOrgId,
   });
 
-  const eventLimit = currentUsage?.eventLimit ?? billing?.plan.eventLimitMonthly ?? 0;
+  const eventLimit = currentUsage?.eventLimit ?? billing?.plan?.eventLimitMonthly ?? 0;
   const eventsUsed = Number(currentUsage?.eventsUsed ?? 0);
   const quotaPercent = eventLimit > 0 ? Math.min(100, Math.round((eventsUsed / eventLimit) * 100)) : 0;
-  const planLabel = billing?.plan.tier || billing?.plan.key || "active";
+  const planLabel = billing?.plan?.tier || billing?.plan?.key || "active";
   const activeSso = useMemo(() => (sso || []).find((provider) => provider.isActive), [sso]);
 
   if (orgLoading || !org) {
@@ -68,7 +68,7 @@ export default function OrgOverviewPage() {
         description="Organization health, access, security, and usage at a glance."
         actions={
           <div className="flex gap-2">
-            <Link to="/admin/team">
+            <Link to="/admin/members">
               <Button variant="primary">
                 <UserPlus className="size-4" />
                 Invite member
@@ -92,9 +92,10 @@ export default function OrgOverviewPage() {
               alt={org.name || "Organization logo"}
               width={40}
               height={40}
-              loading="lazy"
+              fetchPriority="high"
+              loading="eager"
               decoding="async"
-              className="size-10 rounded-[8px] object-cover"
+              className="size-10 rounded-[8px] object-cover aspect-square"
             />
           ) : (
             <div className="flex size-10 items-center justify-center rounded-[8px] bg-[var(--brand-bg)] text-sm font-semibold text-[var(--brand)]">
@@ -128,10 +129,17 @@ export default function OrgOverviewPage() {
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <KpiCard label="Members" value={billing?.usage.activeMembers ?? "-"} />
-              <KpiCard label="Pending invites" value={billing?.usage.pendingInvitations ?? "-"} />
-              <KpiCard label="API keys" value={billing?.usage.apiKeys ?? "-"} />
-              <KpiCard label="Monitors" value={billing?.usage.environments ?? "-"} />
+              <KpiCard
+                label="Members"
+                value={
+                  (typeof billing?.usage?.activeMembers === "object"
+                    ? billing?.usage?.activeMembers?.used
+                    : billing?.usage?.activeMembers) ?? "-"
+                }
+              />
+              <KpiCard label="Pending invites" value={billing?.usage?.pendingInvitations ?? "-"} />
+              <KpiCard label="API keys" value={billing?.usage?.apiKeys ?? "-"} />
+              <KpiCard label="Monitors" value={billing?.usage?.environments ?? "-"} />
             </div>
           </div>
         </SectionCard>
@@ -157,7 +165,7 @@ export default function OrgOverviewPage() {
                 <Clock className="size-4 text-[var(--text3)]" />
                 Pending invites
               </span>
-              <span className="text-sm font-medium text-[var(--text)]">{billing?.usage.pendingInvitations ?? 0}</span>
+              <span className="text-sm font-medium text-[var(--text)]">{billing?.usage?.pendingInvitations ?? 0}</span>
             </div>
           </div>
         </SectionCard>

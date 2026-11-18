@@ -270,6 +270,46 @@ export function WizardSkeleton() {
   );
 }
 
+/** Full-screen organization setup form (no authenticated app shell). */
+export function OrganizationCreateSkeleton() {
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      aria-busy="true"
+      className="min-h-[100dvh] bg-[var(--bg)] font-sans"
+    >
+      <span className="sr-only">Loading organization setup</span>
+      <header className="flex items-center justify-between gap-4 px-6 pt-6 sm:px-10 sm:pt-8">
+        <div aria-hidden="true" className="flex items-center gap-2.5">
+          <Block className="size-6" rounded="lg" />
+          <Block className="h-4 w-28" delay={24} />
+          <Block className="h-5 w-14" delay={40} />
+        </div>
+        <Block className="h-4 w-28" delay={56} />
+      </header>
+      <main className="flex justify-center px-6 py-12 sm:px-10 sm:py-16">
+        <div className="flex w-full max-w-[560px] flex-col gap-6">
+          <div aria-hidden="true" className="flex flex-col gap-2">
+            <Block className="h-7 w-[min(360px,80%)]" delay={72} />
+            <Block className="h-4 w-full" delay={88} />
+            <Block className="h-4 w-4/5" delay={104} />
+          </div>
+          <div aria-hidden="true" className="flex flex-col gap-2">
+            <Block className="h-4 w-32" delay={120} />
+            <Block className="h-11 w-full" delay={136} />
+            <Block className="h-10 w-full" delay={152} />
+          </div>
+          <div aria-hidden="true" className="flex flex-col gap-3 border-t border-[var(--border)] pt-5">
+            <Block className="h-11 w-full" delay={168} />
+            <Block className="h-4 w-64 max-w-full" delay={184} />
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+}
+
 /** API keys / environments / tokens tables with a copy affordance column. */
 export function KeysSkeleton() {
   return (
@@ -331,39 +371,6 @@ export function RulesSkeleton() {
   );
 }
 
-/* ─────────────────────────────── Automation ────────────────────────────── */
-
-/** Workflows list — node-graph preview cards. */
-export function WorkflowsSkeleton() {
-  return (
-    <SkeletonShell label="Loading workflows">
-      <SkeletonPageHeader />
-      <SkeletonKpiRow count={4} />
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        {[0, 1, 2, 3].map((i) => (
-          <SurfaceCard key={i} delay={180 + i * 40} className="flex flex-col gap-3">
-            <div className="flex items-center justify-between gap-3">
-              <Block className="h-4 w-40" />
-              <Block className="h-5 w-16" rounded="full" />
-            </div>
-            <div className="flex items-center gap-2 py-2">
-              {[0, 1, 2, 3].map((node) => (
-                <div key={node} className="flex flex-1 items-center gap-2">
-                  <Block className="size-7 shrink-0" rounded="lg" delay={node * 30} />
-                  {node < 3 && <Block className="h-px flex-1" delay={node * 30 + 12} />}
-                </div>
-              ))}
-            </div>
-            <div className="flex items-center justify-between border-t border-[var(--border)] pt-3">
-              <Block className="h-3 w-24" />
-              <Block className="h-3 w-20" />
-            </div>
-          </SurfaceCard>
-        ))}
-      </div>
-    </SkeletonShell>
-  );
-}
 
 /* ──────────────────────────────── People ──────────────────────────────── */
 

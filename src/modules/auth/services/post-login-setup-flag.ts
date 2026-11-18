@@ -1,5 +1,5 @@
-export const ORGANIZATION_SETUP_FLAG = "sentinel:organization-setup";
-export const LOGIN_METRICS_FLAG = "sentinel:login-metrics";
+export const ORGANIZATION_SETUP_FLAG = "lynktrace:organization-setup";
+export const LOGIN_METRICS_FLAG = "lynktrace:login-metrics";
 
 function markTransition(key: string) {
   try {

@@ -1,6 +1,6 @@
 # Dashboards
 
-Mode: Operate. Covers Home (`/:orgSlug/dashboard`), the Dashboards overview (`/dashboards`) and the ten role dashboards under `/dashboards/*`: executive, performance, errors, geo, realtime, tracing, infrastructure, security, releases, business. Other overview pages (`/observability`, `/alerts/overview`, `/automation`, project analytics tabs) still use the older primitives in `src/pages/dashboards/widgets.tsx` and `@/shared/observe`. Move them onto the board kit when they are next rebuilt.
+Mode: Operate. Covers Home (`/:orgSlug/dashboard`), the Dashboards overview (`/dashboards`) and the ten role dashboards under `/dashboards/*`: executive, performance, errors, geo, realtime, tracing, infrastructure, security, releases, business. Other overview pages (`/observability`, `/alerts/overview`, project analytics tabs) still use the older primitives in `src/pages/dashboards/widgets.tsx` and `@/shared/observe`. Move them onto the board kit when they are next rebuilt.
 
 Seed 712c8ad6. Form: signal ledger fused with the split-flap concourse board.
 

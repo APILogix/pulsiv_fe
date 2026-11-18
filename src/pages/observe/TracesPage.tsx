@@ -1,11 +1,12 @@
 import type { ExplorerPagination } from "./hooks/useObservabilityApi";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router";
+import { X } from "lucide-react";
 import { useObservabilityList } from "./hooks/useObservabilityApi";
 import {
   PageHeader, FillPage, TableToolbar, FilterSelect, SearchInput,
-  InfiniteTable, MethodBadge, EnvironmentBadge, Timestamp, LatencyBar, AskAiModal,
-  formatCompact, formatLatency, SelectionProvider, useSelection,
+  InfiniteTable, MethodBadge, EnvironmentBadge, Timestamp, LatencyBar,
+  formatCompact, formatLatency,
   TimeRangePicker, useTimeRangeParams, SignalSheet, useSignalTimeline, useTimeWindow,
   rangeParams, pct, MUTED_DASH, ENVIRONMENT_OPTIONS, DURATION_OPTIONS,
 } from "@/shared/observe";
@@ -52,34 +53,36 @@ function SpanCount({ count, max }: { count?: number | null; max: number }) {
   );
 }
 
-function TracesPageContent() {
+export default function TracesPage() {
   const navigate = useNavigate();
   const activeProjectSlug = useOrgStore((s) => s.activeProjectSlug);
   const [status, setStatus] = useState("");
   const [env, setEnv] = useState("");
   const [duration, setDuration] = useState("");
   const [query, setQuery] = useState("");
-  const [isAiModalOpen, setIsAiModalOpen] = useState(false);
 
   const { timeRangeState } = useTimeRangeParams();
   const window = useTimeWindow(timeRangeState);
-  const { selectedKeys, toggleSelect, selectAll, clearSelection, selectedCount } = useSelection();
   const [activePagination, setActivePagination] = useState<ExplorerPagination | undefined>(undefined);
 
   const { cursor, paginationProps, onNextPage, onPreviousPage } = useCursorPagination(activePagination, {
     dependencies: [activeProjectSlug, status, env, duration, timeRangeState, query],
   });
 
-  const filters = {
-    project: activeProjectSlug ?? undefined,
-    rootSpanStatus: status || undefined,
-    environment: env || undefined,
-    duration: duration || undefined,
-    ...rangeParams(timeRangeState),
-    search: query,
-  };
+  const filters = useMemo(
+    () => ({
+      project: activeProjectSlug ?? undefined,
+      rootSpanStatus: status || undefined,
+      environment: env || undefined,
+      duration: duration || undefined,
+      ...rangeParams(timeRangeState),
+      search: query,
+    }),
+    [activeProjectSlug, status, env, duration, timeRangeState, query],
+  );
 
-  const { data, isLoading } = useObservabilityList<TraceEvent>("traces", { ...filters, cursor });
+  const queryParams = useMemo(() => ({ ...filters, cursor }), [filters, cursor]);
+  const { data, isLoading } = useObservabilityList<TraceEvent>("traces", queryParams);
   const timeline = useSignalTimeline("traces", filters, window);
 
   useEffect(() => {
@@ -150,17 +153,31 @@ function TracesPageContent() {
     <FillPage>
       <PageHeader
         title="Traces"
-        description="Distributed traces across services. Open one to walk its span waterfall and the logs and errors it touched."
         actions={<TimeRangePicker />}
       />
 
       <SignalSheet cells={cells} loading={isLoading && !data} bars={timeline.bars} timelineLoading={timeline.isLoading} countLabel="Traces" errorLabel="Errored" />
 
-      <TableToolbar selectedCount={selectedCount} onClearSelection={clearSelection} onAskAi={() => setIsAiModalOpen(true)} resourceName="traces">
+      <TableToolbar resourceName="traces">
         <SearchInput placeholder="Search operation, trace id, service:api…" onSearch={setQuery} defaultValue={query} />
-        <FilterSelect value={env} onChange={setEnv} options={ENVIRONMENT_OPTIONS} />
-        <FilterSelect value={status} onChange={setStatus} options={STATUS_OPTS} />
-        <FilterSelect value={duration} onChange={setDuration} options={DURATION_OPTIONS} />
+        <FilterSelect label="Environment" value={env} onChange={setEnv} options={ENVIRONMENT_OPTIONS} />
+        <FilterSelect label="Status" value={status} onChange={setStatus} options={STATUS_OPTS} />
+        <FilterSelect label="Duration" value={duration} onChange={setDuration} options={DURATION_OPTIONS} />
+        {(query || env || status || duration) && (
+          <button
+            type="button"
+            onClick={() => {
+              setQuery("");
+              setEnv("");
+              setStatus("");
+              setDuration("");
+            }}
+            className="inline-flex h-8 items-center gap-1.5 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg2)]/60 px-2.5 text-[12px] text-[var(--text2)] transition-colors hover:border-[var(--border2)] hover:bg-[var(--bg2)] hover:text-[var(--text)] cursor-pointer"
+          >
+            <X className="size-3" />
+            Clear filters
+          </button>
+        )}
       </TableToolbar>
 
       <InfiniteTable
@@ -173,31 +190,10 @@ function TracesPageContent() {
         onRowClick={(t) => navigate(`/observability/traces/${encodeURIComponent(t.publicId ?? t.id ?? t.traceId ?? "")}`)}
         emptyTitle="No traces in this window"
         emptyMessage="Traces appear once the SDK's tracing middleware is enabled. Widen the range or clear filters."
-        selectable
-        selectedKeys={selectedKeys}
-        onSelectToggle={toggleSelect}
-        onSelectAllToggle={selectAll}
         pagination={paginationProps}
         onNextPage={onNextPage}
         onPreviousPage={onPreviousPage}
       />
-
-      <AskAiModal
-        isOpen={isAiModalOpen}
-        onClose={() => setIsAiModalOpen(false)}
-        resource="traces"
-        selectedIds={Array.from(selectedKeys)}
-        filters={{ rootSpanStatus: status, environment: env }}
-        search={query}
-      />
     </FillPage>
-  );
-}
-
-export default function TracesPage() {
-  return (
-    <SelectionProvider>
-      <TracesPageContent />
-    </SelectionProvider>
   );
 }

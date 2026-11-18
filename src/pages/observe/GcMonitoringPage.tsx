@@ -59,7 +59,6 @@ export default function GcMonitoringPage() {
     <div className="flex flex-col gap-4">
       <PageHeader
         title="GC monitoring"
-        description="V8 garbage collection pauses. Every pause stops JavaScript, so long or frequent collections show up directly as request latency."
         actions={<TimeRangePicker />}
       />
 

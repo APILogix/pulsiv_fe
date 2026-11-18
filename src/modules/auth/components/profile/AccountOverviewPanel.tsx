@@ -4,7 +4,6 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import {
   AlertTriangle,
   ArrowRight,
-  ArrowUpRight,
   CheckCircle2,
   Clock,
   Download,
@@ -15,7 +14,6 @@ import {
   LogIn,
   Monitor,
   Shield,
-  ShieldAlert,
   ShieldCheck,
   Smartphone,
   User,
@@ -24,7 +22,6 @@ import { toast } from 'sonner';
 
 import { accountApi, type AccountOverview } from '../../api/account.api';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { colorForId, initialsForName } from './account-avatar';
 
@@ -110,8 +107,9 @@ export function AccountOverviewPanel() {
 
   const overview = useMemo(() => {
     if (!rawOverview) return undefined;
-    return ((rawOverview as any)?.data && (rawOverview as any)?.success !== undefined
-      ? (rawOverview as any).data
+    const envelope = rawOverview as unknown as { data?: AccountOverview; success?: boolean };
+    return (envelope?.data && envelope?.success !== undefined
+      ? envelope.data
       : rawOverview) as AccountOverview;
   }, [rawOverview]);
 
@@ -142,7 +140,6 @@ export function AccountOverviewPanel() {
   };
 
   const backupRemaining = overview.backup_codes?.remaining ?? checks.backup_codes_remaining;
-  const trustedCount = overview.trusted_devices?.count ?? (checks.has_trusted_devices ? 1 : 0);
   const mfaMethods = overview.mfa_summary?.methods ?? [];
   const passkeyCount = overview.passkeys?.count ?? mfaMethods.filter((m) => m?.method === 'security_key').length;
   const mfaEnabled = overview.mfa_summary?.enabled ?? checks.mfa_enabled ?? false;
@@ -172,7 +169,7 @@ export function AccountOverviewPanel() {
           Account Overview
         </h1>
         <p className="mt-1 text-[13px] text-[var(--text2)]">
-          Manage your personal credentials, identity, security posture, and active sessions across Sentinel.
+          Manage your personal credentials, identity, security posture, and active sessions across LynkTrace.
         </p>
       </div>
 
@@ -186,9 +183,10 @@ export function AccountOverviewPanel() {
                 alt={user.display_name}
                 width={64}
                 height={64}
-                loading="lazy"
+                fetchPriority="high"
+                loading="eager"
                 decoding="async"
-                className="size-16 rounded-full border-2 border-[var(--border2)] object-cover sm:size-18"
+                className="size-16 rounded-full border-2 border-[var(--border2)] object-cover sm:size-18 aspect-square"
               />
             ) : (
               <div

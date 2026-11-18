@@ -2,6 +2,7 @@ import { Link, useLocation } from "react-router";
 import { ChevronRight, FolderOpen } from "lucide-react";
 
 import { useProjectByPublicId, useProjects } from "@/modules/projects/hooks/useProjects";
+import type { ProjectListItem } from "@/modules/projects/api/types";
 import {
   PROJECT_NAV,
   resolveActiveProjectNav,
@@ -145,19 +146,23 @@ const STATUS_DOT: Record<string, string> = {
   archived: "bg-[var(--text3)]",
 };
 
+const EMPTY_PROJECTS: ProjectListItem[] = [];
+
+const PROJECT_LIST_QUERY = {
+  limit: PROJECT_LIST_LIMIT,
+  sortBy: "updated_at" as const,
+  sortOrder: "desc" as const,
+};
+
 /**
  * Recent projects, listed directly under "All projects" while no project is
  * open. Selecting one swaps this list for the `ActiveProjectNav` section — the
  * flyout never grows a second column.
  */
 export function WorkspaceProjectList() {
-  const { data, isLoading } = useProjects({
-    limit: PROJECT_LIST_LIMIT,
-    sortBy: "updated_at",
-    sortOrder: "desc",
-  });
+  const { data, isLoading } = useProjects(PROJECT_LIST_QUERY);
   const activeOrgSlug = useOrgStore((state) => state.activeOrgSlug);
-  const projects = data?.data ?? [];
+  const projects = data?.data ?? EMPTY_PROJECTS;
 
   if (isLoading) {
     return (

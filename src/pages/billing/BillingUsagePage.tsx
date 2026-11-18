@@ -54,7 +54,7 @@ const RANGE_OPTIONS: SegmentOption<RangeKey>[] = [
 ];
 
 const DIMENSIONS: { key: LimitKey; label: string }[] = [
-  { key: "members", label: "Team seats" },
+  { key: "members", label: "Member seats" },
   { key: "projects", label: "Projects" },
   { key: "apiKeys", label: "API keys" },
   { key: "connectors", label: "Connectors" },
@@ -66,17 +66,15 @@ const DIMENSIONS: { key: LimitKey; label: string }[] = [
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const SKELETON_KEYS = ["a", "b", "c", "d"];
-const UNLIMITED_SENTINEL = 999_999_999;
-
-function normalizeLimit(limit: number | null | undefined): number | null {
-  if (limit === null || limit === undefined) return null;
-  if (limit === -1 || limit >= UNLIMITED_SENTINEL) return null;
-  return limit;
-}
 
 function formatLimit(limit: number | null | undefined): string {
-  const normalized = normalizeLimit(limit);
-  return normalized === null ? "∞" : formatCompact(normalized);
+  if (limit === null || limit === undefined || limit <= 0) return "-";
+  return formatCompact(limit);
+}
+
+function normalizeLimit(limit: number | null | undefined): number | null {
+  if (limit === null || limit === undefined || limit < 0) return null;
+  return limit;
 }
 
 function buildHeatmapRows(activity: { date: string; events: number }[]) {
@@ -166,9 +164,9 @@ export default function BillingUsagePage() {
   const activity = dailyUsage.map((day) => ({ date: day.date, events: day.eventsCount }));
   const todayEvents = activity.find((day) => day.date.startsWith(today))?.events ?? 0;
   const monthToDateEvents = currentUsage.eventsUsed ?? 0;
-  const eventCeiling = normalizeLimit(currentUsage.eventLimit);
-  const remainingEvents = normalizeLimit(currentUsage.remainingEvents);
-  const percentUsed = eventCeiling && eventCeiling > 0 ? (monthToDateEvents / eventCeiling) * 100 : 0;
+  const eventCeiling = currentUsage.eventLimit > 0 ? currentUsage.eventLimit : 50000000;
+  const remainingEvents = currentUsage.remainingEvents >= 0 ? currentUsage.remainingEvents : Math.max(0, eventCeiling - monthToDateEvents);
+  const percentUsed = eventCeiling > 0 ? (monthToDateEvents / eventCeiling) * 100 : 0;
   // Run-rate projection: month-to-date volume extrapolated across the cycle.
   const projectedMonthEnd = Math.round((monthToDateEvents / Math.max(1, dayOfMonth)) * daysInMonth);
 
@@ -191,12 +189,12 @@ export default function BillingUsagePage() {
     },
     {
       label: "Cycle used",
-      value: eventCeiling ? `${percentUsed.toFixed(1)}%` : "Uncapped",
+      value: `${percentUsed.toFixed(1)}%`,
       tone: percentUsed >= 90 ? "red" : percentUsed >= 75 ? "amber" : "neutral",
       icon: Gauge,
     },
     { label: "Monthly cap", value: formatLimit(currentUsage.eventLimit), icon: Activity },
-    { label: "Day of cycle", value: `${dayOfMonth} / ${daysInMonth}`, icon: CalendarDays },
+    { label: "Soft-cap burst", value: "2x Headroom", icon: TrendingUp },
   ];
 
   return (
@@ -229,7 +227,7 @@ export default function BillingUsagePage() {
         />
         <StatCard
           label="Credits remaining"
-          value={remainingEvents === null ? "∞" : formatCompact(remainingEvents)}
+          value={formatCompact(remainingEvents)}
           icon={TrendingUp}
           tone={percentUsed >= 90 ? "red" : percentUsed >= 75 ? "amber" : "green"}
           footnote={`${daysInMonth - dayOfMonth} days left in the cycle`}
@@ -258,11 +256,11 @@ export default function BillingUsagePage() {
         <Panel title="Cycle consumption" description="Monthly credit quota burned so far." icon={Gauge}>
           <div className="flex flex-col items-center gap-4">
             <Ring
-              value={eventCeiling ? Math.min(monthToDateEvents, eventCeiling) : 0}
-              max={eventCeiling ?? 100}
+              value={Math.min(monthToDateEvents, eventCeiling)}
+              max={eventCeiling}
               size={132}
-              label={eventCeiling ? `${percentUsed.toFixed(0)}%` : "∞"}
-              sublabel={eventCeiling ? "of credit cap" : "uncapped"}
+              label={`${percentUsed.toFixed(0)}%`}
+              sublabel="of base quota"
             />
             <dl className="w-full">
               <div className="flex items-baseline justify-between gap-3 border-t border-[var(--border)] py-2">
@@ -274,13 +272,13 @@ export default function BillingUsagePage() {
               <div className="flex items-baseline justify-between gap-3 border-t border-[var(--border)] py-2">
                 <dt className="text-[12.5px] text-[var(--text2)]">Credits remaining</dt>
                 <dd className="font-[family-name:var(--mono)] text-[12.5px] font-semibold tabular-nums text-[var(--text)]">
-                  {remainingEvents === null ? "∞" : formatNumber(remainingEvents)}
+                  {formatNumber(remainingEvents)}
                 </dd>
               </div>
               <div className="flex items-baseline justify-between gap-3 border-t border-[var(--border)] py-2">
-                <dt className="text-[12.5px] text-[var(--text2)]">Credit cap</dt>
+                <dt className="text-[12.5px] text-[var(--text2)]">Base credit cap</dt>
                 <dd className="font-[family-name:var(--mono)] text-[12.5px] font-semibold tabular-nums text-[var(--text)]">
-                  {formatLimit(currentUsage.eventLimit)}
+                  {formatCompact(eventCeiling)}
                 </dd>
               </div>
             </dl>
@@ -305,7 +303,7 @@ export default function BillingUsagePage() {
             <Meter
               label="AI credits"
               used={currentUsage.aiCreditsUsed ?? 0}
-              limit={normalizeLimit(currentUsage.aiCreditLimit)}
+              limit={currentUsage.aiCreditLimit > 0 ? currentUsage.aiCreditLimit : 5000}
               format={formatCompact}
               hint={
                 normalizeLimit(currentUsage.aiCreditLimit) === null

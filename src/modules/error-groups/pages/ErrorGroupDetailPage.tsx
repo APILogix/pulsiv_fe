@@ -9,7 +9,6 @@ import { LatestEventCard } from "../components/LatestEventCard";
 import { HistoryTimeline } from "../components/HistoryTimeline";
 import { RegressionBanner } from "../components/RegressionBanner";
 import { RelatedEventsTable } from "../components/RelatedEventsTable";
-import { AskAICard } from "../components/AskAICard";
 import { MergeDialog } from "../components/MergeDialog";
 import { ResolveDialog } from "../components/ResolveDialog";
 
@@ -52,10 +51,7 @@ export default function ErrorGroupDetailPage() {
       <OccurrenceChart group={group} />
       <LatestEventCard group={group} />
       <RelatedEventsTable events={relatedEvents} />
-      <div className="grid items-start gap-4 xl:grid-cols-2">
-        <AskAICard group={group} />
-        <HistoryTimeline history={history} />
-      </div>
+      <HistoryTimeline history={history} />
 
       <ResolveDialog
         isOpen={isResolveOpen}

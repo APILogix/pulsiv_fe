@@ -40,7 +40,7 @@ const MOCK_ERRORS = {
     error: {
       status: 502,
       statusText: 'Bad Gateway',
-      data: 'The upstream Sentinel API ingestion cluster timed out after 30000ms while evaluating query partitions.',
+      data: 'The upstream LynkTrace API ingestion cluster timed out after 30000ms while evaluating query partitions.',
     },
   },
   networkError: {
@@ -84,7 +84,7 @@ export default function ErrorPreviewPage() {
           <div className="flex items-center gap-3">
             <SentinelLogoMark size={20} />
             <span className="font-[family-name:var(--display)] text-sm font-semibold tracking-[-0.01em]">
-              Sentinel Error Boundary Playground
+              LynkTrace Error Boundary Playground
             </span>
             <span className="text-[var(--border2)]">|</span>
             <span className="text-xs text-[var(--text3)]">Verification Console</span>

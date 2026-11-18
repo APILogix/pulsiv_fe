@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { FolderOpen, ChevronsUpDown, Check, Plus, Layers } from 'lucide-react';
 import {
   DropdownMenu,
@@ -9,11 +10,14 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { useOrgStore } from '@/modules/organizations/store/org.store';
-import { useProjects } from '@/modules/projects/hooks/useProjects';
-import { useNavigate } from 'react-router';
+import { useProjects, RECENT_PROJECTS_QUERY } from '@/modules/projects/hooks/useProjects';
+import type { ProjectListItem } from '@/modules/projects/api/types';
+import { CreateProjectDialog } from '@/modules/projects/components/CreateProjectDialog';
+
+const EMPTY_PROJECTS: ProjectListItem[] = [];
 
 export function ProjectSwitcher() {
-  const navigate = useNavigate();
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
   const activeOrgId = useOrgStore((s) => s.activeOrgId);
   const activeOrgSlug = useOrgStore((s) => s.activeOrgSlug);
   const activeProjectId = useOrgStore((s) => s.activeProjectId);
@@ -21,8 +25,8 @@ export function ProjectSwitcher() {
   const setActiveProjectId = useOrgStore((s) => s.setActiveProjectId);
   const setActiveProjectSlug = useOrgStore((s) => s.setActiveProjectSlug);
 
-  const { data, isLoading } = useProjects({ limit: 100, sortBy: 'updated_at', sortOrder: 'desc' });
-  const projects = data?.data ?? [];
+  const { data, isLoading } = useProjects(RECENT_PROJECTS_QUERY);
+  const projects = data?.data ?? EMPTY_PROJECTS;
 
   const activeProject = projects.find((p) => p.id === activeProjectId || p.slug === activeProjectSlug);
 
@@ -34,7 +38,8 @@ export function ProjectSwitcher() {
   if (!activeOrgId) return null;
 
   return (
-    <DropdownMenu>
+    <>
+      <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button
           variant="ghost"
@@ -96,7 +101,10 @@ export function ProjectSwitcher() {
 
         <DropdownMenuSeparator className="bg-[var(--border)] -mx-1 my-1" />
         <DropdownMenuItem
-          onClick={() => navigate(activeOrgSlug ? `/${activeOrgSlug}/projects/new` : '/projects/new')}
+          onSelect={(e) => {
+            e.preventDefault();
+            setIsCreateOpen(true);
+          }}
           className="flex items-center gap-2 px-2 py-1.5 rounded-[var(--radius-sm)] cursor-pointer text-[12px] sm:text-[13px] font-medium text-[var(--text2)] hover:text-[var(--text)] hover:bg-[var(--bg2)] group transition-colors"
         >
           <Plus className="size-3.5 text-[var(--text3)] group-hover:text-[var(--brand)] shrink-0 transition-colors" />
@@ -104,6 +112,9 @@ export function ProjectSwitcher() {
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
+
+    <CreateProjectDialog open={isCreateOpen} onOpenChange={setIsCreateOpen} />
+    </>
   );
 }
 

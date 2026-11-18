@@ -129,7 +129,7 @@ export function AddDeviceDialog({ open, onOpenChange, onComplete }: Props) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'sentinel-backup-codes.txt';
+    a.download = 'lynktrace-backup-codes.txt';
     a.click();
     URL.revokeObjectURL(url);
   }
@@ -208,7 +208,15 @@ export function AddDeviceDialog({ open, onOpenChange, onComplete }: Props) {
             <div className="flex flex-col items-center gap-4 pt-2">
               {totpQrCodeUrl ? (
                 <div className="bg-white p-3.5 rounded-[var(--radius-lg)] shadow-sm">
-                  <img src={totpQrCodeUrl} alt="TOTP QR code" className="size-44 object-contain" />
+                  <img
+                    src={totpQrCodeUrl}
+                    alt="TOTP QR code"
+                    width={176}
+                    height={176}
+                    loading="eager"
+                    decoding="async"
+                    className="size-44 object-contain aspect-square"
+                  />
                 </div>
               ) : (
                 <div className="w-full rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg2)] px-4 py-6 text-center text-[13px] text-[var(--text3)]">

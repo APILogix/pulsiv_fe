@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router";
-import { GitBranch } from "lucide-react";
+import { GitBranch, X } from "lucide-react";
 import { useObservabilityList } from "./hooks/useObservabilityApi";
 import {
   PageHeader, FillPage, TableToolbar, SearchInput,
@@ -130,6 +130,16 @@ export default function EventsExplorer() {
 
       <TableToolbar resourceName="spans">
         <SearchInput placeholder="Search spans, operations…" onSearch={setQuery} defaultValue={query} />
+        {query && (
+          <button
+            type="button"
+            onClick={() => setQuery("")}
+            className="inline-flex h-8 items-center gap-1.5 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg2)]/60 px-2.5 text-[12px] text-[var(--text2)] transition-colors hover:border-[var(--border2)] hover:bg-[var(--bg2)] hover:text-[var(--text)] cursor-pointer"
+          >
+            <X className="size-3" />
+            Clear search
+          </button>
+        )}
       </TableToolbar>
 
       <InfiniteTable
@@ -138,7 +148,7 @@ export default function EventsExplorer() {
         items={items}
         queryKey={["spans-explorer", query, timeRangeState, cursor]}
         columns={columns}
-        getKey={(s) => s.publicId ?? s.id ?? s.spanId ?? s.eventId ?? String(Math.random())}
+        getKey={(s) => s.publicId ?? s.id ?? s.spanId ?? s.eventId ?? JSON.stringify(s)}
         onRowClick={(s) => navigate(`/observability/spans/${encodeURIComponent(s.publicId ?? s.id ?? s.spanId ?? s.eventId ?? '')}`)}
         pagination={{
           nextCursor: data?.pagination?.nextCursor,

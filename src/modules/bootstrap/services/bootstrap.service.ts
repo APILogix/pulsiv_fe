@@ -1,3 +1,4 @@
+import { queryClient } from '@/lib/query-client';
 import { apiClient } from '@/infrastructure/api-client/axios';
 import { errorStatus, isNetworkFailure } from '@/infrastructure/api-client/api-error';
 import { tokenService } from '@/modules/auth/services/token.service';
@@ -91,6 +92,9 @@ export class BootstrapService {
 
         // Atomically replace Zustand bootstrap store
         useBootstrapStore.getState().setBootstrap(data);
+        if (Array.isArray(data.organizations) && data.organizations.length > 0) {
+          queryClient.setQueryData(['organizations', 'list'], { data: data.organizations });
+        }
 
         // Sync tokenService & useOrgStore with authoritative backend state
         if (data.currentOrganizationId) {

@@ -104,7 +104,7 @@ function AccountMenuContent({
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5">
               <span className="truncate text-[13px] font-semibold text-[var(--text)]">
-                {displayName || 'Sentinel Member'}
+                {displayName || 'LynkTrace Member'}
               </span>
               <span className="inline-flex items-center text-[var(--green)]" title="Verified Account">
                 <CheckCircle2 className="size-3 shrink-0" />
@@ -166,7 +166,7 @@ function AccountMenuContent({
       {/* Sign Out Button */}
       <button
         type="button"
-        title="Sign out of Sentinel"
+        title="Sign out of LynkTrace"
         aria-label="Sign out"
         data-avatar-menu-item="true"
         disabled={logout.isPending}

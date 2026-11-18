@@ -197,6 +197,15 @@ export const alertChannelsApi = {
     await apiClient.delete(`${channelBase(orgId, projectId)}/${channelId}`);
   },
 
+  testChannel: async (
+    orgId: string,
+    projectId: string,
+    channelId: string,
+  ): Promise<{ success: boolean; messageId?: string; error?: string }> => {
+    const { data } = await apiClient.post(`${channelBase(orgId, projectId)}/${channelId}/test`);
+    return data.data ?? data;
+  },
+
   // Caller-scoped delivery preferences per channel + category.
   listMyPreferences: async (orgId: string, projectId: string): Promise<MemberChannelPreference[]> => {
     const { data } = await apiClient.get(`${channelBase(orgId, projectId)}/preferences`);

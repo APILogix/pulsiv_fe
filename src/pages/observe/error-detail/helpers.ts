@@ -12,7 +12,6 @@ export const ERROR_SECTIONS: { id: ErrorSectionId; label: string }[] = [
   { id: "http", label: "HTTP & Route" },
   { id: "context", label: "Context" },
   { id: "metadata", label: "Metadata" },
-  { id: "ai", label: "AI Analysis" },
   { id: "related", label: "Related Telemetry" },
   { id: "tags", label: "Tags & Extra" },
 ];

@@ -672,7 +672,6 @@ function ProjectApiKeysContent({
     <WorkspacePage>
       <ProjectPageHeader
         title="API keys"
-        description="Ingestion credentials, each scoped to one environment. A key's secret is shown once, when the key is created or rotated."
         actions={
           <>
             <DropdownMenu>

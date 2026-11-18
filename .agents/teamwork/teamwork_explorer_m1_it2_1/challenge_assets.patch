@@ -1,0 +1,16 @@
+--- scripts/challenge-m1-assets.mjs
++++ scripts/challenge-m1-assets.mjs
+@@ -365,8 +365,8 @@
+-  // 3.3 Verify /auth/* cache rule
++  // 3.3 Verify /auth/* is absent to prevent SPA HTML caching hazard
+   const authCc = rules['/auth/*'] && rules['/auth/*']['cache-control'];
+-  const authValid = authCc && authCc.includes('max-age=604800') && authCc.includes('stale-while-revalidate=86400');
++  const authSafe = !authCc;
+   recordTest(
+-    'Cache Directives: /auth/* has 7-day stale-while-revalidate cache',
+-    Boolean(authValid),
+-    authValid ? `/auth/* Cache-Control: ${authCc}` : `Invalid /auth/* Cache-Control: ${authCc}`
++    'Cache Directives: /auth/* absent to prevent SPA HTML caching hazard',
++    authSafe,
++    authSafe ? '/auth/* correctly omitted to prevent SPA HTML caching' : `Hazard detected: /auth/* has Cache-Control: ${authCc}`
+   );

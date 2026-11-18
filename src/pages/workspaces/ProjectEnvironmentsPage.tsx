@@ -485,7 +485,6 @@ export default function ProjectEnvironmentsPage() {
     <WorkspacePage>
       <ProjectPageHeader
         title="Environments"
-        description="Deployment scopes for API keys and SDK configuration. Slugs identify environments in SDKs; types drive product behavior."
         actions={
           <UiButton size="lg" onClick={openCreate}>
             <Plus className="size-4" aria-hidden="true" /> New environment

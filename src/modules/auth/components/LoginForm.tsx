@@ -4,7 +4,8 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { cn } from '@/lib/utils';
 import { loginSchema, type LoginFormData } from '../schemas/auth.schema';
-import { AuthButton, AuthField, PasswordInput, fieldInputClass } from '@/shared/ui/pulse';
+import { AuthButton, AuthField } from '@/shared/ui/pulse/auth';
+import { PasswordInput, fieldInputClass } from '@/shared/ui/pulse/controls';
 
 interface LoginFormProps {
   login: (data: LoginFormData) => void;

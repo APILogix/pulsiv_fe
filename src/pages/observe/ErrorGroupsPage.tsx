@@ -1,12 +1,12 @@
 import type { ExplorerPagination } from "./hooks/useObservabilityApi";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate, Link } from "react-router";
-import { GitBranch, Layers } from "lucide-react";
+import { GitBranch, Layers, X } from "lucide-react";
 import { useObservabilityList } from "./hooks/useObservabilityApi";
 import {
   PageHeader, FillPage, TableToolbar, SearchInput, FilterSelect,
-  SeverityBadge, StatusCodeBadge, EnvironmentBadge, AskAiModal, Timestamp,
-  InfiniteTable, formatCompact, SelectionProvider, useSelection,
+  SeverityBadge, StatusCodeBadge, EnvironmentBadge, Timestamp,
+  InfiniteTable, formatCompact,
   TimeRangePicker, useTimeRangeParams, SignalSheet, useSignalTimeline, useTimeWindow,
   rangeParams, pct, TRACE_CHIP, GROUP_CHIP, MUTED_DASH, ENVIRONMENT_OPTIONS,
 } from "@/shared/observe";
@@ -60,7 +60,7 @@ const STATUS_OPTS = [
   { value: "401", label: "401 Unauthorized" },
 ];
 
-function ErrorsPageContent() {
+export default function ErrorGroupsPage() {
   const navigate = useNavigate();
   const activeProjectSlug = useOrgStore((s) => s.activeProjectSlug);
   const [environment, setEnvironment] = useState("");
@@ -68,28 +68,30 @@ function ErrorsPageContent() {
   const [statusClass, setStatusClass] = useState("");
   const [handled, setHandled] = useState("");
   const [query, setQuery] = useState("");
-  const [isAiModalOpen, setIsAiModalOpen] = useState(false);
 
   const { timeRangeState } = useTimeRangeParams();
   const window = useTimeWindow(timeRangeState);
-  const { selectedKeys, toggleSelect, selectAll, clearSelection, selectedCount } = useSelection();
   const [activePagination, setActivePagination] = useState<ExplorerPagination | undefined>(undefined);
 
   const { cursor, paginationProps, onNextPage, onPreviousPage } = useCursorPagination(activePagination, {
     dependencies: [activeProjectSlug, environment, severity, statusClass, handled, timeRangeState, query],
   });
 
-  const filters = {
-    project: activeProjectSlug ?? undefined,
-    environment: environment || undefined,
-    severity: severity || undefined,
-    status: statusClass || undefined,
-    handled: handled || undefined,
-    ...rangeParams(timeRangeState),
-    search: query,
-  };
+  const filters = useMemo(
+    () => ({
+      project: activeProjectSlug ?? undefined,
+      environment: environment || undefined,
+      severity: severity || undefined,
+      status: statusClass || undefined,
+      handled: handled || undefined,
+      ...rangeParams(timeRangeState),
+      search: query,
+    }),
+    [activeProjectSlug, environment, severity, statusClass, handled, timeRangeState, query],
+  );
 
-  const { data, isLoading } = useObservabilityList<ErrorRow>("errors", { ...filters, cursor });
+  const queryParams = useMemo(() => ({ ...filters, cursor }), [filters, cursor]);
+  const { data, isLoading } = useObservabilityList<ErrorRow>("errors", queryParams);
   const timeline = useSignalTimeline("errors", filters, window);
 
   useEffect(() => {
@@ -101,8 +103,12 @@ function ErrorsPageContent() {
   const total = Number(summary.total ?? rows.length);
   const groups = Number(summary.uniqueFingerprints ?? 0);
   const users = Number(summary.affectedUsers ?? 0);
-  const fatal = Number(summary.fatal ?? rows.filter((e) => e.severity === "fatal").length);
-  const unhandled = rows.filter((e) => e.handled === false).length;
+  const { fatal, unhandled } = useMemo(() => {
+    return {
+      fatal: Number(summary.fatal ?? rows.filter((e) => e.severity === "fatal").length),
+      unhandled: rows.filter((e) => e.handled === false).length,
+    };
+  }, [rows, summary.fatal]);
 
   const cells: ReadoutCell[] = [
     { label: "Error events", value: formatCompact(total), sub: `${formatCompact(total / Math.max(1, window.ms / 3_600_000))} per hour`, tone: total > 0 ? "bad" : "good" },
@@ -184,7 +190,6 @@ function ErrorsPageContent() {
     <FillPage>
       <PageHeader
         title="Errors"
-        description="Every captured exception, newest first. Open one to read its stack, breadcrumbs, and the request it broke."
         actions={
           <>
             <Link
@@ -201,16 +206,32 @@ function ErrorsPageContent() {
 
       <SignalSheet cells={cells} loading={isLoading && !data} bars={timeline.bars} timelineLoading={timeline.isLoading} countLabel="Errors" errorLabel="Fatal or 5xx" />
 
-      <TableToolbar selectedCount={selectedCount} onClearSelection={clearSelection} onAskAi={() => setIsAiModalOpen(true)} resourceName="errors">
+      <TableToolbar resourceName="errors">
         <SearchInput placeholder="Search message, error:TypeError, route:/api…" onSearch={setQuery} defaultValue={query} />
-        <FilterSelect value={environment} onChange={setEnvironment} options={ENVIRONMENT_OPTIONS} />
-        <FilterSelect value={severity} onChange={setSeverity} options={SEV_OPTS} />
-        <FilterSelect value={statusClass} onChange={setStatusClass} options={STATUS_OPTS} />
-        <FilterSelect value={handled} onChange={setHandled} options={HANDLED_OPTS} />
+        <FilterSelect label="Environment" value={environment} onChange={setEnvironment} options={ENVIRONMENT_OPTIONS} />
+        <FilterSelect label="Severity" value={severity} onChange={setSeverity} options={SEV_OPTS} />
+        <FilterSelect label="Status" value={statusClass} onChange={setStatusClass} options={STATUS_OPTS} />
+        <FilterSelect label="Handling" value={handled} onChange={setHandled} options={HANDLED_OPTS} />
+        {(query || environment || severity || statusClass || handled) && (
+          <button
+            type="button"
+            onClick={() => {
+              setQuery("");
+              setEnvironment("");
+              setSeverity("");
+              setStatusClass("");
+              setHandled("");
+            }}
+            className="inline-flex h-8 items-center gap-1.5 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg2)]/60 px-2.5 text-[12px] text-[var(--text2)] transition-colors hover:border-[var(--border2)] hover:bg-[var(--bg2)] hover:text-[var(--text)] cursor-pointer"
+          >
+            <X className="size-3" />
+            Clear filters
+          </button>
+        )}
       </TableToolbar>
 
       <InfiniteTable
-        className="min-h-[320px] flex-1"
+        className="min-h-[280px] flex-1"
         loading={isLoading}
         items={rows}
         queryKey={["errors", activeProjectSlug, environment, severity, statusClass, handled, timeRangeState, query, cursor]}
@@ -220,31 +241,10 @@ function ErrorsPageContent() {
         emptyTitle="No errors in this window"
         emptyMessage="Nothing was captured for these filters. Widen the time range to compare against earlier traffic."
         emptyIllustration="inbox"
-        selectable
-        selectedKeys={selectedKeys}
-        onSelectToggle={toggleSelect}
-        onSelectAllToggle={selectAll}
         pagination={paginationProps}
         onNextPage={onNextPage}
         onPreviousPage={onPreviousPage}
       />
-
-      <AskAiModal
-        isOpen={isAiModalOpen}
-        onClose={() => setIsAiModalOpen(false)}
-        resource="errors"
-        selectedIds={Array.from(selectedKeys)}
-        filters={{ project: activeProjectSlug, environment, severity, statusClass, handled, timeRange: timeRangeState }}
-        search={query}
-      />
     </FillPage>
-  );
-}
-
-export default function ErrorGroupsPage() {
-  return (
-    <SelectionProvider>
-      <ErrorsPageContent />
-    </SelectionProvider>
   );
 }

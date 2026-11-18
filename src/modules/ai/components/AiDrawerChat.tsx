@@ -323,7 +323,7 @@ export function AiDrawerChat() {
           </button>
         </form>
         <p className="mt-1.5 text-center text-[10.5px] text-[var(--text3)]">
-          Pulse AI is grounded in real-time telemetry from your active project.
+          LynkTrace AI is grounded in real-time telemetry from your active project.
         </p>
       </div>
     </div>

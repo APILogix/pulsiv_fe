@@ -233,15 +233,14 @@ export function Meter({
 }: {
   label: string;
   used: number;
-  /** `null` or `-1` renders as unlimited. */
-  limit: number | null | undefined;
+  limit?: number | null;
   format?: (value: number) => string;
   tone?: SurfaceTone;
   hint?: string;
   className?: string;
 }) {
-  const unlimited = limit === null || limit === undefined || limit === -1;
-  const pct = unlimited || limit === 0 ? 0 : Math.min(100, (used / limit) * 100);
+  const hasLimit = typeof limit === 'number' && Number.isFinite(limit) && limit > 0;
+  const pct = hasLimit ? Math.min(100, (used / limit) * 100) : 0;
   const derived: SurfaceTone = tone ?? (pct >= 90 ? "red" : pct >= 75 ? "amber" : "neutral");
   const accent = derived === "neutral" || derived === "brand" ? "var(--text)" : `var(--${derived})`;
   const fmt = format ?? ((value: number) => value.toLocaleString("en-US"));
@@ -252,7 +251,7 @@ export function Meter({
         <span className="text-[13px] font-medium text-[var(--text2)]">{label}</span>
         <span className="font-[family-name:var(--mono)] text-[12px] font-medium tabular-nums text-[var(--text)]">
           {fmt(used)}
-          <span className="ml-1 font-normal text-[var(--text3)]">/ {unlimited ? "∞" : fmt(limit)}</span>
+          {hasLimit && <span className="ml-1 font-normal text-[var(--text3)]">/ {fmt(limit)}</span>}
         </span>
       </div>
       <div
@@ -268,7 +267,7 @@ export function Meter({
       {hint ? (
         <p className="text-[12px] text-[var(--text3)]">{hint}</p>
       ) : (
-        !unlimited && <p className="font-[family-name:var(--mono)] text-[11px] tabular-nums text-[var(--text3)]">{pct.toFixed(1)}% used</p>
+        hasLimit && <p className="font-[family-name:var(--mono)] text-[11px] tabular-nums text-[var(--text3)]">{pct.toFixed(1)}% used</p>
       )}
     </div>
   );

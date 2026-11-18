@@ -55,12 +55,12 @@ export {
   LogsSkeleton,
   MembersSkeleton,
   MetricsSkeleton,
+  OrganizationCreateSkeleton,
   RulesSkeleton,
   ServiceHealthSkeleton,
   SettingsSkeleton,
   TraceWaterfallSkeleton,
   WizardSkeleton,
-  WorkflowsSkeleton,
 } from "./pages";
 
 // Workspace pages: the projects list, project creation, and every project tab.

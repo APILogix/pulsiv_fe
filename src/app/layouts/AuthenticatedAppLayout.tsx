@@ -5,6 +5,7 @@ import { useOrganizations } from "@/modules/organizations/hooks/useOrganizations
 import { useBootstrapEffect } from "@/modules/bootstrap";
 import { AppLayout } from "./AppLayout";
 import { RouteSkeleton } from "@/shared/skeletons/RouteSkeleton";
+import { MotionProvider } from "@/shared/motion/MotionProvider";
 
 export function AuthenticatedAppLayout() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
@@ -18,7 +19,6 @@ export function AuthenticatedAppLayout() {
     return <Navigate to="/auth/login" replace />;
   }
 
-
   if (isLoading && !organizations.length && !activeOrgId) {
     return <RouteSkeleton framed />;
   }
@@ -27,7 +27,10 @@ export function AuthenticatedAppLayout() {
     return <Navigate to="/onboarding/organization" replace />;
   }
 
-  // Render the full app layout shell with the Outlet for child routes
-  return <AppLayout />;
+  // Render the full app layout shell with the Outlet for child routes, wrapped with MotionProvider
+  return (
+    <MotionProvider>
+      <AppLayout />
+    </MotionProvider>
+  );
 }
-

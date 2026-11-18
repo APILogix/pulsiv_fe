@@ -12,8 +12,6 @@ folder per surface.
 | Workspaces (projects list, project creation, every project tab) | [workspaces/DESIGN.md](workspaces/DESIGN.md) | Shipped |
 | Organization (dashboard, team, SSO, SCIM, domains, security, audit, compliance, settings) | [organization/DESIGN.md](organization/DESIGN.md) | Shipped |
 | Alerting (overview, incidents, events, rules, escalations, templates, silences, routing, metrics, dead letters) | [alerting/DESIGN.md](alerting/DESIGN.md) | Shipped |
-| Workflows (automation overview, workflows, templates, runs, approvals, event inbox, audit) | [automation/DESIGN.md](automation/DESIGN.md) | Shipped |
-
 ## Shared foundations
 
 - Theme: dark only, cool zinc neutrals (`--bg` to `--bg3`, `--border`, `--border2`, `--text` to `--text3`). No light theme; `prefers-contrast: more` replaces it.

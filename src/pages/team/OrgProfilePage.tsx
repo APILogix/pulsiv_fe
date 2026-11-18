@@ -424,7 +424,7 @@ export default function OrgProfilePage() {
   if (isError && !org) {
     return (
       <WorkspacePage>
-        <ProjectPageHeader title="Organization" description="Access, security, and usage for this organization." />
+        <ProjectPageHeader title="Organization" />
         <Sheet label="Organization">
           <SheetError
             title="Could not load this organization"
@@ -439,7 +439,7 @@ export default function OrgProfilePage() {
   if (isLoading || !org) {
     return (
       <WorkspacePage>
-        <ProjectPageHeader title="Organization" description="Access, security, and usage for this organization." />
+        <ProjectPageHeader title="Organization" />
         <Readouts
           loading
           cells={[
@@ -461,7 +461,11 @@ export default function OrgProfilePage() {
   const controlsInPlace = controls.filter((control) => control.state === "enforced" || control.state === "active").length;
   const controlsNeedingAttention = controls.filter((control) => control.state === "partial").length;
 
-  const memberCount = limits?.limits?.members?.used || billing?.usage?.activeMembers || 0;
+  const rawActiveMembers =
+    typeof billing?.usage?.activeMembers === "object"
+      ? billing?.usage?.activeMembers?.used
+      : billing?.usage?.activeMembers;
+  const memberCount = limits?.limits?.members?.used || rawActiveMembers || 0;
   const memberLimit = limits?.limits?.members?.limit ?? null;
   const pendingInvites = billing?.usage?.pendingInvitations ?? 0;
   const eventsUsed = limits?.limits?.eventsMonthly?.used ?? 0;
@@ -535,7 +539,6 @@ export default function OrgProfilePage() {
             {org.status}
           </Pill>
         }
-        description="Access, security, and usage for this organization."
         meta={[
           { label: "Slug", value: `@${org.slug}`, mono: true },
           planLabel ? { label: "Plan", value: <span className="first-letter:uppercase">{planLabel}</span> } : null,
@@ -549,7 +552,7 @@ export default function OrgProfilePage() {
               <Link to={href("settings")}>Settings</Link>
             </UiButton>
             <UiButton asChild size="lg">
-              <Link to={href("team")}>Manage team</Link>
+              <Link to={href("members")}>Manage members</Link>
             </UiButton>
           </>
         }

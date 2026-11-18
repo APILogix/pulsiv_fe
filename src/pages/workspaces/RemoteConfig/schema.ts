@@ -11,7 +11,6 @@
  * as editable fields — the backend rejects them if sent.
  */
 import type {
-  CompressionMode,
   QueueOverflowStrategy,
   RetryBackoff,
   TransportPriority,
@@ -25,7 +24,6 @@ export const FEATURE_KEYS = [
   'logging',
   'profiling',
   'crons',
-  'sessionReplay',
   'runtimeMetrics',
   'eventLoopMonitoring',
   'gcMonitoring',
@@ -53,7 +51,6 @@ export const SAMPLING_SIGNALS = [
   'events',
   'messages',
   'profiles',
-  'replays',
   'crons',
 ] as const;
 export type SamplingSignal = (typeof SAMPLING_SIGNALS)[number];
@@ -95,7 +92,6 @@ export const ROUTE_KEYS = [
   'profiles',
   'events',
   'crons',
-  'replays',
 ] as const;
 export type RouteKey = (typeof ROUTE_KEYS)[number];
 
@@ -109,14 +105,12 @@ export const ROUTE_LABELS: Record<RouteKey, string> = {
   profiles: 'Profiles',
   events: 'Events',
   crons: 'Cron check-ins',
-  replays: 'Session replays',
 };
 
 export interface TransportRouteState {
   batchSize: number;
   flushIntervalMs: number;
   timeoutMs: number;
-  compression: CompressionMode;
   priority: TransportPriority;
 }
 
@@ -180,7 +174,6 @@ const DEFAULT_ROUTE: TransportRouteState = {
   batchSize: 100,
   flushIntervalMs: 5000,
   timeoutMs: 10000,
-  compression: 'gzip',
   priority: 'normal',
 };
 
@@ -193,7 +186,6 @@ export const DEFAULT_SDK_CONFIG: SdkConfigState = {
     logging: true,
     profiling: false,
     crons: false,
-    sessionReplay: false,
     runtimeMetrics: false,
     eventLoopMonitoring: false,
     gcMonitoring: false,
@@ -217,7 +209,6 @@ export const DEFAULT_SDK_CONFIG: SdkConfigState = {
     events: 1,
     messages: 1,
     profiles: 0.1,
-    replays: 0.1,
     crons: 1,
     routes: {},
   },

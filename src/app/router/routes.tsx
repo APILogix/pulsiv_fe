@@ -2,7 +2,7 @@ import { createBrowserRouter } from "react-router";
 import { RootLayout } from "../layouts/RootLayout";
 import { publicRoutes } from "./public-routes";
 import { protectedRoutes } from "./protected-routes";
-import { RouteErrorBoundary } from "@/shared/components/error-boundary/AppErrorBoundary";
+import { RouteErrorBoundary } from "@/shared/components/error-boundary/RouteErrorBoundary";
 
 export const router = createBrowserRouter([
   {

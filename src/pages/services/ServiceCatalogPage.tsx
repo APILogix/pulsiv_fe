@@ -93,7 +93,7 @@ export default function ServiceCatalogPage() {
                 View Ingestion Endpoints
               </Button>
             }
-            hint="Services instrumented with the Pulsiv OpenTelemetry exporter will automatically appear above."
+            hint="Services instrumented with the LynkTrace OpenTelemetry exporter will automatically appear above."
           />
         )
       ) : (

@@ -1,55 +1,53 @@
-import { useState } from "react";
-import { useEndpoints } from "@/hooks/useDummyData";
-import { PageHeader, KpiCard, SectionCard, StatusBadge, MetricSparkline, formatCompact } from "@/shared/observe";
-
-const SDK_VERSIONS = [
-  { v: "1.5.0", pct: 62, color: "var(--brand)" },
-  { v: "1.4.2", pct: 21, color: "var(--blue)" },
-  { v: "1.3.8", pct: 11, color: "var(--amber)" },
-  { v: "< 1.3", pct: 6, color: "var(--red)" },
-];
+import { useEndpointsAnalytics } from "@/modules/analytics/hooks/useAnalyticsV2";
+import { PageHeader, KpiCard, SectionCard, formatCompact } from "@/shared/observe";
 
 export default function ConnectionsOverview() {
-  const { data } = useEndpoints();
-  const endpoints = data ?? [];
-  const totalReq = endpoints.reduce((s, e) => s + e.requests24h, 0);
-  const [sparklineData] = useState(() => Array.from({ length: 30 }, () => Math.random() * 50 + 20));
+  const { data, isLoading, error } = useEndpointsAnalytics();
+  const endpoints = data?.data?.table?.rows ?? [];
+  const totalRequests = endpoints.reduce((sum, endpoint) => sum + endpoint.requests, 0);
+  const observedErrors = endpoints.reduce(
+    (sum, endpoint) => sum + endpoint.requests * (endpoint.errorRatePct ?? 0) / 100,
+    0,
+  );
+  const p95Values = endpoints.flatMap((endpoint) => endpoint.p95Ms == null ? [] : [endpoint.p95Ms]);
+  const meanP95 = p95Values.length ? Math.round(p95Values.reduce((sum, value) => sum + value, 0) / p95Values.length) : null;
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title="Connections Overview" description="Platform ingestion summary and pipeline health." />
+      <PageHeader title="Connections overview" description="Observed request volume and latency for your API endpoints." />
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <KpiCard label="Ingested / 24h" value={formatCompact(totalReq)} delta="+6.2%" trend="up" />
-        <KpiCard label="Healthy endpoints" value={`${endpoints.filter((e) => e.status === "healthy").length}/${endpoints.length}`} />
-        <KpiCard label="Avg p95" value={`${Math.round(endpoints.reduce((s, e) => s + e.p95Latency, 0) / (endpoints.length || 1))}ms`} />
-        <KpiCard label="Drop rate" value="0.04%" />
+        <KpiCard label="Requests" value={formatCompact(totalRequests)} />
+        <KpiCard label="Observed endpoints" value={endpoints.length} />
+        <KpiCard label="Estimated errors" value={formatCompact(Math.round(observedErrors))} />
+        <KpiCard label="Mean endpoint p95" value={meanP95 == null ? "—" : `${meanP95}ms`} />
       </div>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <SectionCard title="Route health">
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            {endpoints.map((e) => (
-              <div key={e.id} className="flex items-center justify-between rounded-[8px] border border-[var(--border)] bg-[var(--bg2)] px-3 py-2">
-                <span className="font-[family-name:var(--mono)] text-[12px] text-[var(--text2)]">{e.path}</span>
-                <StatusBadge status={e.status} />
+      <SectionCard title="Observed routes" description="Metrics come from the analytics API for the selected organization or project.">
+        {isLoading ? (
+          <p className="text-[13px] text-[var(--text3)]">Loading endpoint metrics…</p>
+        ) : error ? (
+          <p role="alert" className="text-[13px] text-[var(--red)]">Endpoint metrics could not be loaded.</p>
+        ) : endpoints.length === 0 ? (
+          <p className="text-[13px] text-[var(--text3)]">No endpoint traffic was recorded for this time range.</p>
+        ) : (
+          <div className="divide-y divide-[var(--border)]">
+            {endpoints.map((endpoint) => (
+              <div key={`${endpoint.service ?? ""}:${endpoint.endpoint}`} className="flex flex-wrap items-center justify-between gap-3 py-3 first:pt-0 last:pb-0">
+                <div className="min-w-0">
+                  <code className="block truncate font-[family-name:var(--mono)] text-[12px] text-[var(--text)]">{endpoint.endpoint}</code>
+                  {endpoint.service && <span className="mt-1 block text-[11px] text-[var(--text3)]">{endpoint.service}</span>}
+                </div>
+                <div className="flex shrink-0 items-center gap-4 text-[12px] text-[var(--text2)]">
+                  <span>{formatCompact(endpoint.requests)} requests</span>
+                  <span>{endpoint.errorRatePct == null ? "—" : `${endpoint.errorRatePct.toFixed(2)}% errors`}</span>
+                  <span>p95 {endpoint.p95Ms == null ? "—" : `${Math.round(endpoint.p95Ms)}ms`}</span>
+                </div>
               </div>
             ))}
           </div>
-        </SectionCard>
-
-        <SectionCard title="SDK version distribution">
-          <div className="flex flex-col gap-3">
-            {SDK_VERSIONS.map((s) => (
-              <div key={s.v}>
-                <div className="mb-1 flex justify-between text-[12px]"><span className="font-[family-name:var(--mono)] text-[var(--text2)]">{s.v}</span><span className="text-[var(--text3)]">{s.pct}%</span></div>
-                <div className="h-2 overflow-hidden rounded-full bg-[var(--bg3)]"><div className="h-full rounded-full" style={{ width: `${s.pct}%`, background: s.color }} /></div>
-              </div>
-            ))}
-          </div>
-          <div className="mt-4"><MetricSparkline data={sparklineData} width={420} height={60} /></div>
-        </SectionCard>
-      </div>
+        )}
+      </SectionCard>
     </div>
   );
 }

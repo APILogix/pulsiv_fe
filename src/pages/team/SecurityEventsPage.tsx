@@ -282,7 +282,6 @@ export default function SecurityEventsPage() {
     <WorkspacePage>
       <ProjectPageHeader
         title="Security monitoring"
-        description="Authentication, session, and privilege activity captured for this organization. Expand an event to inspect its raw payload."
       />
 
       <Readouts cells={readouts} loading={isLoading} label="Security summary" />

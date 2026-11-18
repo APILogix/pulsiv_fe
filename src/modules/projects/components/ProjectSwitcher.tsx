@@ -1,10 +1,12 @@
+import { useState } from "react";
 import { useNavigate } from "react-router";
 import { Check, ChevronsUpDown, FolderOpen, Plus } from "lucide-react";
 import { useOrgStore } from "@/modules/organizations/store/org.store";
 import { projectPath, projectsListPath } from "@/modules/projects/navigation/project-routes";
 
-import { useProjects } from "@/modules/projects/hooks/useProjects";
-import type { Project } from "@/modules/projects/api/types";
+import { useProjects, RECENT_PROJECTS_QUERY } from "@/modules/projects/hooks/useProjects";
+import type { Project, ProjectListItem } from "@/modules/projects/api/types";
+import { CreateProjectDialog } from "./CreateProjectDialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,6 +16,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+
+const EMPTY_PROJECTS: ProjectListItem[] = [];
 
 const STATUS_DOT: Record<Project["status"], string> = {
   active: "bg-[var(--green)]",
@@ -34,13 +38,15 @@ export function ProjectSwitcher({
   project: Project;
   collapsed?: boolean;
 }) {
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
   const navigate = useNavigate();
   const activeOrgSlug = useOrgStore((s) => s.activeOrgSlug);
-  const { data } = useProjects({ limit: 100, sortBy: "updated_at", sortOrder: "desc" });
-  const projects = data?.data ?? [];
+  const { data } = useProjects(RECENT_PROJECTS_QUERY);
+  const projects = data?.data ?? EMPTY_PROJECTS;
 
   return (
-    <DropdownMenu>
+    <>
+      <DropdownMenu>
       <DropdownMenuTrigger
         className={cn(
           "group flex w-full items-center gap-2.5 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg2)]/60 text-left transition-colors duration-150",
@@ -102,10 +108,19 @@ export function ProjectSwitcher({
         <DropdownMenuItem onSelect={() => navigate(projectsListPath(activeOrgSlug ?? 'legacy'))} className="text-[13px]">
           All projects
         </DropdownMenuItem>
-        <DropdownMenuItem onSelect={() => navigate(activeOrgSlug ? `/${activeOrgSlug}/projects/new` : "/projects/new")} className="gap-2 text-[13px]">
+        <DropdownMenuItem
+          onSelect={(e) => {
+            e.preventDefault();
+            setIsCreateOpen(true);
+          }}
+          className="gap-2 text-[13px]"
+        >
           <Plus className="size-3.5" aria-hidden="true" /> New project
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
+
+    <CreateProjectDialog open={isCreateOpen} onOpenChange={setIsCreateOpen} />
+    </>
   );
 }

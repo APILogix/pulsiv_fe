@@ -1,13 +1,18 @@
-import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router";
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate, useParams, useSearchParams } from "react-router";
 import { Plus } from "lucide-react";
 
+import { CreateProjectDialog } from "@/modules/projects/components/CreateProjectDialog";
 import { useOrgStore } from "@/modules/organizations/store/org.store";
 import { useOrganizations } from "@/modules/organizations/hooks/useOrganizations";
 import { newProjectPath, projectPath } from "@/modules/projects/navigation/project-routes";
 import { useProjects } from "@/modules/projects/hooks/useProjects";
 import type { ListProjectsQuery, ProjectListItem, ProjectStatus } from "@/modules/projects/api/types";
 import { apiErrorMessage } from "@/modules/projects/components/project-ui";
+
+const EMPTY_PROJECT_ITEMS: ProjectListItem[] = [];
+
+// ... remainder unchanged up to component body
 import {
   HIDE_BELOW_LG,
   HIDE_BELOW_MD,
@@ -89,26 +94,56 @@ export default function ProjectsPage() {
   const [searchInput, setSearchInput] = useState("");
   const search = useDebounce(searchInput.trim(), 250);
 
-  const query: ListProjectsQuery = {
-    ...(status !== "all" ? { status } : {}),
-    ...(search ? { search } : {}),
-    sortBy,
-    sortOrder: sortBy === "name" ? "asc" : "desc",
-    limit: 100,
-  };
+  const query: ListProjectsQuery = useMemo(
+    () => ({
+      ...(status !== "all" ? { status } : {}),
+      ...(search ? { search } : {}),
+      sortBy,
+      sortOrder: sortBy === "name" ? "asc" : "desc",
+      limit: 100,
+    }),
+    [status, search, sortBy],
+  );
 
   const { data, isLoading, error, refetch } = useProjects(query);
-  const projects = data?.data ?? [];
+  const projects = data?.data ?? EMPTY_PROJECT_ITEMS;
 
   // Readings describe the whole organization, never the current filter.
   const { data: summary, isLoading: summaryLoading } = useProjects(SUMMARY_QUERY);
-  const everyProject = summary?.data ?? [];
-  const counts = statusCounts(everyProject);
-  const totalProjects = summary?.total ?? everyProject.length;
-  const issuedKeys = everyProject.reduce((sum, project) => sum + project.apiKeysCount, 0);
-  const activeKeys = everyProject.reduce((sum, project) => sum + project.activeApiKeysCount, 0);
+  const everyProject = summary?.data ?? EMPTY_PROJECT_ITEMS;
+  const { counts, totalProjects, issuedKeys, activeKeys } = useMemo(() => {
+    return {
+      counts: statusCounts(everyProject),
+      totalProjects: summary?.total ?? everyProject.length,
+      issuedKeys: everyProject.reduce((sum, project) => sum + project.apiKeysCount, 0),
+      activeKeys: everyProject.reduce((sum, project) => sum + project.activeApiKeysCount, 0),
+    };
+  }, [everyProject, summary?.total]);
 
-  const createPath = activeOrgSlug ? newProjectPath(activeOrgSlug) : "/projects/new";
+  const [searchParams, setSearchParams] = useSearchParams();
+  const isCreateParam = searchParams.get("create") === "true" || searchParams.get("new") === "true";
+  const [isCreateOpen, setIsCreateOpen] = useState(isCreateParam);
+
+  useEffect(() => {
+    if (isCreateParam && !isCreateOpen) {
+      setIsCreateOpen(true);
+    }
+  }, [isCreateParam, isCreateOpen]);
+
+  const handleOpenCreate = () => {
+    setIsCreateOpen(true);
+  };
+
+  const handleCloseCreate = (open: boolean) => {
+    setIsCreateOpen(open);
+    if (!open && isCreateParam) {
+      const nextParams = new URLSearchParams(searchParams);
+      nextParams.delete("create");
+      nextParams.delete("new");
+      setSearchParams(nextParams, { replace: true });
+    }
+  };
+
   const openPath = (project: ProjectListItem) =>
     activeOrgSlug ? projectPath(activeOrgSlug, project.publicId, "overview") : `/projects/${project.id}/overview`;
 
@@ -159,7 +194,7 @@ export default function ProjectsPage() {
         title="Create your first project"
         description="A project holds one application's environments, ingestion keys, members, and alert routing. Creating one also sets up a Production environment and its first ingestion key."
         action={
-          <UiButton size="lg" onClick={() => navigate(createPath)}>
+          <UiButton size="lg" onClick={handleOpenCreate}>
             <Plus className="size-4" aria-hidden="true" /> New project
           </UiButton>
         }
@@ -218,9 +253,8 @@ export default function ProjectsPage() {
     <WorkspacePage>
       <ProjectPageHeader
         title="Projects"
-        description="Each project holds one application's environments, ingestion keys, members, and alert routing. Open one to manage it."
         actions={
-          <UiButton size="lg" onClick={() => navigate(createPath)}>
+          <UiButton size="lg" onClick={handleOpenCreate}>
             <Plus className="size-4" aria-hidden="true" /> New project
           </UiButton>
         }
@@ -263,6 +297,8 @@ export default function ProjectsPage() {
       >
         {body}
       </Sheet>
+
+      <CreateProjectDialog open={isCreateOpen} onOpenChange={handleCloseCreate} />
     </WorkspacePage>
   );
 }

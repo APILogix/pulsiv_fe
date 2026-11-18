@@ -8,14 +8,13 @@ import {
 } from "@/shared/observe";
 import type { HistogramBar, ReadoutCell } from "@/shared/observe";
 import { ghostButtonClass } from "@/shared/observe/form";
-import { useOrgStore } from "@/modules/organizations/store/org.store";
 import { cn } from "@/lib/utils";
-import { askObservabilityEvent, useObservabilityDetail, type AIIntent, type ObservabilityEventDetail } from "../hooks/useObservabilityApi";
+import { useObservabilityDetail, type ObservabilityEventDetail } from "../hooks/useObservabilityApi";
 import {
   COMMON_FIELDS, DETAIL_RESOURCES, RESOURCE_FIELDS, arrayValue, asRecord, detailId, hasValue, numberValue, pick, stringValue,
   type DetailResource, type JsonRecord,
 } from "./detail-contract";
-import { AIInvestigationPanel, AttributesPanels, CorrelationList, FieldList, RelatedResources } from "./detail-panels";
+import { AttributesPanels, CorrelationList, FieldList, RelatedResources } from "./detail-panels";
 
 const LIST: Record<DetailResource, { label: string; to: string; noun: string }> = {
   errors: { label: "Errors", to: "/observability/errors", noun: "Error" },
@@ -207,10 +206,9 @@ function CronExecution({ entity, detail }: { entity: JsonRecord; detail: Observa
 
 // ── Page ────────────────────────────────────────────────────
 
-type TabId = "details" | "related" | "ai";
+type TabId = "details" | "related";
 
 export default function ResourceDetailPage({ resource, id }: { resource: DetailResource; id: string }) {
-  const activeOrgId = useOrgStore((state) => state.activeOrgId);
   const decoded = decodeURIComponent(id);
   const { data: detail, isLoading, error } = useObservabilityDetail<ObservabilityEventDetail>(resource, decoded);
   const [tab, setTab] = useState<TabId>("details");
@@ -298,7 +296,6 @@ export default function ResourceDetailPage({ resource, id }: { resource: DetailR
         items={[
           { id: "details", label: "Details" },
           { id: "related", label: "Related", count: relatedCount },
-          { id: "ai", label: "AI analysis" },
         ]}
         activeId={tab}
         onSelect={setTab}
@@ -341,17 +338,6 @@ export default function ResourceDetailPage({ resource, id }: { resource: DetailR
             </>
           )}
           {tab === "related" && <RelatedResources detail={detail} />}
-          {tab === "ai" && (
-            <AIInvestigationPanel
-              detail={detail}
-              resource={resource}
-              id={canonicalId}
-              ask={(intent: AIIntent, question?: string) => {
-                if (!activeOrgId) throw new Error("No active organization.");
-                return askObservabilityEvent(activeOrgId, resource, canonicalId, intent, question);
-              }}
-            />
-          )}
         </div>
 
         <aside className="flex min-w-0 flex-col gap-4 xl:sticky xl:top-14">

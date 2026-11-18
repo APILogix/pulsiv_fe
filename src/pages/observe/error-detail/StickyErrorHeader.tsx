@@ -1,6 +1,5 @@
 import { Link, useNavigate } from "react-router";
-import { Sparkles, Copy, MoreHorizontal, GitBranch, Layers, Globe } from "lucide-react";
-import { useAiDrawerStore } from "@/modules/ai/store/ai-drawer.store";
+import { Copy, MoreHorizontal, GitBranch, Layers, Globe } from "lucide-react";
 import {
   DetailHeader,
   EnvironmentBadge,
@@ -11,7 +10,7 @@ import {
   TRACE_CHIP,
   NEUTRAL_CHIP,
 } from "@/shared/observe";
-import { aiButtonClass, ghostButtonClass } from "@/shared/observe/form";
+import { ghostButtonClass } from "@/shared/observe/form";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,7 +24,6 @@ export function StickyErrorHeader({
   detail,
 }: {
   detail: ErrorDetailResponse;
-  onAnalyze?: () => void;
 }) {
   const navigate = useNavigate();
   const errorName = detail.error?.name ?? "Error";
@@ -104,14 +102,6 @@ export function StickyErrorHeader({
               View issue
             </button>
           )}
-          <button
-            type="button"
-            className={aiButtonClass}
-            onClick={() => useAiDrawerStore.getState().openInvestigate({ resourceType: "error", publicId: detail.publicId })}
-          >
-            <Sparkles className="size-3.5" aria-hidden="true" />
-            Investigate
-          </button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button type="button" aria-label="More actions" className={`${ghostButtonClass} w-9 px-0`}>

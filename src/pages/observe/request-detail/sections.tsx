@@ -1,5 +1,5 @@
 import { Link } from "react-router";
-import { Bug, GitBranch, RefreshCw, ScrollText, Sparkles } from "lucide-react";
+import { Bug, GitBranch, ScrollText } from "lucide-react";
 import {
   CopyButton,
   MethodBadge,
@@ -8,9 +8,9 @@ import {
   formatBytes,
   formatLatency,
 } from "@/shared/observe";
-import { aiButtonClass, ghostButtonClass } from "@/shared/observe/form";
+import { ghostButtonClass } from "@/shared/observe/form";
 import { cn } from "@/lib/utils";
-import { normalizeAiResponse, sectionDomId } from "./helpers";
+import { sectionDomId } from "./helpers";
 import { EmptyInline, KeyValueGrid, SectionShell } from "./ui";
 import type {
   RequestContextDetail,
@@ -204,74 +204,6 @@ export function MetadataSection({ metadata }: { metadata: RequestMetadataDetail 
   );
 }
 
-export function AISection({
-  aiResponse,
-  analyzing,
-  onAnalyze,
-}: {
-  aiResponse: unknown;
-  analyzing: boolean;
-  onAnalyze: () => void;
-}) {
-  const parsed = normalizeAiResponse(aiResponse);
-
-  return (
-    <SectionShell
-      id={sectionDomId("ai")}
-      title="AI analysis"
-      description="Root cause and next steps from the request, its trace, and correlated telemetry."
-      action={
-        parsed ? (
-          <button type="button" className={ghostButtonClass} onClick={onAnalyze} disabled={analyzing}>
-            <RefreshCw className={cn("size-3.5", analyzing && "animate-spin")} aria-hidden="true" />
-            {analyzing ? "Analyzing…" : "Run again"}
-          </button>
-        ) : undefined
-      }
-    >
-      {!parsed ? (
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <p className="max-w-[60ch] text-[13px] leading-[1.6] text-[var(--text2)]">
-            No analysis yet. The model reads timing, status, payload sizes, and the correlated trace, then suggests a likely cause.
-          </p>
-          <button type="button" className={aiButtonClass} onClick={onAnalyze} disabled={analyzing}>
-            <Sparkles className="size-3.5" aria-hidden="true" />
-            {analyzing ? "Analyzing…" : "Analyze request"}
-          </button>
-        </div>
-      ) : (
-        <div className="flex flex-col gap-5">
-          {parsed.summary && <p className="max-w-[80ch] text-[14px] leading-[1.65] text-[var(--text)]">{parsed.summary}</p>}
-          {parsed.rootCause && (
-            <div className="rounded-[var(--radius)] bg-[var(--amber-bg)] px-4 py-3">
-              <h3 className="text-[12px] font-medium text-[var(--amber)]">Likely cause</h3>
-              <p className="mt-1 text-[13px] leading-[1.6] text-[var(--text)]">{parsed.rootCause}</p>
-            </div>
-          )}
-          {parsed.recommendations.length > 0 && (
-            <div>
-              <h3 className="text-[13px] font-medium text-[var(--text)]">Recommendations</h3>
-              <ol className="mt-2 flex list-decimal flex-col gap-1.5 pl-5 text-[13px] leading-[1.6] text-[var(--text2)] marker:font-[family-name:var(--mono)] marker:text-[var(--text3)]">
-                {parsed.recommendations.map((item) => <li key={item}>{item}</li>)}
-              </ol>
-            </div>
-          )}
-          <div className="flex flex-wrap items-center gap-4 border-t border-[var(--border)] pt-3 text-[12px] text-[var(--text3)]">
-            {parsed.confidence != null && (
-              <span>
-                Confidence{" "}
-                <span className="font-[family-name:var(--mono)] tabular-nums text-[var(--ai)]">
-                  {Math.round(parsed.confidence <= 1 ? parsed.confidence * 100 : parsed.confidence)}%
-                </span>
-              </span>
-            )}
-            {parsed.generatedAt && <span>Generated <Timestamp value={parsed.generatedAt} /></span>}
-          </div>
-        </div>
-      )}
-    </SectionShell>
-  );
-}
 
 function RelatedRow({ icon: Icon, tone, label, primary, secondary, href }: {
   icon: typeof GitBranch;

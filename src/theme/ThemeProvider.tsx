@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
 /**
  * Sentinel theming model — sentinel-design.md §1.
@@ -40,8 +40,10 @@ interface ThemeContextValue {
 /* ── Context ───────────────────────────────────────────── */
 const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
 
-export const THEME_STORAGE_KEY = 'sentinel-theme';
-export const SENTINEL_THEMES: SentinelTheme[] = ['mono'];
+export const THEME_STORAGE_KEY = 'lynktrace-theme';
+export const LEGACY_THEME_STORAGE_KEY = 'sentinel-theme';
+export const LYNKTRACE_THEMES: SentinelTheme[] = ['mono'];
+export const SENTINEL_THEMES: SentinelTheme[] = LYNKTRACE_THEMES;
 export const DEFAULT_THEME: SentinelTheme = 'mono';
 
 export const THEME_META: Record<SentinelTheme, { label: string; swatch: string; description: string }> = {
@@ -69,6 +71,7 @@ export function applyTheme(_next: SentinelTheme = 'mono') {
   const root = document.documentElement;
 
   root.setAttribute('data-theme', 'mono');
+  document.getElementById('lynktrace-root')?.setAttribute('data-theme', 'mono');
   document.getElementById('sentinel-root')?.setAttribute('data-theme', 'mono');
   root.style.colorScheme = 'dark';
 }
@@ -94,8 +97,18 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setTheme('mono');
   }, [setTheme]);
 
+  const value = useMemo<ThemeContextValue>(
+    () => ({
+      theme,
+      setTheme,
+      toggleTheme,
+      resolvedTheme: 'dark',
+    }),
+    [theme, setTheme, toggleTheme]
+  );
+
   return (
-    <ThemeContext.Provider value={{ theme, setTheme, toggleTheme, resolvedTheme: 'dark' }}>
+    <ThemeContext.Provider value={value}>
       {children}
     </ThemeContext.Provider>
   );

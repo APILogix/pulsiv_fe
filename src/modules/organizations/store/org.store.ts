@@ -74,3 +74,5 @@ export const useOrgStore = create<OrgState>()(
   )
 );
 
+export const orgStore = useOrgStore;
+

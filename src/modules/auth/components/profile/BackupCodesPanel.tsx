@@ -74,7 +74,7 @@ export function BackupCodesPanel() {
     const timestamp = new Date().toISOString().split('T')[0];
     const fileText = [
       '========================================',
-      '        SENTINEL RECOVERY CODES         ',
+      '       LYNKTRACE RECOVERY CODES         ',
       '========================================',
       `Account: ${user?.email ?? 'User'}`,
       `Generated: ${new Date().toLocaleString()}`,
@@ -90,7 +90,7 @@ export function BackupCodesPanel() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `sentinel-recovery-codes-${timestamp}.txt`;
+    a.download = `lynktrace-recovery-codes-${timestamp}.txt`;
     a.click();
     URL.revokeObjectURL(url);
     toast.success('Recovery codes downloaded');
@@ -104,7 +104,7 @@ export function BackupCodesPanel() {
       <!DOCTYPE html>
       <html>
         <head>
-          <title>Sentinel Recovery Codes</title>
+          <title>LynkTrace Recovery Codes</title>
           <style>
             body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 40px; color: #111; }
             h2 { margin-bottom: 4px; font-size: 20px; }
@@ -115,7 +115,7 @@ export function BackupCodesPanel() {
           </style>
         </head>
         <body>
-          <h2>Sentinel Emergency Recovery Codes</h2>
+          <h2>LynkTrace Emergency Recovery Codes</h2>
           <p>Account: <strong>${user?.email ?? 'User'}</strong> | Generated: ${new Date().toLocaleDateString()}</p>
           <div class="grid">
             ${codes.map((c, i) => `<div class="code-box">${String(i + 1).padStart(2, '0')}. ${c}</div>`).join('')}

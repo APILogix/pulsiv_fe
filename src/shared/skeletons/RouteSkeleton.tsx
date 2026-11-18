@@ -23,12 +23,12 @@ import {
   LogsSkeleton,
   MembersSkeleton,
   MetricsSkeleton,
+  OrganizationCreateSkeleton,
   RulesSkeleton,
   ServiceHealthSkeleton,
   SettingsSkeleton,
   TraceWaterfallSkeleton,
   WizardSkeleton,
-  WorkflowsSkeleton,
 } from "./pages";
 import {
   ProjectActivitySkeleton,
@@ -37,7 +37,6 @@ import {
   ProjectAnalyticsSkeleton,
   ProjectApiKeysSkeleton,
   ProjectConnectorsSkeleton,
-  ProjectCreateSkeleton,
   ProjectDeadLettersSkeleton,
   ProjectDeliveriesSkeleton,
   ProjectEnvironmentsSkeleton,
@@ -100,8 +99,9 @@ const RULES: readonly Rule[] = [
   [/^\/[^/]+\/p\/[^/]+$/, ProjectOverviewSkeleton],
 
   /* ── workspaces & project creation ───────────────────────────────────── */
-  [/^\/projects\/new$/, ProjectCreateSkeleton],
-  [/^\/[^/]+\/projects\/new$/, ProjectCreateSkeleton],
+  // This legacy route redirects to the projects list with its create dialog open.
+  [/^\/projects\/new$/, ProjectsSkeleton],
+  [/^\/[^/]+\/projects\/new$/, ProjectsSkeleton],
   [/^\/projects$/, ProjectsSkeleton],
   [/^\/[^/]+\/projects$/, ProjectsSkeleton],
 
@@ -155,7 +155,6 @@ const RULES: readonly Rule[] = [
   [/^\/alerts\/incidents$/, AlertsSkeleton],
   [new RegExp(`^/alerts/events/${ID}$`), DetailSkeleton],
   [/^\/alerts\/events$/, LogsSkeleton],
-  [new RegExp(`^/alerts/policies/${ID}$`), DetailSkeleton],
   [/^\/alerts\/rules$/, RulesSkeleton],
   [new RegExp(`^/alerts/escalations/${ID}$`), DetailSkeleton],
   [/^\/alerts\/(escalations|routing)$/, RulesSkeleton],
@@ -164,14 +163,6 @@ const RULES: readonly Rule[] = [
   [/^\/alerts\/(silences|dead-letters)$/, ListSkeleton],
   [/^\/alerts$/, AlertsSkeleton],
   [new RegExp(`^/alerts/${ID}$`), DetailSkeleton],
-
-  /* ── automation ──────────────────────────────────────────────────────── */
-  [new RegExp(`^/automation/(workflows|runs|approvals)/${ID}$`), DetailSkeleton],
-  [/^\/automation\/workflows$/, WorkflowsSkeleton],
-  [/^\/automation\/(runs|approvals)$/, ListSkeleton],
-  [/^\/automation\/templates$/, IntegrationsSkeleton],
-  [/^\/automation\/(events|audit)$/, AuditSkeleton],
-  [/^\/automation$/, WorkflowsSkeleton],
 
   /* ── ingestion ───────────────────────────────────────────────────────── */
   [/^\/ingestion\/health$/, ServiceHealthSkeleton],
@@ -219,6 +210,7 @@ const RULES: readonly Rule[] = [
   [/^\/auth\/sessions$/, MembersSkeleton],
   [/^\/auth\/(security|step-up)$/, SettingsSkeleton],
   [/^\/auth(\/.*)?$/, AuthCardSkeleton],
+  [/^\/onboarding\/organization$/, OrganizationCreateSkeleton],
   [/^\/onboarding(\/.*)?$/, WizardSkeleton],
 ];
 
@@ -284,11 +276,12 @@ function useSkeletonContinuity() {
    boundary, project shell while the project resolves) must sit exactly where
    that layout will put the page, or it jumps on handoff. */
 
-type FrameKind = "project" | "settings" | "home" | "module";
+type FrameKind = "project" | "settings" | "home" | "module" | "full";
 
 function frameKind(pathname: string): FrameKind {
   const segments = stripOrgSlug(pathname).split("/").filter(Boolean);
   const root = segments[0];
+  if (root === "onboarding") return "full";
   if (root === "p") return "project";
   if (root === "settings" || root === "account") return "settings";
   if (!root || root === "dashboard") return "home";
@@ -349,6 +342,8 @@ export function RouteFrame({ pathname, children }: { pathname: string; children:
     // Home renders BoardPage with its own gutter.
     return <div className="mx-auto w-full max-w-[1400px] px-4 py-6 sm:px-6">{children}</div>;
   }
+
+  if (kind === "full") return <div className="min-h-[100dvh] w-full">{children}</div>;
 
   // ModuleLayout gutter.
   return <div className="w-full px-6 py-6">{children}</div>;

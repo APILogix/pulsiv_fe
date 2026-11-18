@@ -32,9 +32,12 @@ export function PulseCommandPalette() {
         Observability: 'Observability',
         Projects: 'Projects',
         Alerts: 'Alerts',
+        'Alerts & Incidents': 'Alerts',
         Ingestion: 'Ingestion',
         'AI Ops': 'AI Ops',
+        'AI Intelligence': 'AI Ops',
         Administration: 'Administration',
+        Organization: 'Administration',
         Billing: 'Billing',
         Settings: 'Settings',
       };
@@ -122,7 +125,7 @@ export function PulseCommandPalette() {
                 </CommandItem>
                 <CommandItem onSelect={() => { setOpen(false); navigate('/admin/members'); }} className="group gap-3 py-2">
                   <UserPlus className="size-[15px] text-[var(--text3)] transition-colors group-data-[selected=true]:text-[var(--brand)]" />
-                  <span className="text-[13px]">Invite a team member</span>
+                  <span className="text-[13px]">Invite a member</span>
                 </CommandItem>
               </CommandGroup>
             </div>

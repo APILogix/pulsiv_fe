@@ -10,7 +10,6 @@ import {
   Mail,
   Trash2,
   Upload,
-  User,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -46,7 +45,8 @@ const TIMEZONES = [
 ];
 
 function toForm(profile: AccountProfile): UpdateAccountProfileInput {
-  const p = (profile as any)?.data && (profile as any)?.success !== undefined ? (profile as any).data : profile;
+  const envelope = profile as unknown as { data?: AccountProfile; success?: boolean };
+  const p = envelope?.data && envelope?.success !== undefined ? envelope.data : profile;
   return {
     display_name: p?.display_name || '',
     full_name: p?.full_name || '',
@@ -107,8 +107,9 @@ export function PersonalDetailsPanel() {
 
   const profile = useMemo(() => {
     if (!rawProfile) return undefined;
-    return ((rawProfile as any)?.data && (rawProfile as any)?.success !== undefined
-      ? (rawProfile as any).data
+    const envelope = rawProfile as unknown as { data?: AccountProfile; success?: boolean };
+    return (envelope?.data && envelope?.success !== undefined
+      ? envelope.data
       : rawProfile) as AccountProfile;
   }, [rawProfile]);
 
@@ -252,9 +253,10 @@ export function PersonalDetailsPanel() {
                 alt={form.display_name}
                 width={80}
                 height={80}
-                loading="lazy"
+                fetchPriority="high"
+                loading="eager"
                 decoding="async"
-                className="size-full rounded-full border-2 border-[var(--border2)] object-cover shadow-xs"
+                className="size-full rounded-full border-2 border-[var(--border2)] object-cover shadow-xs aspect-square"
               />
             ) : (
               <div
@@ -285,7 +287,7 @@ export function PersonalDetailsPanel() {
               </span>
             </div>
             <p className="mt-1 text-[13px] text-[var(--text3)]">
-              Displayed on comments, audit events, traces, and team workspaces.
+              Displayed on comments, audit events, traces, and organization workspaces.
             </p>
 
             <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -323,7 +325,7 @@ export function PersonalDetailsPanel() {
           Personal Information
         </h2>
         <p className="mt-0.5 text-[13px] text-[var(--text3)]">
-          Update how your identity is displayed to team members across projects.
+          Update how your identity is displayed to members across projects.
         </p>
 
         <div className="mt-5 grid grid-cols-1 gap-5 md:grid-cols-2">
@@ -340,7 +342,7 @@ export function PersonalDetailsPanel() {
               className="h-10 border-[var(--border2)] bg-[var(--bg2)] text-[14px] text-[var(--text)] focus-visible:ring-1 focus-visible:ring-[var(--brand)]"
             />
             <p className="text-[11px] text-[var(--text3)]">
-              Your public handle and name shown in team workspaces.
+              Your public handle and name shown in organization workspaces.
             </p>
           </div>
 

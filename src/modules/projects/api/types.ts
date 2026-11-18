@@ -31,6 +31,17 @@ export interface Project {
   version: number;
 }
 
+/** Full response from POST /organizations/:orgId/projects. The initial API key
+ * secret is returned exactly once and must be presented to the user. */
+export interface CreateProjectResult {
+  id: string;
+  projectId: string;
+  project: Project;
+  environment: ProjectEnvironment;
+  apiKey: ProjectApiKey;
+  fullKey: string;
+}
+
 export interface ProjectListItem extends Project {
   apiKeysCount: number;
   activeApiKeysCount: number;
@@ -297,9 +308,6 @@ export interface ListApiKeysQuery {
 
 // ── Members ──────────────────────────────────────────────────
 
-export const PROJECT_MEMBER_ROLES = ["owner", "admin", "developer", "qa", "viewer"] as const;
-export type ProjectMemberRole = (typeof PROJECT_MEMBER_ROLES)[number];
-
 export type ProjectMemberStatus = "pending" | "active" | "inactive" | "removed";
 
 export interface ProjectMember {
@@ -307,7 +315,6 @@ export interface ProjectMember {
   projectId: string;
   userId: string;
   organizationId: string;
-  role: ProjectMemberRole;
   status: ProjectMemberStatus;
   /** Actor who added this member directly. */
   invitedByUserId: string | null;

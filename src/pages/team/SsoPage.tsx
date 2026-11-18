@@ -80,7 +80,7 @@ const PROVIDER_COLUMNS: SheetColumn[] = [
 ];
 
 const ATTRIBUTE_COLUMNS: SheetColumn[] = [
-  { key: "attr", header: "Pulse attribute", className: "w-[160px]" },
+  { key: "attr", header: "LynkTrace attribute", className: "w-[160px]" },
   { key: "source", header: "IdP source", className: "w-[140px]" },
   { key: "notes", header: "Notes", className: HIDE_BELOW_MD },
   { key: "required", header: "Required", className: "w-[110px]" },
@@ -216,7 +216,7 @@ export default function SsoPage() {
   const isEnabled = provider?.isActive ?? false;
 
   const steps: SetupStepItem[] = [
-    { title: "Create a SAML app in your IdP", description: "Add Sentinel as a new SAML 2.0 application.", done: isConfigured },
+    { title: "Create a SAML app in your IdP", description: "Add LynkTrace as a new SAML 2.0 application.", done: isConfigured },
     {
       title: "Paste the service provider URLs",
       description: "Entity ID, ACS URL, and single logout URL from the service provider details panel.",
@@ -265,7 +265,7 @@ export default function SsoPage() {
   if (isError && !ssoProviders) {
     return (
       <WorkspacePage>
-        <ProjectPageHeader title="SSO" description={PAGE_DESCRIPTION} />
+        <ProjectPageHeader title="SSO" />
         <Sheet title="Providers">
           <SheetError
             title="Could not load SSO providers"
@@ -280,7 +280,7 @@ export default function SsoPage() {
   if (isLoading) {
     return (
       <WorkspacePage>
-        <ProjectPageHeader title="SSO" description={PAGE_DESCRIPTION} />
+        <ProjectPageHeader title="SSO" />
         <Readouts
           loading
           label="SSO summary"
@@ -328,7 +328,6 @@ export default function SsoPage() {
       <ProjectPageHeader
         title="SSO"
         badges={controlBadge}
-        description={PAGE_DESCRIPTION}
         meta={[
           enforcementMeta,
           { label: "Active provider", value: activeProvider?.providerName ?? "None" },
@@ -457,7 +456,7 @@ export default function SsoPage() {
 
         <Panel
           title={provider ? `Identity provider: ${provider.providerName}` : "Identity provider"}
-          description="Details Sentinel uses to validate SAML assertions from your IdP."
+          description="Details LynkTrace uses to validate SAML assertions from your IdP."
           footer={
             <UiButton type="submit" form="sso-provider-form" size="lg" disabled={savePending}>
               {savePending && <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />}
@@ -559,7 +558,7 @@ export default function SsoPage() {
           </RowStack>
         </Panel>
 
-        <Sheet title="Attribute mapping" description="Assertion attributes Sentinel reads. These mappings are fixed for SAML 2.0.">
+        <Sheet title="Attribute mapping" description="Assertion attributes LynkTrace reads. These mappings are fixed for SAML 2.0.">
           <SheetTable columns={ATTRIBUTE_COLUMNS} caption="SAML attribute mapping" minWidth={400}>
             {ATTRIBUTE_MAPPINGS.map((mapping) => (
               <SheetRow key={mapping.attr}>

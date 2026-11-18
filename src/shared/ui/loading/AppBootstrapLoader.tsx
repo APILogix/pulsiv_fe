@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 
 import { cn } from "@/lib/utils";
+import { LynkTraceLogo } from "@/shared/components/LynkTraceLogo";
 import { DURATION, EASE } from "@/shared/motion/tokens";
 import { useMotionPreference } from "@/shared/motion/MotionProvider";
 
@@ -40,12 +41,12 @@ function BrandMark({ animate }: { animate: boolean }) {
       {animate && (
         <>
           <motion.span
-            className="absolute size-16 rounded-full border border-[var(--ai)]/40"
+            className="absolute size-16 rounded-full border border-[var(--border2)]/50"
             animate={{ scale: [1, 2.1], opacity: [0.5, 0] }}
             transition={{ duration: 2.4, ease: EASE.standard, repeat: Infinity }}
           />
           <motion.span
-            className="absolute size-16 rounded-full border border-[var(--brand)]/40"
+            className="absolute size-16 rounded-full border border-[var(--brand)]/30"
             animate={{ scale: [1, 2.1], opacity: [0.5, 0] }}
             transition={{ duration: 2.4, ease: EASE.standard, repeat: Infinity, delay: 1.2 }}
           />
@@ -58,37 +59,18 @@ function BrandMark({ animate }: { animate: boolean }) {
         animate={animate ? { rotate: 360 } : undefined}
         transition={{ duration: 12, ease: "linear", repeat: Infinity }}
       >
-        <span className="absolute -top-[3px] left-1/2 size-1.5 -translate-x-1/2 rounded-full bg-[var(--ai)]" />
+        <span className="absolute -top-[3px] left-1/2 size-1.5 -translate-x-1/2 rounded-full bg-[var(--text2)]" />
         <span className="absolute -bottom-[3px] left-1/2 size-1.5 -translate-x-1/2 rounded-full bg-[var(--brand)]" />
       </motion.div>
 
-      {/* core mark — the one place a linear gradient is allowed (§3) */}
+      {/* core mark — LynkTrace nexus */}
       <motion.div
-        className="logo-gradient relative flex size-12 items-center justify-center rounded-[14px] shadow-[0_0_32px_var(--brand-glow)]"
+        className="relative flex size-14 items-center justify-center rounded-[16px] bg-[#09090B] border border-[#27272A] shadow-[0_0_24px_rgba(255,255,255,0.08)]"
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         transition={{ duration: DURATION.slow, ease: EASE.standard }}
       >
-        <motion.svg
-          viewBox="0 0 24 24"
-          className="size-6"
-          aria-hidden="true"
-          animate={animate ? { scale: [1, 1.08, 1] } : undefined}
-          transition={{ duration: 2.4, ease: EASE.inOut, repeat: Infinity }}
-        >
-          {/* heartbeat trace — the product metaphor, drawn once then held */}
-          <motion.path
-            d="M2 13h4l2.5-6 3 11 3-8 2 3h5.5"
-            fill="none"
-            stroke="#ffffff"
-            strokeWidth="1.9"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            initial={{ pathLength: 0, opacity: 0.4 }}
-            animate={{ pathLength: 1, opacity: 1 }}
-            transition={{ duration: 0.9, ease: EASE.standard }}
-          />
-        </motion.svg>
+        <LynkTraceLogo size={36} variant="mark" animate={animate} />
       </motion.div>
     </div>
   );
@@ -117,7 +99,7 @@ export function AppBootstrapLoader({ message = "Loading application" }: { messag
         className="pointer-events-none absolute inset-0"
         style={{
           background:
-            "radial-gradient(900px 480px at 50% 30%, var(--brand-bg) 0%, transparent 62%), radial-gradient(700px 420px at 50% 110%, var(--ai-bg) 0%, transparent 58%)",
+            "radial-gradient(900px 480px at 50% 30%, var(--brand-bg) 0%, transparent 62%), radial-gradient(700px 420px at 50% 110%, rgba(255,255,255,0.03) 0%, transparent 58%)",
         }}
       />
 
@@ -130,8 +112,8 @@ export function AppBootstrapLoader({ message = "Loading application" }: { messag
           transition={{ duration: DURATION.slow, ease: EASE.standard, delay: 0.08 }}
           className="flex flex-col items-center gap-2.5"
         >
-          <span className="font-[family-name:var(--display)] text-[22px] font-semibold tracking-tight text-[var(--text)]">
-            Sentinel
+          <span className="font-[family-name:var(--display)] text-[22px] font-bold tracking-tight text-[var(--text)]">
+            Lynk<span className="font-medium text-[var(--text2)]">Trace</span>
           </span>
 
           {/* stage copy — fixed height so the layout never shifts between stages */}

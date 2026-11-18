@@ -1,0 +1,120 @@
+diff --git a/scripts/audit-cwv.mjs b/scripts/audit-cwv.mjs
+index aff4440..68821fc 100644
+--- a/scripts/audit-cwv.mjs
++++ b/.agents/teamwork/teamwork_explorer_m1_it2_3/proposed_audit-cwv.mjs
+@@ -205,6 +205,7 @@ export const ROUTE_MANIFEST = {
+       name: 'T3.1 Public Guest Routing Transition',
+       steps: ['/auth/login', '/auth/register', '/auth/forgot-password'],
+       action: 'navigate-sequence',
++      auth: false,
+       tier: 3
+     },
+     {
+@@ -323,6 +324,25 @@ export const QUICK_ROUTES = [
+ export const AUTH_SEED_SCRIPT = `
+ (() => {
+   try {
++    const pathname = window.location.pathname;
++    const isPublicGuestPath = 
++      pathname.startsWith('/auth') ||
++      pathname === '/accept-invite' ||
++      pathname === '/loading' ||
++      pathname === '/error-preview' ||
++      pathname.startsWith('/account/delete/confirm');
++
++    if (isPublicGuestPath) {
++      sessionStorage.removeItem('auth-storage');
++      sessionStorage.removeItem('pulse_access_token');
++      sessionStorage.removeItem('pulse_access_token_expires_at');
++      sessionStorage.removeItem('pulse_current_org_id');
++      sessionStorage.removeItem('pulse_current_org_slug');
++      sessionStorage.removeItem('pulse_current_project_id');
++      sessionStorage.removeItem('pulse_current_project_slug');
++      return;
++    }
++
+     sessionStorage.setItem('auth-storage', JSON.stringify({
+       state: {
+         user: {
+@@ -745,6 +765,7 @@ export class WebVitalsAuditor {
+     this.serverManager = new PreviewServerManager(this.options.baseUrl);
+     this.chromeRunner = new ChromeRunner();
+     this.cdp = null;
++    this.authScriptIdentifier = null;
+     this.results = [];
+   }
+ 
+@@ -774,7 +795,13 @@ export class WebVitalsAuditor {
+       ];
+     }
+     // Specific custom route path
+-    return [{ path: mode, name: `Custom Route (${mode})`, auth: true, tier: 1 }];
++    const isPublic =
++      mode.startsWith('/auth') ||
++      mode === '/accept-invite' ||
++      mode === '/loading' ||
++      mode === '/error-preview' ||
++      mode.startsWith('/account/delete/confirm');
++    return [{ path: mode, name: `Custom Route (${mode})`, auth: !isPublic, tier: 1 }];
+   }
+ 
+   async setupSession() {
+@@ -803,13 +830,47 @@ export class WebVitalsAuditor {
+       await this.cdp.send('Emulation.setCPUThrottlingRate', { rate: 4 });
+     }
+ 
+-    // Pre-inject Auth State and CWV Observers into every new document
++    // Pre-inject CWV Observers into every new document
+     await this.cdp.send('Page.addScriptToEvaluateOnNewDocument', {
+-      source: `${AUTH_SEED_SCRIPT}\n${INJECTED_CWV_HARNESS}`
++      source: INJECTED_CWV_HARNESS
+     });
++    this.authScriptIdentifier = null;
++  }
++
++  async prepareAuthContext(requiresAuth) {
++    if (requiresAuth) {
++      if (!this.authScriptIdentifier) {
++        const res = await this.cdp.send('Page.addScriptToEvaluateOnNewDocument', {
++          source: AUTH_SEED_SCRIPT
++        });
++        this.authScriptIdentifier = res.identifier;
++      }
++    } else {
++      if (this.authScriptIdentifier) {
++        await this.cdp.send('Page.removeScriptToEvaluateOnNewDocument', {
++          identifier: this.authScriptIdentifier
++        });
++        this.authScriptIdentifier = null;
++      }
++      try {
++        await this.cdp.send('Runtime.evaluate', {
++          expression: `(() => {
++            sessionStorage.removeItem('auth-storage');
++            sessionStorage.removeItem('pulse_access_token');
++            sessionStorage.removeItem('pulse_access_token_expires_at');
++            sessionStorage.removeItem('pulse_current_org_id');
++            sessionStorage.removeItem('pulse_current_org_slug');
++            sessionStorage.removeItem('pulse_current_project_id');
++            sessionStorage.removeItem('pulse_current_project_slug');
++          })()`
++        });
++      } catch {}
++    }
+   }
+ 
+   async auditSingleRoute(item) {
++    await this.prepareAuthContext(item.auth !== false);
++
+     const fullUrl = `${this.options.baseUrl}${item.path}`;
+ 
+     // Navigate to target route
+@@ -898,6 +959,8 @@ export class WebVitalsAuditor {
+   }
+ 
+   async auditScenario(scenario) {
++    await this.prepareAuthContext(scenario.auth !== false);
++
+     let worstLcp = 0;
+     let worstCls = 0;
+     let worstInp = 0;

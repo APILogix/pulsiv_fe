@@ -10,9 +10,6 @@ import {
   Timestamp,
   InfiniteTable,
   formatCompact,
-  SelectionProvider,
-  useSelection,
-  AskAiModal,
   TimeRangePicker,
   useTimeRangeParams,
   SignalSheet,
@@ -52,20 +49,20 @@ const EMPTY_FILTERS: ErrorGroupFilterState = {
 };
 
 const occurrencesOf = (g: ErrorGroup) => Number(g.occurrences?.count ?? g.occurrenceCount ?? g.occurrence_count ?? 0);
-const isRegressed = (g: ErrorGroup) => Boolean((g.regression?.count ?? 0) > 0 || g.isRegression || g.is_regression);
+function isRegressed(g: ErrorGroup) {
+  return Boolean((g.regression?.count ?? 0) > 0 || g.isRegression || g.is_regression);
+}
 
-function ErrorGroupsListPageContent() {
+export default function ErrorGroupsListPage() {
   const navigate = useNavigate();
   const activeProjectSlug = useOrgStore((s) => s.activeProjectSlug);
   const { timeRangeState } = useTimeRangeParams();
   const window = useTimeWindow(timeRangeState);
 
   const [filters, setFilters] = useState<ErrorGroupFilterState>(EMPTY_FILTERS);
-  const [isAiModalOpen, setIsAiModalOpen] = useState(false);
   const [targetResolveGroup, setTargetResolveGroup] = useState<ErrorGroup | null>(null);
   const [targetMergeGroup, setTargetMergeGroup] = useState<ErrorGroup | null>(null);
 
-  const { selectedKeys, toggleSelect, selectAll, clearSelection, selectedCount } = useSelection();
   const [activePagination, setActivePagination] = useState<ExplorerPagination | undefined>(undefined);
 
   const { cursor, paginationProps, onNextPage, onPreviousPage } = useCursorPagination(activePagination, {
@@ -225,7 +222,7 @@ function ErrorGroupsListPageContent() {
 
       <SignalSheet cells={cells} loading={isLoading && groups.length === 0} bars={timeline.bars} timelineLoading={timeline.isLoading} countLabel="Error events" errorLabel="Fatal or 5xx" />
 
-      <TableToolbar selectedCount={selectedCount} onClearSelection={clearSelection} onAskAi={() => setIsAiModalOpen(true)} resourceName="issues">
+      <TableToolbar resourceName="issues">
         <ErrorGroupFilters
           filters={filters}
           onChange={(key, value) => setFilters((prev) => ({ ...prev, [key]: value }))}
@@ -250,21 +247,9 @@ function ErrorGroupsListPageContent() {
         emptyTitle="No issues match"
         emptyIllustration="inbox"
         emptyMessage="No error groups were seen in this window for these filters."
-        selectable
-        selectedKeys={selectedKeys}
-        onSelectToggle={toggleSelect}
-        onSelectAllToggle={selectAll}
         pagination={paginationProps}
         onNextPage={onNextPage}
         onPreviousPage={onPreviousPage}
-      />
-
-      <AskAiModal
-        isOpen={isAiModalOpen}
-        onClose={() => setIsAiModalOpen(false)}
-        resource="error-groups"
-        selectedIds={Array.from(selectedKeys)}
-        filters={apiFilters as unknown as Record<string, unknown>}
       />
 
       {targetResolveGroup && (
@@ -292,13 +277,5 @@ function ErrorGroupsListPageContent() {
         />
       )}
     </FillPage>
-  );
-}
-
-export default function ErrorGroupsListPage() {
-  return (
-    <SelectionProvider>
-      <ErrorGroupsListPageContent />
-    </SelectionProvider>
   );
 }

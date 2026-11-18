@@ -117,7 +117,7 @@ export default function SsoLoginPage() {
       </form>
 
       <AuthNote className="mt-4">
-        Your identity provider handles authentication and returns you to Sentinel. Session length is set by your
+        Your identity provider handles authentication and returns you to LynkTrace. Session length is set by your
         organization.
       </AuthNote>
 

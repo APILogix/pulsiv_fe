@@ -2,7 +2,7 @@
 import { EmptyNote } from "@/shared/observe";
 import type { MetricStats, SeriesPoint } from "../hooks/usePerformanceApi";
 
-/** Runtime metrics are reported in MB by the Pulse Node SDK. Older agents sent
+/** Runtime metrics are reported in MB by the LynkTrace Node SDK. Older agents sent
  *  bytes; anything that large is converted so both read the same. */
 export function toMb(v: number): number {
   return v > 1_000_000 ? v / 1_048_576 : v;
@@ -52,7 +52,7 @@ export function RuntimeNotReporting({ metrics, what }: { metrics: string[]; what
           {i < metrics.length - 2 ? ", " : i === metrics.length - 2 ? " and " : ""}
         </span>
       ))}
-      , which Node services report through the Pulse SDK's runtime telemetry. Widen the time range if the service reported earlier, or check that runtime collection is on for it.
+      , which Node services report through the LynkTrace SDK's runtime telemetry. Widen the time range if the service reported earlier, or check that runtime collection is on for it.
     </EmptyNote>
   );
 }

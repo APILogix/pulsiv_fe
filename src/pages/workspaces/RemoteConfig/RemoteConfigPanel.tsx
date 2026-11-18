@@ -9,7 +9,7 @@ import { KillswitchesTab } from './tabs/KillswitchesTab';
 import { PublishDrawer } from './components/PublishDrawer';
 import { type RouteKey, type SdkConfigState } from './schema';
 import { normalizeSdkConfig, buildEditableConfig, validateDraft, diffDraft } from './mapping';
-import type { CompressionMode, QueueOverflowStrategy, RetryBackoff, TransportPriority } from './bounds';
+import type { QueueOverflowStrategy, RetryBackoff, TransportPriority } from './bounds';
 
 function deepEqual(a: unknown, b: unknown): boolean {
   if (a === b) return true;
@@ -147,7 +147,7 @@ export function RemoteConfigPanel({
   const updateRoute = (
     route: RouteKey,
     field: keyof SdkConfigState['transport']['routes'][RouteKey],
-    value: number | CompressionMode | TransportPriority,
+    value: number | TransportPriority,
   ) =>
     setDraft((prev) => ({
       ...prev,

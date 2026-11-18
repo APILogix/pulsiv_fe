@@ -1,5 +1,6 @@
 import { useActionState } from "react";
 import { Plus, Route, Trash2, TriangleAlert } from "lucide-react";
+import { toast } from "sonner";
 import { useConnectorRoutes, useSlackChannels, useConnectorMutations } from "@/modules/organizations/hooks/useConnectors";
 import {
   EmptyPanel,
@@ -12,7 +13,7 @@ import {
   Toggle,
   fieldInputClass,
 } from "@/shared/ui/pulse";
-import { Button, Field, SubmitButton, Timestamp, demoSuccess } from "@/shared/observe";
+import { Button, Field, SubmitButton, Timestamp } from "@/shared/observe";
 import { TableLoadingRows } from "@/shared/ui/loading";
 import { apiErrorMessage } from "@/infrastructure/api-client/api-error";
 
@@ -78,7 +79,7 @@ export function IntegrationRoutes({ integrationId, type }: IntegrationRoutesProp
       if (environment) payload.environment = environment;
 
       await createRoute.mutateAsync({ id: integrationId, payload });
-      demoSuccess("Route created successfully");
+      toast.success("Route created successfully");
       return INITIAL_ROUTE_STATE;
     } catch (err: any) {
       return { error: apiErrorMessage(err) || err?.message || "Failed to create route." };
@@ -88,9 +89,9 @@ export function IntegrationRoutes({ integrationId, type }: IntegrationRoutesProp
   const handleToggleRoute = async (routeId: string, enabled: boolean) => {
     try {
       await updateRoute.mutateAsync({ id: integrationId, routeId, payload: { enabled } });
-      demoSuccess(enabled ? "Route enabled" : "Route disabled");
+      toast.success(enabled ? "Route enabled" : "Route disabled");
     } catch (err: any) {
-      demoSuccess(`Failed to update route: ${err.message}`);
+      toast.error(apiErrorMessage(err));
     }
   };
 
@@ -98,9 +99,9 @@ export function IntegrationRoutes({ integrationId, type }: IntegrationRoutesProp
     if (!confirm("Are you sure you want to delete this route?")) return;
     try {
       await deleteRoute.mutateAsync({ id: integrationId, routeId });
-      demoSuccess("Route deleted");
+      toast.success("Route deleted");
     } catch (err: any) {
-      demoSuccess(`Failed to delete route: ${err.message}`);
+      toast.error(apiErrorMessage(err));
     }
   };
 

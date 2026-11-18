@@ -19,7 +19,7 @@ import { authApi } from '../api/auth.api';
 import type { SsoDiscoveryResult } from '../types/auth.types';
 import { getErrorMessage } from '@/infrastructure/api-client/error.interceptor';
 import { Link } from 'react-router';
-import { AuthDivider, AuthLink } from '@/shared/ui/pulse';
+import { AuthDivider, AuthLink } from '@/shared/ui/pulse/auth';
 import { useAuthFocus } from '@/app/layouts/auth-shell';
 
 export default function LoginPage() {
@@ -110,7 +110,7 @@ export default function LoginPage() {
     <div className="w-full">
       <header className="mb-8">
         <h1 className="text-[28px] font-semibold leading-[1.15] tracking-[-0.03em] text-[var(--text)]">
-          Sign in to Sentinel
+          Sign in to LynkTrace
         </h1>
         <p className="mt-2 text-[14px] leading-[1.55] text-[var(--text2)]">
           New here? <AuthLink to="/auth/register">Create an account</AuthLink>
@@ -152,7 +152,7 @@ export default function LoginPage() {
       </div>
 
       <p className="mt-8 text-[12px] leading-[1.6] text-[var(--text3)]">
-        By continuing, you agree to Sentinel&apos;s Terms and Conditions and Privacy Policy.
+        By continuing, you agree to LynkTrace&apos;s Terms and Conditions and Privacy Policy.
       </p>
     </div>
   );

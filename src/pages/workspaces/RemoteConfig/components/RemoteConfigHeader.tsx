@@ -39,7 +39,6 @@ export function RemoteConfigHeader({
   return (
     <ProjectPageHeader
       title="Remote config"
-      description="Values delivered to SDKs at runtime. Each environment has its own configuration, and every publish creates a new revision."
       actions={
         <>
           <FilterSelect label="Environment" value={selectedEnvironmentId} onChange={onSelectEnvironment} options={options} />

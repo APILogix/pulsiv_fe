@@ -10,12 +10,12 @@ web
 
 ## Users
 
-- Primary (inferred): on-call and backend engineers who open Sentinel during a shift or an incident to see whether their APIs are healthy, what broke, and where.
+- Primary (inferred): on-call and backend engineers who open LynkTrace during a shift or an incident to see whether their APIs are healthy, what broke, and where.
 - Secondary (inferred): engineering leads and leadership reading the Executive, Release and Business dashboards to judge reliability, release quality, and product usage without digging into raw events.
 
 ## Product Purpose
 
-Sentinel is AI-powered API observability (page title: "Sentinel — AI-powered API observability"). SDKs in each project send requests, errors, traces, spans, and metrics; Sentinel turns them into dashboards, error groups, alerts, and automated workflows so teams find and fix API problems before customers notice. Success is a user knowing within seconds whether something needs their attention, and where to go next.
+LynkTrace is AI-powered API observability (page title: "LynkTrace — AI-powered API observability"). SDKs in each project send requests, errors, traces, spans, and metrics; LynkTrace turns them into dashboards, error groups, alerts, and automated workflows so teams find and fix API problems before customers notice. Success is a user knowing within seconds whether something needs their attention, and where to go next.
 
 ## Positioning
 
@@ -24,7 +24,7 @@ Observability with a model watching alongside the human (inferred): anomaly dete
 ## Operating Context
 
 - Multi-tenant: organizations contain projects; routes are org-scoped (`/:orgSlug/...`).
-- Surrounding workflows in the console: alerting (incidents, rules, escalations, silences), automation workflows, SSO/SCIM, billing, audit.
+- Surrounding workflows in the console: alerting (incidents, rules, escalations, silences), SSO/SCIM, billing, audit.
 - Dashboards set: Home (`/dashboard`), Dashboards overview, and ten role dashboards: Executive, Performance, Errors, Geo, Traffic (realtime), Service map (tracing), Infrastructure, Security, Releases, Business. Scheduled reports live under Dashboards too.
 
 ## Capabilities and Constraints
@@ -36,7 +36,7 @@ Observability with a model watching alongside the human (inferred): anomaly dete
 
 ## Brand Commitments
 
-- Name: Sentinel. Existing app-wide foundation (zinc dark tokens, Inter UI, JetBrains Mono for data) is shared with every other surface and stays.
+- Name: LynkTrace. Existing app-wide foundation (zinc dark tokens, Inter UI, JetBrains Mono for data) is shared with every other surface and stays.
 
 ## Evidence on Hand
 

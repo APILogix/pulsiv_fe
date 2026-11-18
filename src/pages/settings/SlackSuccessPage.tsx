@@ -76,7 +76,7 @@ export default function SlackSuccessPage() {
             icon={TriangleAlert}
             tone="amber"
             title="Slack connected, setup incomplete"
-            description="The workspace was authorized but Sentinel did not receive a connector reference, so the default channel could not be set."
+            description="The workspace was authorized but LynkTrace did not receive a connector reference, so the default channel could not be set."
             actions={
               <AuthButton type="button" variant="ghost" onClick={() => navigate("/connectors/integrations")}>
                 Back to integrations
@@ -101,7 +101,7 @@ export default function SlackSuccessPage() {
           title="Slack connected"
           description={
             <>
-              Sentinel is authorized for <strong className="font-semibold text-[var(--text)]">{teamName}</strong>. Pick the
+              LynkTrace is authorized for <strong className="font-semibold text-[var(--text)]">{teamName}</strong>. Pick the
               channel that should receive alert notifications.
             </>
           }
@@ -123,7 +123,7 @@ export default function SlackSuccessPage() {
               <AuthField
                 label="Default channel"
                 htmlFor="channel"
-                hint="For a private channel, invite the Sentinel bot to it in Slack first."
+                hint="For a private channel, invite the LynkTrace bot to it in Slack first."
               >
                 <select
                   id="channel"

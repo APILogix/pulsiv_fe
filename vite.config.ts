@@ -8,13 +8,19 @@ import { defineConfig } from "vite"
 // React Compiler (rules.md §1) is wired through the react plugin's babel config
 // so the compiler runs at build/dev time. With it enabled we do NOT write
 // useMemo / useCallback / React.memo manually — the compiler handles it.
+const isProd = process.env.NODE_ENV === "production";
+
 export default defineConfig({
   plugins: [
-    react({
-      babel: {
-        plugins: [["babel-plugin-react-compiler", { target: "19" }]],
-      },
-    }),
+    react(
+      isProd
+        ? {
+            babel: {
+              plugins: [["babel-plugin-react-compiler", { target: "19" }]],
+            },
+          }
+        : undefined
+    ),
     tailwindcss(),
   ],
   server: {
@@ -45,7 +51,6 @@ export default defineConfig({
   },
   optimizeDeps: {
     include: [
-      "lucide-react",
       "react",
       "react-dom",
       "react-router",
@@ -66,54 +71,82 @@ export default defineConfig({
     target: "es2022",
     cssCodeSplit: true,
     cssMinify: true,
-    emptyOutDir: false,
+    // A production build is a complete snapshot. Keeping old hashed chunks
+    // creates stale deploy assets and makes build output grow on every run.
+    emptyOutDir: true,
     chunkSizeWarningLimit: 600,
     modulePreload: {
       polyfill: true,
+      resolveDependencies(filename, deps, { hostType }) {
+        if (hostType === 'html') {
+          return deps.filter((dep) => {
+            if (dep.includes('motion-vendor')) return false;
+            if (dep.includes('map-vendor')) return false;
+            if (dep.includes('radix-vendor')) return false;
+            if (dep.includes('form-vendor')) return false;
+            if (dep.includes('zod-vendor')) return false;
+            if (dep.includes('authn-vendor')) return false;
+            if (dep.includes('auth-profile')) return false;
+            if (dep.includes('auth-shared')) return false;
+            return true;
+          });
+        }
+        return deps;
+      },
     },
     rollupOptions: {
       output: {
         manualChunks(id) {
-          if (id.includes('node_modules')) {
-            if (id.includes('/react/') || id.includes('/react-dom/') || id.includes('/scheduler/')) {
+          const normalizedId = id.replace(/\\/g, '/');
+
+          if (normalizedId.includes('node_modules')) {
+            if (normalizedId.includes('/react/') || normalizedId.includes('/react-dom/') || normalizedId.includes('/scheduler/')) {
               return 'react-core';
             }
-            if (id.includes('react-router')) {
+            if (normalizedId.includes('react-router')) {
               return 'router-vendor';
             }
-            if (id.includes('framer-motion')) {
+            if (normalizedId.includes('framer-motion')) {
               return 'motion-vendor';
             }
-            if (id.includes('lucide-react')) {
+            if (normalizedId.includes('lucide-react')) {
               return 'icons-vendor';
             }
-            if (id.includes('radix-ui') || id.includes('@radix-ui')) {
+            if (normalizedId.includes('radix-ui') || normalizedId.includes('@radix-ui')) {
               return 'radix-vendor';
             }
-            if (id.includes('@tanstack/react-query')) {
+            if (normalizedId.includes('@tanstack/react-query')) {
               return 'query-vendor';
             }
-            if (id.includes('axios')) {
+            if (normalizedId.includes('axios')) {
               return 'network-vendor';
             }
-            if (id.includes('zod')) {
+            if (normalizedId.includes('react-hook-form') || normalizedId.includes('@hookform')) {
+              return 'form-vendor';
+            }
+            if (normalizedId.includes('zod')) {
               return 'zod-vendor';
             }
-            if (id.includes('react-simple-maps') || id.includes('d3-')) {
+            if (normalizedId.includes('react-simple-maps') || normalizedId.includes('d3-')) {
               return 'map-vendor';
             }
-            if (id.includes('countries-and-timezones')) {
-              return 'countries-vendor';
-            }
-            if (id.includes('@simplewebauthn')) {
+            if (normalizedId.includes('@simplewebauthn')) {
               return 'authn-vendor';
             }
-            if (id.includes('cmdk')) {
+            if (normalizedId.includes('cmdk')) {
               return 'cmdk-vendor';
             }
-            if (id.includes('sonner')) {
+            if (normalizedId.includes('sonner')) {
               return 'toast-vendor';
             }
+          }
+
+          if (normalizedId.includes('/src/shared/skeletons/')) {
+            return 'skeletons';
+          }
+
+          if (normalizedId.includes('/src/modules/auth/store/')) {
+            return 'auth-store';
           }
         },
       },

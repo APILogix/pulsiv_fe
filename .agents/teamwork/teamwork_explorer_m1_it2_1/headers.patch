@@ -1,0 +1,16 @@
+--- public/_headers
++++ public/_headers
+@@ -10,6 +10,2 @@
+-# Cache-Control: 7-day cache with 1-day stale-while-revalidate for auth assets
+-/auth/*
+-  Cache-Control: public, max-age=604800, stale-while-revalidate=86400
+-
+ # Cache-Control: 7-day cache with 1-day stale-while-revalidate for static data
+ /data/*
+@@ -22,2 +18,5 @@
+-# Cache-Control: never cache entry HTML
++# Cache-Control: never cache entry HTML (root and fallback paths)
++/
++  Cache-Control: no-cache, no-store, must-revalidate
++
+ /index.html

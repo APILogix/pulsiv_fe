@@ -8,32 +8,34 @@ const withOrgHeaders = (orgId: string) => ({
 });
 
 function mapInvoice(invoice: any): t.Invoice {
+  const rawTotal = invoice?.total_amount ?? invoice?.total ?? invoice?.amountDue ?? 0;
+  const amount = invoice?.total_amount !== undefined ? Number(rawTotal) / 100 : Number(rawTotal);
   return {
-    id: invoice.id,
-    number: invoice.invoiceNumber,
-    amount: Number(invoice.total ?? invoice.amountDue ?? 0),
-    status: invoice.status,
-    issueDate: invoice.invoiceDate,
-    dueDate: invoice.dueDate,
-    pdfUrl: invoice.pdfUrl ?? undefined,
-    items: Array.isArray(invoice.lineItems)
-      ? invoice.lineItems.map((item: any) => ({
-          description: item.description,
-          amount: Number(item.amount ?? 0),
+    id: invoice?.id,
+    number: invoice?.invoice_number ?? invoice?.invoiceNumber ?? 'INV-UNKNOWN',
+    amount: Number.isFinite(amount) ? amount : 0,
+    status: invoice?.status ?? 'open',
+    issueDate: invoice?.created_at ?? invoice?.period_start ?? invoice?.invoiceDate ?? new Date().toISOString(),
+    dueDate: invoice?.due_at ?? invoice?.dueDate ?? invoice?.created_at ?? new Date().toISOString(),
+    pdfUrl: invoice?.pdf_url ?? invoice?.pdfUrl ?? undefined,
+    items: Array.isArray(invoice?.line_items ?? invoice?.lineItems)
+      ? (invoice.line_items ?? invoice.lineItems).map((item: any) => ({
+          description: item.description ?? 'Charge',
+          amount: Number(item.total_amount !== undefined ? item.total_amount / 100 : (item.amount ?? 0)),
         }))
       : [],
   };
 }
 
-function mapPaymentMethod(paymentMethod: any): t.PaymentMethod {
+function mapPaymentMethod(pm: any): t.PaymentMethod {
   return {
-    id: paymentMethod.id,
-    type: paymentMethod.type,
-    brand: paymentMethod.cardBrand ?? paymentMethod.bankName ?? paymentMethod.type,
-    last4: paymentMethod.cardLast4 ?? paymentMethod.bankAccountLast4 ?? '----',
-    expMonth: paymentMethod.cardExpMonth ?? 0,
-    expYear: paymentMethod.cardExpYear ?? 0,
-    isDefault: Boolean(paymentMethod.isDefault),
+    id: pm?.id,
+    type: pm?.type ?? 'card',
+    brand: pm?.brand ?? pm?.cardBrand ?? pm?.bankName ?? pm?.type ?? 'Card',
+    last4: pm?.last4 ?? pm?.cardLast4 ?? pm?.bankAccountLast4 ?? '----',
+    expMonth: Number(pm?.expiry_month ?? pm?.cardExpMonth ?? 0),
+    expYear: Number(pm?.expiry_year ?? pm?.cardExpYear ?? 0),
+    isDefault: Boolean(pm?.is_default ?? pm?.isDefault),
   };
 }
 
@@ -108,7 +110,31 @@ export const orgApi = {
   declineInvitation: (id: string) => apiClient.post(`/organizations/invitations/${id}/decline`),
 
   // Billing Summary
-  getBillingSummary: (orgId: string) => apiClient.get(`/organizations/${orgId}/billing-summary`).then(r => r.data.data as t.OrganizationBillingSummary),
+  getBillingSummary: (orgId: string) => apiClient.get(`/organizations/${orgId}/billing-summary`).then(r => {
+    const d = r.data?.data ?? {};
+    return {
+      ...d,
+      subscription: {
+        id: d.orgId ?? null,
+        status: d.subscriptionStatus ?? 'active',
+      },
+      plan: {
+        id: null,
+        key: d.planTier ?? 'enterprise',
+        tier: d.planTier ?? 'enterprise',
+        eventLimitMonthly: d.eventLimitMonthly ?? 0,
+        hardCap: Boolean(d.hardCap),
+        features: null,
+      },
+      usage: {
+        ...d.usage,
+        activeMembers: typeof d.usage?.activeMembers === 'object' ? (d.usage.activeMembers?.used ?? 0) : (d.usage?.activeMembers ?? 0),
+        pendingInvitations: 0,
+        environments: 0,
+        apiKeys: 0,
+      },
+    } as t.OrganizationBillingSummary;
+  }),
   getEntitlements: (orgId: string) => apiClient.get('/billing/entitlements', withOrgHeaders(orgId)).then(r => r.data.data as Record<string, {
     booleanValue?: boolean | null;
     integerValue?: number | null;
@@ -120,7 +146,10 @@ export const orgApi = {
   getDailyUsage: (orgId: string) => apiClient.get('/billing/usage/daily', withOrgHeaders(orgId)).then(r => r.data.data as { date: string, eventsCount: number }[]),
   
   // Billing - Invoices
-  listInvoices: (orgId: string) => apiClient.get('/billing/invoices', withOrgHeaders(orgId)).then(r => (r.data.data?.invoices ?? []).map(mapInvoice) as t.Invoice[]),
+  listInvoices: (orgId: string) => apiClient.get('/billing/invoices', withOrgHeaders(orgId)).then(r => {
+    const raw = Array.isArray(r.data?.data) ? r.data.data : (r.data?.data?.invoices ?? []);
+    return raw.map(mapInvoice) as t.Invoice[];
+  }),
   getInvoice: (orgId: string, invoiceId: string) => apiClient.get(`/billing/invoices/${invoiceId}`, withOrgHeaders(orgId)).then(r => mapInvoice(r.data.data)),
   
   // Billing - Payment Methods
@@ -128,6 +157,15 @@ export const orgApi = {
   addPaymentMethod: (orgId: string, data: any) => apiClient.post('/billing/payment-methods', data, withOrgHeaders(orgId)).then(r => mapPaymentMethod(r.data.data)),
   removePaymentMethod: (orgId: string, paymentMethodId: string) => apiClient.delete(`/billing/payment-methods/${paymentMethodId}`, withOrgHeaders(orgId)),
   setDefaultPaymentMethod: (orgId: string, paymentMethodId: string) => apiClient.patch(`/billing/payment-methods/${paymentMethodId}/default`, {}, withOrgHeaders(orgId)),
+
+  // Billing - Plans, Subscriptions & Add-ons (v6.3)
+  listBillingPlans: () => apiClient.get('/billing/plans').then(r => (r.data?.data ?? []) as t.BillingPlan[]),
+  listAddons: () => apiClient.get('/billing/addons').then(r => (r.data?.data ?? []) as t.AddonCatalogItem[]),
+  listSubscriptionAddons: (orgId: string) => apiClient.get('/billing/addons/subscription', withOrgHeaders(orgId)).then(r => (r.data?.data ?? []) as t.SubscriptionAddon[]),
+  subscribeAddon: (orgId: string, addonKey: string, quantity: number = 1) => apiClient.post('/billing/addons/subscription', { addonKey, quantity }, withOrgHeaders(orgId)).then(r => r.data.data),
+  cancelSubscriptionAddon: (orgId: string, subscriptionAddonId: string) => apiClient.delete(`/billing/addons/subscription/${subscriptionAddonId}`, withOrgHeaders(orgId)).then(r => r.data.data),
+  changePlan: (orgId: string, planId: string) => apiClient.post('/billing/subscriptions/change-plan', { planId }, withOrgHeaders(orgId)).then(r => r.data.data),
+  previewPlanChange: (orgId: string, newPlanId: string) => apiClient.post('/billing/subscriptions/preview-change', { newPlanId }, withOrgHeaders(orgId)).then(r => r.data.data),
 
 
   // Verified domains

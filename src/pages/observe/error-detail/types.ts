@@ -153,6 +153,5 @@ export type ErrorSectionId =
   | "http"
   | "context"
   | "metadata"
-  | "ai"
   | "related"
   | "tags";

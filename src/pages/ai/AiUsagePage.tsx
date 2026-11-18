@@ -47,7 +47,7 @@ export default function AiUsagePage() {
             <StatCard label="Credits used" value={formatNumber(credit.used)} icon={Gauge} tone="brand" />
             <StatCard
               label="Monthly allowance"
-              value={credit.limit > 0 ? formatNumber(credit.limit) : "∞"}
+              value={credit.limit > 0 ? formatNumber(credit.limit) : formatNumber(Math.max(credit.used + credit.remaining, 5000))}
               icon={Coins}
               tone="violet"
             />
@@ -57,13 +57,9 @@ export default function AiUsagePage() {
             <Meter
               label="AI credits this cycle"
               used={credit.used}
-              limit={credit.limit > 0 ? credit.limit : null}
+              limit={credit.limit > 0 ? credit.limit : Math.max(credit.used + credit.remaining, 5000)}
               format={formatCompact}
-              hint={
-                credit.limit > 0
-                  ? `${formatNumber(credit.remaining)} credits remaining this cycle`
-                  : "Unlimited credits on this plan"
-              }
+              hint={`${formatNumber(credit.remaining)} credits remaining this cycle`}
             />
           </Panel>
         </>

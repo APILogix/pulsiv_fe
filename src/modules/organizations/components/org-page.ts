@@ -12,7 +12,7 @@ import { useOrganizations } from "@/modules/organizations/hooks/useOrganizations
  * Org-scoped links for the admin area. Unscoped `/admin/...` paths still work
  * through a redirect, but this skips the extra hop.
  *
- * `href()` is the dashboard, `href("team")` is `/:orgSlug/admin/team`.
+ * `href()` is the dashboard, `href("members")` is `/:orgSlug/admin/members`.
  */
 export function useAdminHref() {
   const { activeOrgSlug } = useOrganizations();

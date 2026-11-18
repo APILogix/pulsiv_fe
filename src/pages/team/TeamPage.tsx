@@ -42,7 +42,7 @@ type TabKey = "members" | "invitations";
 
 type InviteState = { ok: boolean; error: string | null; email?: string };
 
-const TAB_ID = "team-view";
+const TAB_ID = "members-view";
 
 const roleOptions: OrgRole[] = ["owner", "admin", "member", "viewer"];
 
@@ -76,20 +76,20 @@ const MEMBER_STATUS_TONE: Record<MemberStatus, SurfaceTone> = {
 };
 
 const MEMBER_COLUMNS: SheetColumn[] = [
-  { key: "member", header: "Member" },
-  { key: "role", header: "Role", className: "w-[120px]" },
-  { key: "mfa", header: "MFA", className: `w-[130px] ${HIDE_BELOW_SM}` },
-  { key: "active", header: "Last active", className: `w-[160px] ${HIDE_BELOW_MD}` },
-  { key: "status", header: "Status", className: "w-[120px]" },
+  { key: "member", header: "Member", className: "w-[30%] min-w-[240px]" },
+  { key: "role", header: "Role", className: "w-[14%] min-w-[120px]" },
+  { key: "mfa", header: "MFA", className: `w-[14%] min-w-[120px] ${HIDE_BELOW_SM}` },
+  { key: "active", header: "Last active", className: `w-[18%] min-w-[150px] ${HIDE_BELOW_MD}` },
+  { key: "status", header: "Status", className: "w-[14%] min-w-[110px]" },
   { key: "actions", header: "Actions", srOnly: true, className: "w-[56px]", align: "right" },
 ];
 
 const INVITATION_COLUMNS: SheetColumn[] = [
-  { key: "invitation", header: "Invitation" },
-  { key: "role", header: "Role", className: "w-[120px]" },
-  { key: "status", header: "Status", className: "w-[120px]" },
-  { key: "sent", header: "Sent", className: `w-[180px] ${HIDE_BELOW_MD}` },
-  { key: "actions", header: "Actions", srOnly: true, className: "w-[140px]", align: "right" },
+  { key: "invitation", header: "Invitation", className: "w-[36%] min-w-[240px]" },
+  { key: "role", header: "Role", className: "w-[16%] min-w-[120px]" },
+  { key: "status", header: "Status", className: "w-[16%] min-w-[120px]" },
+  { key: "sent", header: "Sent", className: `w-[20%] min-w-[160px] ${HIDE_BELOW_MD}` },
+  { key: "actions", header: "Actions", srOnly: true, className: "w-[120px]", align: "right" },
 ];
 
 const capitalize = (value: string) => value.charAt(0).toUpperCase() + value.slice(1);
@@ -143,7 +143,7 @@ export default function TeamPage() {
     error: membersError,
     refetch: refetchMembers,
   } = useQuery({
-    queryKey: [...orgQueryKeys.members(activeOrgId!), "team"],
+    queryKey: [...orgQueryKeys.members(activeOrgId!), "members"],
     queryFn: () => orgApi.listMembers(activeOrgId!, { limit: 100, status: "active" }),
     enabled: !!activeOrgId,
   });
@@ -170,7 +170,7 @@ export default function TeamPage() {
   const members = membersData?.data ?? [];
   const pendingInvites = invitationsData?.data ?? [];
 
-  const invalidateTeam = () => {
+  const invalidateMembers = () => {
     if (!activeOrgId) return;
     queryClient.invalidateQueries({ queryKey: orgQueryKeys.members(activeOrgId) });
     queryClient.invalidateQueries({ queryKey: orgQueryKeys.invitations(activeOrgId) });
@@ -181,7 +181,7 @@ export default function TeamPage() {
       orgApi.updateMemberRole(activeOrgId!, userId, role),
     onSuccess: () => {
       toast.success("Role updated");
-      invalidateTeam();
+      invalidateMembers();
     },
     onError: (err: unknown) => toast.error(apiErrorMessage(err, "Failed to update role")),
   });
@@ -191,7 +191,7 @@ export default function TeamPage() {
     onSuccess: () => {
       toast.success("Member removed");
       setRemoveTarget(null);
-      invalidateTeam();
+      invalidateMembers();
     },
     onError: (err: unknown) => toast.error(apiErrorMessage(err, "Failed to remove member")),
   });
@@ -200,7 +200,7 @@ export default function TeamPage() {
     mutationFn: (id: string) => orgApi.resendInvitation(activeOrgId!, id),
     onSuccess: () => {
       toast.success("Invitation resent");
-      invalidateTeam();
+      invalidateMembers();
     },
     onError: (err: unknown) => toast.error(apiErrorMessage(err, "Failed to resend invitation")),
   });
@@ -210,7 +210,7 @@ export default function TeamPage() {
     onSuccess: () => {
       toast.success("Invitation revoked");
       setRevokeTarget(null);
-      invalidateTeam();
+      invalidateMembers();
     },
     onError: (err: unknown) => toast.error(apiErrorMessage(err, "Failed to revoke invitation")),
   });
@@ -222,7 +222,7 @@ export default function TeamPage() {
         const email = String(form.get("email") || "").trim();
         const role = String(form.get("role") || "member") as OrgRole;
         await orgApi.createInvitation(activeOrgId, { email, role });
-        invalidateTeam();
+        invalidateMembers();
         setInviteOpen(false);
         return { ok: true, error: null, email };
       } catch (err: unknown) {
@@ -584,8 +584,7 @@ export default function TeamPage() {
   return (
     <WorkspacePage>
       <ProjectPageHeader
-        title="Team"
-        description="Members with access to this organization, plus invitations that have not been accepted yet."
+        title="Members"
         meta={[
           membersLoading
             ? null
@@ -599,10 +598,10 @@ export default function TeamPage() {
         }
       />
 
-      <Readouts cells={readouts} loading={membersLoading} label="Team summary" />
+      <Readouts cells={readouts} loading={membersLoading} label="Members summary" />
 
       <div className="flex min-w-0 flex-col gap-4">
-        <PageTabs tabs={tabs} value={tab} onChange={setTab} label="Team view" idBase={TAB_ID} />
+        <PageTabs tabs={tabs} value={tab} onChange={setTab} label="Members view" idBase={TAB_ID} />
         <div {...pageTabPanelProps(TAB_ID, tab)} className="min-w-0">
           {tab === "members" ? membersSheet : invitationsSheet}
         </div>
@@ -624,7 +623,7 @@ export default function TeamPage() {
             type="email"
             required
             autoComplete="off"
-            placeholder="teammate@company.com"
+            placeholder="member@company.com"
             className={fieldInputClass}
           />
         </DialogField>

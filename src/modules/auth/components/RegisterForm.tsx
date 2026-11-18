@@ -4,7 +4,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { cn } from '@/lib/utils';
 import { registerSchema, type RegisterFormData } from '../schemas/auth.schema';
 import { useRegister } from '../hooks/useRegister';
-import { AuthButton, AuthField, PasswordInput, fieldInputClass } from '@/shared/ui/pulse';
+import { AuthButton, AuthField } from '@/shared/ui/pulse/auth';
+import { PasswordInput, fieldInputClass } from '@/shared/ui/pulse/controls';
 import { PasswordRequirements } from './PasswordRequirements';
 
 const CHECKBOX_CLASS =
@@ -75,7 +76,7 @@ export function RegisterForm() {
             aria-describedby="password-requirements"
             className="h-11 text-[14px]"
             {...passwordField}
-            onChange={(event) => {
+            onChange={(event: React.ChangeEvent<HTMLInputElement>) => {
               passwordField.onChange(event);
               setPasswordValue(event.target.value);
             }}
@@ -98,11 +99,11 @@ export function RegisterForm() {
           />
           <label htmlFor="accept_terms_and_privacy" className="cursor-pointer text-[13px] leading-[1.5] text-[var(--text2)]">
             I agree to the{' '}
-            <a href="https://sentinel.com/terms" target="_blank" rel="noreferrer noopener" className={LEGAL_LINK_CLASS}>
+            <a href="https://lynktrace.com/terms" target="_blank" rel="noreferrer noopener" className={LEGAL_LINK_CLASS}>
               Terms of Service
             </a>{' '}
             and{' '}
-            <a href="https://sentinel.com/privacy" target="_blank" rel="noreferrer noopener" className={LEGAL_LINK_CLASS}>
+            <a href="https://lynktrace.com/privacy" target="_blank" rel="noreferrer noopener" className={LEGAL_LINK_CLASS}>
               Privacy Policy
             </a>
           </label>

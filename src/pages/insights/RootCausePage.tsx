@@ -1,62 +1,82 @@
-import { useState } from "react";
-import { useIncidents } from "@/hooks/useDummyData";
-import { PageHeader, SectionCard, FilterSelect, SeverityBadge } from "@/shared/observe";
-import { ConfidencePill } from "@/shared/ui/sentinel";
+import { useMemo, useState, type ReactNode } from "react";
+import { Link } from "react-router";
+
+import { useIncidents } from "@/modules/alerting/hooks/useAlerting";
+import type { Incident } from "@/modules/alerting/api/types";
+import { PageHeader, SectionCard, FilterSelect, SeverityBadge, StatusBadge, Timestamp } from "@/shared/observe";
 
 export default function RootCausePage() {
-  const { data } = useIncidents();
-  const incidents = data ?? [];
-  const [selected, setSelected] = useState("");
-  const incident = incidents.find((i) => i.id === selected) ?? incidents[0];
-
-  const options = [{ value: "", label: "Select incident…" }, ...incidents.slice(0, 12).map((i) => ({ value: i.id, label: `${i.id} · ${i.title}` }))];
+  const { data, isLoading, error, refetch } = useIncidents({ limit: 100, sortBy: "lastSeenAt", sortOrder: "desc" });
+  const incidents: Incident[] = data?.data ?? [];
+  const [selectedId, setSelectedId] = useState("");
+  const incident = useMemo(
+    () => incidents.find((item) => item.id === selectedId) ?? incidents[0],
+    [incidents, selectedId],
+  );
+  const options = [
+    { value: "", label: incidents.length ? "Latest incident" : "No incidents" },
+    ...incidents.map((item) => ({ value: item.id, label: `${item.severity.toUpperCase()} · ${item.title}` })),
+  ];
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title="Root cause analysis" description="Automated incident explanation with confidence scoring." />
+      <PageHeader title="Incident analysis" description="Choose an active or recent incident and review the alert data recorded by the backend." />
 
-      <div className="flex"><FilterSelect value={selected} onChange={setSelected} options={options} label="Incident" /></div>
-
-      {incident && (
+      {isLoading ? (
+        <SectionCard title="Incidents"><p className="text-[13px] text-[var(--text3)]">Loading incidents…</p></SectionCard>
+      ) : error ? (
+        <SectionCard title="Incidents">
+          <div className="flex items-center justify-between gap-4">
+            <p role="alert" className="text-[13px] text-[var(--red)]">Incidents could not be loaded.</p>
+            <button type="button" onClick={() => void refetch()} className="text-[13px] font-medium text-[var(--brand)]">Retry</button>
+          </div>
+        </SectionCard>
+      ) : incidents.length === 0 ? (
+        <SectionCard title="No incidents"><p className="text-[13px] text-[var(--text3)]">The alerting API has no incidents to analyze.</p></SectionCard>
+      ) : (
         <>
-          <SectionCard>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <SeverityBadge severity={incident.severity} />
-                <span className="font-semibold text-[var(--text)]">{incident.title}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                {/* Confidence is model output → AI channel, never the truth channel (§2.4) */}
-                <ConfidencePill value={91} />
-              </div>
-            </div>
-          </SectionCard>
+          <div className="flex"><FilterSelect value={selectedId} onChange={setSelectedId} options={options} label="Incident" /></div>
 
-          <SectionCard title="RCA report">
-            <div className="flex flex-col gap-4 text-[13px] leading-relaxed text-[var(--text2)]">
-              <div>
-                <div className="mb-1 font-semibold text-[var(--text)]">Summary</div>
-                The incident on <strong>{incident.service}</strong> was triggered by alert rule "{incident.alertRuleName}". Analysis indicates a correlated deploy event within the same window.
-              </div>
-              <div>
-                <div className="mb-1 font-semibold text-[var(--text)]">Contributing factors</div>
-                <ul className="ml-4 list-disc space-y-1">
-                  <li>Release v2.1.0 deployed 4 minutes before first error.</li>
-                  <li>Database connection pool saturation observed (98% utilization).</li>
-                  <li>Elevated p95 latency on dependent <code className="font-[family-name:var(--mono)]">pg.query</code> spans.</li>
-                </ul>
-              </div>
-              <div>
-                <div className="mb-1 font-semibold text-[var(--text)]">Recommended actions</div>
-                <ul className="ml-4 list-disc space-y-1">
-                  <li>Roll back release v2.1.0 or increase pool size to 60.</li>
-                  <li>Add a pre-deploy canary check for connection saturation.</li>
-                </ul>
-              </div>
-            </div>
-          </SectionCard>
+          {incident && (
+            <>
+              <SectionCard title="Incident">
+                <div className="flex flex-wrap items-center gap-3">
+                  <SeverityBadge severity={incident.severity} />
+                  <h2 className="min-w-0 flex-1 text-[15px] font-semibold text-[var(--text)]">{incident.title}</h2>
+                  <StatusBadge status={incident.status} />
+                </div>
+                <dl className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                  <Fact label="Service" value={incident.service ?? "—"} />
+                  <Fact label="Route" value={incident.route ?? incident.dimensionKey} mono />
+                  <Fact label="Occurrences" value={incident.occurrenceCount.toLocaleString()} />
+                  <Fact label="Environment" value={incident.environment ?? "—"} />
+                  <Fact label="Observed value" value={incident.observedValue == null ? "—" : String(incident.observedValue)} />
+                  <Fact label="Threshold" value={incident.thresholdValue == null ? "—" : String(incident.thresholdValue)} />
+                  <Fact label="Started" value={<Timestamp value={incident.startedAt} />} />
+                  <Fact label="Last seen" value={<Timestamp value={incident.lastSeenAt} />} />
+                </dl>
+              </SectionCard>
+              <SectionCard title="Grounded AI analysis" description="Incident records do not include the canonical telemetry ID required by the AI investigation API.">
+                <p className="text-[13px] leading-relaxed text-[var(--text2)]">
+                  To avoid presenting an invented root cause, use the AI investigation page with an error, trace, request, or log Public ID associated with this incident.
+                </p>
+                <Link to="../ai/investigations" className="mt-4 inline-flex text-[13px] font-medium text-[var(--brand)] hover:underline">
+                  Open AI investigations
+                </Link>
+              </SectionCard>
+            </>
+          )}
         </>
       )}
+    </div>
+  );
+}
+
+function Fact({ label, value, mono = false }: { label: string; value: ReactNode; mono?: boolean }) {
+  return (
+    <div className="min-w-0">
+      <dt className="text-[11px] uppercase tracking-[0.08em] text-[var(--text3)]">{label}</dt>
+      <dd className={`mt-1 truncate text-[13px] text-[var(--text2)] ${mono ? "font-[family-name:var(--mono)]" : ""}`}>{value}</dd>
     </div>
   );
 }

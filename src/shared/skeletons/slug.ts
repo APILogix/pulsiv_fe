@@ -19,7 +19,6 @@ export const KNOWN_MODULE_ROOTS = new Set([
   "projects",
   "p",
   "alerts",
-  "automation",
   "ingestion",
   "ai",
   "admin",
@@ -29,6 +28,7 @@ export const KNOWN_MODULE_ROOTS = new Set([
   "developer",
   "settings",
   "account",
+  "members",
   "team",
 ]);
 

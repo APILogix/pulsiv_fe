@@ -2,7 +2,7 @@ import { Link } from 'react-router';
 import { motion } from 'framer-motion';
 import clsx from 'clsx';
 
-import { SentinelLogo } from '@/shared/components/PulsivLogo';
+import { LynkTraceLogo } from '@/shared/components/LynkTraceLogo';
 import { mainNavigation, type MainNavItem } from '@/app/navigation/navigation';
 import { prefetchRoute } from '@/app/router/route-prefetch';
 import { SPRING } from '@/shared/motion';
@@ -30,8 +30,14 @@ interface PrimaryRailProps {
 }
 
 /** Rail labels that live in the AI zone and the pinned admin zone. */
-const AI_ZONE = new Set(['AI', 'AI Reports']);
-const ADMIN_ZONE = new Set(['Organization', 'Billing', 'Developer']);
+const AI_ZONE = new Set(['AI', 'AI Reports', 'AI Intelligence']);
+const ADMIN_ZONE = new Set(['Organization', 'Billing']);
+
+const PRODUCT_ITEMS = mainNavigation.filter(
+  (item) => !AI_ZONE.has(item.label) && !ADMIN_ZONE.has(item.label),
+);
+const AI_ITEMS = mainNavigation.filter((item) => AI_ZONE.has(item.label));
+const ADMIN_ITEMS = mainNavigation.filter((item) => ADMIN_ZONE.has(item.label));
 
 const ROW_CLASSES =
   'rail-item relative size-10 rounded-[var(--radius-lg)] flex items-center justify-center cursor-pointer transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border2)]';
@@ -55,12 +61,6 @@ function ZoneDivider() {
 export function PrimaryRail({ activeRailItem, handleRailClick }: PrimaryRailProps) {
   const activeOrgSlug = useOrgStore((s) => s.activeOrgSlug);
   const dashboardPath = orgPath(activeOrgSlug, '/dashboard');
-
-  const productItems = mainNavigation.filter(
-    (item) => !AI_ZONE.has(item.label) && !ADMIN_ZONE.has(item.label),
-  );
-  const aiItems = mainNavigation.filter((item) => AI_ZONE.has(item.label));
-  const adminItems = mainNavigation.filter((item) => ADMIN_ZONE.has(item.label));
 
   const renderItem = (item: MainNavItem) => {
     const Icon = item.icon;
@@ -144,26 +144,26 @@ export function PrimaryRail({ activeRailItem, handleRailClick }: PrimaryRailProp
         onPointerEnter={() => prefetchRoute(dashboardPath)}
         className="flex h-[var(--header-height)] w-full shrink-0 items-center justify-center border-b border-[var(--border)] text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--border2)]"
       >
-        <SentinelLogo size={28} animate={true} />
+        <LynkTraceLogo size={28} animate={true} />
       </Link>
 
       {/* No overflow clipping here: rail tooltips render outside the rail. */}
       <div className="flex w-full grow flex-col items-center py-3">
-        <ul className="flex flex-col items-center gap-1">{productItems.map(renderItem)}</ul>
+        <ul className="flex flex-col items-center gap-1">{PRODUCT_ITEMS.map(renderItem)}</ul>
 
-        {aiItems.length > 0 && (
+        {AI_ITEMS.length > 0 && (
           <>
             <ZoneDivider />
-            <ul className="flex flex-col items-center gap-1">{aiItems.map(renderItem)}</ul>
+            <ul className="flex flex-col items-center gap-1">{AI_ITEMS.map(renderItem)}</ul>
           </>
         )}
 
-        {adminItems.length > 0 && (
+        {ADMIN_ITEMS.length > 0 && (
           <ul className="mt-auto flex flex-col items-center gap-1 pt-3">
             <li aria-hidden="true" className="flex justify-center">
               <ZoneDivider />
             </li>
-            {adminItems.map(renderItem)}
+            {ADMIN_ITEMS.map(renderItem)}
           </ul>
         )}
       </div>

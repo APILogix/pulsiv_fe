@@ -1,0 +1,1 @@
+import{c as o,j as r}from"./react-core-DcVtC1FV.js";import{N as s}from"./router-vendor-D0K1n05U.js";function m(){const t=o.c(1);let e;return t[0]===Symbol.for("react.memo_cache_sentinel")?(e=r.jsx(s,{to:"../integrations",replace:!0}),t[0]=e):e=t[0],e}export{m as default};

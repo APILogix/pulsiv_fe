@@ -1,10 +1,11 @@
 import type { ExplorerPagination } from "./hooks/useObservabilityApi";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router";
+import { X } from "lucide-react";
 import { useObservabilityList } from "./hooks/useObservabilityApi";
 import {
   PageHeader, FillPage, TableToolbar, SearchInput, FilterSelect,
-  EnvironmentBadge, AskAiModal, InfiniteTable, SelectionProvider, useSelection,
+  EnvironmentBadge, InfiniteTable,
   TimeRangePicker, useTimeRangeParams, SignalSheet, useSignalTimeline, useTimeWindow,
   rangeParams, pct, formatCompact, formatLatency, formatAbsoluteTime, MUTED_DASH,
   ENVIRONMENT_OPTIONS, DURATION_OPTIONS,
@@ -59,34 +60,36 @@ function LevelMark({ level }: { level?: string | null }) {
   );
 }
 
-function LogsPageContent() {
+export default function LogsPage() {
   const navigate = useNavigate();
   const activeProjectSlug = useOrgStore((s) => s.activeProjectSlug);
   const [level, setLevel] = useState("");
   const [environment, setEnvironment] = useState("");
   const [duration, setDuration] = useState("");
   const [query, setQuery] = useState("");
-  const [isAiModalOpen, setIsAiModalOpen] = useState(false);
 
   const { timeRangeState } = useTimeRangeParams();
   const window = useTimeWindow(timeRangeState);
-  const { selectedKeys, toggleSelect, selectAll, clearSelection, selectedCount } = useSelection();
   const [activePagination, setActivePagination] = useState<ExplorerPagination | undefined>(undefined);
 
   const { cursor, paginationProps, onNextPage, onPreviousPage } = useCursorPagination(activePagination, {
     dependencies: [activeProjectSlug, level, environment, duration, timeRangeState, query],
   });
 
-  const filters = {
-    project: activeProjectSlug ?? undefined,
-    severity: level || undefined,
-    environment: environment || undefined,
-    duration: duration || undefined,
-    ...rangeParams(timeRangeState),
-    search: query,
-  };
+  const filters = useMemo(
+    () => ({
+      project: activeProjectSlug ?? undefined,
+      severity: level || undefined,
+      environment: environment || undefined,
+      duration: duration || undefined,
+      ...rangeParams(timeRangeState),
+      search: query,
+    }),
+    [activeProjectSlug, level, environment, duration, timeRangeState, query],
+  );
 
-  const { data, isLoading } = useObservabilityList<Row>("logs", { ...filters, cursor });
+  const queryParams = useMemo(() => ({ ...filters, cursor }), [filters, cursor]);
+  const { data, isLoading } = useObservabilityList<Row>("logs", queryParams);
   const timeline = useSignalTimeline("logs", filters, window);
 
   useEffect(() => {
@@ -152,17 +155,31 @@ function LogsPageContent() {
     <FillPage>
       <PageHeader
         title="Logs"
-        description="Structured log lines from every service, newest first. Search supports level:error, service:api, and free text."
         actions={<TimeRangePicker />}
       />
 
       <SignalSheet cells={cells} loading={isLoading && !data} bars={timeline.bars} timelineLoading={timeline.isLoading} countLabel="Lines" errorLabel="Error level" />
 
-      <TableToolbar selectedCount={selectedCount} onClearSelection={clearSelection} onAskAi={() => setIsAiModalOpen(true)} resourceName="logs">
+      <TableToolbar resourceName="logs">
         <SearchInput placeholder="Search messages, level:error, service:api…" onSearch={setQuery} defaultValue={query} />
-        <FilterSelect value={environment} onChange={setEnvironment} options={ENVIRONMENT_OPTIONS} />
-        <FilterSelect value={level} onChange={setLevel} options={LEVEL_OPTS} />
-        <FilterSelect value={duration} onChange={setDuration} options={DURATION_OPTIONS} />
+        <FilterSelect label="Environment" value={environment} onChange={setEnvironment} options={ENVIRONMENT_OPTIONS} />
+        <FilterSelect label="Level" value={level} onChange={setLevel} options={LEVEL_OPTS} />
+        <FilterSelect label="Duration" value={duration} onChange={setDuration} options={DURATION_OPTIONS} />
+        {(query || environment || level || duration) && (
+          <button
+            type="button"
+            onClick={() => {
+              setQuery("");
+              setEnvironment("");
+              setLevel("");
+              setDuration("");
+            }}
+            className="inline-flex h-8 items-center gap-1.5 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg2)]/60 px-2.5 text-[12px] text-[var(--text2)] transition-colors hover:border-[var(--border2)] hover:bg-[var(--bg2)] hover:text-[var(--text)] cursor-pointer"
+          >
+            <X className="size-3" />
+            Clear filters
+          </button>
+        )}
       </TableToolbar>
 
       <InfiniteTable
@@ -175,32 +192,11 @@ function LogsPageContent() {
         onRowClick={(l) => navigate(`/observability/logs/${encodeURIComponent(l.publicId ?? l.id ?? l.eventId)}`)}
         emptyTitle="No log lines in this window"
         emptyIllustration="terminal"
-        emptyMessage="Send logs through the Pulse SDK logger or console capture, then widen the time range."
-        selectable
-        selectedKeys={selectedKeys}
-        onSelectToggle={toggleSelect}
-        onSelectAllToggle={selectAll}
+        emptyMessage="Send logs through the LynkTrace SDK logger or console capture, then widen the time range."
         pagination={paginationProps}
         onNextPage={onNextPage}
         onPreviousPage={onPreviousPage}
       />
-
-      <AskAiModal
-        isOpen={isAiModalOpen}
-        onClose={() => setIsAiModalOpen(false)}
-        resource="logs"
-        selectedIds={Array.from(selectedKeys)}
-        filters={{ severity: level, environment }}
-        search={query}
-      />
     </FillPage>
-  );
-}
-
-export default function LogsPage() {
-  return (
-    <SelectionProvider>
-      <LogsPageContent />
-    </SelectionProvider>
   );
 }

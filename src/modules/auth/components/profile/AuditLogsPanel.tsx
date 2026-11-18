@@ -262,7 +262,7 @@ export function AuditLogsPanel() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `sentinel-login-history-${new Date().toISOString().split('T')[0]}.csv`;
+    link.download = `lynktrace-login-history-${new Date().toISOString().split('T')[0]}.csv`;
     link.click();
     URL.revokeObjectURL(url);
     toast.success('Audit log CSV exported');

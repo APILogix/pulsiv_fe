@@ -27,6 +27,8 @@ export const orgQueryKeys = {
   sdkConfigs: (id: string) => [...orgQueryKeys.detail(id), 'sdkConfigs'] as const,
 };
 
+const EMPTY_ORGS: any[] = [];
+
 export function useOrganizations() {
   const activeOrgId = useOrgStore((s) => s.activeOrgId);
   const setActiveOrgId = useOrgStore((s) => s.setActiveOrgId);
@@ -39,11 +41,11 @@ export function useOrganizations() {
     queryKey: orgQueryKeys.lists(),
     queryFn: () => orgApi.listOrganizations({ limit: 100 }),
     staleTime: 5 * 60 * 1000,
-    enabled: isAuthenticated,
+    enabled: isAuthenticated && bootstrapOrgs.length === 0,
   });
 
   // Prefer bootstrap store organizations, falling back to query data
-  const rawOrgs = query.data?.data ?? [];
+  const rawOrgs = query.data?.data ?? EMPTY_ORGS;
   const organizations = bootstrapOrgs.length > 0 ? bootstrapOrgs : rawOrgs;
 
   // Auto-select active org if none is active or sync activeOrgSlug

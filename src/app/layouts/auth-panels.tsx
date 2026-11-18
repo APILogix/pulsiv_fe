@@ -1,5 +1,6 @@
 import type { ComponentType, ReactNode } from "react";
 import { cn } from "@/lib/utils";
+import { LynkTraceLogo } from "@/shared/components/LynkTraceLogo";
 import type { AuthAside } from "./auth-shell";
 
 /**
@@ -13,9 +14,12 @@ import type { AuthAside } from "./auth-shell";
 
 export function Wordmark() {
   return (
-    <span className="inline-flex items-baseline gap-2">
-      <span className="text-[17px] font-semibold tracking-[-0.02em] text-[var(--text)]">Sentinel</span>
-      <span className="text-[13px] text-[var(--text3)]">Console</span>
+    <span className="inline-flex items-center gap-2.5 select-none">
+      <LynkTraceLogo size={24} variant="badge" />
+      <span className="inline-flex items-baseline gap-1.5">
+        <span className="text-[17px] font-bold tracking-[-0.02em] text-[var(--text)]">Lynk<span className="font-medium text-[var(--text2)]">Trace</span></span>
+        <span className="text-[11px] font-mono text-[var(--text3)] uppercase tracking-wider px-1.5 py-0.5 rounded-[4px] bg-[var(--bg2)] border border-[var(--border)]">Console</span>
+      </span>
     </span>
   );
 }
@@ -107,7 +111,7 @@ function SignalPanel() {
 
   return (
     <AsideFrame
-      label="About Sentinel"
+      label="About LynkTrace"
       title="Know before your users do."
       figure={
         <figure className="w-full max-w-[640px] self-center">
@@ -181,7 +185,7 @@ function SignalPanel() {
         </figure>
       }
     >
-      Sentinel watches latency, errors, and traffic across your APIs, and opens an alert the moment a line
+      LynkTrace watches latency, errors, and traffic across your APIs, and opens an alert the moment a line
       crosses its threshold.
     </AsideFrame>
   );
@@ -337,7 +341,7 @@ function HandoffPanel() {
             <div className="col-start-1 row-start-2">
               <Station
                 align="end"
-                title="Sentinel"
+                title="LynkTrace"
                 detail={<span className="font-mono text-[11px]">company.com</span>}
               />
             </div>
@@ -405,7 +409,7 @@ function HandoffPanel() {
                 stroke="var(--text2)"
                 strokeWidth="1.5"
               />
-              {/* The return lands: Sentinel's node fills once you are back signed in. */}
+              {/* The return lands: LynkTrace's node fills once you are back signed in. */}
               <circle cx="6" cy={LOOP_MID} r="2.75" fill="var(--text)" className="auth-trace-mark" style={delay(1850)} />
             </svg>
 
@@ -423,8 +427,8 @@ function HandoffPanel() {
         </figure>
       }
     >
-      Sentinel matches your email domain to your organization&apos;s SAML or OIDC provider and sends you there.
-      You come back signed in, and your SSO password never reaches Sentinel.
+      LynkTrace matches your email domain to your organization&apos;s SAML or OIDC provider and sends you there.
+      You come back signed in, and your SSO password never reaches LynkTrace.
     </AsideFrame>
   );
 }

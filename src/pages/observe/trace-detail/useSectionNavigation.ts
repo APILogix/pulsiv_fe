@@ -1,12 +1,11 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { sectionDomId } from "./helpers";
 
-export type TraceSectionId = "overview" | "waterfall" | "ai" | "correlations";
+export type TraceSectionId = "overview" | "waterfall" | "correlations";
 
 export const TRACE_SECTIONS: { id: TraceSectionId; label: string }[] = [
   { id: "overview", label: "Overview" },
   { id: "waterfall", label: "Waterfall" },
-  { id: "ai", label: "AI analysis" },
   { id: "correlations", label: "Related" },
 ];
 

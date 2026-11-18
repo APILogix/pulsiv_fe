@@ -1,10 +1,19 @@
-import { useState, type ReactNode } from "react";
-import { AlertTriangle, Pencil, Plus, SlidersHorizontal, Trash2 } from "lucide-react";
+import { useState, useMemo, type ReactNode } from "react";
+import { AlertTriangle, Loader2, Pencil, Plus, Send, SlidersHorizontal, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 import {
   useAlertChannelMutations,
   useAlertChannels,
   useMyChannelPreferences,
 } from "@/modules/projects/hooks/useProjectAlerting";
+import {
+  ConnectorPicker,
+  getProviderMeta,
+} from "@/modules/organizations/components/ConnectorPicker";
+import {
+  useConnectorPicker,
+  type ConnectorPickerItem,
+} from "@/modules/organizations/hooks/useConnectors";
 import { useNotificationEntitlement } from "@/modules/alerting/hooks/useAlerting";
 import { EntitlementRestrictedBanner } from "@/modules/alerting/components/EntitlementRestrictedBanner";
 import {
@@ -27,7 +36,6 @@ import {
   HIDE_BELOW_LG,
   HIDE_BELOW_XL,
   ProjectPageHeader,
-  Readouts,
   RowActions,
   RowTitle,
   Sheet,
@@ -41,7 +49,6 @@ import {
   SheetTable,
   ToolbarCount,
   WorkspacePage,
-  type Readout,
   type SheetColumn,
 } from "@/modules/projects/components/project-page";
 import {
@@ -145,7 +152,50 @@ function preferenceSummary(preference: MemberChannelPreference, form: "compact" 
 
 // ── row pieces ───────────────────────────────────────────────
 
-function ChannelDestination({ channel }: { channel: ProjectAlertChannel }) {
+function ChannelDestination({
+  channel,
+  connectorsMap,
+}: {
+  channel: ProjectAlertChannel;
+  connectorsMap?: Map<string, ConnectorPickerItem>;
+}) {
+  const connector = channel.connectorId ? connectorsMap?.get(channel.connectorId) : null;
+
+  if (channel.connectorId) {
+    if (connector) {
+      const meta = getProviderMeta(connector.type);
+      const Icon = meta.icon;
+      return (
+        <span
+          className="flex items-center gap-1.5 truncate text-[12px] text-[var(--text2)]"
+          title={`${connector.name} (${meta.label})${channel.destination ? ` · ${channel.destination}` : ""}`}
+        >
+          <span className="flex size-4 shrink-0 items-center justify-center rounded-xs bg-[var(--bg2)]">
+            <Icon className="size-3 text-[var(--text2)]" aria-hidden="true" />
+          </span>
+          <span className="truncate font-medium text-[var(--text)]">{connector.name}</span>
+          {channel.destination ? (
+            <span className="truncate font-[family-name:var(--mono)] text-[11px] text-[var(--text3)]">
+              {channel.destination}
+            </span>
+          ) : (
+            <span className="truncate text-[11px] text-[var(--text3)]">({meta.label})</span>
+          )}
+        </span>
+      );
+    }
+
+    return (
+      <span
+        className="inline-flex items-center gap-1.5 truncate text-[12px] text-amber-600 dark:text-amber-400"
+        title="Linked organization connector is unavailable or was removed"
+      >
+        <AlertTriangle className="size-3.5 shrink-0" aria-hidden="true" />
+        <span className="font-medium">Connector unavailable</span>
+      </span>
+    );
+  }
+
   if (channel.destination) {
     return (
       <span
@@ -156,14 +206,7 @@ function ChannelDestination({ channel }: { channel: ProjectAlertChannel }) {
       </span>
     );
   }
-  if (channel.connectorId) {
-    return (
-      <span className="block truncate text-[12px] text-[var(--text3)]" title={channel.connectorId}>
-        Connector{" "}
-        <span className="font-[family-name:var(--mono)] text-[var(--text2)]">{channel.connectorId.slice(0, 8)}</span>
-      </span>
-    );
-  }
+
   return (
     <span className="text-[12px] text-[var(--text3)]">
       {channel.channelType === "email" ? "Member emails" : "Not set"}
@@ -183,69 +226,194 @@ function PreferenceCell({ preference }: { preference?: MemberChannelPreference }
 
 // ── channel form ─────────────────────────────────────────────
 
-function ChannelFields({ channel }: { channel?: ProjectAlertChannel }) {
+interface ChannelFieldsProps {
+  channel?: ProjectAlertChannel;
+  projectId?: string;
+  onTest?: () => void;
+  testing?: boolean;
+}
+
+function ChannelFields({ channel, projectId, onTest, testing = false }: ChannelFieldsProps) {
+  const [useConnector, setUseConnector] = useState(Boolean(channel?.connectorId || !channel));
+  const [selectedConnectorId, setSelectedConnectorId] = useState<string | null>(
+    channel?.connectorId ?? null
+  );
+  const [selectedConnector, setSelectedConnector] = useState<ConnectorPickerItem | null>(null);
   const [channelType, setChannelType] = useState(channel?.channelType ?? "email");
-  const active = CHANNEL_TYPES.find((type) => type.value === channelType);
+  const [name, setName] = useState(channel?.name ?? "");
+  const [destination, setDestination] = useState(channel?.destination ?? "");
+
+  const handleConnectorChange = (connector: ConnectorPickerItem | null) => {
+    setSelectedConnector(connector);
+    setSelectedConnectorId(connector?.id ?? null);
+    if (connector) {
+      setChannelType(connector.type);
+      // Reset destination if connector changes
+      setDestination("");
+      // Auto-suggest name if empty
+      if (!name) {
+        setName(`${connector.name} Channel`);
+      }
+    }
+  };
+
+  const handleRoutingModeToggle = (nextUseConnector: boolean) => {
+    setUseConnector(nextUseConnector);
+    if (!nextUseConnector) {
+      setSelectedConnectorId(null);
+      setSelectedConnector(null);
+    }
+  };
+
+  const activeType = CHANNEL_TYPES.find((t) => t.value === channelType);
+
+  // Type-specific destination field configuration
+  const destinationMeta = useMemo(() => {
+    const type = channelType.toLowerCase();
+    switch (type) {
+      case "slack":
+        return {
+          label: "Slack channel",
+          placeholder: "#alerts or #general",
+          hint: "Specific Slack channel for notifications. Leave blank to use connector's default channel.",
+        };
+      case "email":
+        return {
+          label: "Recipient email addresses",
+          placeholder: "alerts@example.com, oncall@example.com",
+          hint: "Optional comma-separated email list. Without one, alerts go to all project members.",
+        };
+      case "webhook":
+        return {
+          label: "Webhook endpoint path",
+          placeholder: useConnector ? "/webhook/alerts (optional path)" : "https://hooks.example.com/alerts",
+          hint: useConnector
+            ? "Optional path or URL override relative to the connector's base destination."
+            : "The full HTTPS endpoint that receives the alert payload.",
+        };
+      case "teams":
+        return {
+          label: "Teams channel target",
+          placeholder: "#general or channel webhook path",
+          hint: "Target Teams channel or webhook URL path.",
+        };
+      case "discord":
+        return {
+          label: "Discord channel",
+          placeholder: "#alerts or webhook slug",
+          hint: "Target channel name or webhook path within the server.",
+        };
+      case "pagerduty":
+        return {
+          label: "PagerDuty service routing key",
+          placeholder: "service-integration-key",
+          hint: "PagerDuty routing key or integration reference.",
+        };
+      default:
+        return {
+          label: "Destination",
+          placeholder: activeType?.placeholder ?? "https://hooks.example.com/…",
+          hint: activeType?.hint ?? "Destination for alert payloads.",
+        };
+    }
+  }, [channelType, useConnector, activeType]);
 
   return (
     <>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <DialogField label="Channel type" name="channelType" required>
-          <select
-            id="channelType"
-            name="channelType"
-            required
-            value={channelType}
-            onChange={(event) => setChannelType(event.target.value)}
-            className={fieldInputClass}
+      {/* Connector Picker Section */}
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center justify-between">
+          <label className="text-[13px] font-medium text-[var(--text)]">
+            Organization connector <span className="font-normal text-[var(--brand)]">(Recommended)</span>
+          </label>
+          <button
+            type="button"
+            onClick={() => handleRoutingModeToggle(!useConnector)}
+            className="text-[12px] text-[var(--text3)] underline transition-colors hover:text-[var(--text)]"
           >
-            {CHANNEL_TYPES.map((type) => (
-              <option key={type.value} value={type.value}>
-                {type.label}
-              </option>
-            ))}
-          </select>
+            {useConnector ? "Use custom destination without connector" : "Route via organization connector"}
+          </button>
+        </div>
+
+        {useConnector ? (
+          <div>
+            <ConnectorPicker
+              value={selectedConnectorId}
+              projectId={projectId}
+              onChange={handleConnectorChange}
+              placeholder="Search and select an organization connector…"
+            />
+            <p className="mt-1.5 text-[11px] text-[var(--text3)]">
+              Connectors securely route alerts to Slack, Discord, Teams, PagerDuty, or Webhooks without sharing tokens or credentials.
+            </p>
+          </div>
+        ) : (
+          <div className="rounded-[var(--radius)] border border-dashed border-[var(--border)] p-3 text-[12px] text-[var(--text3)]">
+            Custom destination mode enabled. You can manually enter an endpoint or email address for this channel.
+          </div>
+        )}
+      </div>
+
+      {/* Hidden input to pass connectorId in FormData */}
+      <input type="hidden" name="connectorId" value={useConnector ? (selectedConnectorId ?? "") : ""} />
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <DialogField
+          label="Channel type"
+          name="channelType"
+          required
+          hint={useConnector && selectedConnector ? `Locked to ${selectedConnector.name}'s provider` : undefined}
+        >
+          {useConnector && selectedConnector ? (
+            <div className="flex h-9 w-full items-center justify-between rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg2)] px-3 text-[13px] text-[var(--text)]">
+              <span className="capitalize">{channelType}</span>
+              <input type="hidden" name="channelType" value={channelType} />
+              <span className="text-[11px] text-[var(--text3)]">From connector</span>
+            </div>
+          ) : (
+            <select
+              id="channelType"
+              name="channelType"
+              required
+              value={channelType}
+              onChange={(event) => setChannelType(event.target.value)}
+              className={fieldInputClass}
+            >
+              {CHANNEL_TYPES.map((type) => (
+                <option key={type.value} value={type.value}>
+                  {type.label}
+                </option>
+              ))}
+            </select>
+          )}
         </DialogField>
 
-        <DialogField label="Name" name="name" required>
+        <DialogField label="Channel name" name="name" required>
           <input
             id="name"
             name="name"
             required
-            defaultValue={channel?.name}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
             maxLength={150}
             autoComplete="off"
-            placeholder="On-call Slack"
+            placeholder="e.g. On-call Slack or Critical Incidents"
             className={fieldInputClass}
           />
         </DialogField>
       </div>
 
-      <DialogField label="Destination" name="destination" hint={active?.hint}>
+      {/* Type-Specific Destination Config */}
+      <DialogField label={destinationMeta.label} name="destination" hint={destinationMeta.hint}>
         <input
           id="destination"
           name="destination"
-          defaultValue={channel?.destination ?? ""}
+          value={destination}
+          onChange={(e) => setDestination(e.target.value)}
           maxLength={2048}
           autoComplete="off"
           spellCheck={false}
-          placeholder={active?.placeholder ?? "https://hooks.example.com/…"}
-          className={fieldMonoClass}
-        />
-      </DialogField>
-
-      <DialogField
-        label="Connector ID"
-        name="connectorId"
-        hint="Optional. Route through an organization connector instead of a raw destination."
-      >
-        <input
-          id="connectorId"
-          name="connectorId"
-          defaultValue={channel?.connectorId ?? ""}
-          autoComplete="off"
-          spellCheck={false}
-          placeholder="UUID of an organization connector"
+          placeholder={destinationMeta.placeholder}
           className={fieldMonoClass}
         />
       </DialogField>
@@ -256,6 +424,7 @@ function ChannelFields({ channel }: { channel?: ProjectAlertChannel }) {
           name="description"
           defaultValue={channel?.description ?? ""}
           maxLength={5000}
+          placeholder="Optional notes about when and how this alert channel is used."
           className={fieldTextareaClass}
         />
       </DialogField>
@@ -276,16 +445,44 @@ function ChannelFields({ channel }: { channel?: ProjectAlertChannel }) {
           Default channel for this project
         </label>
       </fieldset>
+
+      {/* Test delivery button in edit mode */}
+      {channel && onTest && (
+        <div className="flex items-center justify-between rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg2)]/50 p-3">
+          <div className="flex flex-col">
+            <span className="text-[13px] font-medium text-[var(--text)]">Test alert delivery</span>
+            <span className="text-[11px] text-[var(--text3)]">
+              Send a test notification payload to verify channel connectivity (rate-limited to 5/min).
+            </span>
+          </div>
+          <UiButton
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={onTest}
+            disabled={testing}
+            className="shrink-0"
+          >
+            {testing ? (
+              <Loader2 className="mr-1.5 size-3.5 animate-spin" aria-hidden="true" />
+            ) : (
+              <Send className="mr-1.5 size-3.5" aria-hidden="true" />
+            )}
+            Send test
+          </UiButton>
+        </div>
+      )}
     </>
   );
 }
 
 function readChannelForm(form: FormData): AlertChannelBody {
+  const rawConnectorId = optionalText(form.get("connectorId"));
   return {
     channelType: String(form.get("channelType") ?? "email"),
     name: String(form.get("name") ?? "").trim(),
     destination: optionalText(form.get("destination")) ?? null,
-    connectorId: optionalText(form.get("connectorId")) ?? null,
+    connectorId: rawConnectorId || null,
     description: optionalText(form.get("description")) ?? null,
     enabled: form.get("enabled") === "on",
     isDefault: form.get("isDefault") === "on",
@@ -308,7 +505,7 @@ export default function ProjectAlertChannelsPage() {
 
   // Readings describe every channel in the project, never the filtered view.
   // With no filter applied this is the same query as the list above.
-  const { data: summary, isLoading: summaryLoading, error: summaryError } = useAlertChannels(projectId);
+  const { data: summary } = useAlertChannels(projectId);
   const allChannels = summary?.data ?? [];
 
   const { data: preferences = [] } = useMyChannelPreferences(projectId);
@@ -319,7 +516,38 @@ export default function ProjectAlertChannelsPage() {
     deleteChannel,
     upsertPreference,
     deletePreference,
+    testChannel,
   } = useAlertChannelMutations(projectId);
+
+  // Prefetch connectors for this project/org to avoid waterfall requests
+  const { data: pickerConnectors = [] } = useConnectorPicker({ projectId });
+  const connectorsMap = useMemo(() => {
+    return new Map(pickerConnectors.map((c) => [c.id, c]));
+  }, [pickerConnectors]);
+
+  const [testingChannelId, setTestingChannelId] = useState<string | null>(null);
+
+  const handleTestChannel = async (channel: ProjectAlertChannel) => {
+    setTestingChannelId(channel.id);
+    try {
+      const res = await testChannel.mutateAsync(channel.id);
+      if (res?.success) {
+        toast.success(`Test alert queued for "${channel.name}"`, {
+          description: "Verification payload was dispatched through the alert queue.",
+        });
+      } else {
+        toast.error(`Test delivery failed: ${res?.error || "Unknown error"}`);
+      }
+    } catch (err: any) {
+      if (err?.response?.status === 429 || err?.message?.includes("Rate limit")) {
+        toast.error("Test rate limit reached: Maximum 5 test notifications per minute. Please try again shortly.");
+      } else {
+        toast.error(apiErrorMessage(err, "Failed to send test notification"));
+      }
+    } finally {
+      setTestingChannelId(null);
+    }
+  };
 
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<ProjectAlertChannel | null>(null);
@@ -336,11 +564,9 @@ export default function ProjectAlertChannelsPage() {
   const blockedByPlan = (channel: ProjectAlertChannel) =>
     !entitlementLoading && channel.channelType !== "email" && !decision.isProviderAllowed(channel.channelType);
 
-  const totalChannels = summary?.total ?? allChannels.length;
   const enabledCount = allChannels.filter((channel) => channel.enabled).length;
   const disabledCount = allChannels.length - enabledCount;
   const defaultChannels = allChannels.filter((channel) => channel.isDefault);
-  const blockedCount = allChannels.filter(blockedByPlan).length;
 
   const filtered = Boolean(channelType) || Boolean(enabledFilter);
   const clearFilters = () => {
@@ -348,47 +574,6 @@ export default function ProjectAlertChannelsPage() {
     setEnabledFilter("");
   };
 
-  // A failed summary shows dashes, never zeros that read as "no channels".
-  const channelReading = (value: number) => (summaryError ? "—" : formatNumber(value));
-  const ofChannels = summaryError
-    ? "Could not load channels"
-    : allChannels.length > 0
-      ? `of ${formatNumber(allChannels.length)} channels`
-      : "None yet";
-  const readouts: Readout[] = [
-    {
-      label: "Channels",
-      value: channelReading(totalChannels),
-      sub: summaryError
-        ? "Could not load channels"
-        : defaultChannels.length === 1
-          ? `Default: ${defaultChannels[0].name}`
-          : defaultChannels.length > 1
-            ? `${formatNumber(defaultChannels.length)} default channels`
-            : totalChannels > 0
-              ? "No default channel"
-              : "None yet",
-    },
-    { label: "Enabled", value: channelReading(enabledCount), sub: ofChannels },
-    {
-      label: "Disabled",
-      value: channelReading(disabledCount),
-      sub: disabledCount > 0 || summaryError ? ofChannels : "None disabled",
-    },
-    {
-      label: "My preferences",
-      value: formatNumber(preferences.length),
-      sub: preferences.length > 0 ? "Overrides on your account" : "Using project defaults",
-    },
-  ];
-  if (blockedCount > 0) {
-    readouts.push({
-      label: "Unavailable on plan",
-      value: formatNumber(blockedCount),
-      sub: "Configured, but not in your plan",
-      tone: "warn",
-    });
-  }
 
   const stateOptions: SegmentOption<string>[] = [
     { value: "", label: "All", count: summary ? allChannels.length : undefined },
@@ -451,7 +636,7 @@ export default function ProjectAlertChannelsPage() {
                 />
               </SheetCell>
               <SheetCell className={HIDE_BELOW_LG}>
-                <ChannelDestination channel={channel} />
+                <ChannelDestination channel={channel} connectorsMap={connectorsMap} />
               </SheetCell>
               <SheetCell className={HIDE_BELOW_XL}>
                 <PreferenceCell preference={preference} />
@@ -479,6 +664,17 @@ export default function ProjectAlertChannelsPage() {
                   >
                     <Pencil aria-hidden="true" /> Edit channel
                   </DropdownMenuItem>
+                  <DropdownMenuItem
+                    disabled={testingChannelId === channel.id}
+                    onSelect={() => void handleTestChannel(channel)}
+                  >
+                    {testingChannelId === channel.id ? (
+                      <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+                    ) : (
+                      <Send className="size-4" aria-hidden="true" />
+                    )}
+                    Send test notification
+                  </DropdownMenuItem>
                   <DropdownMenuItem onSelect={() => setTuning(channel)}>
                     <SlidersHorizontal aria-hidden="true" /> My delivery preferences
                   </DropdownMenuItem>
@@ -499,11 +695,8 @@ export default function ProjectAlertChannelsPage() {
     <WorkspacePage>
       <ProjectPageHeader
         title="Channels"
-        description="Where this project delivers alerts. Each member can also set their own minimum severity and digest cadence on any channel."
         actions={newChannelButton}
       />
-
-      <Readouts cells={readouts} loading={summaryLoading} label="Channels summary" />
 
       {isRestricted && <EntitlementRestrictedBanner projectId={projectId} />}
 
@@ -540,8 +733,7 @@ export default function ProjectAlertChannelsPage() {
 
       {preferences.length > 0 && (
         <Sheet
-          title="My delivery preferences"
-          description="Your overrides on this project's channels. They apply to your account only."
+          title="Delivery preferences"
         >
           <SheetList label="My delivery preferences">
             {preferences.map((preference) => (
@@ -600,7 +792,7 @@ export default function ProjectAlertChannelsPage() {
           });
         }}
       >
-        <ChannelFields />
+        <ChannelFields projectId={projectId} />
       </FormDialog>
 
       {/* ── edit ── */}
@@ -628,7 +820,14 @@ export default function ProjectAlertChannelsPage() {
           );
         }}
       >
-        {editing && <ChannelFields channel={editing} />}
+        {editing && (
+          <ChannelFields
+            channel={editing}
+            projectId={projectId}
+            onTest={() => void handleTestChannel(editing)}
+            testing={testingChannelId === editing.id}
+          />
+        )}
       </FormDialog>
 
       {/* ── personal preference ── */}

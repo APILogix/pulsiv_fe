@@ -1,5 +1,5 @@
-import { useMemo, useState, type ReactNode } from "react";
-import { useNavigate } from "react-router";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useSearchParams } from "react-router";
 import {
   ChevronLeft,
   ChevronRight,
@@ -29,6 +29,7 @@ import {
 } from "@/modules/alerting/api/types";
 import { EnabledPill, labelize } from "@/modules/alerting/components/alerting-ui";
 import { ProjectOverrideModal } from "@/modules/alerting/components/ProjectOverrideModal";
+import { AlertCatalogDetailDialog } from "@/modules/alerting/components/AlertCatalogDetailDialog";
 import {
   Dialog,
   DialogContent,
@@ -39,8 +40,9 @@ import {
 } from "@/components/ui/dialog";
 import { apiErrorMessage } from "@/modules/projects/components/project-ui";
 import {
-  HIDE_BELOW_LG,
+  HIDE_BELOW_SM,
   HIDE_BELOW_MD,
+  HIDE_BELOW_LG,
   HIDE_BELOW_XL,
   PageTabs,
   ProjectPageHeader,
@@ -86,10 +88,16 @@ const POLICY_CATEGORIES = [
   { value: "infrastructure", label: "Infrastructure" },
   { value: "security", label: "Security" },
   { value: "database", label: "Database" },
+  { value: "ai", label: "AI" },
+  { value: "cron", label: "Cron" },
+  { value: "sdk", label: "SDK" },
+  { value: "analytics", label: "Analytics" },
+  { value: "deployments", label: "Deployments" },
+  { value: "fast", label: "Fast" },
   { value: "custom", label: "Custom" },
 ];
 
-const CATEGORY_FILTER_OPTIONS = [{ value: "all", label: "All" }, ...POLICY_CATEGORIES];
+const CATEGORY_FILTER_OPTIONS = [{ value: "all", label: "All Categories" }, ...POLICY_CATEGORIES];
 
 const SEVERITY_FILTER_OPTIONS = [
   { value: "all", label: "All" },
@@ -104,27 +112,25 @@ const STATUS_FILTER_OPTIONS = [
 ];
 
 const CATALOG_COLUMNS: SheetColumn[] = [
-  { key: "policy", header: "Policy" },
-  { key: "category", header: "Category", className: `w-[132px] ${HIDE_BELOW_MD}` },
-  { key: "severity", header: "Severity", className: "w-[108px]" },
-  { key: "threshold", header: "Threshold", className: `w-[112px] ${HIDE_BELOW_LG}` },
-  { key: "window", header: "Window", className: `w-[88px] ${HIDE_BELOW_XL}` },
-  { key: "cooldown", header: "Cooldown", className: `w-[96px] ${HIDE_BELOW_LG}` },
-  { key: "state", header: "State", className: "w-[80px]" },
-  { key: "actions", header: "Action", className: "w-[110px] text-right" },
+  { key: "policy", header: "Policy", className: "min-w-0" },
+  { key: "category", header: "Category", className: `w-[110px] ${HIDE_BELOW_MD}` },
+  { key: "severity", header: "Severity", className: `w-[96px] ${HIDE_BELOW_SM}` },
+  { key: "threshold", header: "Threshold", className: `w-[110px] ${HIDE_BELOW_LG}` },
+  { key: "window", header: "Window", className: `w-[80px] ${HIDE_BELOW_XL}` },
+  { key: "cooldown", header: "Cooldown", className: `w-[88px] ${HIDE_BELOW_XL}` },
+  { key: "state", header: "State", className: `w-[76px] ${HIDE_BELOW_MD}` },
+  { key: "actions", header: "Action", className: "w-[104px] text-right" },
 ];
 
 const EFFECTIVE_COLUMNS: SheetColumn[] = [
-  { key: "rule", header: "Rule & Key" },
-  { key: "project", header: "Project", className: `w-[140px] ${HIDE_BELOW_MD}` },
-  { key: "status", header: "Project Status", className: "w-[130px]" },
-  { key: "severity", header: "Severity", className: "w-[100px]" },
-  { key: "threshold", header: "Effective Threshold", className: `w-[140px] ${HIDE_BELOW_LG}` },
-  { key: "timing", header: "Window / Cooldown", className: `w-[140px] ${HIDE_BELOW_XL}` },
-  { key: "actions", header: "Actions", className: "w-[160px] text-right" },
+  { key: "rule", header: "Rule & Key", className: "min-w-0" },
+  { key: "project", header: "Project", className: `w-[130px] ${HIDE_BELOW_MD}` },
+  { key: "status", header: "Project Status", className: "w-[115px]" },
+  { key: "severity", header: "Severity", className: `w-[95px] ${HIDE_BELOW_SM}` },
+  { key: "threshold", header: "Effective Threshold", className: `w-[130px] ${HIDE_BELOW_LG}` },
+  { key: "timing", header: "Window / Cooldown", className: `w-[130px] ${HIDE_BELOW_XL}` },
+  { key: "actions", header: "Actions", className: "w-[150px] text-right" },
 ];
-
-const policyPath = (id: string) => `/alerts/policies/${id}`;
 
 // ── data helpers ─────────────────────────────────────────────
 
@@ -161,12 +167,39 @@ function MonoValue({ children }: { children: ReactNode }) {
 // ── page ─────────────────────────────────────────────────────
 
 export default function AlertRulesPage() {
-  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { activeOrgId } = useAlertingScope();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   // Tab State
   const [activeTab, setActiveTab] = useState<TabFilter>("catalog");
+
+  // Alert Catalog Detail Dialog State
+  const urlRuleKey = searchParams.get("rule") || searchParams.get("policy");
+  const [selectedDetailPolicyId, setSelectedDetailPolicyId] = useState<string | null>(urlRuleKey);
+
+  useEffect(() => {
+    if (urlRuleKey && urlRuleKey !== selectedDetailPolicyId) {
+      setSelectedDetailPolicyId(urlRuleKey);
+    }
+  }, [urlRuleKey]);
+
+  const handleOpenDetailDialog = (idOrKey: string) => {
+    setSelectedDetailPolicyId(idOrKey);
+    const next = new URLSearchParams(searchParams);
+    next.set("rule", idOrKey);
+    setSearchParams(next, { replace: true });
+  };
+
+  const handleCloseDetailDialog = () => {
+    setSelectedDetailPolicyId(null);
+    if (searchParams.has("rule") || searchParams.has("policy")) {
+      const next = new URLSearchParams(searchParams);
+      next.delete("rule");
+      next.delete("policy");
+      setSearchParams(next, { replace: true });
+    }
+  };
 
   // Catalog Tab State
   const [catalogPage, setCatalogPage] = useState(0);
@@ -191,13 +224,13 @@ export default function AlertRulesPage() {
   const [subscribeTargetCatalogKey, setSubscribeTargetCatalogKey] = useState<string>("");
   const [isSubscribing, setIsSubscribing] = useState(false);
 
-  // Queries
+  // Queries: fetch complete catalog (67 platform items) so client filtering is comprehensive
   const {
     data: policiesPage,
     isLoading: catalogLoading,
     error: catalogError,
     refetch: refetchCatalog,
-  } = useOrganizationAlertPolicies({ limit: PAGE_SIZE, offset: catalogPage * PAGE_SIZE });
+  } = useOrganizationAlertPolicies({ limit: 200, offset: 0 });
 
   const {
     data: effectiveData,
@@ -205,17 +238,35 @@ export default function AlertRulesPage() {
     error: effectiveError,
     refetch: refetchEffective,
   } = useOrgEffectiveRules({
-    projectId: effectiveProject === "all" ? undefined : effectiveProject,
-    status: effectiveStatus === "all" ? undefined : effectiveStatus,
+    projectId: !effectiveProject || effectiveProject === "all" ? undefined : effectiveProject,
+    status: !effectiveStatus || effectiveStatus === "all" ? undefined : effectiveStatus,
     search: effectiveSearch.trim() || undefined,
   });
 
   const policies = useMemo(() => policiesPage?.data ?? [], [policiesPage]);
   const totalPolicies = policiesPage?.total ?? policies.length;
 
+  const selectedDetailPolicy = useMemo(() => {
+    if (!selectedDetailPolicyId) return null;
+    return (
+      policies.find(
+        (p) => p.id === selectedDetailPolicyId || p.slug === selectedDetailPolicyId,
+      ) ?? null
+    );
+  }, [policies, selectedDetailPolicyId]);
+
   const effectiveItems = useMemo(() => effectiveData?.items ?? [], [effectiveData]);
   const effectiveProjects = useMemo(() => effectiveData?.projects ?? [], [effectiveData]);
   const effectiveSummary = effectiveData?.summary;
+
+  const categoryFilterOptions = useMemo(() => {
+    const knownValues = new Set(POLICY_CATEGORIES.map((c) => c.value));
+    const extraOptions = policies
+      .map((p) => p.category?.toLowerCase())
+      .filter((cat): cat is string => Boolean(cat) && !knownValues.has(cat))
+      .map((cat) => ({ value: cat, label: labelize(cat) }));
+    return [...CATEGORY_FILTER_OPTIONS, ...extraOptions];
+  }, [policies]);
 
   const projectFilterOptions = useMemo(() => {
     return [
@@ -225,12 +276,21 @@ export default function AlertRulesPage() {
   }, [effectiveProjects]);
 
   const filteredCatalogPolicies = useMemo(() => {
+    const trimmedSearch = catalogSearch.trim().toLowerCase();
     const list = policies.filter((policy) => {
-      const matchesSearch = `${policy.name} ${policy.slug} ${policy.description}`
-        .toLowerCase()
-        .includes(catalogSearch.toLowerCase());
-      const matchesCategory = catalogCategory === "all" || policy.category.toLowerCase() === catalogCategory;
-      const matchesSeverity = catalogSeverity === "all" || policy.severity === catalogSeverity;
+      const matchesSearch =
+        !trimmedSearch ||
+        `${policy.name} ${policy.slug} ${policy.description || ""}`
+          .toLowerCase()
+          .includes(trimmedSearch);
+      const matchesCategory =
+        !catalogCategory ||
+        catalogCategory === "all" ||
+        policy.category?.toLowerCase() === catalogCategory.toLowerCase();
+      const matchesSeverity =
+        !catalogSeverity ||
+        catalogSeverity === "all" ||
+        policy.severity?.toLowerCase() === catalogSeverity.toLowerCase();
       return matchesSearch && matchesCategory && matchesSeverity;
     });
 
@@ -505,25 +565,31 @@ export default function AlertRulesPage() {
     );
   } else {
     catalogBody = (
-      <SheetTable columns={CATALOG_COLUMNS} caption="Global alert catalog">
+      <SheetTable columns={CATALOG_COLUMNS} caption="Global alert catalog" className="[&_table]:table-fixed">
         {filteredCatalogPolicies.map((policy) => {
           const thresholdSpec = formatPolicyThreshold(policy.defaultThreshold);
           const windowValue = formatSeconds(policy.evaluationWindowSeconds);
           const cooldownValue = formatSeconds(policy.cooldownSeconds);
 
           return (
-            <SheetRow key={policy.id} onActivate={() => navigate(policyPath(policy.id))}>
-              <SheetCell>
+            <SheetRow
+              key={policy.id}
+              onActivate={() => handleOpenDetailDialog(policy.slug || policy.id)}
+            >
+              <SheetCell className="min-w-0 max-w-0">
                 <RowTitle
-                  title={policy.name}
-                  subtitle={policy.description || undefined}
-                  to={policyPath(policy.id)}
+                  title={
+                    <span className="truncate font-medium text-[var(--text)] transition-colors hover:text-white" title={policy.name}>
+                      {policy.name}
+                    </span>
+                  }
+                  subtitle={policy.description ? <span title={policy.description}>{policy.description}</span> : undefined}
                 />
               </SheetCell>
               <SheetCell className={HIDE_BELOW_MD}>
-                <span className="text-[12px] text-[var(--text2)]">{labelize(policy.category)}</span>
+                <span className="truncate text-[12px] text-[var(--text2)]">{labelize(policy.category)}</span>
               </SheetCell>
-              <SheetCell>
+              <SheetCell className={HIDE_BELOW_SM}>
                 <SeverityBadge severity={policy.severity} />
               </SheetCell>
               <SheetCell className={HIDE_BELOW_LG}>
@@ -532,29 +598,30 @@ export default function AlertRulesPage() {
                 ) : thresholdSpec.mono ? (
                   <MonoValue>{thresholdSpec.text}</MonoValue>
                 ) : (
-                  <span className="text-[12px] text-[var(--text2)]">{thresholdSpec.text}</span>
+                  <span className="truncate text-[12px] text-[var(--text2)]">{thresholdSpec.text}</span>
                 )}
               </SheetCell>
               <SheetCell className={HIDE_BELOW_XL}>
                 {windowValue === null ? <NotSet /> : <MonoValue>{windowValue}</MonoValue>}
               </SheetCell>
-              <SheetCell className={HIDE_BELOW_LG}>
+              <SheetCell className={HIDE_BELOW_XL}>
                 {cooldownValue === null ? <NotSet /> : <MonoValue>{cooldownValue}</MonoValue>}
               </SheetCell>
-              <SheetCell>
+              <SheetCell className={HIDE_BELOW_MD}>
                 <EnabledPill enabled={policy.enabled !== false} />
               </SheetCell>
               <SheetCell className="text-right">
                 <UiButton
                   variant="outline"
                   size="xs"
-                  className="h-6 text-[11px] px-2"
+                  className="h-7 text-[11.5px] px-2.5 font-medium whitespace-nowrap"
                   onClick={(e) => {
                     e.stopPropagation();
                     handleOpenSubscribeDialog(policy.slug || policy.id);
                   }}
+                  aria-label={`Subscribe to ${policy.name}`}
                 >
-                  <Plus className="size-3 mr-1" />
+                  <Plus className="size-3 mr-1 shrink-0" aria-hidden="true" />
                   Subscribe
                 </UiButton>
               </SheetCell>
@@ -579,13 +646,16 @@ export default function AlertRulesPage() {
       />
     );
   } else if (effectiveItems.length === 0) {
-    const isFiltered = effectiveStatus !== "all" || effectiveSearch.trim() !== "";
+    const isFiltered =
+      (Boolean(effectiveProject) && effectiveProject !== "all") ||
+      (Boolean(effectiveStatus) && effectiveStatus !== "all") ||
+      effectiveSearch.trim() !== "";
     effectiveBody = (
       <SheetEmpty
         title={isFiltered ? "No effective alert rules match your filters" : "No subscribed alert rules for this project"}
         description={
           isFiltered
-            ? "Try changing your status filter or clearing your search query."
+            ? "Try changing your project, status filter, or clearing your search query."
             : "This project has not subscribed to any alert rules yet. Browse the Global Catalog tab or click below to activate rules for this project."
         }
         action={
@@ -594,6 +664,7 @@ export default function AlertRulesPage() {
               variant="outline"
               size="sm"
               onClick={() => {
+                setEffectiveProject("all");
                 setEffectiveStatus("all");
                 setEffectiveSearch("");
               }}
@@ -624,19 +695,24 @@ export default function AlertRulesPage() {
     );
   } else {
     effectiveBody = (
-      <SheetTable columns={EFFECTIVE_COLUMNS} caption="Effective alert rules by project">
+      <SheetTable columns={EFFECTIVE_COLUMNS} caption="Effective alert rules by project" className="[&_table]:table-fixed">
         {effectiveItems.map((item) => {
           const isOptedOut = item.status === "opted_out";
           const isOverridden = item.status === "overridden";
 
           return (
-            <SheetRow key={`${item.projectId}-${item.catalogKey}`}>
+            <SheetRow
+              key={`${item.projectId}-${item.catalogKey}`}
+              onActivate={() => handleOpenDetailDialog(item.catalogKey)}
+            >
               {/* Rule & Key */}
-              <SheetCell>
-                <div className="flex flex-col gap-0.5">
-                  <span className="text-[13px] font-medium text-[var(--text)]">{item.title}</span>
-                  <div className="flex items-center gap-1.5">
-                    <span className="font-[family-name:var(--mono)] text-[11px] text-[var(--text3)]">
+              <SheetCell className="min-w-0 max-w-0">
+                <div className="flex min-w-0 flex-col gap-0.5">
+                  <span className="truncate text-[13px] font-medium text-[var(--text)] transition-colors hover:text-white" title={item.title}>
+                    {item.title}
+                  </span>
+                  <div className="flex min-w-0 items-center gap-1.5">
+                    <span className="truncate font-[family-name:var(--mono)] text-[11px] text-[var(--text3)]">
                       {item.catalogKey}
                     </span>
                     <Pill>{labelize(item.category)}</Pill>
@@ -677,7 +753,7 @@ export default function AlertRulesPage() {
               </SheetCell>
 
               {/* Severity */}
-              <SheetCell>
+              <SheetCell className={HIDE_BELOW_SM}>
                 <SeverityBadge severity={item.effectiveSeverity} />
               </SheetCell>
 
@@ -764,7 +840,7 @@ export default function AlertRulesPage() {
                   label="Category"
                   value={catalogCategory}
                   onChange={setCatalogCategory}
-                  options={CATEGORY_FILTER_OPTIONS}
+                  options={categoryFilterOptions}
                 />
                 <FilterSelect
                   label="Severity"
@@ -919,6 +995,17 @@ export default function AlertRulesPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Alert Catalog Detail Read-Only Inspection Dialog */}
+      <AlertCatalogDetailDialog
+        open={Boolean(selectedDetailPolicyId)}
+        onOpenChange={(open) => {
+          if (!open) handleCloseDetailDialog();
+        }}
+        policyId={selectedDetailPolicyId}
+        initialPolicy={selectedDetailPolicy}
+        onSubscribe={(key) => handleOpenSubscribeDialog(key)}
+      />
     </WorkspacePage>
   );
 }

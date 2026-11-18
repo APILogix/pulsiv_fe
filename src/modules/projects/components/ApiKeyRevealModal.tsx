@@ -82,19 +82,19 @@ export function ApiKeyRevealModal({
   };
 
   const snippets: Record<SnippetTab, string> = {
-    env: `PULSIV_API_KEY="${keyString}"`,
-    curl: `curl -X POST https://api.pulsiv.io/v1/telemetry \\
+    env: `LYNKTRACE_API_KEY="${keyString}"`,
+    curl: `curl -X POST https://api.lynktrace.com/v1/telemetry \\
   -H "Authorization: Bearer ${keyString}" \\
   -H "Content-Type: application/json" \\
   -d '{"event":"app.started"}'`,
-    node: `import { PulsivClient } from "@pulsiv/sdk";
+    node: `import { LynkTraceClient } from "@lynktrace/sdk";
 
-const client = new PulsivClient({
+const client = new LynkTraceClient({
   apiKey: "${keyString}",
 });`,
-    python: `from pulsiv import PulsivClient
+    python: `from lynktrace import LynkTraceClient
 
-client = PulsivClient(
+client = LynkTraceClient(
     api_key="${keyString}"
 )`,
   };
@@ -159,7 +159,7 @@ client = PulsivClient(
 
         <div className="sidebar-scroll flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto p-5">
           <Notice tone="amber" icon={AlertTriangle} title="This secret won't be shown again">
-            Pulsiv never stores plaintext secrets. If you lose this one, rotate or regenerate the key to get a new secret.
+            LynkTrace never stores plaintext secrets. If you lose this one, rotate or regenerate the key to get a new secret.
           </Notice>
 
           <section aria-labelledby={secretHeadingId} className="flex flex-col gap-2">

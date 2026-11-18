@@ -59,7 +59,6 @@ export default function EventLoopPage() {
     <div className="flex flex-col gap-4">
       <PageHeader
         title="Event loop"
-        description="How long callbacks wait for the Node.js event loop, and how busy the loop is. Sustained lag over 100 ms means synchronous work is blocking requests."
         actions={<TimeRangePicker />}
       />
 

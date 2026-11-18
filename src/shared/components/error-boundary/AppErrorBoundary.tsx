@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ErrorBoundary, type FallbackProps } from 'react-error-boundary';
-import { Navigate, useRouteError, isRouteErrorResponse, Link, useNavigate } from 'react-router';
+import { Navigate, isRouteErrorResponse, Link, useNavigate } from 'react-router';
+import { isMissingProjectShellError } from './route-errors';
 import {
   AlertTriangle,
   RotateCcw,
@@ -22,7 +23,6 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import NotFoundPage from '@/shared/components/NotFoundPage';
 import {
   StatusPill,
   AiSpark,
@@ -31,10 +31,6 @@ import {
   type StatusTone,
 } from '@/shared/ui/sentinel';
 import { Button } from '@/components/ui/button';
-
-export function isMissingProjectShellError(error: unknown): boolean {
-  return error instanceof Error && error.message === 'useCurrentProject must be used within ProjectShellPage';
-}
 
 export type ErrorClassification = 'chunk' | 'network' | 'auth' | 'route' | 'runtime';
 
@@ -48,7 +44,6 @@ export interface ParsedErrorDetails {
   timestamp: string;
   originLocation?: string;
 }
-
 export interface ParsedStackFrame {
   raw: string;
   fnName: string;
@@ -180,7 +175,7 @@ function getAiDiagnosis(parsed: ParsedErrorDetails): AiDiagnosis {
     case 'chunk':
       return {
         title: 'New Deployment Asset Mismatch',
-        summary: 'A newer release of Sentinel was deployed to edge edge nodes. The browser attempted to resolve an older JavaScript bundle hash that was superseded.',
+        summary: 'A newer release of LynkTrace was deployed to edge edge nodes. The browser attempted to resolve an older JavaScript bundle hash that was superseded.',
         confidence: 99,
         remediation: 'Perform a full reload to fetch updated chunks and synchronise with the active release.',
         actionLabel: 'Update & reload application',
@@ -231,7 +226,7 @@ function getAiDiagnosis(parsed: ParsedErrorDetails): AiDiagnosis {
       }
       return {
         title: 'Isolated Runtime Render Fault',
-        summary: 'An unhandled exception occurred within the React rendering pipeline. Sentinel contained the failure inside this boundary to protect adjacent navigation and telemetry workers.',
+        summary: 'An unhandled exception occurred within the React rendering pipeline. LynkTrace contained the failure inside this boundary to protect adjacent navigation and telemetry workers.',
         confidence: 89,
         remediation: 'Attempt to reload the component view. If the issue recurs, copy the diagnostic report for engineering review.',
         actionLabel: 'Try recovering view',
@@ -355,7 +350,7 @@ export function AppErrorFallback({
 
   const copyDiagnosticReport = async () => {
     const report = [
-      `# Sentinel Runtime Diagnostic Report`,
+      `# LynkTrace Runtime Diagnostic Report`,
       `- **Incident ID:** \`${parsed.incidentId}\``,
       `- **Timestamp:** ${parsed.timestamp}`,
       `- **Classification:** ${parsed.category.toUpperCase()} (${parsed.name})`,
@@ -412,7 +407,7 @@ export function AppErrorFallback({
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `sentinel-${parsed.incidentId.toLowerCase()}.json`;
+    a.download = `lynktrace-${parsed.incidentId.toLowerCase()}.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -446,7 +441,7 @@ export function AppErrorFallback({
           <div className="flex items-center gap-3">
             <SentinelLogoMark size={24} />
             <span className="font-[family-name:var(--display)] text-sm font-semibold tracking-[-0.01em] text-[var(--text)]">
-              Sentinel
+              LynkTrace
             </span>
             <span className="text-[var(--border2)]">/</span>
             <span className="text-xs text-[var(--text3)]">Incident Isolation</span>
@@ -508,7 +503,7 @@ export function AppErrorFallback({
                   ? 'A newer application release was deployed. Reloading will fetch the latest assets and restore full functionality.'
                   : parsed.category === 'network'
                     ? 'The application was unable to reach the telemetry gateway. Your session remains preserved while reconnecting.'
-                    : 'Sentinel isolated an unhandled exception to prevent cascading failures. Diagnostic telemetry was recorded.'}
+                    : 'LynkTrace isolated an unhandled exception to prevent cascading failures. Diagnostic telemetry was recorded.'}
               </p>
             </div>
           </div>
@@ -534,7 +529,7 @@ export function AppErrorFallback({
           </div>
         </div>
 
-        {/* Sentinel AI Diagnostics Insight Card (§7 Three-Channel Law) */}
+        {/* LynkTrace AI Diagnostics Insight Card (§7 Three-Channel Law) */}
         <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg2)] p-4 sm:p-5 relative overflow-hidden">
           <div className="flex items-start justify-between gap-3 mb-2.5">
             <div className="flex items-center gap-2">
@@ -851,7 +846,7 @@ export function AppErrorFallback({
         {/* Footer Navigation Seam */}
         <div className="flex flex-wrap items-center justify-between gap-3 pt-2 text-[11px] text-[var(--text3)] border-t border-[var(--border)]">
           <div className="flex items-center gap-2">
-            <span>Sentinel Telemetry v2</span>
+            <span>LynkTrace Telemetry v2</span>
             <span>•</span>
             <span>Status: Incident Contained</span>
           </div>
@@ -876,7 +871,6 @@ export function AppErrorFallback({
     </div>
   );
 }
-
 export function AppErrorBoundary({
   children,
   fallback,
@@ -896,26 +890,5 @@ export function AppErrorBoundary({
     >
       {children}
     </ErrorBoundary>
-  );
-}
-
-export function RouteErrorBoundary() {
-  const error = useRouteError();
-
-  // 404 → show animated 404 page, not the incident diagnostic
-  if (isRouteErrorResponse(error) && error.status === 404) {
-    return <NotFoundPage />;
-  }
-
-  if (isMissingProjectShellError(error)) {
-    return <Navigate to="/projects" replace />;
-  }
-
-  return (
-    <AppErrorFallback
-      error={error}
-      resetErrorBoundary={() => window.location.reload()}
-      isRootRoute={true}
-    />
   );
 }

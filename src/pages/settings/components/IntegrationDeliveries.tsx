@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Loader2, RefreshCcw, Send } from "lucide-react";
+import { toast } from "sonner";
 import { useConnectorDeliveries, useConnectorMutations } from "@/modules/organizations/hooks/useConnectors";
 import { EmptyPanel, Pill, Toolbar, type SurfaceTone } from "@/shared/ui/pulse";
 import {
@@ -10,7 +11,6 @@ import {
   Td,
   Timestamp,
   Tr,
-  demoSuccess,
   formatLatency,
   formatNumber,
 } from "@/shared/observe";
@@ -59,9 +59,9 @@ export function IntegrationDeliveries({ integrationId }: IntegrationDeliveriesPr
     setRetryingId(deliveryId);
     try {
       await retryDelivery.mutateAsync(deliveryId);
-      demoSuccess("Delivery queued for retry");
+      toast.success("Delivery queued for retry");
     } catch (err: any) {
-      demoSuccess(`Retry failed: ${err.message}`);
+      toast.error(err instanceof Error ? err.message : "Could not retry the delivery.");
     } finally {
       setRetryingId(null);
     }
@@ -92,7 +92,7 @@ export function IntegrationDeliveries({ integrationId }: IntegrationDeliveriesPr
         <EmptyPanel
           icon={Send}
           title="No deliveries yet"
-          description="Every notification Sentinel sends to this connector is recorded here with its response and latency."
+          description="Every notification LynkTrace sends to this connector is recorded here with its response and latency."
         />
       ) : (
         <>

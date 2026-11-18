@@ -10,11 +10,13 @@ function incidentState(status: AlertEvent["status"]): IncidentState {
 }
 
 function labelValue(event: AlertEvent, key: string): string {
-  const value = event.labels[key];
+  const labels = (typeof event.labels === 'object' && event.labels !== null && !Array.isArray(event.labels) ? event.labels : {}) as Record<string, unknown>;
+  const value = labels[key];
   return typeof value === "string" ? value : "unknown";
 }
 
 export function toIncidentView(event: AlertEvent): AlertIncident {
+  const labels = (typeof event.labels === 'object' && event.labels !== null && !Array.isArray(event.labels) ? event.labels : {}) as Record<string, unknown>;
   return {
     id: event.id,
     organizationId: event.organizationId,
@@ -24,8 +26,8 @@ export function toIncidentView(event: AlertEvent): AlertIncident {
     state: incidentState(event.status),
     severity: event.severity,
     title: event.source,
-    summary: JSON.stringify(event.payload),
-    occurrenceCount: event.duplicateCount,
+    summary: JSON.stringify(event.payload ?? {}),
+    occurrenceCount: event.duplicateCount ?? 1,
     firstTriggeredAt: event.startedAt,
     lastTriggeredAt: event.updatedAt,
     acknowledgedAt: event.acknowledgedAt,
@@ -35,8 +37,8 @@ export function toIncidentView(event: AlertEvent): AlertIncident {
     mutedAt: event.suppressedAt,
     mutedUntil: null,
     assignedToUser: null,
-    tags: Object.entries(event.labels).map(([key, value]) => `${key}:${String(value)}`),
-    environment: labelValue(event, "environment"),
-    service: labelValue(event, "service"),
+    tags: Object.entries(labels).map(([key, value]) => `${key}:${String(value)}`),
+    environment: labelValue(event, "environment") !== "unknown" ? labelValue(event, "environment") : (event.environment ?? "unknown"),
+    service: labelValue(event, "service") !== "unknown" ? labelValue(event, "service") : (event.service ?? "unknown"),
   };
 }

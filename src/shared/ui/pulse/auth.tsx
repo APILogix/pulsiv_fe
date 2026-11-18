@@ -3,7 +3,7 @@ import { useFormStatus } from "react-dom";
 import { Loader2 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { IconChip, type SurfaceTone } from "./surfaces";
+import { IconChip, type SurfaceTone } from "./chips";
 
 // ── Auth heading ─────────────────────────────────────────────
 // The heading carries the page. No eyebrow, no icon chip, no centering: the

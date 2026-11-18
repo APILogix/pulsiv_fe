@@ -1,0 +1,1 @@
+function n(t,r,a){const c=`/${t}/p/${r}`;return a?`${c}/${a}`:c}function o(t){return`/${t}/projects`}function u(t){return`/${t}/projects?create=true`}function e(t){return t.match(/\/[^/]+\/p\/(prj_[a-zA-Z0-9]+)(?:\/|$)/)?.[1]??null}function p(t){return t.match(/^\/([^/]+)\/p\/prj_[a-zA-Z0-9]+/)?.[1]??null}export{n as a,o as b,u as n,p as o,e as p};

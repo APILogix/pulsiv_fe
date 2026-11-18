@@ -79,13 +79,13 @@ const STATE_SELECT_CLASS =
   "h-8 min-w-0 flex-1 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg2)] px-2 text-[12px] text-[var(--text)] outline-none transition-colors hover:border-[var(--border2)] focus:border-[var(--brand)] focus:ring-3 focus:ring-[var(--brand-bg)]";
 
 const COLUMNS: SheetColumn[] = [
-  { key: "rule", header: "Rule" },
-  { key: "category", header: "Category", className: `w-[128px] ${HIDE_BELOW_XL}` },
-  { key: "threshold", header: "Threshold", className: "w-[156px]" },
-  { key: "window", header: "Window", className: `w-[128px] ${HIDE_BELOW_LG}` },
-  { key: "severity", header: "Severity", className: `w-[112px] ${HIDE_BELOW_MD}` },
-  { key: "state", header: "State", className: "w-[164px]" },
-  { key: "actions", header: "Actions", srOnly: true, className: "w-[56px]" },
+  { key: "rule", header: "Rule", className: "min-w-0" },
+  { key: "category", header: "Category", className: `w-[110px] ${HIDE_BELOW_XL}` },
+  { key: "threshold", header: "Threshold", className: `w-[130px] ${HIDE_BELOW_MD}` },
+  { key: "window", header: "Window", className: `w-[105px] ${HIDE_BELOW_LG}` },
+  { key: "severity", header: "Severity", className: `w-[95px] ${HIDE_BELOW_MD}` },
+  { key: "state", header: "State", className: "w-[145px]" },
+  { key: "actions", header: "Actions", srOnly: true, className: "w-[48px]" },
 ];
 
 // ── data helpers ─────────────────────────────────────────────
@@ -476,7 +476,7 @@ export default function ProjectThresholdsPage() {
     );
   } else {
     body = (
-      <SheetTable columns={COLUMNS} caption="Alert rules for this project" minWidth={600}>
+      <SheetTable columns={COLUMNS} caption="Alert rules for this project" className="[&_table]:table-fixed">
         {filteredPolicies.map((policy) => {
           const subscription = findSubscriptionForPolicy(policy, subscriptions);
           const override = extractOverride(subscription);
@@ -496,7 +496,7 @@ export default function ProjectThresholdsPage() {
 
           return (
             <SheetRow key={policy.id}>
-              <SheetCell>
+              <SheetCell className="min-w-0 max-w-0">
                 <RowTitle
                   title={
                     <span title={policy.description || undefined}>
@@ -517,7 +517,12 @@ export default function ProjectThresholdsPage() {
                       )}
                     </>
                   }
-                  subtitle={<span title={signal}>{signal}</span>}
+                  subtitle={
+                    <span title={signal}>
+                      {signal}
+                      <span className="md:hidden text-[var(--text2)]"> · {effectiveThresholdDisplay}</span>
+                    </span>
+                  }
                   subtitleMono
                 />
               </SheetCell>
@@ -528,7 +533,7 @@ export default function ProjectThresholdsPage() {
                 </span>
               </SheetCell>
 
-              <SheetCell>
+              <SheetCell className={HIDE_BELOW_MD}>
                 <div className="flex min-w-0 flex-col gap-0.5 leading-[1.35]">
                   <span
                     className="truncate font-[family-name:var(--mono)] text-[12px] tabular-nums text-[var(--text)]"
@@ -565,57 +570,62 @@ export default function ProjectThresholdsPage() {
                 <SeverityBadge severity={effectiveSeverity} />
               </SheetCell>
 
-              <SheetCell>
-                {subscription ? (
-                  <div className="flex min-w-0 items-center gap-2">
-                    <span
-                      aria-hidden="true"
-                      className={cn("size-1.5 shrink-0 rounded-full", STATE_DOT[subscription.state] ?? "bg-[var(--text3)]")}
-                    />
-                    <select
-                      value={subscription.state}
-                      onChange={(event) => handleStateChange(subscription, event.target.value as SubscriptionState)}
-                      aria-label={`Subscription state for ${policy.name}`}
-                      className={STATE_SELECT_CLASS}
-                    >
-                      {STATE_OPTIONS.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                ) : (
-                  <UiButton
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleSubscribe(policy)}
-                    disabled={isCurrentlySubscribing || mutations.subscribe.isPending}
-                    aria-label={`Subscribe to ${policy.name}`}
-                  >
-                    {isCurrentlySubscribing ? (
-                      <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
-                    ) : (
-                      <Plus className="size-3.5" aria-hidden="true" />
-                    )}
-                    Subscribe
-                  </UiButton>
-                )}
-              </SheetCell>
+              {subscription ? (
+                <>
+                  <SheetCell>
+                    <div className="flex min-w-0 items-center gap-2">
+                      <span
+                        aria-hidden="true"
+                        className={cn("size-1.5 shrink-0 rounded-full", STATE_DOT[subscription.state] ?? "bg-[var(--text3)]")}
+                      />
+                      <select
+                        value={subscription.state}
+                        onChange={(event) => handleStateChange(subscription, event.target.value as SubscriptionState)}
+                        aria-label={`Subscription state for ${policy.name}`}
+                        className={STATE_SELECT_CLASS}
+                      >
+                        {STATE_OPTIONS.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </SheetCell>
 
-              <SheetCell align="right">
-                {subscription && (
-                  <RowActions label={`Actions for ${policy.name}`}>
-                    <DropdownMenuItem onSelect={() => openOverrideModal(subscription, policy)}>
-                      <SlidersHorizontal aria-hidden="true" /> {override ? "Edit overrides" : "Override defaults"}
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem variant="destructive" onSelect={() => setUnsubscribingTarget({ policy, subscription })}>
-                      <BellOff aria-hidden="true" /> Unsubscribe
-                    </DropdownMenuItem>
-                  </RowActions>
-                )}
-              </SheetCell>
+                  <SheetCell align="right">
+                    <RowActions label={`Actions for ${policy.name}`}>
+                      <DropdownMenuItem onSelect={() => openOverrideModal(subscription, policy)}>
+                        <SlidersHorizontal aria-hidden="true" /> {override ? "Edit overrides" : "Override defaults"}
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem variant="destructive" onSelect={() => setUnsubscribingTarget({ policy, subscription })}>
+                        <BellOff aria-hidden="true" /> Unsubscribe
+                      </DropdownMenuItem>
+                    </RowActions>
+                  </SheetCell>
+                </>
+              ) : (
+                <SheetCell colSpan={2} align="right">
+                  <div className="flex items-center justify-end">
+                    <UiButton
+                      variant="outline"
+                      size="sm"
+                      className="h-8 px-3 text-[12px] font-medium whitespace-nowrap"
+                      onClick={() => handleSubscribe(policy)}
+                      disabled={isCurrentlySubscribing || mutations.subscribe.isPending}
+                      aria-label={`Subscribe to ${policy.name}`}
+                    >
+                      {isCurrentlySubscribing ? (
+                        <Loader2 className="size-3.5 animate-spin mr-1.5" aria-hidden="true" />
+                      ) : (
+                        <Plus className="size-3.5 mr-1.5" aria-hidden="true" />
+                      )}
+                      Subscribe
+                    </UiButton>
+                  </div>
+                </SheetCell>
+              )}
             </SheetRow>
           );
         })}
@@ -627,7 +637,6 @@ export default function ProjectThresholdsPage() {
     <WorkspacePage>
       <ProjectPageHeader
         title="Alert rules"
-        description="Subscribe this project to your organization's alert rules, then override their thresholds, cooldowns, and notification targets for it."
       />
 
       {/* Plan entitlement notice */}

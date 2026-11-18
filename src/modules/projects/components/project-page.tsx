@@ -438,7 +438,7 @@ export function RowTitle({
   return (
     <div className="flex min-w-0 items-center gap-3">
       {leading}
-      <div className="min-w-0">
+      <div className="min-w-0 flex-1">
         <div className="flex min-w-0 items-center gap-2">
           {to ? (
             <Link

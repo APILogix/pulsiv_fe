@@ -33,7 +33,7 @@ export function projectsListPath(orgSlug: string): string {
  * Build the URL to create a new project inside an org.
  */
 export function newProjectPath(orgSlug: string): string {
-  return `/${orgSlug}/projects/new`;
+  return `/${orgSlug}/projects?create=true`;
 }
 
 /**

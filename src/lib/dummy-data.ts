@@ -167,7 +167,7 @@ export const dummyRequestEvents: RequestEvent[] = Array.from({ length: 500 }, (_
       "content-type": "application/json",
       "x-request-id": `req-${10000 + i}`,
       "x-tenant-id": `tenant-${(i % 5) + 1}`,
-      "user-agent": "Mozilla/5.0 (compatible; PulseBot/1.0)",
+      "user-agent": "Mozilla/5.0 (compatible; LynkTraceBot/1.0)",
     },
     query: method === "GET" ? { page: String(i % 10), limit: "20" } : undefined,
     body: method !== "GET" ? { id: i, action: "create", payload: { data: "sample" } } : undefined,
@@ -493,8 +493,8 @@ export const dummyReplayEvents: ReplayEvent[] = Array.from({ length: 10 }, (_, i
 // ============================================
 export const dummyProjects = Array.from({ length: 32 }, (_, i) => ({
   id: `proj-${(i + 1).toString().padStart(3, "0")}-${hex(6)}`,
-  name: cycName(["Pulse API", "Pulse Web", "Pulse Mobile", "Analytics Platform", "Notification Service", "Payment Gateway", "User Portal", "Admin Dashboard", "Data Pipeline", "ML Inference", "Edge Worker", "Legacy Migrator"], i),
-  slug: `${cyc(["pulse-api", "pulse-web", "pulse-mobile", "analytics", "notifications", "payments", "user-portal", "admin", "pipeline", "ml-inference", "edge", "legacy"], i)}-${i + 1}`,
+  name: cycName(["LynkTrace API", "LynkTrace Web", "LynkTrace Mobile", "Analytics Platform", "Notification Service", "Payment Gateway", "User Portal", "Admin Dashboard", "Data Pipeline", "ML Inference", "Edge Worker", "Legacy Migrator"], i),
+  slug: `${cyc(["lynktrace-api", "lynktrace-web", "lynktrace-mobile", "analytics", "notifications", "payments", "user-portal", "admin", "pipeline", "ml-inference", "edge", "legacy"], i)}-${i + 1}`,
   description: `Primary observability project for the ${cyc(["API gateway", "Web frontend", "Mobile application", "Analytics engine", "Notification delivery", "Payment processing", "User interface", "Administration tools", "Data processing", "Machine learning", "Edge computing", "Legacy system"], i)} service.`,
   status: i % 7 === 6 ? "archived" : "active",
   healthScore: Math.floor(Math.random() * 40) + 60,
@@ -669,7 +669,7 @@ export const dummyInvoices = Array.from({ length: 24 }, (_, i) => ({
   dueDate: new Date(2026, i % 12, 30).getTime(),
   paidDate: i > 1 ? new Date(2026, i % 12, 20).getTime() : undefined,
   lineItems: [
-    { description: "Pulse Platform — Team Plan", quantity: 1, unitPrice: "299.00", amount: "299.00" },
+    { description: "LynkTrace Platform — Team Plan", quantity: 1, unitPrice: "299.00", amount: "299.00" },
     { description: "Event Ingestion (1.2M events)", quantity: 1200000, unitPrice: "0.001", amount: "1200.00" },
     { description: "AI Insights Add-on", quantity: 1, unitPrice: "199.00", amount: "199.00" },
     { description: "Data Retention Extension (90d)", quantity: 1, unitPrice: "150.00", amount: "150.00" },

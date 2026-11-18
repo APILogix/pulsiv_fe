@@ -31,7 +31,7 @@ export default function CreateReportPage() {
     <div className="flex flex-col gap-6 pb-10 max-w-2xl">
       <PageHeader 
         title="Create Scheduled Report" 
-        description="Build a new customized email report to automatically send updates to your team."
+        description="Build a new customized email report to automatically send updates to members."
       />
 
       <SectionCard title="Report Settings">

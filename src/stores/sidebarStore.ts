@@ -9,7 +9,12 @@ interface SidebarStore {
 
 export const useSidebarStore = create<SidebarStore>((set) => ({
   hasInnerItems: false,
-  setHasInnerItems: (val: boolean) => set({ hasInnerItems: val }),
+  setHasInnerItems: (val: boolean) =>
+    set((state) => (state.hasInnerItems === val ? state : { hasInnerItems: val })),
   isFlyoutOpen: true,
-  setIsFlyoutOpen: (val) => set((state) => ({ isFlyoutOpen: typeof val === 'function' ? val(state.isFlyoutOpen) : val })),
+  setIsFlyoutOpen: (val) =>
+    set((state) => {
+      const nextVal = typeof val === 'function' ? val(state.isFlyoutOpen) : val;
+      return state.isFlyoutOpen === nextVal ? state : { isFlyoutOpen: nextVal };
+    }),
 }));

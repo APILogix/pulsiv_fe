@@ -1,22 +1,56 @@
-<svg
-  width="100"
-  height="116"
-  viewBox="0 0 100 116"
-  fill="none"
-  xmlns="http://www.w3.org/2000/svg"
-  aria-label="Pulsiv logo"
->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" aria-label="LynkTrace logo">
   <defs>
-    <clipPath id="pulsiv-logo-bowl-clip">
-      <path d="M 28 22 v 46 h 22 c 12.7 0 23 -10.3 23 -23 c 0 -12.7 -10.3 -23 -23 -23 H 28 Z" />
-    </clipPath>
+    <linearGradient id="lt-mono-grad" x1="4" y1="4" x2="28" y2="28" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FFFFFF" />
+      <stop offset="50%" stop-color="#E4E4E7" />
+      <stop offset="100%" stop-color="#A1A1AA" />
+    </linearGradient>
+    <linearGradient id="lt-pulse-grad" x1="4" y1="16" x2="28" y2="16" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#71717A" />
+      <stop offset="35%" stop-color="#FFFFFF" />
+      <stop offset="65%" stop-color="#FFFFFF" />
+      <stop offset="100%" stop-color="#71717A" />
+    </linearGradient>
   </defs>
 
+  <!-- Background rounded squircle for crisp favicon display -->
+  <rect width="32" height="32" rx="7.5" fill="#09090B" stroke="#27272A" stroke-width="1" />
+  <rect x="0.75" y="0.75" width="30.5" height="30.5" rx="6.75" fill="none" stroke="rgba(255, 255, 255, 0.06)" stroke-width="0.5" />
+
+  <!-- Lynk 'L' bracket ribbon -->
   <path
-    fill-rule="evenodd"
-    clip-rule="evenodd"
-    d="M 14 8 h 36 c 20.987 0 38 17.013 38 38 c 0 20.987 -17.013 38 -38 38 H 28 v 24 H 14 V 8 Z M 28 22 v 46 h 22 c 12.7 0 23 -10.3 23 -23 c 0 -12.7 -10.3 -23 -23 -23 H 28 Z"
-    fill="#ffffff"
+    d="M8.5 7.5V22C8.5 23.38 9.62 24.5 11 24.5H23.5"
+    stroke="url(#lt-mono-grad)"
+    stroke-width="2.5"
+    stroke-linecap="round"
   />
 
+  <!-- Lynk 'T' cross & stem bracket ribbon -->
+  <path
+    d="M14 7.5H23.5C24.33 7.5 25 8.17 25 9V11.5"
+    stroke="url(#lt-mono-grad)"
+    stroke-width="2.5"
+    stroke-linecap="round"
+  />
+  <path
+    d="M19.5 7.5V17C19.5 18.1 18.6 19 17.5 19H13.5"
+    stroke="url(#lt-mono-grad)"
+    stroke-width="2.5"
+    stroke-linecap="round"
+  />
+
+  <!-- Central Real-time Telemetry Trace Pulse -->
+  <path
+    d="M5.5 16H10.5L13.5 10.5L17.5 21.5L20.5 16H26.5"
+    stroke="url(#lt-pulse-grad)"
+    stroke-width="1.75"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+
+  <!-- Telemetry Nodes in mono theme -->
+  <circle cx="8.5" cy="7.5" r="1.5" fill="#FAFAFA" />
+  <circle cx="23.5" cy="24.5" r="1.5" fill="#A1A1AA" />
+  <circle cx="13.5" cy="10.5" r="1.25" fill="#FFFFFF" />
+  <circle cx="17.5" cy="21.5" r="1.25" fill="#E4E4E7" />
 </svg>

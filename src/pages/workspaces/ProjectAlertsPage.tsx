@@ -79,8 +79,8 @@ const COLUMNS: SheetColumn[] = [
   { key: "occurrences", header: "Occurrences", className: `w-[112px] ${HIDE_BELOW_XL}`, align: "right" },
 ];
 
-// Organization-level alert detail, unchanged from the previous list.
-const incidentPath = (id: string) => `/alerts/${id}`;
+// Organization-level alert detail, pointing to the canonical incidents route.
+const incidentPath = (id: string) => `/alerts/incidents/${id}`;
 
 // ── data helpers ─────────────────────────────────────────────
 
@@ -369,7 +369,6 @@ export default function ProjectAlertsPage() {
     <WorkspacePage>
       <ProjectPageHeader
         title="Incidents"
-        description="Triggered incidents and threshold breaches evaluated for this project."
         meta={[
           primaryDestination
             ? { label: "Primary destination", value: `${primaryDestination.name} (${primaryDestination.type})` }

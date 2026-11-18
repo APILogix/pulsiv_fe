@@ -42,8 +42,8 @@ const ALL_FEATURES: FeatureToggleDef[] = [
   {
     key: 'logging',
     label: 'Structured logging',
-    tooltip: "Ships your application's structured log entries (info, warn, error, debug) to Pulse for centralized search and alerting.",
-    onDesc: 'Structured log events are shipped to Pulse.',
+    tooltip: "Ships your application's structured log entries (info, warn, error, debug) to LynkTrace for centralized search and alerting.",
+    onDesc: 'Structured log events are shipped to LynkTrace.',
     offDesc: 'Logs are only printed locally to stdout/stderr.',
     cost: '~ 0.1% CPU',
     sdkReq: 'Node/Web/Python v1.2+',
@@ -52,7 +52,7 @@ const ALL_FEATURES: FeatureToggleDef[] = [
   {
     key: 'metrics',
     label: 'Metrics collection',
-    tooltip: 'Collects custom counters, gauges, histograms, and system-level metrics (CPU, memory, disk) and ships them to Pulse.',
+    tooltip: 'Collects custom counters, gauges, histograms, and system-level metrics (CPU, memory, disk) and ships them to LynkTrace.',
     onDesc: 'Runtime and custom telemetry metrics are collected.',
     offDesc: 'Metrics collection is disabled.',
     cost: '~ 0.05% CPU',
@@ -88,17 +88,6 @@ const ALL_FEATURES: FeatureToggleDef[] = [
     cost: '~ 1.8% CPU',
     sdkReq: 'Node/Python/iOS v2.0+',
     requires: 'tracing',
-    category: 'advanced',
-  },
-  {
-    key: 'sessionReplay',
-    label: 'Session replay',
-    tooltip: 'Records and replays user browser sessions (frontend SDK only). Captures DOM mutations and network requests.',
-    onDesc: 'Browser DOM mutations and clicks are recorded.',
-    offDesc: 'Session replay is disabled.',
-    cost: '~ 2.5% CPU',
-    sdkReq: 'Web browser SDK v2.0+',
-    requires: 'requestCapture',
     category: 'advanced',
   },
   {

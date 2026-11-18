@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 
 import { cn } from '@/lib/utils';
+import { LynkTraceLogo } from '@/shared/components/LynkTraceLogo';
 
 /**
  * Sentinel signature components — sentinel-design.md §7.
@@ -218,25 +219,17 @@ export function AiActionButton({
 
 /* ── Logo mark (§8) ───────────────────────────────────────── */
 
-export function SentinelLogoMark({ size = 28, className }: { size?: number; className?: string }) {
+export function LynkTraceLogoMark({ size = 28, className }: { size?: number; className?: string }) {
   return (
     <span
-      className={cn('logo-gradient inline-flex items-center justify-center rounded-[7px]', className)}
+      className={cn('inline-flex items-center justify-center shrink-0', className)}
       style={{ width: size, height: size }}
       aria-hidden="true"
     >
-      <svg
-        width={size * 0.6}
-        height={size * 0.6}
-        viewBox="0 0 16 16"
-        fill="none"
-        stroke="var(--brand-fg)"
-        strokeWidth={1.5}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <path d="M1 8.5h3l2-4.5 2.5 9 2-4.5H15" />
-      </svg>
+      <LynkTraceLogo size={size} variant="badge" />
     </span>
   );
 }
+
+export const SentinelLogoMark = LynkTraceLogoMark;
+

@@ -318,7 +318,7 @@ export const THEMES: ThemeConfig[] = [
   {
     id: 'lavender',
     name: 'Lavender',
-    description: 'Soft purple theme for creative and design-focused teams.',
+    description: 'Soft purple theme for creative and design-focused organizations.',
     icon: 'Flower2',
     isDark: true,
     category: 'colorful',

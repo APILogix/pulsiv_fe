@@ -101,7 +101,7 @@ export default function AuthCallbackPage() {
     <div className="w-full">
       <AuthHeading
         title="Completing sign-in"
-        description="Your identity provider confirmed you. We're opening your Sentinel session."
+        description="Your identity provider confirmed you. We're opening your LynkTrace session."
       />
       <AuthPending>Confirming your session…</AuthPending>
 

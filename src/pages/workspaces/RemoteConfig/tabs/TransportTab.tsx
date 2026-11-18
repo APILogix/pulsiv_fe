@@ -16,11 +16,9 @@ import { NumberField } from '../components/NumberField';
 import { ROUTE_KEYS, ROUTE_LABELS, type RouteKey, type SdkConfigState } from '../schema';
 import {
   BOUNDS,
-  COMPRESSION_MODES,
   TRANSPORT_PRIORITIES,
   RETRY_BACKOFF_MODES,
   QUEUE_OVERFLOW_STRATEGIES,
-  type CompressionMode,
   type TransportPriority,
   type RetryBackoff,
   type QueueOverflowStrategy,
@@ -34,7 +32,7 @@ interface TransportTabProps {
   onChangeRetry: (key: keyof SdkConfigState['transport']['retry'], value: number | boolean | RetryBackoff) => void;
   onChangeQueue: (key: keyof SdkConfigState['transport']['queue'], value: number | QueueOverflowStrategy) => void;
   onChangeConnections: (key: keyof SdkConfigState['transport']['connections'], value: number) => void;
-  onChangeRoute: (route: RouteKey, field: keyof SdkConfigState['transport']['routes'][RouteKey], value: number | CompressionMode | TransportPriority) => void;
+  onChangeRoute: (route: RouteKey, field: keyof SdkConfigState['transport']['routes'][RouteKey], value: number | TransportPriority) => void;
   onChangeRuntime: (key: keyof SdkConfigState['runtime'], value: number | boolean) => void;
   errors: FieldError[];
 }
@@ -44,11 +42,6 @@ const PRIORITY_LABEL: Record<TransportPriority, string> = {
   high: 'High',
   normal: 'Normal',
   low: 'Low',
-};
-
-const COMPRESSION_LABEL: Record<CompressionMode, string> = {
-  gzip: 'gzip',
-  none: 'None',
 };
 
 const BACKOFF_LABEL: Record<RetryBackoff, string> = {
@@ -67,11 +60,10 @@ type PriorityFilter = 'all' | TransportPriority;
 
 const ROUTE_COLUMNS: SheetColumn[] = [
   { key: 'route', header: 'Route' },
-  { key: 'priority', header: 'Priority', className: 'w-[132px]' },
-  { key: 'batch', header: 'Batch size', className: 'w-[120px]' },
-  { key: 'flush', header: 'Flush interval', className: 'w-[136px]' },
-  { key: 'timeout', header: 'Timeout', className: 'w-[136px]' },
-  { key: 'compression', header: 'Compression', className: 'w-[124px]' },
+  { key: 'priority', header: 'Priority', className: 'w-[140px]' },
+  { key: 'batch', header: 'Batch size', className: 'w-[140px]' },
+  { key: 'flush', header: 'Flush interval', className: 'w-[160px]' },
+  { key: 'timeout', header: 'Timeout', className: 'w-[160px]' },
 ];
 
 const ERROR_INPUT = 'border-[var(--red)]/60 hover:border-[var(--red)] focus:border-[var(--red)] focus:ring-[var(--red-bg)]';
@@ -207,14 +199,14 @@ export function TransportTab({
     <div className="flex flex-col gap-6">
       <SectionBanner
         title="Transport"
-        definition="Batching, compression, keep-alive connection pools, and delivery priority for every telemetry route."
+        definition="Batching, timeouts, keep-alive connection pools, and delivery priority for every telemetry route."
       >
         Network tuning and retry behaviour for high-throughput delivery.
       </SectionBanner>
 
       <Sheet
         title="Routes"
-        description="Per-endpoint batching, timeouts, compression, and delivery priority."
+        description="Per-endpoint batching, timeouts, and delivery priority."
         toolbar={
           <>
             <label htmlFor={filterId} className="text-[12px] text-[var(--text3)]">
@@ -303,20 +295,6 @@ export function TransportTab({
                       error={errorFor(`${prefix}.timeoutMs`)}
                     />
                   </SheetCell>
-                  <SheetCell>
-                    <select
-                      value={route.compression}
-                      onChange={(e) => onChangeRoute(routeKey, 'compression', e.target.value as CompressionMode)}
-                      aria-label={`${name} compression`}
-                      className={CELL_SELECT}
-                    >
-                      {COMPRESSION_MODES.map((mode) => (
-                        <option key={mode} value={mode}>
-                          {COMPRESSION_LABEL[mode]}
-                        </option>
-                      ))}
-                    </select>
-                  </SheetCell>
                 </SheetRow>
               );
             })}
@@ -398,7 +376,7 @@ export function TransportTab({
 
         <Panel
           title="Configuration refresh"
-          description={`Connected SDKs cache their active configuration for ${runtime.configTtlSeconds.toLocaleString()} seconds before checking the Pulse configuration endpoint again.`}
+          description={`Connected SDKs cache their active configuration for ${runtime.configTtlSeconds.toLocaleString()} seconds before checking the LynkTrace configuration endpoint again.`}
           bodyClassName="p-0"
         >
           <RowStack>

@@ -66,7 +66,6 @@ export default function RuntimeMetricsPage() {
     <div className="flex flex-col gap-4">
       <PageHeader
         title="Runtime metrics"
-        description="V8 and Node.js internals per service: heap, resident memory, native allocations, and open handles."
         actions={<TimeRangePicker />}
       />
 

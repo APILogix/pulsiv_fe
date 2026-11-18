@@ -34,7 +34,6 @@ const SIGNALS: SignalDef[] = [
   { key: 'events', label: 'Events', tooltip: 'Percentage of custom business events tracked.', impact: 'Affects conversion funnels and product analytics.' },
   { key: 'messages', label: 'Messages', tooltip: 'Percentage of message queue telemetry retained.', impact: 'Controls broker and queue observability.' },
   { key: 'profiles', label: 'Profiles', tooltip: 'Percentage of requests that trigger CPU and memory profiles.', impact: 'Profiling adds process overhead. Keep at or below 20% in production.' },
-  { key: 'replays', label: 'Session replays', tooltip: 'Percentage of user sessions recorded.', impact: 'High data transfer. Recommended: 10–25%.' },
   { key: 'crons', label: 'Cron check-ins', tooltip: 'Percentage of scheduled job executions tracked.', impact: 'Keep at 100% to avoid false missed check-in alerts.' },
 ];
 

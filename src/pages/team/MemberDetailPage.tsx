@@ -103,7 +103,7 @@ export default function MemberDetailPage() {
       toast.success("Member removed");
       setConfirmKind(null);
       if (activeOrgId) queryClient.invalidateQueries({ queryKey: orgQueryKeys.members(activeOrgId) });
-      navigate(href("team"));
+      navigate(href("members"));
     },
     onError: (err: unknown) => toast.error(apiErrorMessage(err, "Failed to remove member")),
   });
@@ -147,18 +147,18 @@ export default function MemberDetailPage() {
     if (roleState.error) toast.error(roleState.error);
   }, [roleState]);
 
-  const teamCrumb = { label: "Team", to: href("team") };
+  const membersCrumb = { label: "Members", to: href("members") };
 
-  const backToTeam = (
+  const backToMembers = (
     <UiButton asChild variant="outline" size="lg">
-      <Link to={href("team")}>Back to team</Link>
+      <Link to={href("members")}>Back to members</Link>
     </UiButton>
   );
 
   if (isLoading) {
     return (
       <WorkspacePage>
-        <ProjectPageHeader crumbs={[teamCrumb, { label: "Member" }]} title="Member" description={PAGE_DESCRIPTION} />
+        <ProjectPageHeader crumbs={[membersCrumb, { label: "Member" }]} title="Member" description={PAGE_DESCRIPTION} />
         <Sheet label="Member record" className={SETTINGS_COLUMN}>
           <SheetLoading rows={4} label="Loading member" />
         </Sheet>
@@ -169,11 +169,11 @@ export default function MemberDetailPage() {
   if (isError && !member) {
     return (
       <WorkspacePage>
-        <ProjectPageHeader crumbs={[teamCrumb, { label: "Member" }]} title="Member" description={PAGE_DESCRIPTION} />
+        <ProjectPageHeader crumbs={[membersCrumb, { label: "Member" }]} title="Member" description={PAGE_DESCRIPTION} />
         <Sheet label="Member record" className={SETTINGS_COLUMN}>
           <SheetError
             title="Could not load this member"
-            message={apiErrorMessage(error, "The member request failed. Try again, or go back to the team list.")}
+            message={apiErrorMessage(error, "The member request failed. Try again, or go back to the members list.")}
             onRetry={() => void refetch()}
           />
         </Sheet>
@@ -184,12 +184,12 @@ export default function MemberDetailPage() {
   if (!member) {
     return (
       <WorkspacePage>
-        <ProjectPageHeader crumbs={[teamCrumb, { label: "Member" }]} title="Member not found" />
+        <ProjectPageHeader crumbs={[membersCrumb, { label: "Member" }]} title="Member not found" />
         <Sheet label="Member record" className={SETTINGS_COLUMN}>
           <SheetEmpty
             title="This member is not in the organization"
-            description="They may have been removed, or the link is out of date. The team list shows everyone with access."
-            action={backToTeam}
+            description="They may have been removed, or the link is out of date. The members list shows everyone with access."
+            action={backToMembers}
           />
         </Sheet>
       </WorkspacePage>
@@ -217,7 +217,7 @@ export default function MemberDetailPage() {
   return (
     <WorkspacePage>
       <ProjectPageHeader
-        crumbs={[teamCrumb, { label: displayName }]}
+        crumbs={[membersCrumb, { label: displayName }]}
         title={displayName}
         badges={
           <>

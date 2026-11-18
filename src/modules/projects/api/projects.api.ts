@@ -8,6 +8,7 @@
 import { apiClient } from "@/infrastructure/api-client/axios";
 import type {
   CreateProjectBody,
+  CreateProjectResult,
   ListProjectsQuery,
   Paged,
   Project,
@@ -24,8 +25,8 @@ export const projectBase = (orgId: string) => `/organizations/${orgId}/projects`
 export const projectPath = (orgId: string, projectId: string) => `${projectBase(orgId)}/${projectId}`;
 
 /** Mutating project routes require an Idempotency-Key header. */
-export function idempotencyHeaders() {
-  return { headers: { "Idempotency-Key": crypto.randomUUID() } };
+export function idempotencyHeaders(key: string = crypto.randomUUID()) {
+  return { headers: { "Idempotency-Key": key } };
 }
 
 export const projectsApi = {
@@ -49,9 +50,17 @@ export const projectsApi = {
     return data.data;
   },
 
-  create: async (orgId: string, payload: CreateProjectBody): Promise<Project> => {
-    const { data } = await apiClient.post(projectBase(orgId), payload, idempotencyHeaders());
-    return data.data.project;
+  create: async (
+    orgId: string,
+    payload: CreateProjectBody,
+    idempotencyKey?: string,
+  ): Promise<CreateProjectResult> => {
+    const { data } = await apiClient.post(
+      projectBase(orgId),
+      payload,
+      idempotencyHeaders(idempotencyKey),
+    );
+    return data.data as CreateProjectResult;
   },
 
   update: async (orgId: string, projectId: string, payload: UpdateProjectBody): Promise<Project> => {

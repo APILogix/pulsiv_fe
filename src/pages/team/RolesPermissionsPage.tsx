@@ -51,7 +51,7 @@ const PERMISSIONS_MATRIX: PermissionGroup[] = [
   {
     category: "Users",
     permissions: [
-      { id: "users:read", name: "View users", description: "Can see team members and roles" },
+      { id: "users:read", name: "View users", description: "Can see members and roles" },
       { id: "users:write", name: "Manage users", description: "Can invite, remove, and change roles" },
     ],
   },
@@ -187,7 +187,7 @@ export default function RolesPermissionsPage() {
 
       {isSystemRole && (
         <Notice tone="blue" icon={Lock} title="System role">
-          {`${selectedRole.name} is managed by Sentinel and always holds every permission. Create a custom role to grant a narrower scope.`}
+          {`${selectedRole.name} is managed by LynkTrace and always holds every permission. Create a custom role to grant a narrower scope.`}
         </Notice>
       )}
 

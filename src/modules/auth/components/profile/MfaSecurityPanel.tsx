@@ -558,7 +558,7 @@ export function MfaSecurityPanel() {
               Disable Two-Factor Authentication?
             </DialogTitle>
             <DialogDescription className="text-[var(--text3)]">
-              Disabling multi-factor authentication will remove the secondary verification requirement when logging in to Sentinel.
+              Disabling multi-factor authentication will remove the secondary verification requirement when logging in to LynkTrace.
             </DialogDescription>
           </DialogHeader>
           <div className="rounded-[var(--radius)] border border-[var(--red)]/20 bg-[var(--red-bg)] p-3.5 text-[12px] leading-relaxed text-[var(--red)]">

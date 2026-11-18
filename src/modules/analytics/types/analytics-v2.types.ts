@@ -149,7 +149,8 @@ export interface LatencyHistogramBucket {
   fromMs: number;
   toMs: number | null;
   count: number;
-  cumulativePct: number;
+  pct?: number;
+  cumulativePct?: number;
 }
 
 export interface LatencyHistogramData {

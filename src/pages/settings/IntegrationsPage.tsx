@@ -1,5 +1,6 @@
 import { useActionState, useState } from "react";
 import { useNavigate } from "react-router";
+import { toast } from "sonner";
 import { ArrowLeft, Cable, Mail, Plug, Plus, ScrollText, Slack, TriangleAlert, Webhook } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useConnectors, useConnectorTypes, useConnectorMutations } from "@/modules/organizations/hooks/useConnectors";
@@ -14,7 +15,7 @@ import {
   fieldInputClass,
   type HeroFact,
 } from "@/shared/ui/pulse";
-import { Button, CardSkeleton, Field, StatusBadge, SubmitButton, Timestamp, demoSuccess } from "@/shared/observe";
+import { Button, CardSkeleton, Field, StatusBadge, SubmitButton, Timestamp } from "@/shared/observe";
 import { ConnectorIcon } from "@/shared/ui/connector-icon";
 import { apiErrorMessage } from "@/infrastructure/api-client/api-error";
 
@@ -185,7 +186,7 @@ export default function IntegrationsPage() {
         config,
       });
 
-      demoSuccess(`${selectedType.displayName} integration created`);
+      toast.success(`${selectedType.displayName} integration created`);
       setSelectedType(null);
       return INITIAL_CREATE_STATE;
     } catch (err: any) {
@@ -213,7 +214,7 @@ export default function IntegrationsPage() {
         const res = await startSlackOAuth.mutateAsync();
         window.location.href = res.data.data.url;
       } catch (err) {
-        console.error(err);
+        toast.error(apiErrorMessage(err));
       }
       return;
     }
@@ -255,7 +256,7 @@ export default function IntegrationsPage() {
                 </Notice>
               )}
 
-              <Field label="Integration name" hint="A friendly name for this connection inside Sentinel.">
+              <Field label="Integration name" hint="A friendly name for this connection inside LynkTrace.">
                 <input
                   name="name"
                   required
@@ -294,7 +295,7 @@ export default function IntegrationsPage() {
       <PageHero
         eyebrow="Connectors"
         title="Integrations"
-        description="Route alerts, incidents, and delivery events from Sentinel into the tools your team already runs on."
+        description="Route alerts, incidents, and delivery events from LynkTrace into the tools your organization already runs on."
         icon={Cable}
         actions={
           <Button onClick={() => navigate("/connectors/audit")}>
@@ -314,7 +315,7 @@ export default function IntegrationsPage() {
           <EmptyPanel
             icon={Plug}
             title="No connectors yet"
-            description="Connect Slack, a webhook endpoint, or email to start routing alerts out of Sentinel."
+            description="Connect Slack, a webhook endpoint, or email to start routing alerts out of LynkTrace."
             action={
               <Button variant="primary" onClick={scrollToCatalog}>
                 Browse the catalog
@@ -335,7 +336,7 @@ export default function IntegrationsPage() {
       </section>
 
       <section id={CATALOG_ANCHOR} className="flex flex-col gap-4">
-        <SectionHeading title="Available connectors" description="Everything else Sentinel can deliver to." />
+        <SectionHeading title="Available connectors" description="Everything else LynkTrace can deliver to." />
         {loadingTypes ? (
           <GridSkeleton />
         ) : availableTypes.length === 0 ? (

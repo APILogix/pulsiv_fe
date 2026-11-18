@@ -3,7 +3,6 @@ import { RouteObject } from "react-router";
 import { RequireGuest } from "./route-guards";
 import { AuthLayout } from "@/app/layouts/AuthLayout";
 import { withAuthAside } from "@/app/layouts/auth-shell";
-import { LoadingScreen } from "@/shared/components/LoadingScreen";
 
 // Lazy-load every auth page so the initial bundle stays small and
 // auth pages render fast (previously all were eagerly imported).
@@ -22,6 +21,9 @@ const AuthCallbackPage = lazy(() => import("@/modules/auth/pages/AuthCallbackPag
 const AcceptInviteLandingPage = lazy(() => import("@/modules/organizations/pages/AcceptInviteLandingPage"));
 
 const ErrorPreviewPage = lazy(() => import("@/shared/components/error-boundary/ErrorPreviewPage"));
+const LoadingScreen = lazy(() =>
+  import("@/shared/components/LoadingScreen").then((module) => ({ default: module.LoadingScreen })),
+);
 
 // Shell shape per route: a route with `withAuthAside(...)` gets the split
 // layout with that panel; every other route renders the focused single column

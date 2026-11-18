@@ -1,7 +1,7 @@
 import type { ExplorerPagination } from "./hooks/useObservabilityApi";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate, Link } from "react-router";
-import { Cpu, MemoryStick } from "lucide-react";
+import { Cpu, MemoryStick, X } from "lucide-react";
 import { useObservabilityList } from "./hooks/useObservabilityApi";
 import {
   PageHeader, FillPage, TableToolbar, SearchInput, FilterSelect, EnvironmentBadge, Timestamp,
@@ -57,16 +57,19 @@ export default function ProfilingPage() {
     dependencies: [activeProjectSlug, environment, type, duration, query, timeRangeState],
   });
 
-  const search = [type ? `type:${type}` : "", query].filter(Boolean).join(" ");
-  const filters = {
-    project: activeProjectSlug ?? undefined,
-    environment: environment || undefined,
-    duration: duration || undefined,
-    search: search || undefined,
-    ...rangeParams(timeRangeState),
-  };
+  const filters = useMemo(() => {
+    const search = [type ? `type:${type}` : "", query].filter(Boolean).join(" ");
+    return {
+      project: activeProjectSlug ?? undefined,
+      environment: environment || undefined,
+      duration: duration || undefined,
+      search: search || undefined,
+      ...rangeParams(timeRangeState),
+    };
+  }, [type, query, activeProjectSlug, environment, duration, timeRangeState]);
 
-  const { data, isLoading } = useObservabilityList<ProfileRow>("profiles", { ...filters, cursor });
+  const queryParams = useMemo(() => ({ ...filters, cursor }), [filters, cursor]);
+  const { data, isLoading } = useObservabilityList<ProfileRow>("profiles", queryParams);
   const timeline = useSignalTimeline("profiles", filters, window);
 
   useEffect(() => {
@@ -77,7 +80,10 @@ export default function ProfilingPage() {
   const summary = data?.summary ?? {};
   const stats = data?.statistics ?? {};
   const total = Number(summary.total ?? rows.length);
-  const types = Number(summary.uniqueTypes ?? new Set(rows.map((r) => r.profileType)).size);
+  const types = useMemo(
+    () => Number(summary.uniqueTypes ?? new Set(rows.map((r) => r.profileType)).size),
+    [summary.uniqueTypes, rows],
+  );
   const services = new Set(rows.map((r) => r.service).filter(Boolean)).size;
   const maxDur = Math.max(1, ...rows.map((r) => r.durationMs ?? 0));
 
@@ -132,17 +138,31 @@ export default function ProfilingPage() {
     <FillPage>
       <PageHeader
         title="Profiling"
-        description="CPU and memory profiles captured from running processes. Open one to see which functions held the CPU."
         actions={<TimeRangePicker />}
       />
 
       <SignalSheet cells={cells} loading={isLoading && !data} bars={timeline.bars} timelineLoading={timeline.isLoading} countLabel="Profiles" errorLabel="Flagged" />
 
-      <TableToolbar>
+      <TableToolbar resourceName="profiles">
         <SearchInput placeholder="Search service, profile id…" onSearch={setQuery} defaultValue={query} />
-        <FilterSelect value={environment} onChange={setEnvironment} options={ENVIRONMENT_OPTIONS} />
-        <FilterSelect value={type} onChange={setType} options={TYPE_OPTS} />
-        <FilterSelect value={duration} onChange={setDuration} options={DURATION_OPTIONS} />
+        <FilterSelect label="Environment" value={environment} onChange={setEnvironment} options={ENVIRONMENT_OPTIONS} />
+        <FilterSelect label="Profile Type" value={type} onChange={setType} options={TYPE_OPTS} />
+        <FilterSelect label="Duration" value={duration} onChange={setDuration} options={DURATION_OPTIONS} />
+        {(query || environment || type || duration) && (
+          <button
+            type="button"
+            onClick={() => {
+              setQuery("");
+              setEnvironment("");
+              setType("");
+              setDuration("");
+            }}
+            className="inline-flex h-8 items-center gap-1.5 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg2)]/60 px-2.5 text-[12px] text-[var(--text2)] transition-colors hover:border-[var(--border2)] hover:bg-[var(--bg2)] hover:text-[var(--text)] cursor-pointer"
+          >
+            <X className="size-3" />
+            Clear filters
+          </button>
+        )}
       </TableToolbar>
 
       <InfiniteTable
@@ -155,7 +175,7 @@ export default function ProfilingPage() {
         onRowClick={(r) => navigate(`/observability/profiling/${encodeURIComponent(r.publicId ?? r.id)}`)}
         emptyTitle="No profiles in this window"
         emptyIllustration="chart"
-        emptyMessage="Profiles arrive when a service runs the Pulse SDK profiler. Widen the range or clear filters."
+        emptyMessage="Profiles arrive when a service runs the LynkTrace SDK profiler. Widen the range or clear filters."
         pagination={paginationProps}
         onNextPage={onNextPage}
         onPreviousPage={onPreviousPage}

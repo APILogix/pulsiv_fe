@@ -1,10 +1,11 @@
 import type { ExplorerPagination } from "./hooks/useObservabilityApi";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router";
+import { X } from "lucide-react";
 import { useObservabilityList } from "./hooks/useObservabilityApi";
 import {
-  PageHeader, TableToolbar, SearchInput, FilterSelect, EnvironmentBadge, AskAiModal,
-  Timestamp, InfiniteTable, formatDuration, formatCompact, SelectionProvider, useSelection,
+  PageHeader, TableToolbar, SearchInput, FilterSelect, EnvironmentBadge,
+  Timestamp, InfiniteTable, formatDuration, formatCompact,
   TimeRangePicker, useTimeRangeParams, SignalSheet, useSignalTimeline, useTimeWindow,
   rangeParams, Panel, EmptyNote, formatAbsoluteTime, MUTED_DASH, ENVIRONMENT_OPTIONS,
 } from "@/shared/observe";
@@ -151,35 +152,39 @@ function MonitorBoard({ monitors, loading, onPick }: { monitors: MonitorSummary[
   );
 }
 
-function CronsPageContent() {
+export default function CronsPage() {
   const navigate = useNavigate();
   const activeProjectSlug = useOrgStore((s) => s.activeProjectSlug);
   const [status, setStatus] = useState("");
   const [environment, setEnvironment] = useState("");
   const [query, setQuery] = useState("");
-  const [isAiModalOpen, setIsAiModalOpen] = useState(false);
 
   const { timeRangeState } = useTimeRangeParams();
   const window = useTimeWindow(timeRangeState);
-  const { selectedKeys, toggleSelect, selectAll, clearSelection, selectedCount } = useSelection();
   const [activePagination, setActivePagination] = useState<ExplorerPagination | undefined>(undefined);
 
   const { cursor, paginationProps, onNextPage, onPreviousPage } = useCursorPagination(activePagination, {
     dependencies: [activeProjectSlug, status, environment, query, timeRangeState],
   });
 
-  const filters = {
-    project: activeProjectSlug ?? undefined,
-    status: status || undefined,
-    environment: environment || undefined,
-    search: query || undefined,
-    ...rangeParams(timeRangeState),
-  };
+  const filters = useMemo(
+    () => ({
+      project: activeProjectSlug ?? undefined,
+      status: status || undefined,
+      environment: environment || undefined,
+      search: query || undefined,
+      ...rangeParams(timeRangeState),
+    }),
+    [activeProjectSlug, status, environment, query, timeRangeState],
+  );
 
-  const { data, isLoading } = useObservabilityList<CronRow>("crons", { ...filters, cursor });
+  const queryParams = useMemo(() => ({ ...filters, cursor }), [filters, cursor]);
+  const boardParams = useMemo(() => ({ ...filters, status: undefined, limit: 200 }), [filters]);
+
+  const { data, isLoading } = useObservabilityList<CronRow>("crons", queryParams);
   // Board uses its own wider page, unaffected by the status filter, so a
   // monitor's strip keeps its green ticks while the table shows only failures.
-  const board = useObservabilityList<CronRow>("crons", { ...filters, status: undefined, limit: 200 });
+  const board = useObservabilityList<CronRow>("crons", boardParams);
   const timeline = useSignalTimeline("crons", filters, window);
 
   useEffect(() => {
@@ -235,7 +240,6 @@ function CronsPageContent() {
     <div className="flex flex-col gap-4">
       <PageHeader
         title="Cron check-ins"
-        description="Scheduled jobs reporting in. Each monitor's strip shows its recent runs, oldest on the left."
         actions={<TimeRangePicker />}
       />
 
@@ -250,10 +254,24 @@ function CronsPageContent() {
         <MonitorBoard monitors={monitors} loading={board.isLoading && !board.data} onPick={(slug) => setQuery(`monitor:${slug}`)} />
       </Panel>
 
-      <TableToolbar selectedCount={selectedCount} onClearSelection={clearSelection} onAskAi={() => setIsAiModalOpen(true)} resourceName="check-ins">
+      <TableToolbar resourceName="check-ins">
         <SearchInput key={query} placeholder="Search monitor:nightly-sync, status:failed…" onSearch={setQuery} defaultValue={query} />
-        <FilterSelect value={environment} onChange={setEnvironment} options={ENVIRONMENT_OPTIONS} />
-        <FilterSelect value={status} onChange={setStatus} options={STATUS_OPTS} />
+        <FilterSelect label="Environment" value={environment} onChange={setEnvironment} options={ENVIRONMENT_OPTIONS} />
+        <FilterSelect label="Status" value={status} onChange={setStatus} options={STATUS_OPTS} />
+        {(query || environment || status) && (
+          <button
+            type="button"
+            onClick={() => {
+              setQuery("");
+              setEnvironment("");
+              setStatus("");
+            }}
+            className="inline-flex h-8 items-center gap-1.5 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg2)]/60 px-2.5 text-[12px] text-[var(--text2)] transition-colors hover:border-[var(--border2)] hover:bg-[var(--bg2)] hover:text-[var(--text)] cursor-pointer"
+          >
+            <X className="size-3" />
+            Clear filters
+          </button>
+        )}
       </TableToolbar>
 
       <InfiniteTable
@@ -267,31 +285,10 @@ function CronsPageContent() {
         emptyTitle="No check-ins match"
         emptyIllustration="workflow"
         emptyMessage="Clear the filters or widen the time range."
-        selectable
-        selectedKeys={selectedKeys}
-        onSelectToggle={toggleSelect}
-        onSelectAllToggle={selectAll}
         pagination={paginationProps}
         onNextPage={onNextPage}
         onPreviousPage={onPreviousPage}
       />
-
-      <AskAiModal
-        isOpen={isAiModalOpen}
-        onClose={() => setIsAiModalOpen(false)}
-        resource="crons"
-        selectedIds={Array.from(selectedKeys)}
-        filters={{ status, environment }}
-        search={query}
-      />
     </div>
-  );
-}
-
-export default function CronsPage() {
-  return (
-    <SelectionProvider>
-      <CronsPageContent />
-    </SelectionProvider>
   );
 }

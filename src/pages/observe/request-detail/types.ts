@@ -111,6 +111,5 @@ export type RequestSectionId =
   | "performance"
   | "context"
   | "metadata"
-  | "ai"
   | "related"
   | "tags";

@@ -1,12 +1,12 @@
 import type { ExplorerPagination } from "./hooks/useObservabilityApi";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate, Link } from "react-router";
-import { GitBranch } from "lucide-react";
+import { GitBranch, X } from "lucide-react";
 import { useObservabilityList } from "./hooks/useObservabilityApi";
 import {
   PageHeader, FillPage, TableToolbar, FilterSelect, SearchInput,
-  MethodBadge, StatusCodeBadge, LatencyBar, EnvironmentBadge, AskAiModal, Timestamp,
-  InfiniteTable, formatCompact, formatLatency, SelectionProvider, useSelection,
+  MethodBadge, StatusCodeBadge, LatencyBar, EnvironmentBadge, Timestamp,
+  InfiniteTable, formatCompact, formatLatency,
   TimeRangePicker, useTimeRangeParams, SignalSheet, useSignalTimeline, useTimeWindow,
   rangeParams, pct, TRACE_CHIP, MUTED_DASH, ENVIRONMENT_OPTIONS, DURATION_OPTIONS,
 } from "@/shared/observe";
@@ -44,7 +44,7 @@ const durationOf = (r: Row) => Number(r.durationMs ?? r.duration_ms ?? r.latency
 const statusOf = (r: Row) => Number(r.statusCode ?? r.status_code ?? r.status ?? 0);
 const endpointOf = (r: Row) => r.endpoint ?? r.url ?? r.route ?? r.name ?? "/";
 
-function RequestsPageContent() {
+export default function RequestsPage() {
   const navigate = useNavigate();
   const activeProjectSlug = useOrgStore((s) => s.activeProjectSlug);
   const [environment, setEnvironment] = useState("");
@@ -52,28 +52,30 @@ function RequestsPageContent() {
   const [statusClass, setStatusClass] = useState("");
   const [duration, setDuration] = useState("");
   const [query, setQuery] = useState("");
-  const [isAiModalOpen, setIsAiModalOpen] = useState(false);
 
   const { timeRangeState } = useTimeRangeParams();
   const window = useTimeWindow(timeRangeState);
-  const { selectedKeys, toggleSelect, selectAll, clearSelection, selectedCount } = useSelection();
   const [activePagination, setActivePagination] = useState<ExplorerPagination | undefined>(undefined);
 
   const { cursor, paginationProps, onNextPage, onPreviousPage } = useCursorPagination(activePagination, {
     dependencies: [activeProjectSlug, environment, method, statusClass, duration, timeRangeState, query],
   });
 
-  const filters = {
-    project: activeProjectSlug ?? undefined,
-    environment,
-    method,
-    status: statusClass,
-    duration,
-    ...rangeParams(timeRangeState),
-    search: query,
-  };
+  const filters = useMemo(
+    () => ({
+      project: activeProjectSlug ?? undefined,
+      environment,
+      method,
+      status: statusClass,
+      duration,
+      ...rangeParams(timeRangeState),
+      search: query,
+    }),
+    [activeProjectSlug, environment, method, statusClass, duration, timeRangeState, query],
+  );
 
-  const { data, isLoading } = useObservabilityList<Row>("requests", { ...filters, cursor });
+  const queryParams = useMemo(() => ({ ...filters, cursor }), [filters, cursor]);
+  const { data, isLoading } = useObservabilityList<Row>("requests", queryParams);
   const timeline = useSignalTimeline("requests", filters, window);
 
   useEffect(() => {
@@ -162,7 +164,6 @@ function RequestsPageContent() {
     <FillPage>
       <PageHeader
         title="Requests"
-        description="Inbound HTTP traffic across monitored services: volume, failures, and latency for the selected window."
         actions={<TimeRangePicker />}
       />
 
@@ -175,12 +176,28 @@ function RequestsPageContent() {
         errorLabel="Errors"
       />
 
-      <TableToolbar selectedCount={selectedCount} onClearSelection={clearSelection} onAskAi={() => setIsAiModalOpen(true)} resourceName="requests">
+      <TableToolbar resourceName="requests">
         <SearchInput placeholder="Search endpoint, status:500, latency>1000…" onSearch={setQuery} defaultValue={query} />
-        <FilterSelect value={environment} onChange={setEnvironment} options={ENVIRONMENT_OPTIONS} />
-        <FilterSelect value={method} onChange={setMethod} options={METHOD_OPTS} />
-        <FilterSelect value={statusClass} onChange={setStatusClass} options={STATUS_OPTS} />
-        <FilterSelect value={duration} onChange={setDuration} options={DURATION_OPTIONS} />
+        <FilterSelect label="Environment" value={environment} onChange={setEnvironment} options={ENVIRONMENT_OPTIONS} />
+        <FilterSelect label="Method" value={method} onChange={setMethod} options={METHOD_OPTS} />
+        <FilterSelect label="Status" value={statusClass} onChange={setStatusClass} options={STATUS_OPTS} />
+        <FilterSelect label="Duration" value={duration} onChange={setDuration} options={DURATION_OPTIONS} />
+        {(query || environment || method || statusClass || duration) && (
+          <button
+            type="button"
+            onClick={() => {
+              setQuery("");
+              setEnvironment("");
+              setMethod("");
+              setStatusClass("");
+              setDuration("");
+            }}
+            className="inline-flex h-8 items-center gap-1.5 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg2)]/60 px-2.5 text-[12px] text-[var(--text2)] transition-colors hover:border-[var(--border2)] hover:bg-[var(--bg2)] hover:text-[var(--text)] cursor-pointer"
+          >
+            <X className="size-3" />
+            Clear filters
+          </button>
+        )}
       </TableToolbar>
 
       <InfiniteTable
@@ -192,32 +209,11 @@ function RequestsPageContent() {
         getKey={(r) => r.publicId ?? r.id ?? r.eventId ?? r.requestId ?? ""}
         onRowClick={(r) => navigate(`/observability/requests/${encodeURIComponent(r.publicId ?? r.id ?? r.requestId ?? "")}`)}
         emptyTitle="No requests in this window"
-        emptyMessage="Widen the time range or clear filters. Requests arrive from the Pulse SDK's HTTP middleware."
-        selectable
-        selectedKeys={selectedKeys}
-        onSelectToggle={toggleSelect}
-        onSelectAllToggle={selectAll}
+        emptyMessage="Widen the time range or clear filters. Requests arrive from the LynkTrace SDK's HTTP middleware."
         pagination={paginationProps}
         onNextPage={onNextPage}
         onPreviousPage={onPreviousPage}
       />
-
-      <AskAiModal
-        isOpen={isAiModalOpen}
-        onClose={() => setIsAiModalOpen(false)}
-        resource="requests"
-        selectedIds={Array.from(selectedKeys)}
-        filters={{ project: activeProjectSlug, environment, method, statusClass, duration, timeRange: timeRangeState }}
-        search={query}
-      />
     </FillPage>
-  );
-}
-
-export default function RequestsPage() {
-  return (
-    <SelectionProvider>
-      <RequestsPageContent />
-    </SelectionProvider>
   );
 }

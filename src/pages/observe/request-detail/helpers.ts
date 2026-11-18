@@ -6,7 +6,6 @@ export const REQUEST_SECTIONS: { id: RequestSectionId; label: string }[] = [
   { id: "performance", label: "Performance" },
   { id: "context", label: "Context" },
   { id: "metadata", label: "Metadata" },
-  { id: "ai", label: "AI" },
   { id: "related", label: "Related" },
   { id: "tags", label: "Tags" },
 ];

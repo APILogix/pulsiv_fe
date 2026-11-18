@@ -28,7 +28,6 @@ import {
   checkStringArrayField,
   BOUNDS,
   SAMPLING_RATE_BOUND,
-  COMPRESSION_MODES,
   TRANSPORT_PRIORITIES,
   RETRY_BACKOFF_MODES,
   QUEUE_OVERFLOW_STRATEGIES,
@@ -64,7 +63,9 @@ export function normalizeSdkConfig(input: unknown): SdkConfigState {
   const killswitchesIn = isRecord(root.killswitches) ? root.killswitches : {};
   const samplingIn = isRecord(root.sampling) ? root.sampling : {};
   const samplingRoutesIn = isRecord(samplingIn.routes) ? samplingIn.routes : {};
-  const instrumentationIn = isRecord(root.instrumentation) ? root.instrumentation : {};
+  const rawInst = root.instrumentation;
+  const isBoolInst = typeof rawInst === 'boolean';
+  const instrumentationIn = isRecord(rawInst) ? rawInst : {};
   const privacyIn = isRecord(root.privacy) ? root.privacy : {};
   const captureIn = isRecord(privacyIn.capture) ? privacyIn.capture : {};
   const scrubbingIn = isRecord(privacyIn.scrubbing) ? privacyIn.scrubbing : {};
@@ -107,7 +108,10 @@ export function normalizeSdkConfig(input: unknown): SdkConfigState {
       ) as SdkConfigState['sampling']['routes'],
     },
     instrumentation: Object.fromEntries(
-      INSTRUMENTATION_KEYS.map((k) => [k, bool(instrumentationIn[k], d.instrumentation[k])]),
+      INSTRUMENTATION_KEYS.map((k) => [
+        k,
+        isBoolInst ? rawInst : bool(instrumentationIn[k], d.instrumentation[k]),
+      ]),
     ) as SdkConfigState['instrumentation'],
     privacy: {
       capture: Object.fromEntries(
@@ -164,7 +168,6 @@ export function normalizeSdkConfig(input: unknown): SdkConfigState {
               batchSize: num(routeIn.batchSize, fallback.batchSize),
               flushIntervalMs: num(routeIn.flushIntervalMs, fallback.flushIntervalMs),
               timeoutMs: num(routeIn.timeoutMs, fallback.timeoutMs),
-              compression: enumValue(routeIn.compression, COMPRESSION_MODES, fallback.compression),
               priority: enumValue(routeIn.priority, TRANSPORT_PRIORITIES, fallback.priority),
             },
           ];
@@ -227,7 +230,6 @@ export function buildEditableConfig(draft: SdkConfigState): Record<string, unkno
             batchSize: draft.transport.routes[key].batchSize,
             flushIntervalMs: draft.transport.routes[key].flushIntervalMs,
             timeoutMs: draft.transport.routes[key].timeoutMs,
-            compression: draft.transport.routes[key].compression,
             priority: draft.transport.routes[key].priority,
           },
         ]),

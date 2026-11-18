@@ -33,8 +33,8 @@ export const orgRoutes = {
   /** Projects list: `/:orgSlug/projects` */
   projects: (orgSlug: string | null | undefined) => orgPath(orgSlug, '/projects'),
 
-  /** New project wizard: `/:orgSlug/projects/new` */
-  newProject: (orgSlug: string | null | undefined) => orgPath(orgSlug, '/projects/new'),
+  /** New project modal: `/:orgSlug/projects?create=true` */
+  newProject: (orgSlug: string | null | undefined) => orgPath(orgSlug, '/projects?create=true'),
 
   /** Project shell: `/:orgSlug/p/:publicId/...` */
   project: (orgSlug: string | null | undefined, publicId: string, segment?: string) => {
@@ -62,9 +62,6 @@ export const orgRoutes = {
   alerts: (orgSlug: string | null | undefined, sub?: string) =>
     orgPath(orgSlug, sub ? `/alerts/${sub.replace(/^\//, '')}` : '/alerts'),
 
-  /** Automation: `/:orgSlug/automation/...` */
-  automation: (orgSlug: string | null | undefined, sub?: string) =>
-    orgPath(orgSlug, sub ? `/automation/${sub.replace(/^\//, '')}` : '/automation'),
 
   /** Ingestion: `/:orgSlug/ingestion/...` */
   ingestion: (orgSlug: string | null | undefined, sub?: string) =>

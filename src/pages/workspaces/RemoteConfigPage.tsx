@@ -25,6 +25,7 @@ import {
 import { Notice, Panel, Pill, fieldInputClass } from "@/shared/ui/pulse";
 import { CodeBlock, Timestamp } from "@/shared/observe";
 import { Button as UiButton } from "@/components/ui/button";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { useCurrentProject } from "@/pages/workspaces/ProjectShellPage";
 
 import { RemoteConfigHeader } from "./RemoteConfig/components/RemoteConfigHeader";
@@ -91,7 +92,10 @@ function countChangedKeys(a?: Record<string, unknown> | null, b?: Record<string,
   return seen.size;
 }
 
-function countEnabled(section: unknown): { on: number; total: number } {
+function countEnabled(section: unknown, defaultTotal = 14): { on: number; total: number } {
+  if (typeof section === "boolean") {
+    return section ? { on: defaultTotal, total: defaultTotal } : { on: 0, total: defaultTotal };
+  }
   if (!isPlainObject(section)) return { on: 0, total: 0 };
   const bools = Object.values(section).filter((value): value is boolean => typeof value === "boolean");
   return { on: bools.filter(Boolean).length, total: bools.length };
@@ -356,7 +360,7 @@ function ResolveTab({
 
 // ── page ─────────────────────────────────────────────────────
 
-export default function RemoteConfigPage() {
+function RemoteConfigPageContent() {
   const { projectId } = useCurrentProject();
   const { activeOrgId } = useOrganizations();
   const [environmentId, setEnvironmentId] = useState("");
@@ -487,7 +491,6 @@ export default function RemoteConfigPage() {
       <WorkspacePage>
         <ProjectPageHeader
           title="Remote config"
-          description="Values delivered to SDKs at runtime. Each environment has its own configuration."
         />
         <RemoteConfigErrorState
           error={(configsError || environmentsError) as Error}
@@ -610,5 +613,13 @@ export default function RemoteConfigPage() {
         onConfirm={confirmSwitchEnv}
       />
     </WorkspacePage>
+  );
+}
+
+export default function RemoteConfigPage() {
+  return (
+    <TooltipProvider>
+      <RemoteConfigPageContent />
+    </TooltipProvider>
   );
 }

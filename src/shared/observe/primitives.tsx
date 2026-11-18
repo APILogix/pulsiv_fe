@@ -237,7 +237,7 @@ export function PageHeader({ title, description, breadcrumbs, actions }: {
   actions?: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <div className="flex shrink-0 flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
       <div className="min-w-0">
         {breadcrumbs && breadcrumbs.length > 0 && (
           <div className="mb-2 flex items-center gap-1 text-[12px] text-[var(--text3)]">
@@ -289,11 +289,11 @@ export function SectionCard({ title, description, action, children, className }:
   );
 }
 
-// Fixed-height shell for list pages: header/filters stay pinned, only the
-// table body inside scrolls. Height = viewport minus app header minus padding.
+// Adaptive shell for list pages: fills viewport height on large displays,
+// expands cleanly on medium/small viewports or wrapped toolbars, and never squashes controls.
 export function FillPage({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
-    <div className={cn("flex flex-col gap-4", className)} style={{ height: "calc(100vh - var(--header-height) - 3rem)" }}>
+    <div className={cn("flex min-h-[calc(100vh-var(--header-height)-3rem)] min-h-0 flex-col gap-4", className)}>
       {children}
     </div>
   );

@@ -391,7 +391,6 @@ export function ScimProvisioningPage({ mode = "admin" }: ScimProvisioningPagePro
     <WorkspacePage>
       <ProjectPageHeader
         title={pageTitle}
-        description={pageDescription}
         meta={
           hasData
             ? [

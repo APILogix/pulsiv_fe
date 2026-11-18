@@ -398,7 +398,6 @@ export default function ProjectConnectorsPage() {
     <WorkspacePage>
       <ProjectPageHeader
         title="Connectors"
-        description="Organization connectors (Slack, Teams, webhooks) that receive this project's alerts, with per-category and per-member targeting."
         actions={subscribeButton}
       />
 
@@ -415,7 +414,7 @@ export default function ProjectConnectorsPage() {
             </TextLink>
           }
         >
-          Create a Slack, Teams, or webhook connector under Connections before subscribing this project to it.
+          Create a Slack, Microsoft Teams, or webhook connector under Connections before subscribing this project to it.
         </Notice>
       )}
 

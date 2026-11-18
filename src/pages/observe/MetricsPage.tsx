@@ -79,7 +79,7 @@ function Catalog({
             <EmptyNote title={entries.length ? "No names match" : "No custom metrics yet"}>
               {entries.length
                 ? "Try a shorter filter or include runtime metrics."
-                : "Record counters, gauges, and histograms with the Pulse SDK metrics API and they appear here by name."}
+                : "Record counters, gauges, and histograms with the LynkTrace SDK metrics API and they appear here by name."}
             </EmptyNote>
           </div>
         ) : (
@@ -157,7 +157,6 @@ export default function MetricsPage() {
     <div className="flex flex-col gap-4">
       <PageHeader
         title="Metrics"
-        description="Custom counters, gauges, and histograms your services record. Pick a name to chart it and read its raw data points."
         actions={<TimeRangePicker />}
       />
 
@@ -167,7 +166,7 @@ export default function MetricsPage() {
         <div className="flex min-w-0 flex-col gap-4">
           {!catalog.isLoading && totalNames === 0 ? (
             <EmptyNote title="No metrics were recorded in this window">
-              Metrics appear once a service sends them through the Pulse SDK. Widen the time range to look further back.
+              Metrics appear once a service sends them through the LynkTrace SDK. Widen the time range to look further back.
             </EmptyNote>
           ) : (
             <>

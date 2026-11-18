@@ -51,10 +51,6 @@ const LOADERS: Record<string, Loader> = {
   "/alerts/rules": () => import("@/pages/act/AlertRulesPage"),
   "/alerts/escalations": () => import("@/pages/act/EscalationsPage"),
 
-  "/automation": () => import("@/pages/automation/AutomationOverviewPage"),
-  "/automation/workflows": () => import("@/pages/automation/AutomationWorkflowsPage"),
-  "/automation/runs": () => import("@/pages/automation/AutomationRunsPage"),
-
   "/ingestion": () => import("@/pages/connections/ConnectionsOverview"),
   "/ingestion/keys": () => import("@/pages/connections/KeysTokensPage"),
 
@@ -62,6 +58,7 @@ const LOADERS: Record<string, Loader> = {
   "/ai/assistant": () => import("@/pages/ai/AiAssistantPage"),
 
   "/admin": () => import("@/pages/team/OrgProfilePage"),
+  "/admin/members": () => import("@/pages/team/TeamPage"),
   "/admin/team": () => import("@/pages/team/TeamPage"),
   "/admin/audit-logs": () => import("@/pages/team/AuditLogsPage"),
 
@@ -72,6 +69,9 @@ const LOADERS: Record<string, Loader> = {
   "/connectors/webhooks": () => import("@/pages/settings/WebhooksPage"),
 
   "/projects": () => import("@/pages/workspaces/ProjectsPage"),
+
+  "/auth/login": () => import("@/modules/auth/pages/LoginPage"),
+  "/auth/register": () => import("@/modules/auth/pages/RegisterPage"),
 };
 
 const warmed = new Set<string>();

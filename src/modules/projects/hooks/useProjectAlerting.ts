@@ -149,5 +149,9 @@ export function useAlertChannelMutations(projectId: string) {
         alertChannelsApi.deleteMyPreference(requireOrgId(), projectId, channelId, category),
       onSuccess: invalidatePrefs,
     }),
+    testChannel: useMutation({
+      mutationFn: (channelId: string) =>
+        alertChannelsApi.testChannel(requireOrgId(), projectId, channelId),
+    }),
   };
 }

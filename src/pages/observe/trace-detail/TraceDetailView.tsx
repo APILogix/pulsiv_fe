@@ -1,16 +1,10 @@
-import { useState, useCallback, useMemo } from "react";
+import { useMemo } from "react";
 import { DetailNotFound, DetailPage, DetailSkeleton, StatusBadge } from "@/shared/observe";
-import { useOrgStore } from "@/modules/organizations/store/org.store";
-import {
-  useObservabilityDetail,
-  askObservabilityEvent,
-  type AIIntent,
-} from "../hooks/useObservabilityApi";
+import { useObservabilityDetail } from "../hooks/useObservabilityApi";
 import { StickyTraceHeader } from "./StickyTraceHeader";
 import { SummaryCards } from "./SummaryCards";
 import { SectionNavigation } from "./SectionNavigation";
 import { SpanTreeWaterfall } from "./SpanTreeWaterfall";
-import { AIInvestigationSection } from "./AIInvestigationSection";
 import { CorrelatedSignalsSection } from "./CorrelatedSignalsSection";
 import { useSectionNavigation } from "./useSectionNavigation";
 import { buildSpanTree, sectionDomId, formatDurationMs, formatPercent } from "./helpers";
@@ -18,14 +12,10 @@ import { SectionShell, KeyValueGrid } from "./ui";
 import type { TraceDetailData } from "./types";
 
 export function TraceDetailView({ traceId }: { traceId: string }) {
-  const activeOrgId = useOrgStore((state) => state.activeOrgId);
   const id = decodeURIComponent(traceId);
 
   const { data, isLoading, error } = useObservabilityDetail<TraceDetailData>("traces", id);
   const { activeId, scrollTo } = useSectionNavigation(Boolean(data));
-
-  const [analyzing, setAnalyzing] = useState(false);
-  const [aiOverride, setAiOverride] = useState<unknown>(undefined);
 
   // Build hierarchical span tree and calculate metrics
   const { tree, flatList, bottleneckNode, maxDepth, hasMissingParents, executionBreakdown, executionGaps } = useMemo(() => {
@@ -41,24 +31,6 @@ export function TraceDetailView({ traceId }: { traceId: string }) {
     return { tree, flatList, bottleneckNode, maxDepth, hasMissingParents, executionBreakdown, executionGaps };
   }, [data]);
 
-  const handleRunAnalysis = useCallback(
-    async (intent: AIIntent = "performance", question?: string) => {
-      if (!activeOrgId || !data) return;
-      setAnalyzing(true);
-      try {
-        const targetId = data.publicId || data.entity?.publicId || data.id || id;
-        const result = await askObservabilityEvent(activeOrgId, "traces", targetId, intent, question);
-        setAiOverride(result);
-        scrollTo("ai");
-      } catch (err) {
-        console.error("AI Investigation error:", err);
-      } finally {
-        setAnalyzing(false);
-      }
-    },
-    [activeOrgId, data, id, scrollTo],
-  );
-
   if (isLoading) {
     return (
       <DetailPage>
@@ -70,17 +42,12 @@ export function TraceDetailView({ traceId }: { traceId: string }) {
   if (error || !data?.entity) {
     return <DetailNotFound kind="Trace" id={id} backTo="/observability/traces" backLabel="Traces" />;
   }
-  const aiResult = aiOverride !== undefined ? aiOverride : data.ai?.aiResponse;
   const totalDurationMs = data.entity?.totalDurationMs ?? data.entity?.durationMs ?? 0;
 
   return (
     <DetailPage>
       {/* Sticky Header */}
-      <StickyTraceHeader
-        detail={data}
-        onAnalyze={() => void handleRunAnalysis("performance")}
-        analyzing={analyzing}
-      />
+      <StickyTraceHeader detail={data} />
 
       {/* Summary KPI Strip */}
       <SummaryCards
@@ -137,13 +104,6 @@ export function TraceDetailView({ traceId }: { traceId: string }) {
           />
         </div>
 
-        {/* AI Investigation Section */}
-        <AIInvestigationSection
-          detail={data}
-          aiResult={aiResult}
-          analyzing={analyzing}
-          onRunAnalysis={handleRunAnalysis}
-        />
 
         {/* Correlated Signals Section */}
         <CorrelatedSignalsSection detail={data} />

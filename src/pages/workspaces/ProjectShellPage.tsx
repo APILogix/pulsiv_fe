@@ -1,4 +1,4 @@
-import { useEffect, createContext, useContext, useRef } from "react";
+import { useEffect, createContext, useContext, useRef, useMemo } from "react";
 import { Navigate, Outlet, useParams } from "react-router";
 
 import { useProjectByPublicId } from "@/modules/projects/hooks/useProjects";
@@ -7,6 +7,7 @@ import { ProjectHeaderBar } from "@/modules/projects/components/ProjectHeaderBar
 import { TextLink, WORKSPACE_RAIL } from "@/modules/projects/components/project-page";
 import { useOrgStore } from "@/modules/organizations/store/org.store";
 import { useOrganizations } from "@/modules/organizations/hooks/useOrganizations";
+import { useBootstrapProjects } from "@/modules/bootstrap";
 import { RouteBoundary, useScrollRestoration } from "@/shared/motion";
 import { RouteSkeleton } from "@/shared/skeletons";
 import type { SurfaceTone } from "@/shared/ui/pulse";
@@ -43,6 +44,10 @@ export const PROJECT_STATUS_TONE: Record<ProjectStatus, SurfaceTone> = {
   archived: "neutral",
 };
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const EMPTY_TAGS: string[] = [];
+const EMPTY_METADATA: Record<string, unknown> = {};
+
 // ── shell ────────────────────────────────────────────────────
 
 /**
@@ -59,41 +64,98 @@ export function ProjectShellPage() {
   const { orgSlug, projectPublicId } = useParams<{ orgSlug: string; projectPublicId: string }>();
   const safePublicId = projectPublicId ?? "";
   const { organizations, isLoading: orgsLoading } = useOrganizations();
+  const bootstrapProjects = useBootstrapProjects();
   const activeOrgId = useOrgStore((s) => s.activeOrgId);
+  const activeOrgSlug = useOrgStore((s) => s.activeOrgSlug);
+  const activeProjectId = useOrgStore((s) => s.activeProjectId);
   const setActiveOrgId = useOrgStore((s) => s.setActiveOrgId);
   const setActiveOrgSlug = useOrgStore((s) => s.setActiveOrgSlug);
+  const setActiveProjectId = useOrgStore((s) => s.setActiveProjectId);
+  const setActiveProjectSlug = useOrgStore((s) => s.setActiveProjectSlug);
+
+  // Synchronous org scope synchronization during render to eliminate frame gap
+  if (orgSlug && organizations.length > 0) {
+    const matchingOrg = organizations.find((o) => o.slug?.toLowerCase() === orgSlug.toLowerCase());
+    if (matchingOrg && (activeOrgId !== matchingOrg.id || activeOrgSlug !== matchingOrg.slug)) {
+      setActiveOrgId(matchingOrg.id);
+      setActiveOrgSlug(matchingOrg.slug);
+    }
+  }
 
   useEffect(() => {
     if (orgSlug && organizations.length > 0) {
-      const matchingOrg = organizations.find((o) => o.slug === orgSlug);
-      if (matchingOrg && (useOrgStore.getState().activeOrgId !== matchingOrg.id || useOrgStore.getState().activeOrgSlug !== matchingOrg.slug)) {
+      const matchingOrg = organizations.find((o) => o.slug?.toLowerCase() === orgSlug.toLowerCase());
+      if (matchingOrg && (activeOrgId !== matchingOrg.id || activeOrgSlug !== matchingOrg.slug)) {
         setActiveOrgId(matchingOrg.id);
         setActiveOrgSlug(matchingOrg.slug);
       }
     }
-  }, [orgSlug, organizations, setActiveOrgId, setActiveOrgSlug]);
+  }, [orgSlug, organizations, activeOrgId, activeOrgSlug, setActiveOrgId, setActiveOrgSlug]);
+
+  // Derive project identity from bootstrap store or query cache for instant Frame 1 rendering
+  const cachedBootstrap = useMemo(() => {
+    return bootstrapProjects.find(
+      (p) => p.publicId === safePublicId || p.id === safePublicId || p.slug === safePublicId
+    );
+  }, [bootstrapProjects, safePublicId]);
 
   const { data: project, isLoading: projectLoading, error } = useProjectByPublicId(safePublicId);
   const scrollRef = useRef<HTMLDivElement>(null);
   useScrollRestoration(scrollRef);
 
+  // Synthesize effective project so children and header chrome mount concurrently on Frame 1
+  const effectiveProjectId = project?.id ?? cachedBootstrap?.id ?? safePublicId;
+  const effectiveProject: Project = useMemo(
+    () =>
+      project ?? {
+        id: effectiveProjectId,
+        publicId: safePublicId,
+        orgId: activeOrgId ?? "",
+        name: cachedBootstrap?.name ?? (safePublicId.startsWith("prj_") ? "Project" : safePublicId),
+        slug: cachedBootstrap?.slug ?? safePublicId,
+        description: null,
+        status: (cachedBootstrap?.status as ProjectStatus) ?? "active",
+        timezone: "UTC",
+        tags: EMPTY_TAGS,
+        icon: null,
+        metadata: EMPTY_METADATA,
+        archivedAt: null,
+        deletedAt: null,
+        deletedBy: null,
+        createdAt: "",
+        updatedAt: "",
+        version: 1,
+      },
+    [project, effectiveProjectId, safePublicId, activeOrgId, cachedBootstrap]
+  );
+
+  // Memoize ProjectContext value to eliminate cascading child re-renders (F13)
+  // MUST be called unconditionally before ANY early returns to satisfy Rules of Hooks
+  const contextValue = useMemo<ProjectContextValue>(
+    () => ({
+      project: effectiveProject,
+      projectId: effectiveProjectId,
+      publicId: safePublicId,
+      orgSlug: orgSlug ?? "",
+    }),
+    [effectiveProject, effectiveProjectId, safePublicId, orgSlug]
+  );
+
   if (!projectPublicId || !orgSlug) return <Navigate to="/projects" replace />;
   
-  // If a UUID sneaks into the URL, bounce to the legacy router to resolve it
-  if (safePublicId && !safePublicId.startsWith("prj_")) {
+  // Only bounce to the legacy UUID router if safePublicId is genuinely a UUID
+  if (safePublicId && UUID_REGEX.test(safePublicId)) {
     return <Navigate to={`/projects/${safePublicId}`} replace />;
   }
 
-  const isLoading = orgsLoading || projectLoading || (!activeOrgId && organizations.length === 0);
-
-  if (isLoading) {
-    // Same frame as the shell below (header bar + rail), shaped like the tab
-    // being opened. When the project resolves, the tab boundary takes this
-    // skeleton over in place, so the load reads as one skeleton, not two.
+  // Only block the outer shell if we don't even have active organization context yet
+  const isOrgResolving = orgsLoading && !activeOrgId && organizations.length === 0;
+  if (isOrgResolving) {
     return <RouteSkeleton framed />;
   }
 
-  if (error || !project) {
+  // If query completed with error and we have no cached project metadata
+  if ((error || (!projectLoading && !project)) && !cachedBootstrap) {
     // Same anatomy as every other workspace page: the title states the
     // outcome, one line explains it, the next step is a link.
     return (
@@ -117,10 +179,16 @@ export function ProjectShellPage() {
     );
   }
 
+  // Synchronously sync active project ID into org.store to prevent header ProjectSwitcher layout shifts
+  if (effectiveProjectId && activeProjectId !== effectiveProjectId) {
+    setActiveProjectId(effectiveProjectId);
+    setActiveProjectSlug(effectiveProject.slug);
+  }
+
   return (
-    <ProjectContext.Provider value={{ project, projectId: project.id, publicId: project.publicId, orgSlug }}>
+    <ProjectContext.Provider value={contextValue}>
       <div className="flex h-full min-h-0 w-full flex-col overflow-hidden bg-[var(--bg)]">
-        <ProjectHeaderBar project={project} />
+        <ProjectHeaderBar project={effectiveProject} />
         <div ref={scrollRef} className="scroll-region sidebar-scroll min-h-0 flex-1 overflow-y-auto px-4 py-6 sm:px-6">
           {/* One rail for every tab, applied here so no tab sets its own outer
               width and the page title never shifts between tabs. Each tab is

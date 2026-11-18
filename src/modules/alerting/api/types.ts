@@ -379,6 +379,8 @@ export interface AlertEvent {
   suppressedBy: string | null;
   suppressedAt: string | null;
   suppressionReason: string | null;
+  environment?: string | null;
+  service?: string | null;
   labels: Json;
   annotations: Json;
   createdAt: string;
@@ -683,6 +685,21 @@ export interface OrganizationAlertPolicy {
   updatedAt: string;
 }
 
+export interface AlertCatalogItem {
+  key: string;
+  tier: string;
+  category: string;
+  title: string;
+  description: string;
+  defaultConfig: Record<string, unknown>;
+  version: number;
+  source: string;
+  minPlan: string | null;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface ProjectSubscription {
   id: string;
   organizationId?: string;
@@ -691,10 +708,19 @@ export interface ProjectSubscription {
   ruleId?: string;
   catalogPolicyId?: string | null;
   presetKey?: string | null;
+  catalogKey?: string;
   state: SubscriptionState;
+  enabled?: boolean;
   mode?: string;
   policy?: OrganizationAlertPolicy;
   override?: ProjectOverride | null;
+  configOverrides?: Record<string, unknown> | null;
+  catalogVersion?: number;
+  title?: string;
+  description?: string;
+  tier?: string;
+  category?: string;
+  source?: string;
   threshold?: Json | null;
   cooldownSeconds?: number | null;
   evaluationWindowSeconds?: number | null;

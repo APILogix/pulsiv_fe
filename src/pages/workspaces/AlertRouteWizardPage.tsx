@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate, useParams } from "react-router";
+import { Link, useNavigate, useParams } from "react-router";
 import { toast } from "sonner";
 import { AlertTriangle, Loader2 } from "lucide-react";
 
@@ -19,14 +19,8 @@ import { Timestamp } from "@/shared/observe";
 import { Button as UiButton } from "@/components/ui/button";
 import { RouteConditionBuilder, type RouteCondition } from "@/components/ui/route-condition-builder";
 import { ConnectorSelector, type Connector } from "@/components/ui/connector-selector";
+import { useConnectors } from "@/modules/organizations/hooks/useConnectors";
 import { useCurrentProject } from "./ProjectShellPage";
-
-// Mock connectors until we have useConnectors hook
-const mockConnectors: Connector[] = [
-  { id: "conn_1", name: "Engineering Slack", type: "slack", status: "healthy" },
-  { id: "conn_2", name: "Primary PagerDuty", type: "pagerduty", status: "healthy" },
-  { id: "conn_3", name: "StatusPage", type: "webhook", status: "degraded" },
-];
 
 /** The fields of `GET …/alert-routes/:routeId` this editor reads. */
 interface AlertRouteDetail {
@@ -56,6 +50,17 @@ export default function AlertRouteWizardPage() {
   } = useAlertRoute(projectId, isEditing ? routeId : undefined);
   const routeData = data as AlertRouteDetail | undefined;
   const mutations = useAlertRouteMutations(projectId);
+  const { data: rawConnectors, isLoading: connectorsLoading, error: connectorsError } = useConnectors();
+  const connectors: Connector[] = (rawConnectors ?? []).map((c: any) => ({
+          id: c.id,
+          name: c.name || c.type,
+          type: c.type || "webhook",
+          status: (c.status === "active" || c.status === "healthy"
+            ? "healthy"
+            : c.status === "error" || c.status === "failed"
+              ? "failed"
+              : "degraded") as Connector["status"],
+        }));
 
   const [loading, setLoading] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -120,6 +125,12 @@ export default function AlertRouteWizardPage() {
   // footer says which one is missing.
   const missing = !name
     ? "Add a name to save this route."
+    : connectorsLoading
+      ? "Loading organization connectors."
+      : connectorsError
+        ? "Connectors could not be loaded. Retry before saving this route."
+        : connectors.length === 0
+          ? "Connect an organization destination before creating this route."
     : selectedConnectors.length === 0
       ? "Pick at least one connector to save this route."
       : null;
@@ -244,7 +255,7 @@ export default function AlertRouteWizardPage() {
                 type="button"
                 size="lg"
                 onClick={() => void handleSubmit()}
-                disabled={!name || loading || selectedConnectors.length === 0}
+                disabled={!name || loading || connectorsLoading || Boolean(connectorsError) || connectors.length === 0 || selectedConnectors.length === 0}
               >
                 {loading && <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />}
                 {loading ? "Saving…" : isEditing ? "Save changes" : "Create route"}
@@ -261,10 +272,18 @@ export default function AlertRouteWizardPage() {
                 </span>
               </p>
               <ConnectorSelector
-                connectors={mockConnectors}
+                connectors={connectors}
                 selectedIds={selectedConnectors}
                 onChange={setSelectedConnectors}
               />
+              {connectorsError && (
+                <p role="alert" className="text-[12px] text-[var(--red)]">{apiErrorMessage(connectorsError, "Organization connectors could not be loaded.")}</p>
+              )}
+              {!connectorsLoading && !connectorsError && connectors.length === 0 && (
+                <Link to={`/${orgSlug}/connectors/integrations`} className="text-[12px] font-medium text-[var(--brand)] hover:underline">
+                  Open connector settings
+                </Link>
+              )}
             </div>
 
             <DialogField

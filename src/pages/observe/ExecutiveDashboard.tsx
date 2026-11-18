@@ -1,5 +1,7 @@
+import { useMemo } from "react";
 import { Link, useNavigate } from "react-router";
 import { ArrowUpRight } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useObservabilityList } from "./hooks/useObservabilityApi";
 import {
   PageHeader, TimeRangePicker, useTimeRangeParams, useTimeWindow, rangeParams, useSignalTimeline,
@@ -65,22 +67,54 @@ export default function ExecutiveDashboard() {
   const { timeRangeState } = useTimeRangeParams();
   const window = useTimeWindow(timeRangeState);
   const project = useOrgStore((s) => s.activeProjectSlug) ?? undefined;
-  const scope = { project, ...rangeParams(timeRangeState) };
-  const overrides = analyticsWindow(window);
+  const scope = useMemo(() => ({ project, ...rangeParams(timeRangeState) }), [project, timeRangeState]);
+  const overrides = useMemo(() => analyticsWindow(window), [window]);
 
-  const requests = useObservabilityList<Record<string, unknown>>("requests", { ...scope, limit: 1 });
-  const errors = useObservabilityList<Record<string, unknown>>("errors", { ...scope, limit: 1 });
-  const traces = useObservabilityList<Record<string, unknown>>("traces", { ...scope, limit: 1 });
-  const logs = useObservabilityList<Record<string, unknown>>("logs", { ...scope, limit: 1 });
-  const crons = useObservabilityList<Record<string, unknown>>("crons", { ...scope, limit: 1 });
-  const replays = useObservabilityList<Record<string, unknown>>("replays", { ...scope, limit: 1 });
+  const singleItemParams = useMemo(() => ({ ...scope, limit: 1 }), [scope]);
+  const servicesParams = useMemo(() => ({ ...overrides, limit: 12 }), [overrides]);
+  const endpointsParams = useMemo(() => ({ ...overrides, limit: 50 }), [overrides]);
+  const groupsParams = useMemo(
+    () => ({
+      status: "open",
+      severity: "",
+      isRegression: "",
+      environment: "",
+      release: "",
+      sdkVersion: "",
+      appVersion: "",
+      minOccurrences: "",
+      search: "",
+      project,
+      range: scope.range,
+      from: scope.from,
+      to: scope.to,
+    }),
+    [project, scope.range, scope.from, scope.to],
+  );
+
+  const queryClient = useQueryClient();
+  const activeOrgId = useOrgStore((s) => s.activeOrgId);
+
+  // Decouple secondary widget queries from the route-level blocking gate
+  if (activeOrgId) {
+    queryClient.setQueryDefaults(["observability", activeOrgId, "traces"], { meta: { nonBlocking: true } });
+    queryClient.setQueryDefaults(["observability", activeOrgId, "logs"], { meta: { nonBlocking: true } });
+    queryClient.setQueryDefaults(["observability", activeOrgId, "crons"], { meta: { nonBlocking: true } });
+  }
+  queryClient.setQueryDefaults(["observe-timeline"], { meta: { nonBlocking: true } });
+  queryClient.setQueryDefaults(["analytics-v2", "services"], { meta: { nonBlocking: true } });
+  queryClient.setQueryDefaults(["analytics-v2", "endpoints"], { meta: { nonBlocking: true } });
+  queryClient.setQueryDefaults(["error-groups"], { meta: { nonBlocking: true } });
+
+  const requests = useObservabilityList<Record<string, unknown>>("requests", singleItemParams);
+  const errors = useObservabilityList<Record<string, unknown>>("errors", singleItemParams);
+  const traces = useObservabilityList<Record<string, unknown>>("traces", singleItemParams);
+  const logs = useObservabilityList<Record<string, unknown>>("logs", singleItemParams);
+  const crons = useObservabilityList<Record<string, unknown>>("crons", singleItemParams);
   const traffic = useSignalTimeline("requests", scope, window, 72);
-  const services = useServicesAnalytics({ ...overrides, limit: 12 });
-  const endpoints = useEndpointsAnalytics({ ...overrides, limit: 50 });
-  const groups = useErrorGroupsList({
-    status: "open", severity: "", isRegression: "", environment: "", release: "", sdkVersion: "", appVersion: "",
-    minOccurrences: "", search: "", project, range: scope.range, from: scope.from, to: scope.to,
-  });
+  const services = useServicesAnalytics(servicesParams);
+  const endpoints = useEndpointsAnalytics(endpointsParams);
+  const groups = useErrorGroupsList(groupsParams);
 
   const rq = requests.data?.summary ?? {};
   const rs = requests.data?.statistics ?? {};
@@ -93,13 +127,23 @@ export default function ExecutiveDashboard() {
   const cs = crons.data?.summary ?? {};
   const cronFailed = Number(cs.failed ?? 0);
   const openGroups = groups.groups.length;
+  const isErrorsLoading = errors.isLoading && !errors.data;
 
   const cells: ReadoutCell[] = [
     { label: "Requests", value: formatCompact(total), sub: `${formatCompact(total / Math.max(1, window.ms / 60_000))} per minute` },
     { label: "Error rate", value: `${(errorRate * 100).toFixed(2)}%`, sub: `${formatCompact(failed)} failed requests`, tone: errorRate >= 0.05 ? "bad" : errorRate >= 0.01 ? "warn" : "good" },
     { label: "p95 latency", value: rs.p95 != null ? formatLatency(Number(rs.p95)) : "—", sub: rs.p50 != null ? `p50 ${formatLatency(Number(rs.p50))}` : undefined, tone: Number(rs.p95 ?? 0) >= 1000 ? "bad" : Number(rs.p95 ?? 0) >= 500 ? "warn" : "neutral" },
-    { label: "Error events", value: formatCompact(errorEvents), sub: `${formatCompact(Number(es.uniqueFingerprints ?? 0))} distinct groups`, tone: errorEvents > 0 ? "bad" : "good" },
-    { label: "Affected users", value: formatCompact(users), sub: "saw at least one error" },
+    {
+      label: "Error events",
+      value: isErrorsLoading ? <span className="h-[22px] w-16 animate-pulse rounded-[4px] bg-[var(--bg3)] inline-block" /> : formatCompact(errorEvents),
+      sub: isErrorsLoading ? undefined : `${formatCompact(Number(es.uniqueFingerprints ?? 0))} distinct groups`,
+      tone: errorEvents > 0 ? "bad" : "good",
+    },
+    {
+      label: "Affected users",
+      value: isErrorsLoading ? <span className="h-[22px] w-16 animate-pulse rounded-[4px] bg-[var(--bg3)] inline-block" /> : formatCompact(users),
+      sub: isErrorsLoading ? undefined : "saw at least one error",
+    },
   ];
 
   const signals: SignalRow[] = [
@@ -109,7 +153,6 @@ export default function ExecutiveDashboard() {
     { label: "Traces", to: "/observability/traces", value: formatCompact(Number(traces.data?.summary?.total ?? 0)), detail: traces.data?.statistics?.p95 != null ? `p95 ${formatLatency(Number(traces.data.statistics.p95))}` : "distributed traces", loading: traces.isLoading },
     { label: "Logs", to: "/observability/logs", value: formatCompact(Number(logs.data?.summary?.total ?? 0)), detail: `${formatCompact(Number(logs.data?.summary?.errorLogs ?? 0))} error lines`, tone: Number(logs.data?.summary?.errorLogs ?? 0) > 0 ? "warn" : undefined, loading: logs.isLoading },
     { label: "Cron check-ins", to: "/observability/crons", value: formatCompact(Number(cs.total ?? 0)), detail: cronFailed ? `${cronFailed} failed` : `${formatCompact(Number(cs.uniqueMonitors ?? 0))} monitors healthy`, tone: cronFailed > 0 ? "bad" : Number(cs.total ?? 0) > 0 ? "good" : undefined, loading: crons.isLoading },
-    { label: "Replays", to: "/observability/replay", value: formatCompact(Number(replays.data?.summary?.uniqueSessions ?? 0)), detail: "recorded sessions", loading: replays.isLoading },
   ];
 
   const serviceRows = services.data?.data?.table?.rows ?? [];
@@ -122,7 +165,6 @@ export default function ExecutiveDashboard() {
     <div className="flex flex-col gap-4">
       <PageHeader
         title="Overview"
-        description="Traffic, failures, and latency across every monitored service, with a jump into each signal."
         actions={<TimeRangePicker />}
       />
 

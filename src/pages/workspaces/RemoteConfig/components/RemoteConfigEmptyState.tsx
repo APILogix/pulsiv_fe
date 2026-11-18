@@ -11,7 +11,7 @@ export function RemoteConfigEmptyState({ environmentName, onResetScope }: Remote
     <Sheet label="Remote config">
       <SheetEmpty
         title={`No configuration for ${environmentName}`}
-        description="Remote config lets your team adjust telemetry ingestion, sampling rates, PII masking, and killswitches across running SDK instances without redeploying code."
+        description="Remote config lets members adjust telemetry ingestion, sampling rates, PII masking, and killswitches across running SDK instances without redeploying code."
         action={
           onResetScope ? (
             <UiButton variant="outline" size="lg" onClick={onResetScope}>

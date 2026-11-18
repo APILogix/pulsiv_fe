@@ -9,14 +9,10 @@ import {
 import { useLocation } from "react-router";
 import { useQueryClient } from "@tanstack/react-query";
 
-import { lazy } from "react";
 import { cn } from "@/lib/utils";
 import { stripOrgSlug } from "@/shared/skeletons/slug";
+import { RouteSkeleton } from "@/shared/skeletons/RouteSkeleton";
 import { countBlockingQueries, hasPendingCandidates, navigationEpoch } from "./page-ready";
-
-const RouteSkeleton = lazy(() =>
-  import("@/shared/skeletons/RouteSkeleton").then((m) => ({ default: m.RouteSkeleton }))
-);
 
 export type BoundaryScope = "module" | "page";
 
@@ -40,12 +36,10 @@ export function moduleKey(pathname: string): string {
 
 /* ─────────────────────────────── timing ─────────────────────────────── */
 
-/** Quiet window after the last blocking query settles, so a dependent query
- *  that starts on the next commit keeps the page behind the same skeleton. */
-const SETTLE_MS = 60;
-/** Upper bound on holding a page back. Past this the page shows its own
- *  loading state rather than an indefinite skeleton on a hung request. */
-const MAX_HOLD_MS = 1_200;
+/** Quiet window after the last blocking query settles. Reduced to 0ms so that
+ *  when all blocking queries complete, the gate opens on the next event loop tick
+ *  without introducing dead latency. */
+const SETTLE_MS = 0;
 /** Skeleton fade-out. Shorter than the content entrance so the two overlap
  *  briefly and read as the data filling in, not as two screens. */
 const OVERLAY_EXIT_MS = 140;
@@ -130,9 +124,7 @@ export function RouteBoundary({
 
   const leaving = !visible && exitKey === key;
   const skeleton = fallback ?? (
-    <Suspense fallback={null}>
-      <RouteSkeleton pathname={location.pathname} framed={scope === "module"} padded={padded} />
-    </Suspense>
+    <RouteSkeleton pathname={location.pathname} framed={scope === "module"} padded={padded} />
   );
 
   return (
@@ -221,15 +213,14 @@ function GateContent({
     if (hasPendingCandidates(client, since)) {
       setFlag("hold", routeKey, true);
       setState("waiting");
-    } else if (!animate) {
-      setState("ready");
     } else {
-      // Chunk skeleton was up: crossfade out of it. Otherwise a short entrance.
-      setState(entering ? "revealing" : "entering");
+      // Data is already cached or ready: bypass entrance animations completely
+      // for instant LCP rendering on Frame 1.
+      setState("ready");
     }
     // Runs once per mount by design: the gate never re-engages for filter or
     // pagination changes; those use the page's own in-place loading states.
-  }, [state, client, since, routeKey, setFlag, animate, entering]);
+  }, [state, client, since, routeKey, setFlag]);
 
   // Wait for the first result of every query this navigation started.
   useEffect(() => {
@@ -245,6 +236,9 @@ function GateContent({
       setFlag("hold", routeKey, false);
       setState(animate ? "revealing" : "ready");
     };
+
+    // Safety deadline: unblock gate if queries take longer than 600ms to prevent skeleton deadlock
+    const safetyTimer = window.setTimeout(finish, 600);
     const evaluate = () => {
       frame = 0;
       if (countBlockingQueries(client, since) > 0) {
@@ -264,14 +258,12 @@ function GateContent({
 
     const unsubscribe = cache.subscribe(schedule);
     schedule();
-    const cap = window.setTimeout(finish, MAX_HOLD_MS);
-
     return () => {
       done = true;
       unsubscribe();
       window.cancelAnimationFrame(frame);
       window.clearTimeout(settle);
-      window.clearTimeout(cap);
+      window.clearTimeout(safetyTimer);
     };
   }, [state, client, since, routeKey, setFlag, animate]);
 

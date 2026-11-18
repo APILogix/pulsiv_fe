@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { ComposableMap, Geographies, Geography, Marker } from "react-simple-maps";
 import { STATE_COLOR, STATE_WORD } from "./board/kit";
 import type { Country } from "./board/fixtures";
@@ -24,8 +24,8 @@ const CENTROIDS: Record<string, [number, number]> = {
 
 export function WorldChoropleth({ data, format }: { data: Country[]; format: (n: number) => string }) {
   const [hover, setHover] = useState<Country | null>(null);
-  const byId = new Map(data.map((d) => [ISO_NUMERIC[d.code], d]));
-  const maxReq = Math.max(...data.map((d) => d.requests), 1);
+  const byId = useMemo(() => new Map(data.map((d) => [ISO_NUMERIC[d.code], d])), [data]);
+  const maxReq = useMemo(() => Math.max(...data.map((d) => d.requests), 1), [data]);
 
   return (
     <div className="relative w-full">

@@ -1,6 +1,5 @@
 import { Link, useNavigate } from "react-router";
-import { Sparkles, Copy, MoreHorizontal, GitBranch } from "lucide-react";
-import { useAiDrawerStore } from "@/modules/ai/store/ai-drawer.store";
+import { Copy, MoreHorizontal, GitBranch } from "lucide-react";
 import {
   DetailHeader,
   EnvironmentBadge,
@@ -10,7 +9,7 @@ import {
   formatAbsoluteTime,
   TRACE_CHIP,
 } from "@/shared/observe";
-import { aiButtonClass, ghostButtonClass } from "@/shared/observe/form";
+import { ghostButtonClass } from "@/shared/observe/form";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,7 +24,6 @@ export function StickyRequestHeader({
   header,
 }: {
   header: RequestDetailHeader;
-  onAnalyze?: () => void;
 }) {
   const navigate = useNavigate();
   const endpoint = header.endpoint ?? "—";
@@ -71,14 +69,6 @@ export function StickyRequestHeader({
               Open trace
             </button>
           )}
-          <button
-            type="button"
-            className={aiButtonClass}
-            onClick={() => useAiDrawerStore.getState().openInvestigate({ resourceType: "request", publicId: header.publicId })}
-          >
-            <Sparkles className="size-3.5" aria-hidden="true" />
-            Investigate
-          </button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button type="button" aria-label="More actions" className={`${ghostButtonClass} w-9 px-0`}>

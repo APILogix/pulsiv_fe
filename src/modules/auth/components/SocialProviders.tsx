@@ -26,7 +26,7 @@
  */
 import { Github } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { OAuthButton } from '@/shared/ui/pulse';
+import { OAuthButton } from '@/shared/ui/pulse/auth';
 
 /** Providers the platform can actually authenticate. Matches the backend union. */
 export const SOCIAL_PROVIDERS = ['google', 'github'] as const;

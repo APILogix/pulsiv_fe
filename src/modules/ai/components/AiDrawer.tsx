@@ -33,7 +33,7 @@ export function AiDrawer() {
               </span>
               <div>
                 <SheetTitle className="text-[15px] font-semibold text-[var(--text)] tracking-tight">
-                  Pulse Intelligence
+                  LynkTrace Intelligence
                 </SheetTitle>
                 <SheetDescription className="text-[11.5px] text-[var(--text3)]">
                   Grounded observability assistant & root cause analysis

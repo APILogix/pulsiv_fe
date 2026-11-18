@@ -78,7 +78,6 @@ function getBusinessBoard() {
     { label: "Error groups", value: 94 },
     { label: "Alert rules", value: 81 },
     { label: "Traces", value: 67 },
-    { label: "Automation workflows", value: 38 },
     { label: "Model insights", value: 29 },
   ];
   return { mrr, activeTenants, newTenants, versions, activation, features };

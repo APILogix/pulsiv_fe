@@ -22,7 +22,7 @@ export interface UseCursorPaginationResult {
 }
 
 /**
- * Robust, production-grade cursor pagination hook for all Pulsiv Observability lists.
+ * Robust, production-grade cursor pagination hook for all LynkTrace Observability lists.
  * Enforces composite (occurred_at + id) cursor continuity and automatically invalidates
  * the cursor chain when filter, search, project, or time range identity changes.
  */

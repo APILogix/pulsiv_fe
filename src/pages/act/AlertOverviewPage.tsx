@@ -339,7 +339,7 @@ export default function AlertOverviewPage() {
     rulesBody = (
       <SheetList label="Rules in the catalog">
         {previewRules.map((rule) => (
-          <SheetListItem key={rule.id} to={`/alerts/policies/${rule.id}`} muted={!rule.enabled}>
+          <SheetListItem key={rule.id} to={`/alerts/rules?rule=${encodeURIComponent(rule.id)}`} muted={!rule.enabled}>
             <div className="min-w-0 flex-1">
               <p className="truncate text-[13px] font-medium text-[var(--text)]">{rule.name}</p>
               <p className="mt-0.5 truncate font-[family-name:var(--mono)] text-[11.5px] tabular-nums text-[var(--text3)]">

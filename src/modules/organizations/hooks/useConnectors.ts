@@ -13,7 +13,30 @@ export const connectorKeys = {
   deliveryAttempts: (orgId: string, id: string, deliveryId: string) => [...connectorKeys.all, "delivery-attempts", orgId, id, deliveryId] as const,
   audit: (orgId: string, id?: string) => [...connectorKeys.all, "audit", orgId, id ?? "all"] as const,
   routes: (orgId: string, id: string) => [...connectorKeys.all, "routes", orgId, id] as const,
+  picker: (orgId: string, query?: ConnectorPickerQuery | Record<string, unknown>) =>
+    [...connectorKeys.all, "picker", orgId, query] as const,
 };
+
+export type ConnectorPickerStatus = "active" | "needs_reauth" | "disabled" | "error";
+
+export interface ConnectorPickerItem {
+  id: string;
+  name: string;
+  type: string;
+  status: ConnectorPickerStatus;
+  lastVerifiedAt: string | null;
+  displayHint: string | null;
+  createdBy: string | null;
+}
+
+export interface ConnectorPickerQuery {
+  type?: string;
+  status?: string;
+  q?: string;
+  projectId?: string;
+  limit?: number;
+  [key: string]: unknown;
+}
 
 // --- Queries ---
 
@@ -26,6 +49,25 @@ export const useConnectors = () => {
       return data.data ?? [];
     },
     enabled: !!activeOrgId,
+  });
+};
+
+export const useConnectorPicker = (query: ConnectorPickerQuery = {}) => {
+  const activeOrgId = useOrgStore((state) => state.activeOrgId);
+  return useQuery({
+    queryKey: connectorKeys.picker(activeOrgId ?? "", query),
+    queryFn: async ({ signal }) => {
+      const { data } = await apiClient.get<{ data: ConnectorPickerItem[]; meta?: { count?: number; nextCursor?: string | null } }>(
+        `/organizations/${activeOrgId}/connectors?picker=true`,
+        {
+          params: query,
+          signal,
+        }
+      );
+      return data.data ?? [];
+    },
+    enabled: !!activeOrgId,
+    staleTime: 30_000,
   });
 };
 

@@ -1,4 +1,4 @@
-import { EnvironmentType } from "./api/types";
+import { EnvironmentType } from "./api/types.js";
 
 export interface EnvironmentTemplate {
   type: EnvironmentType;

@@ -1,12 +1,9 @@
-import { useCallback, useState } from "react";
 import { DetailNotFound, DetailPage, DetailSkeleton, MethodBadge, StatusCodeBadge, formatLatency } from "@/shared/observe";
-import { useOrgStore } from "@/modules/organizations/store/org.store";
-import { askObservabilityEvent, useObservabilityDetail } from "../hooks/useObservabilityApi";
+import { useObservabilityDetail } from "../hooks/useObservabilityApi";
 import { StickyRequestHeader } from "./StickyRequestHeader";
 import { SummaryCards } from "./SummaryCards";
 import { SectionNavigation } from "./SectionNavigation";
 import {
-  AISection,
   ContextSection,
   HttpSection,
   MetadataSection,
@@ -19,26 +16,9 @@ import { useSectionNavigation } from "./useSectionNavigation";
 import type { RequestDetailResponse } from "./types";
 
 export function RequestDetailView({ requestId }: { requestId: string }) {
-  const activeOrgId = useOrgStore((state) => state.activeOrgId);
   const id = decodeURIComponent(requestId);
   const { data, isLoading, error } = useObservabilityDetail<RequestDetailResponse>("requests", id);
   const { activeId, scrollTo } = useSectionNavigation(Boolean(data));
-  const [analyzing, setAnalyzing] = useState(false);
-  const [aiOverride, setAiOverride] = useState<unknown>(undefined);
-
-  const runAnalyze = useCallback(async () => {
-    if (!activeOrgId || !data) return;
-    setAnalyzing(true);
-    try {
-      const result = await askObservabilityEvent(activeOrgId, "requests", data.header.publicId, "root_cause");
-      setAiOverride(result);
-      scrollTo("ai");
-    } catch {
-      // Keep the existing AI panel; the section shows its own retry.
-    } finally {
-      setAnalyzing(false);
-    }
-  }, [activeOrgId, data, scrollTo]);
 
   if (isLoading) {
     return (
@@ -52,12 +32,11 @@ export function RequestDetailView({ requestId }: { requestId: string }) {
     return <DetailNotFound kind="Request" id={id} backTo="/observability/requests" backLabel="Requests" />;
   }
 
-  const aiResponse = aiOverride !== undefined ? aiOverride : data.ai?.aiResponse;
   const header = data.header;
 
   return (
     <DetailPage>
-      <StickyRequestHeader header={header} onAnalyze={runAnalyze} />
+      <StickyRequestHeader header={header} />
       <SummaryCards cards={data.summaryCards} />
       <SectionNavigation
         activeId={activeId}
@@ -82,7 +61,6 @@ export function RequestDetailView({ requestId }: { requestId: string }) {
         />
         <ContextSection context={data.context} />
         <MetadataSection metadata={data.metadata} />
-        <AISection aiResponse={aiResponse} analyzing={analyzing} onAnalyze={runAnalyze} />
         <RelatedSection related={data.related} />
         <TagsSection tags={data.tags ?? []} />
       </div>

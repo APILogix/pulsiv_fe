@@ -52,12 +52,28 @@ export function navigationEpoch(locationKey: string): number {
   return start;
 }
 
-function isEnabled(query: Query): boolean {
-  const options = query.options as { enabled?: boolean | ((q: Query) => boolean); queryFn?: unknown };
+function isBlocking(query: Query): boolean {
+  const options = query.options as {
+    enabled?: boolean | ((q: Query) => boolean);
+    queryFn?: unknown;
+    meta?: Record<string, unknown>;
+  };
   if (options.queryFn === skipToken) return false;
   const enabled = options.enabled;
-  if (typeof enabled === "function") return enabled(query) !== false;
-  return enabled !== false;
+  if (typeof enabled === "function") {
+    if (enabled(query) === false) return false;
+  } else if (enabled === false) {
+    return false;
+  }
+  // Decoupled secondary queries do not block the page-level gate
+  const queryMeta = query.meta as Record<string, unknown> | undefined;
+  if (
+    options.meta?.nonBlocking === true ||
+    queryMeta?.nonBlocking === true
+  ) {
+    return false;
+  }
+  return true;
 }
 
 /**
@@ -72,7 +88,7 @@ export function hasPendingCandidates(client: QueryClient, since: number): boolea
     .some((query) => {
       if (query.state.data !== undefined) return false;
       if (query.state.status === "error") return false;
-      if (!isEnabled(query)) return false;
+      if (!isBlocking(query)) return false;
 
       const created = createdAt.get(query) ?? -1;
       const observed = observedAt.get(query) ?? -1;
@@ -89,7 +105,7 @@ export function countBlockingQueries(client: QueryClient, since: number): number
   for (const query of client.getQueryCache().getAll()) {
     if (query.state.data !== undefined) continue;
     if (query.state.status === "error") continue;
-    if (!isEnabled(query)) continue;
+    if (!isBlocking(query)) continue;
     if (query.getObserversCount() === 0) continue;
 
     // Only queries actively in-flight block the page

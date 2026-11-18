@@ -1,12 +1,10 @@
 import { Globe, GitBranch, Layers, ScrollText } from "lucide-react";
-import { useState } from "react";
 import { MethodBadge, StatusCodeBadge, formatAbsoluteTime } from "@/shared/observe";
-import { ghostButtonClass } from "@/shared/observe/form";
-import { hasJsonValue, normalizeAiResponse, sectionDomId } from "./helpers";
+import { hasJsonValue, sectionDomId } from "./helpers";
 import { EmptyInline, KeyValueGrid, SectionShell } from "./ui";
 import { StackTraceViewer } from "./StackTraceViewer";
 import { BreadcrumbsTimeline } from "./BreadcrumbsTimeline";
-import { AiAnalysisBody, AiRerunButton, PairTable, RelatedPanel, RelatedRow, TagChips, toPairs } from "../components/detail-kit";
+import { PairTable, RelatedPanel, RelatedRow, TagChips, toPairs } from "../components/detail-kit";
 import type { ErrorDetailResponse } from "./types";
 
 export function OverviewSection({ detail }: { detail: ErrorDetailResponse }) {
@@ -146,40 +144,6 @@ export function MetadataSection({ detail }: { detail: ErrorDetailResponse }) {
   );
 }
 
-export function AISection({ aiResponse, analyzing, onAnalyze }: { aiResponse: unknown; analyzing: boolean; onAnalyze: () => void }) {
-  const parsed = normalizeAiResponse(aiResponse);
-  const [copied, setCopied] = useState(false);
-
-  const copyReport = () => {
-    if (!parsed) return;
-    const lines: string[] = [];
-    if (parsed.summary) lines.push(`Summary: ${parsed.summary}`, "");
-    if (parsed.rootCause) lines.push(`Likely cause: ${parsed.rootCause}`, "");
-    if (parsed.recommendations.length) lines.push("Recommendations:", ...parsed.recommendations.map((r) => `- ${r}`));
-    navigator.clipboard.writeText(lines.join("\n")).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    });
-  };
-
-  return (
-    <SectionShell
-      id={sectionDomId("ai")}
-      title="AI analysis"
-      description="Likely root cause and fixes from the stack, breadcrumbs, and HTTP context."
-      action={
-        parsed ? (
-          <>
-            <button type="button" className={ghostButtonClass} onClick={copyReport}>{copied ? "Copied" : "Copy report"}</button>
-            <AiRerunButton analyzing={analyzing} onAnalyze={onAnalyze} />
-          </>
-        ) : undefined
-      }
-    >
-      <AiAnalysisBody parsed={parsed} analyzing={analyzing} onAnalyze={onAnalyze} subject="error" reads="the stack frames, breadcrumbs, and HTTP context" />
-    </SectionShell>
-  );
-}
 
 export function RelatedSection({ detail }: { detail: ErrorDetailResponse }) {
   const issueId = detail.errorGroup?.publicId ?? detail.related?.errorGroup?.publicId;

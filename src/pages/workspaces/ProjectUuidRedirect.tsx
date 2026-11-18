@@ -9,43 +9,51 @@
  * the new URL and navigates there with `replace` so the old URL is not
  * kept in browser history.
  */
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { Navigate, useNavigate, useParams } from "react-router";
 import { useProject } from "@/modules/projects/hooks/useProjects";
 import { useOrgStore } from "@/modules/organizations/store/org.store";
 import { useOrganizations } from "@/modules/organizations/hooks/useOrganizations";
+import { useBootstrapProjects } from "@/modules/bootstrap";
 import { projectPath } from "@/modules/projects/navigation/project-routes";
-import { DetailSkeleton } from "@/shared/observe";
+import { RouteSkeleton } from "@/shared/skeletons/RouteSkeleton";
 
 export function ProjectUuidRedirect() {
   const { projectId = "", "*": rest = "" } = useParams<{ projectId: string; "*": string }>();
   const { organizations, isLoading: orgsLoading } = useOrganizations();
+  const bootstrapProjects = useBootstrapProjects();
   const activeOrgId = useOrgStore((s) => s.activeOrgId);
   const activeOrgSlug = useOrgStore((s) => s.activeOrgSlug);
-  const { data: project, isLoading: projectLoading, error } = useProject(projectId);
   const navigate = useNavigate();
 
   const resolvedOrgSlug = activeOrgSlug || (organizations.length > 0 ? organizations[0].slug : null);
 
-  useEffect(() => {
-    if (!project || !resolvedOrgSlug) return;
-    const segment = rest || "overview";
-    navigate(projectPath(resolvedOrgSlug, project.publicId, segment), { replace: true });
-  }, [project, resolvedOrgSlug, rest, navigate]);
+  // Fast-path: Check bootstrap store for immediate synchronous redirect
+  const cachedProject = useMemo(() => {
+    return bootstrapProjects.find((p) => p.id === projectId || p.publicId === projectId || p.slug === projectId);
+  }, [bootstrapProjects, projectId]);
 
-  const isLoading = orgsLoading || projectLoading || (!activeOrgId && organizations.length === 0);
+  const { data: project, isLoading: projectLoading, error } = useProject(cachedProject ? "" : projectId);
+
+  useEffect(() => {
+    const targetProject = cachedProject ?? project;
+    if (!targetProject || !resolvedOrgSlug) return;
+    const publicId =
+      "publicId" in targetProject && typeof targetProject.publicId === "string" && targetProject.publicId
+        ? targetProject.publicId
+        : targetProject.id;
+    const segment = rest || "overview";
+    navigate(projectPath(resolvedOrgSlug, publicId, segment), { replace: true });
+  }, [cachedProject, project, resolvedOrgSlug, rest, navigate]);
+
+  const isLoading = !cachedProject && (orgsLoading || projectLoading || (!activeOrgId && organizations.length === 0));
 
   if (isLoading) {
-    return (
-      <div className="sidebar-scroll h-full w-full overflow-y-auto">
-        <div className="px-6 py-6">
-          <DetailSkeleton />
-        </div>
-      </div>
-    );
+    // Render framed RouteSkeleton to match destination ProjectShellPage frame exactly
+    return <RouteSkeleton framed />;
   }
 
-  if (error || !project || !resolvedOrgSlug) {
+  if ((error || (!project && !cachedProject)) && !isLoading) {
     // If we can't resolve, fall back to the projects list.
     return <Navigate to="/projects" replace />;
   }

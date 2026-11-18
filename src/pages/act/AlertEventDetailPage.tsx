@@ -319,7 +319,7 @@ export default function AlertEventDetailPage() {
     {
       label: "Rule",
       value: event.ruleId ? (
-        <TextLink to={`/alerts/policies/${event.ruleId}`} className="font-[family-name:var(--mono)] text-[12px]">
+        <TextLink to={`/alerts/rules?rule=${encodeURIComponent(event.ruleId)}`} className="font-[family-name:var(--mono)] text-[12px]">
           {event.ruleId}
         </TextLink>
       ) : (
@@ -471,7 +471,7 @@ export default function AlertEventDetailPage() {
           {
             label: "Rule",
             value: event.ruleId ? (
-              <TextLink to={`/alerts/policies/${event.ruleId}`} size="sm" className="font-[family-name:var(--mono)]">
+              <TextLink to={`/alerts/rules?rule=${encodeURIComponent(event.ruleId)}`} size="sm" className="font-[family-name:var(--mono)]">
                 {event.ruleId}
               </TextLink>
             ) : (

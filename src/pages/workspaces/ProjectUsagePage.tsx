@@ -176,12 +176,6 @@ export default function ProjectUsagePage() {
     <WorkspacePage>
       <ProjectPageHeader
         title="Usage"
-        description={
-          <>
-            Lifetime counters kept by the ingestion pipeline, and this month's position against the plan. For
-            time-sliced breakdowns, open <TextLink to={projectPath(orgSlug, publicId, "analytics")}>Analytics</TextLink>.
-          </>
-        }
         actions={
           <UiButton variant="outline" size="lg" onClick={() => void refetch()} disabled={isFetching}>
             <RefreshCcw className={cn("size-4", isFetching && "animate-spin")} aria-hidden="true" />

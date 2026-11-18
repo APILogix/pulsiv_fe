@@ -26,6 +26,7 @@ export type EmptyIllustration =
   | "bell"
   | "terminal"
   | "team"
+  | "members"
   | "dashboard"
   | "ai"
   | "search"
@@ -44,7 +45,7 @@ const FLOAT = {
 
 function Folder({ animate }: { animate: boolean }) {
   return (
-    <motion.svg viewBox="0 0 96 96" className="size-20" animate={animate ? FLOAT : undefined} aria-hidden="true">
+    <motion.svg width={80} height={80} viewBox="0 0 96 96" className="size-20" animate={animate ? FLOAT : undefined} aria-hidden="true">
       {/* back sheet lifts slightly — reads as "empty folder" */}
       <motion.rect
         x="22" y="26" width="52" height="40" rx="6"
@@ -74,7 +75,7 @@ function Folder({ animate }: { animate: boolean }) {
 
 function Bell({ animate }: { animate: boolean }) {
   return (
-    <svg viewBox="0 0 96 96" className="size-20" aria-hidden="true">
+    <svg width={80} height={80} viewBox="0 0 96 96" className="size-20" aria-hidden="true">
       <motion.g
         style={{ transformOrigin: "48px 26px" }}
         animate={animate ? { rotate: [0, -8, 7, -4, 0] } : undefined}
@@ -107,7 +108,7 @@ function Bell({ animate }: { animate: boolean }) {
 
 function Terminal({ animate }: { animate: boolean }) {
   return (
-    <svg viewBox="0 0 96 96" className="size-20" aria-hidden="true">
+    <svg width={80} height={80} viewBox="0 0 96 96" className="size-20" aria-hidden="true">
       <rect x="14" y="22" width="68" height="52" rx="8" fill="var(--bg2)" stroke="var(--border2)" strokeWidth="1.5" />
       <path d="M14 33h68" stroke="var(--border)" strokeWidth="1.5" />
       <circle cx="23" cy="27.5" r="2" fill="var(--red)" opacity="0.7" />
@@ -146,7 +147,7 @@ function Team({ animate }: { animate: boolean }) {
     { cx: 48, cy: 34, r: 9, delay: 0.06 },
   ];
   return (
-    <svg viewBox="0 0 96 96" className="size-20" aria-hidden="true">
+    <svg width={80} height={80} viewBox="0 0 96 96" className="size-20" aria-hidden="true">
       {people.map((person, i) => (
         <motion.g
           key={i}
@@ -188,7 +189,7 @@ function DashboardArt({ animate }: { animate: boolean }) {
     { x: 62, h: 26 },
   ];
   return (
-    <svg viewBox="0 0 96 96" className="size-20" aria-hidden="true">
+    <svg width={80} height={80} viewBox="0 0 96 96" className="size-20" aria-hidden="true">
       <rect x="14" y="22" width="68" height="52" rx="8" fill="var(--bg2)" stroke="var(--border2)" strokeWidth="1.5" />
       <rect x="22" y="30" width="22" height="4" rx="2" fill="var(--text3)" opacity="0.45" />
       {bars.map((bar, i) => (
@@ -217,7 +218,7 @@ function DashboardArt({ animate }: { animate: boolean }) {
 
 function AiArt({ animate }: { animate: boolean }) {
   return (
-    <svg viewBox="0 0 96 96" className="size-20" aria-hidden="true">
+    <svg width={80} height={80} viewBox="0 0 96 96" className="size-20" aria-hidden="true">
       {animate && (
         <>
           <motion.circle
@@ -268,7 +269,7 @@ function AiArt({ animate }: { animate: boolean }) {
 
 function SearchArt({ animate }: { animate: boolean }) {
   return (
-    <svg viewBox="0 0 96 96" className="size-20" aria-hidden="true">
+    <svg width={80} height={80} viewBox="0 0 96 96" className="size-20" aria-hidden="true">
       <motion.g
         animate={animate ? { x: [0, 6, -4, 0], y: [0, -4, 3, 0] } : undefined}
         transition={{ duration: 4.4, ease: EASE.inOut, repeat: Infinity }}
@@ -283,7 +284,7 @@ function SearchArt({ animate }: { animate: boolean }) {
 
 function ChartArt({ animate }: { animate: boolean }) {
   return (
-    <svg viewBox="0 0 96 96" className="size-20" aria-hidden="true">
+    <svg width={80} height={80} viewBox="0 0 96 96" className="size-20" aria-hidden="true">
       <path d="M22 70V26M22 70h52" stroke="var(--border2)" strokeWidth="1.5" strokeLinecap="round" />
       <motion.path
         d="M26 62 L38 50 L48 56 L60 36 L72 44"
@@ -306,7 +307,7 @@ function ChartArt({ animate }: { animate: boolean }) {
 
 function KeyArt({ animate }: { animate: boolean }) {
   return (
-    <svg viewBox="0 0 96 96" className="size-20" aria-hidden="true">
+    <svg width={80} height={80} viewBox="0 0 96 96" className="size-20" aria-hidden="true">
       <motion.g
         animate={animate ? { rotate: [-6, 6, -6] } : undefined}
         transition={{ duration: 4, ease: EASE.inOut, repeat: Infinity }}
@@ -329,7 +330,7 @@ function KeyArt({ animate }: { animate: boolean }) {
 
 function ConnectorArt({ animate }: { animate: boolean }) {
   return (
-    <svg viewBox="0 0 96 96" className="size-20" aria-hidden="true">
+    <svg width={80} height={80} viewBox="0 0 96 96" className="size-20" aria-hidden="true">
       <rect x="16" y="38" width="24" height="20" rx="6" fill="var(--bg2)" stroke="var(--border2)" strokeWidth="1.5" />
       <rect x="56" y="38" width="24" height="20" rx="6" fill="var(--bg2)" stroke="var(--border2)" strokeWidth="1.5" />
       <path d="M40 48h16" stroke="var(--border2)" strokeWidth="2" strokeDasharray="3 3" />
@@ -352,7 +353,7 @@ function WorkflowArt({ animate }: { animate: boolean }) {
     { x: 72, y: 48 },
   ];
   return (
-    <svg viewBox="0 0 96 96" className="size-20" aria-hidden="true">
+    <svg width={80} height={80} viewBox="0 0 96 96" className="size-20" aria-hidden="true">
       <path d="M32 48 L40 34M32 48 L40 62M56 34 L64 48M56 62 L64 48" stroke="var(--border2)" strokeWidth="1.5" />
       {nodes.map((node, i) => (
         <motion.rect
@@ -369,7 +370,7 @@ function WorkflowArt({ animate }: { animate: boolean }) {
 
 function InboxArt({ animate }: { animate: boolean }) {
   return (
-    <motion.svg viewBox="0 0 96 96" className="size-20" animate={animate ? FLOAT : undefined} aria-hidden="true">
+    <motion.svg width={80} height={80} viewBox="0 0 96 96" className="size-20" animate={animate ? FLOAT : undefined} aria-hidden="true">
       <path
         d="M20 44 L28 26 h40 l8 18 v22 a6 6 0 0 1 -6 6 H26 a6 6 0 0 1 -6 -6z"
         fill="var(--bg2)" stroke="var(--border2)" strokeWidth="1.5"
@@ -384,6 +385,7 @@ const ILLUSTRATIONS: Record<EmptyIllustration, ComponentType<{ animate: boolean 
   bell: Bell,
   terminal: Terminal,
   team: Team,
+  members: Team,
   dashboard: DashboardArt,
   ai: AiArt,
   search: SearchArt,

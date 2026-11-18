@@ -135,7 +135,7 @@ export default function AcceptInviteLandingPage() {
     <div className="w-full">
       <AuthHeading
         title={`Join ${orgName}`}
-        description={`You've been invited to this Sentinel workspace with the ${formatRole(invitation.role)} role.`}
+        description={`You've been invited to this LynkTrace workspace with the ${formatRole(invitation.role)} role.`}
       />
 
       <div className="flex flex-col gap-4">
@@ -154,7 +154,7 @@ export default function AcceptInviteLandingPage() {
 
         {!invitation.accountExists && (
           <AuthCallout icon={UserPlus} title="Create an account first">
-            There's no Sentinel account for <span className="text-[var(--text)]">{invitation.email}</span> yet. Create
+            There's no LynkTrace account for <span className="text-[var(--text)]">{invitation.email}</span> yet. Create
             one with this address, then accept.
           </AuthCallout>
         )}
